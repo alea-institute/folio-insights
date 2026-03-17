@@ -6,5 +6,7 @@ __all__ = ["__version__"]
 
 
 def main() -> None:
-    """CLI entry point (wired in Plan 01-03)."""
-    raise SystemExit("folio-insights CLI not yet implemented. See Plan 01-03.")
+    """CLI entry point."""
+    from folio_insights.cli import main as cli_main
+
+    cli_main()

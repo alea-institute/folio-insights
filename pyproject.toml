@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-folio-insights = "folio_insights:main"
+folio-insights = "folio_insights.cli:cli"
 
 [build-system]
 requires = ["hatchling"]
