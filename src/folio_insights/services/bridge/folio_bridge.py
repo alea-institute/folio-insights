@@ -33,11 +33,6 @@ def _ensure_folio_enrich_path() -> str:
     if enrich_path not in sys.path:
         sys.path.insert(0, enrich_path)
 
-    # Ensure folio-enrich's pydantic-settings does not complain about
-    # unset env vars by setting a harmless prefix.  folio-enrich's
-    # Settings uses ``env_prefix = "FOLIO_ENRICH_"`` so any env var
-    # with that prefix is consumed.  We only need to ensure its
-    # defaults work (they do).
     _path_ensured = True
     logger.info("folio-enrich path ensured: %s", enrich_path)
     return enrich_path

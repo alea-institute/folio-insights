@@ -1,61 +1,83 @@
-"""Bridge adapter for folio-mapper's FileParser for Excel/CSV/TSV ingestion."""
+"""Bridge adapter for folio-mapper's FileParser for Excel/CSV/TSV ingestion.
+
+Uses importlib to load folio-mapper modules directly from disk, avoiding
+namespace conflicts with folio-enrich's ``app`` package.
+"""
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_mapper_path_ensured = False
-
-
-def _ensure_mapper_path() -> str | None:
-    """Add folio-mapper's backend directory to sys.path if configured.
-
-    Returns the resolved path or None if not configured/found.
-    """
-    global _mapper_path_ensured
-    if _mapper_path_ensured:
-        return _get_mapper_path()
-
-    mapper_path = _get_mapper_path()
-    if mapper_path is None:
-        return None
-
-    if mapper_path not in sys.path:
-        sys.path.insert(0, mapper_path)
-
-    _mapper_path_ensured = True
-    logger.info("folio-mapper path ensured: %s", mapper_path)
-    return mapper_path
+_mapper_path: str | None = None
+_mapper_checked = False
 
 
 def _get_mapper_path() -> str | None:
-    """Resolve folio-mapper backend path from settings."""
+    """Resolve and cache the folio-mapper backend path."""
+    global _mapper_path, _mapper_checked
+    if _mapper_checked:
+        return _mapper_path
+
     from folio_insights.config import get_settings
 
     settings = get_settings()
-    mapper_path = str(settings.folio_mapper_path.expanduser().resolve())
+    resolved = str(settings.folio_mapper_path.expanduser().resolve())
 
-    if not os.path.isdir(mapper_path):
+    if not os.path.isdir(resolved):
         logger.warning(
             "folio-mapper backend not found at %s. "
             "Tabular file parsing will use fallback.",
-            mapper_path,
+            resolved,
         )
+        _mapper_path = None
+    else:
+        _mapper_path = resolved
+        logger.info("folio-mapper path resolved: %s", resolved)
+
+    _mapper_checked = True
+    return _mapper_path
+
+
+def _load_mapper_file_parser():
+    """Load folio-mapper's file_parser module directly via importlib.
+
+    This avoids adding folio-mapper to sys.path, which would conflict
+    with folio-enrich's ``app`` package.
+    """
+    mapper_root = _get_mapper_path()
+    if mapper_root is None:
         return None
-    return mapper_path
+
+    file_parser_path = Path(mapper_root) / "app" / "services" / "file_parser.py"
+    if not file_parser_path.exists():
+        logger.warning("folio-mapper file_parser.py not found at %s", file_parser_path)
+        return None
+
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "folio_mapper_file_parser", str(file_parser_path)
+        )
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        logger.exception("Failed to load folio-mapper file_parser")
+        return None
 
 
 class MapperBridge:
     """Wraps folio-mapper's FileParser for Excel/CSV/TSV ingestion."""
 
     def __init__(self) -> None:
-        self._mapper_available = _ensure_mapper_path() is not None
+        self._mapper_available = _get_mapper_path() is not None
 
     def parse_tabular(self, file_path: Path) -> list[dict[str, Any]]:
         """Parse a tabular file (CSV, XLSX, TSV) and return rows as dicts.
@@ -77,12 +99,14 @@ class MapperBridge:
         return self._parse_fallback(file_path)
 
     def _parse_via_mapper(self, file_path: Path) -> list[dict[str, Any]]:
-        """Parse using folio-mapper's file_parser."""
+        """Parse using folio-mapper's file_parser loaded via importlib."""
         try:
-            from app.services.file_parser import parse_file
+            mod = _load_mapper_file_parser()
+            if mod is None:
+                return self._parse_fallback(file_path)
 
             content = file_path.read_bytes()
-            result = parse_file(content, file_path.name)
+            result = mod.parse_file(content, file_path.name)
             return [
                 {"text": item.text, "index": item.index}
                 for item in result.items

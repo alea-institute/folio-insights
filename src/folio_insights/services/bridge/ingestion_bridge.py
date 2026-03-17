@@ -55,6 +55,12 @@ class IngestionBridge:
         if fmt_value is None:
             raise ValueError(f"Unsupported format for ingestion bridge: {ext}")
 
+        # Ensure folio-enrich path is set before importing its modules
+        import sys as _sys
+        enrich_path = _ensure_folio_enrich_path()
+        if enrich_path not in _sys.path:
+            _sys.path.insert(0, enrich_path)
+
         try:
             from app.models.document import DocumentFormat, DocumentInput
             from app.services.ingestion.registry import ingest_with_elements
