@@ -1,8 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fetchTree } from '$lib/api/client';
+	import { bulkApprove } from '$lib/api/client';
 	import { treeData, selectedConcept, viewMode, confidenceFilter } from '$lib/stores/tree';
-	import { loadUnits, selectedUnit } from '$lib/stores/review';
+	import { loadUnits, selectedUnit, navigateUnit, submitReview, refreshStats, editorOpen, announcement } from '$lib/stores/review';
+	import FolioTree from '$lib/components/FolioTree.svelte';
+	import DetailView from '$lib/components/DetailView.svelte';
+	import SourceContext from '$lib/components/SourceContext.svelte';
+	import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
+	import type { TreeNode } from '$lib/api/client';
 
 	let leftWidth = $state(320);
 	let topHeight = $state(60);
@@ -10,6 +16,7 @@
 	let draggingV = $state(false);
 	let rightPaneEl: HTMLElement | undefined = $state();
 	let focusedPane = $state<'tree' | 'detail' | 'source'>('tree');
+	let shortcutsRef: KeyboardShortcuts | undefined = $state();
 
 	const LEFT_MIN = 240;
 	const TOP_MIN_PCT = 20;
@@ -56,15 +63,83 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
+		// Don't intercept when typing in inputs/textareas
+		const tag = (e.target as HTMLElement)?.tagName;
+		if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+		// Tab: cycle panes
 		if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey) {
 			e.preventDefault();
 			if (focusedPane === 'tree') focusedPane = 'detail';
 			else if (focusedPane === 'detail') focusedPane = 'source';
 			else focusedPane = 'tree';
+			return;
+		}
+
+		// ? : show shortcuts
+		if (e.key === '?') {
+			e.preventDefault();
+			shortcutsRef?.toggle();
+			return;
+		}
+
+		// Ctrl+F: focus tree filter
+		if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
+			e.preventDefault();
+			const input = document.querySelector<HTMLInputElement>('.filter-input');
+			input?.focus();
+			return;
+		}
+
+		// Escape: close editor or modal
+		if (e.key === 'Escape') {
+			$editorOpen = false;
+			shortcutsRef?.hide();
+			return;
+		}
+
+		// If editor is open, don't intercept review shortcuts
+		if ($editorOpen) return;
+
+		// Confidence filter: 1/2/3/4
+		if (e.key === '1') { $confidenceFilter = 'all'; return; }
+		if (e.key === '2') { $confidenceFilter = 'high'; return; }
+		if (e.key === '3') { $confidenceFilter = 'medium'; return; }
+		if (e.key === '4') { $confidenceFilter = 'low'; return; }
+
+		// Review shortcuts (only when detail pane focused or any for Shift+A)
+		const unit = $selectedUnit;
+		if (e.key === 'A' && e.shiftKey) {
+			e.preventDefault();
+			handleBulkApprove();
+			return;
+		}
+
+		if (unit && (focusedPane === 'detail' || focusedPane === 'tree')) {
+			if (e.key === 'a' || e.key === 'A') { submitReview(unit.id, 'approved'); return; }
+			if (e.key === 'r' || e.key === 'R') { submitReview(unit.id, 'rejected'); return; }
+			if (e.key === 'e' || e.key === 'E') { $editorOpen = true; return; }
+			if (e.key === 's' || e.key === 'S') { navigateUnit('next'); return; }
+		}
+
+		// Navigation
+		if (e.key === 'j' || e.key === 'ArrowDown') { navigateUnit('next'); return; }
+		if (e.key === 'k' || e.key === 'ArrowUp') { navigateUnit('prev'); return; }
+	}
+
+	async function handleBulkApprove() {
+		const result = await bulkApprove('default', undefined, 0.8);
+		if (!('error' in result)) {
+			await refreshStats('default');
+			const concept = $selectedConcept;
+			if (concept) {
+				const conf = $confidenceFilter === 'all' ? undefined : $confidenceFilter;
+				await loadUnits('default', concept.iri, conf);
+			}
 		}
 	}
 
-	function selectConcept(node: typeof $selectedConcept) {
+	function selectConcept(node: TreeNode) {
 		$selectedConcept = node;
 		if (node) {
 			const confValue = $confidenceFilter === 'all' ? undefined : $confidenceFilter;
@@ -86,8 +161,12 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+<!-- Aria-live region for announcements -->
+<div class="sr-only" aria-live="polite" role="status">{$announcement}</div>
+
 <div class="three-pane" class:dragging={draggingH || draggingV}>
 	<!-- Left Pane: FOLIO Tree -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="pane pane-left"
 		class:focused={focusedPane === 'tree'}
@@ -96,13 +175,11 @@
 		aria-label="FOLIO concept tree"
 		onclick={() => (focusedPane = 'tree')}
 	>
-		<div class="pane-placeholder">
-			<span class="placeholder-label">FOLIO Concept Tree</span>
-			<span class="placeholder-hint">Component loads in Task 3</span>
-		</div>
+		<FolioTree onselectconcept={selectConcept} />
 	</div>
 
 	<!-- Horizontal Divider -->
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="divider divider-h"
 		class:active={draggingH}
@@ -114,6 +191,7 @@
 	<!-- Right Area -->
 	<div class="pane-right" bind:this={rightPaneEl}>
 		<!-- Upper Right: Detail View -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="pane pane-detail"
 			class:focused={focusedPane === 'detail'}
@@ -122,19 +200,11 @@
 			aria-label="Knowledge unit detail"
 			onclick={() => (focusedPane = 'detail')}
 		>
-			<div class="pane-placeholder">
-				<span class="placeholder-label">Detail View</span>
-				<span class="placeholder-hint">
-					{#if $selectedConcept}
-						Selected: {$selectedConcept.label}
-					{:else}
-						Select a concept from the tree
-					{/if}
-				</span>
-			</div>
+			<DetailView />
 		</div>
 
 		<!-- Vertical Divider -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="divider divider-v"
 			class:active={draggingV}
@@ -144,6 +214,7 @@
 		></div>
 
 		<!-- Lower Right: Source Context -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="pane pane-source"
 			class:focused={focusedPane === 'source'}
@@ -152,16 +223,7 @@
 			aria-label="Source context"
 			onclick={() => (focusedPane = 'source')}
 		>
-			<div class="pane-placeholder">
-				<span class="placeholder-label">Source Context</span>
-				<span class="placeholder-hint">
-					{#if $selectedUnit}
-						{$selectedUnit.source_file}
-					{:else}
-						Select a unit to view source
-					{/if}
-				</span>
-			</div>
+			<SourceContext />
 		</div>
 	</div>
 </div>
@@ -188,7 +250,22 @@
 	</button>
 </div>
 
+<!-- Keyboard shortcuts modal -->
+<KeyboardShortcuts bind:this={shortcutsRef} />
+
 <style>
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
 	.three-pane {
 		display: flex;
 		height: 100%;
@@ -255,28 +332,6 @@
 	.divider-v {
 		height: 4px;
 		cursor: row-resize;
-	}
-
-	/* Placeholders */
-	.pane-placeholder {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		gap: var(--sm);
-	}
-
-	.placeholder-label {
-		font-size: 14px;
-		font-weight: 600;
-		color: var(--text-dim);
-	}
-
-	.placeholder-hint {
-		font-size: 13px;
-		color: var(--text-dim);
-		opacity: 0.6;
 	}
 
 	/* View toggle */
