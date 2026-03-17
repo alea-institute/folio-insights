@@ -95,42 +95,42 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INGEST-01 | — | Pending |
-| INGEST-02 | — | Pending |
-| INGEST-03 | — | Pending |
-| EXTRACT-01 | — | Pending |
-| EXTRACT-02 | — | Pending |
-| EXTRACT-03 | — | Pending |
-| EXTRACT-04 | — | Pending |
-| EXTRACT-05 | — | Pending |
-| EXTRACT-06 | — | Pending |
-| CLASS-01 | — | Pending |
-| CLASS-02 | — | Pending |
-| CLASS-03 | — | Pending |
-| FOLIO-01 | — | Pending |
-| FOLIO-02 | — | Pending |
-| FOLIO-03 | — | Pending |
-| FOLIO-04 | — | Pending |
-| QUAL-01 | — | Pending |
-| QUAL-02 | — | Pending |
-| QUAL-03 | — | Pending |
-| TASK-01 | — | Pending |
-| TASK-02 | — | Pending |
-| TASK-03 | — | Pending |
-| TASK-04 | — | Pending |
-| OWL-01 | — | Pending |
-| OWL-02 | — | Pending |
-| OWL-03 | — | Pending |
-| OWL-04 | — | Pending |
-| OWL-05 | — | Pending |
-| PIPE-01 | — | Pending |
-| PIPE-02 | — | Pending |
+| INGEST-01 | Phase 1 | Pending |
+| INGEST-02 | Phase 1 | Pending |
+| INGEST-03 | Phase 1 | Pending |
+| EXTRACT-01 | Phase 1 | Pending |
+| EXTRACT-02 | Phase 1 | Pending |
+| EXTRACT-03 | Phase 1 | Pending |
+| EXTRACT-04 | Phase 1 | Pending |
+| EXTRACT-05 | Phase 1 | Pending |
+| EXTRACT-06 | Phase 1 | Pending |
+| CLASS-01 | Phase 1 | Pending |
+| CLASS-02 | Phase 1 | Pending |
+| CLASS-03 | Phase 1 | Pending |
+| FOLIO-01 | Phase 1 | Pending |
+| FOLIO-02 | Phase 1 | Pending |
+| FOLIO-03 | Phase 1 | Pending |
+| FOLIO-04 | Phase 1 | Pending |
+| QUAL-01 | Phase 1 | Pending |
+| QUAL-02 | Phase 1 | Pending |
+| QUAL-03 | Phase 1 | Pending |
+| PIPE-02 | Phase 1 | Pending |
+| TASK-01 | Phase 2 | Pending |
+| TASK-02 | Phase 2 | Pending |
+| TASK-03 | Phase 2 | Pending |
+| TASK-04 | Phase 2 | Pending |
+| OWL-01 | Phase 3 | Pending |
+| OWL-02 | Phase 3 | Pending |
+| OWL-03 | Phase 3 | Pending |
+| OWL-04 | Phase 3 | Pending |
+| OWL-05 | Phase 3 | Pending |
+| PIPE-01 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 0
-- Unmapped: 30 ⚠️
+- Mapped to phases: 30
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after initial definition*
+*Last updated: 2026-03-17 after roadmap creation*

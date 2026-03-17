@@ -83,6 +83,8 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 | Core mappings in OWL + detailed advice in companion file | Keeps FOLIO OWL clean while allowing rich advice structure in a linked artifact | — Pending |
 | Automated quality with spot-checking | Corpus will grow — manual review doesn't scale; invest in confidence scoring instead | — Pending |
 | Both human-reviewable and machine-parseable enriched output | Enables validation workflow while feeding Stage 2 structuring | — Pending |
+| Advice as annotation properties on Task/Subtask classes | Simplest model — advice "goes with the class." Confidence/source metadata lives in companion SKOS file, not OWL. | — Pending |
+| Use folio-python's IRI generation for all new IRIs | WebProtege-compatible algorithm ensures compatibility with FOLIO's existing IRI patterns | — Pending |
 
 ---
 *Last updated: 2026-03-17 after initialization*
