@@ -12,14 +12,14 @@ Alea Advocate delivers a batch pipeline that extracts structured advocacy knowle
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Knowledge Extraction Pipeline** - Ingest MD files and produce typed, FOLIO-tagged knowledge units with confidence scores, lineage, and batch CLI execution
+- [ ] **Phase 1: Knowledge Extraction Pipeline** - Ingest multi-format source files and produce typed, FOLIO-tagged knowledge units with confidence scores, lineage, batch CLI execution, and interactive review viewer
 - [ ] **Phase 2: Task Hierarchy Discovery** - Discover advocacy tasks from extracted knowledge and build a validated hierarchical task tree across the corpus
 - [ ] **Phase 3: Ontology Output and Delivery** - Generate validated OWL and companion files serving all three consumption modes, with incremental corpus support
 
 ## Phase Details
 
 ### Phase 1: Knowledge Extraction Pipeline
-**Goal**: A practitioner can run the batch CLI against a directory of MD source files and receive typed, FOLIO-tagged knowledge units with confidence scores and full source lineage in human-reviewable JSON output
+**Goal**: A practitioner can run the batch CLI against a directory of multi-format source files and receive typed, FOLIO-tagged knowledge units with confidence scores and full source lineage -- then review, approve, reject, or edit those units in an interactive viewer before anything enters OWL
 **Depends on**: Nothing (first phase)
 **Requirements**: INGEST-01, INGEST-02, INGEST-03, EXTRACT-01, EXTRACT-02, EXTRACT-03, EXTRACT-04, EXTRACT-05, EXTRACT-06, CLASS-01, CLASS-02, CLASS-03, FOLIO-01, FOLIO-02, FOLIO-03, FOLIO-04, QUAL-01, QUAL-02, QUAL-03, PIPE-02
 **Success Criteria** (what must be TRUE):
@@ -27,13 +27,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Knowledge units are distilled ideas (not quoted passages) that preserve all necessary nuance -- important principles appear even if "obvious," and counterintuitive insights are flagged as high-novelty
   3. Duplicate advice expressed differently across source files is detected and deduplicated in the output
   4. The JSON output is both human-readable for spot-checking and machine-parseable for downstream pipeline consumption, with high-confidence units auto-approved and low-confidence units flagged for review
-  5. FOLIO concept mappings use the full ~18,000-concept ontology via three-path hybrid extraction with 5-stage confidence scoring, not a reduced subset
-**Plans**: TBD
+  5. FOLIO concept mappings use the full ~18,000-concept ontology via four-path hybrid extraction (EntityRuler + LLM + Semantic + Heading Context) with 5-stage confidence scoring, not a reduced subset
+  6. An interactive review viewer allows browsing by FOLIO concept tree, approving/rejecting/editing units, with decisions persisting in SQLite across sessions
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Project scaffolding, folio-enrich bridge adapter, and MD ingestion
-- [ ] 01-02: Knowledge unit extraction, classification, and FOLIO tagging
-- [ ] 01-03: Quality output, confidence gating, and batch CLI
+- [ ] 01-01-PLAN.md -- Project scaffolding, folio-enrich bridge adapter, and multi-format ingestion
+- [ ] 01-02-PLAN.md -- Tiered boundary detection, distillation, classification, FOLIO four-path tagging, and deduplication
+- [ ] 01-03-PLAN.md -- Quality output (confidence gating, JSON formatting), pipeline orchestrator, and batch CLI
+- [ ] 01-04-PLAN.md -- Interactive review viewer (FastAPI backend + SvelteKit frontend with three-pane layout)
 
 ### Phase 2: Task Hierarchy Discovery
 **Goal**: The system organizes all extracted knowledge units into a discovered hierarchy of advocacy tasks (Task > Subtask), with best practices, principles, and pitfalls as annotation-property metadata on each Task/Subtask class — so querying "how do I take an expert deposition" returns the class with its advice metadata attached
@@ -72,6 +74,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Knowledge Extraction Pipeline | 0/3 | Not started | - |
+| 1. Knowledge Extraction Pipeline | 0/4 | Not started | - |
 | 2. Task Hierarchy Discovery | 0/2 | Not started | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
