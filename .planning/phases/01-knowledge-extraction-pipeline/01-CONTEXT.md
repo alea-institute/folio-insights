@@ -61,8 +61,22 @@ Ingest source files and produce typed, FOLIO-tagged knowledge units with confide
 - Tree view AND list view for rapid review
 - Inline text editing for distilled knowledge units
 
+### Document Structure as Fourth Extraction Path
+- Chapter, heading, and subheading context is a **fourth extraction path** alongside EntityRuler, LLM concept identification, and semantic similarity
+- This is an independent signal, NOT baked into the confidence score — the branch judge evaluates it separately so you can always see what came from document structure vs. text analysis ("unbake the cake" principle)
+- **All heading levels contribute, weighted by proximity**:
+  - Immediate subheading = strongest signal (e.g., "Methodology Challenges")
+  - Parent heading = medium signal (e.g., "Cross-Examination")
+  - Chapter title = weakest but still present signal (e.g., "Experts")
+- **Tiered signal strength based on FOLIO mapping quality**:
+  - Heading maps to FOLIO concept with confidence >= 0.7 → strong signal (boosts AND suggests FOLIO tags)
+  - Heading maps below 0.7 → weaker signal, fall back to parent headings as supplementary evidence
+  - Clear heading-to-FOLIO mappings get strong boosts; ambiguous headings contribute proportionally less
+- **Visible in review viewer as distinct source**: Each FOLIO tag shows its extraction path (EntityRuler, LLM, Semantic, or Heading Context) so the reviewer can trace why each tag was assigned
+- **Reconciliation**: The four-path results merge in the existing reconciliation stage, then the branch judge weighs all four signals to produce the final confidence score
+
 ### Confidence Scoring
-- Reuse folio-enrich's 5-stage confidence scoring pipeline
+- Reuse folio-enrich's 5-stage confidence scoring pipeline, extended with the fourth path (document structure)
 - Visual triage with toggleable confidence filter tabs in the reviewer
 - Default threshold bands: >=0.8 (high/green, quick-approve), 0.5-0.8 (medium/yellow, careful review), <0.5 (low/red, deep review)
 - Final composite score shown prominently, with expandable per-stage breakdown for diagnosis
@@ -100,7 +114,7 @@ Ingest source files and produce typed, FOLIO-tagged knowledge units with confide
 - `~/Coding Projects/folio-enrich/backend/pipeline/stages/base.py` — PipelineStage ABC: `name` property + `execute(job)` method
 
 ### Architecture Research
-- `.planning/research/ARCHITECTURE.md` — Full 4-stage pipeline architecture, component boundaries, data flow, bridge pattern, project structure
+- `.planning/research/ARCHITECTURE.md` — Full 4-stage pipeline architecture, component boundaries, data flow, bridge pattern, project structure (NOTE: architecture describes three-path extraction; update to four-path with document structure as fourth path per decisions above)
 - `.planning/research/FEATURES.md` — Feature landscape: table stakes, differentiators, anti-features
 
 ### Standards
