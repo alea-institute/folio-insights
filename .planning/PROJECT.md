@@ -56,6 +56,12 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 4. **Procedural rules** — required steps, filing deadlines, court procedures
 5. **Common pitfalls** — mistakes to avoid, warnings, anti-patterns
 
+**Extraction Philosophy:**
+- **Ideas, not expressions.** Extract the underlying concept/technique, not the author's specific wording. The output should be distilled knowledge, not quoted passages.
+- **Important reminders matter.** Even if an advocacy principle is "obvious" or likely in an LLM's training data, extract it if it's important. These serve as structured reminders — the value is in the organized, task-linked, FOLIO-mapped form, not novelty.
+- **Surprising insights get priority.** Flag knowledge that is counterintuitive, non-obvious, or unlikely to be in model weights. These are the highest-value extractions.
+- **As simple as possible, but no simpler.** Each distilled idea should be expressed in the minimum words needed to fully convey the concept. Include all necessary detail and nuance — but strip away filler, hedging, and redundancy.
+
 **Architecture Decision:** Extend folio-enrich pipeline rather than building new tooling. Add new pipeline stages for advice boundary detection and knowledge type classification.
 
 ## Constraints
