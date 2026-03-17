@@ -13,6 +13,7 @@ Alea Advocate delivers a batch pipeline that extracts structured advocacy knowle
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Knowledge Extraction Pipeline** - Ingest multi-format source files and produce typed, FOLIO-tagged knowledge units with confidence scores, lineage, batch CLI execution, and interactive review viewer (completed 2026-03-17)
+- [ ] **Phase 1.1: Upload & Processing UI** - Document upload, corpus management, and real-time pipeline processing in the web UI (INSERTED)
 - [ ] **Phase 2: Task Hierarchy Discovery** - Discover advocacy tasks from extracted knowledge and build a validated hierarchical task tree across the corpus
 - [ ] **Phase 3: Ontology Output and Delivery** - Generate validated OWL and companion files serving all three consumption modes, with incremental corpus support
 
@@ -36,6 +37,21 @@ Plans:
 - [x] 01-02-PLAN.md -- Tiered boundary detection, distillation, classification, FOLIO four-path tagging, and deduplication
 - [x] 01-03-PLAN.md -- Quality output (confidence gating, JSON formatting), pipeline orchestrator, and batch CLI
 - [x] 01-04-PLAN.md -- Interactive review viewer (FastAPI backend + SvelteKit frontend with three-pane layout)
+
+### Phase 01.1: Upload & Processing UI (INSERTED)
+**Goal**: Users can upload documents (individual files, zip archives, or folders) through the web UI, manage named corpora, trigger pipeline processing with a button, watch real-time stage-by-stage progress via SSE with an activity log, and auto-navigate to the review viewer when processing completes — matching folio-enrich's upload/processing UX pattern
+**Depends on**: Phase 1
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. Drag-and-drop zone and file picker accept individual files and bulk uploads (zip archives and folder selection) in all 14 supported formats
+  2. Users can create, name, and delete corpora; each corpus stores its uploaded files and extraction results independently
+  3. A "Process" button triggers pipeline processing on all unprocessed files in the corpus; the corpus registry skips already-processed files by SHA-256 hash
+  4. Real-time SSE progress shows stage-by-stage pipeline advancement (progress bar with stage pills) plus a collapsible activity log with timestamped messages
+  5. On processing completion, the UI auto-navigates to the review viewer with the processed corpus selected
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 01.1 to break down)
 
 ### Phase 2: Task Hierarchy Discovery
 **Goal**: The system organizes all extracted knowledge units into a discovered hierarchy of advocacy tasks (Task > Subtask), with best practices, principles, and pitfalls as annotation-property metadata on each Task/Subtask class — so querying "how do I take an expert deposition" returns the class with its advice metadata attached
@@ -75,5 +91,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
+| 1.1 Upload & Processing UI | 0/? | Not started | - |
 | 2. Task Hierarchy Discovery | 0/2 | Not started | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
