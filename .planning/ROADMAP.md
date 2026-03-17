@@ -32,9 +32,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Project scaffolding, folio-enrich bridge adapter, and multi-format ingestion
-- [ ] 01-02-PLAN.md -- Tiered boundary detection, distillation, classification, FOLIO four-path tagging, and deduplication
-- [ ] 01-03-PLAN.md -- Quality output (confidence gating, JSON formatting), pipeline orchestrator, and batch CLI
+- [x] 01-01-PLAN.md -- Project scaffolding, folio-enrich bridge adapter, and multi-format ingestion
+- [x] 01-02-PLAN.md -- Tiered boundary detection, distillation, classification, FOLIO four-path tagging, and deduplication
+- [x] 01-03-PLAN.md -- Quality output (confidence gating, JSON formatting), pipeline orchestrator, and batch CLI
 - [ ] 01-04-PLAN.md -- Interactive review viewer (FastAPI backend + SvelteKit frontend with three-pane layout)
 
 ### Phase 2: Task Hierarchy Discovery
@@ -74,6 +74,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Knowledge Extraction Pipeline | 0/4 | Not started | - |
+| 1. Knowledge Extraction Pipeline | 3/4 | In progress | - |
 | 2. Task Hierarchy Discovery | 0/2 | Not started | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |

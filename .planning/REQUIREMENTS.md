@@ -37,9 +37,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Quality
 
-- [ ] **QUAL-01**: System produces human-reviewable enriched output (JSON with spans/nested spans) for spot-checking
-- [ ] **QUAL-02**: High-confidence extractions (above threshold) auto-approve; low-confidence units flagged for review
-- [ ] **QUAL-03**: Enriched output is both human-readable and machine-parseable for downstream pipeline consumption
+- [x] **QUAL-01**: System produces human-reviewable enriched output (JSON with spans/nested spans) for spot-checking
+- [x] **QUAL-02**: High-confidence extractions (above threshold) auto-approve; low-confidence units flagged for review
+- [x] **QUAL-03**: Enriched output is both human-readable and machine-parseable for downstream pipeline consumption
 
 ### Task Structure
 
@@ -59,7 +59,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Pipeline
 
 - [ ] **PIPE-01**: System handles incremental corpus growth — new files processed without reprocessing entire corpus
-- [ ] **PIPE-02**: Pipeline runs as batch process (CLI or script-triggered)
+- [x] **PIPE-02**: Pipeline runs as batch process (CLI or script-triggered)
 
 ## v2 Requirements
 
@@ -111,10 +111,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | FOLIO-02 | Phase 1 | Complete |
 | FOLIO-03 | Phase 1 | Complete |
 | FOLIO-04 | Phase 1 | Complete |
-| QUAL-01 | Phase 1 | Pending |
-| QUAL-02 | Phase 1 | Pending |
-| QUAL-03 | Phase 1 | Pending |
-| PIPE-02 | Phase 1 | Pending |
+| QUAL-01 | Phase 1 | Complete |
+| QUAL-02 | Phase 1 | Complete |
+| QUAL-03 | Phase 1 | Complete |
+| PIPE-02 | Phase 1 | Complete |
 | TASK-01 | Phase 2 | Pending |
 | TASK-02 | Phase 2 | Pending |
 | TASK-03 | Phase 2 | Pending |
@@ -133,4 +133,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after roadmap creation*
+*Last updated: 2026-03-17 after 01-03 completion*
