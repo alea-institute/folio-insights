@@ -9,31 +9,31 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Ingestion
 
-- [ ] **INGEST-01**: System can ingest a directory of MD files containing mixed chapter extracts and synthesized notes
-- [ ] **INGEST-02**: System preserves document structure (headings, paragraphs, lists) during parsing
-- [ ] **INGEST-03**: System handles variable-length source files (single pages to full chapters)
+- [x] **INGEST-01**: System can ingest a directory of MD files containing mixed chapter extracts and synthesized notes
+- [x] **INGEST-02**: System preserves document structure (headings, paragraphs, lists) during parsing
+- [x] **INGEST-03**: System handles variable-length source files (single pages to full chapters)
 
 ### Extraction
 
-- [ ] **EXTRACT-01**: System detects advice unit boundaries using LLM-driven semantic segmentation, from sentence-level to multi-paragraph
-- [ ] **EXTRACT-02**: System distills ideas (not expressions) — extracts underlying concepts/techniques rather than quoting passages
-- [ ] **EXTRACT-03**: Each distilled idea is as simple as possible but no simpler — includes all necessary detail and nuance
-- [ ] **EXTRACT-04**: System extracts important advocacy principles even if "obvious" — these serve as structured reminders
-- [ ] **EXTRACT-05**: System flags counterintuitive or non-obvious insights unlikely to be in LLM training data as high-novelty
-- [ ] **EXTRACT-06**: System deduplicates identical advice expressed differently across multiple source documents
+- [x] **EXTRACT-01**: System detects advice unit boundaries using LLM-driven semantic segmentation, from sentence-level to multi-paragraph
+- [x] **EXTRACT-02**: System distills ideas (not expressions) — extracts underlying concepts/techniques rather than quoting passages
+- [x] **EXTRACT-03**: Each distilled idea is as simple as possible but no simpler — includes all necessary detail and nuance
+- [x] **EXTRACT-04**: System extracts important advocacy principles even if "obvious" — these serve as structured reminders
+- [x] **EXTRACT-05**: System flags counterintuitive or non-obvious insights unlikely to be in LLM training data as high-novelty
+- [x] **EXTRACT-06**: System deduplicates identical advice expressed differently across multiple source documents
 
 ### Classification
 
-- [ ] **CLASS-01**: System classifies each knowledge unit by type using FOLIO ontology classes (not a custom taxonomy)
-- [ ] **CLASS-02**: Knowledge types include at minimum: actionable advice, legal principles, case citations, procedural rules, and common pitfalls
-- [ ] **CLASS-03**: Each classification carries a confidence score
+- [x] **CLASS-01**: System classifies each knowledge unit by type using FOLIO ontology classes (not a custom taxonomy)
+- [x] **CLASS-02**: Knowledge types include at minimum: actionable advice, legal principles, case citations, procedural rules, and common pitfalls
+- [x] **CLASS-03**: Each classification carries a confidence score
 
 ### FOLIO Tagging
 
-- [ ] **FOLIO-01**: System maps each knowledge unit to one or more FOLIO concepts using folio-enrich's three-path hybrid extraction (EntityRuler + LLM + semantic)
-- [ ] **FOLIO-02**: System applies folio-enrich's 5-stage confidence scoring to all FOLIO concept mappings
-- [ ] **FOLIO-03**: System tags against the full FOLIO ontology (~18,000 concepts), not a subset
-- [ ] **FOLIO-04**: Each tagged unit carries full lineage: source file, chapter, approximate location, extraction method, and confidence at each stage
+- [x] **FOLIO-01**: System maps each knowledge unit to one or more FOLIO concepts using folio-enrich's three-path hybrid extraction (EntityRuler + LLM + semantic)
+- [x] **FOLIO-02**: System applies folio-enrich's 5-stage confidence scoring to all FOLIO concept mappings
+- [x] **FOLIO-03**: System tags against the full FOLIO ontology (~18,000 concepts), not a subset
+- [x] **FOLIO-04**: Each tagged unit carries full lineage: source file, chapter, approximate location, extraction method, and confidence at each stage
 
 ### Quality
 
@@ -95,22 +95,22 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INGEST-01 | Phase 1 | Pending |
-| INGEST-02 | Phase 1 | Pending |
-| INGEST-03 | Phase 1 | Pending |
-| EXTRACT-01 | Phase 1 | Pending |
-| EXTRACT-02 | Phase 1 | Pending |
-| EXTRACT-03 | Phase 1 | Pending |
-| EXTRACT-04 | Phase 1 | Pending |
-| EXTRACT-05 | Phase 1 | Pending |
-| EXTRACT-06 | Phase 1 | Pending |
-| CLASS-01 | Phase 1 | Pending |
-| CLASS-02 | Phase 1 | Pending |
-| CLASS-03 | Phase 1 | Pending |
-| FOLIO-01 | Phase 1 | Pending |
-| FOLIO-02 | Phase 1 | Pending |
-| FOLIO-03 | Phase 1 | Pending |
-| FOLIO-04 | Phase 1 | Pending |
+| INGEST-01 | Phase 1 | Complete |
+| INGEST-02 | Phase 1 | Complete |
+| INGEST-03 | Phase 1 | Complete |
+| EXTRACT-01 | Phase 1 | Complete |
+| EXTRACT-02 | Phase 1 | Complete |
+| EXTRACT-03 | Phase 1 | Complete |
+| EXTRACT-04 | Phase 1 | Complete |
+| EXTRACT-05 | Phase 1 | Complete |
+| EXTRACT-06 | Phase 1 | Complete |
+| CLASS-01 | Phase 1 | Complete |
+| CLASS-02 | Phase 1 | Complete |
+| CLASS-03 | Phase 1 | Complete |
+| FOLIO-01 | Phase 1 | Complete |
+| FOLIO-02 | Phase 1 | Complete |
+| FOLIO-03 | Phase 1 | Complete |
+| FOLIO-04 | Phase 1 | Complete |
 | QUAL-01 | Phase 1 | Pending |
 | QUAL-02 | Phase 1 | Pending |
 | QUAL-03 | Phase 1 | Pending |
