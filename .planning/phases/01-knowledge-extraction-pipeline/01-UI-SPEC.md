@@ -33,6 +33,8 @@ The viewer uses a **dark theme** matching folio-enrich's review interface, since
 
 All CSS custom properties below are sourced from folio-enrich's established tokens with adjustments for the folio-insights review context.
 
+**Primary focal point:** The knowledge unit list in the DetailView upper-right pane is the main visual anchor and review workspace. All layout proportions, contrast, and keyboard shortcuts funnel attention here.
+
 ---
 
 ## Spacing Scale
@@ -62,11 +64,11 @@ Exceptions:
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | Knowledge unit text, source context, descriptions |
-| Label | 11px | 500 (medium) | 1.3 | Status chips, confidence labels, extraction path tags, metadata |
-| Heading | 18px | 600 (semibold) | 1.2 | App title, pane headers, section titles |
+| Label | 11px | 400 (regular) | 1.3 | Status chips, confidence labels, extraction path tags, metadata |
+| Heading | 18px | 600 (semibold) | 1.2 | App title, pane headers, section titles, concept headers |
 | Tree node | 13px | 400 (regular) | 1.3 | FOLIO concept tree labels, list view items |
 
-**Source:** folio-enrich uses 18px/600 for header title, 11px/500 for status chips, 13px for tree labels. Body at 14px matches the data-dense review context (not a marketing page).
+**Source:** folio-enrich uses 18px/600 for header title, 11px for status chips, 13px for tree labels. Body at 14px matches the data-dense review context (not a marketing page). Label weight collapsed from 500 to 400; `--text-dim` color provides sufficient visual separation for metadata without a third weight.
 
 **Letter spacing:** -0.3px on heading role only (matching folio-enrich header h1).
 
@@ -113,7 +115,7 @@ Exceptions:
 |-------|-------|-------|
 | `--cyan` | `#5ec4d4` | Extraction path: EntityRuler |
 | `--purple` | `#b07ee8` | Extraction path: LLM Concept |
-| `--accent` | `#6c8cff` | Extraction path: Semantic Similarity |
+| `--path-semantic` | `#6c8cff` | Extraction path: Semantic Similarity (same hue as --accent, separate semantic role) |
 | `--orange` | `#e8a54c` | Extraction path: Heading Context |
 
 ### Badge Colors (from CONTEXT.md)
@@ -141,7 +143,7 @@ Exceptions:
 - Progress/count indicators in toolbar
 - Active pane border indicator (1px accent border on focused pane)
 
-**Source:** All surface and semantic colors from folio-enrich CSS custom properties. Confidence bands from CONTEXT.md decisions. Badge colors from CONTEXT.md decisions.
+**Source:** All surface and semantic colors from folio-enrich CSS custom properties. Confidence bands from CONTEXT.md decisions. Badge colors from CONTEXT.md decisions. `--path-semantic` decouples the Semantic Similarity extraction path badge from the interactive accent role.
 
 ---
 
@@ -198,7 +200,7 @@ Exceptions:
 | Indent per level | 16px (4px * 4 levels typical) |
 | Expand/collapse | Chevron icon (right-pointing collapsed, down-pointing expanded), 12px |
 | Node label | 13px/400, `--text`, truncate with ellipsis at pane edge |
-| Node count badge | 11px/500, `--text-dim`, right-aligned, shows knowledge unit count |
+| Node count badge | 11px/400, `--text-dim`, right-aligned, shows knowledge unit count |
 | Selected node | `--highlight` background, `--accent` text, 2px left border `--accent` |
 | Hover | `--surface2` background |
 | Search/filter | Text input at top of pane, 14px, `--surface2` bg, `--border` border, placeholder "Filter concepts..." |
@@ -207,14 +209,14 @@ Exceptions:
 
 | Section | Specification |
 |---------|---------------|
-| Concept header | 16px/600, `--text`, FOLIO preferred label |
+| Concept header | 18px/600, `--text`, FOLIO preferred label |
 | IRI display | 11px monospace, `--text-dim`, truncated with copy button |
 | Definition | 14px/400, `--text`, `--surface2` background card, 8px padding |
 | Knowledge units list | Scrollable list of extracted units below concept detail |
 | Unit card | `--surface2` bg, `--border` border, 8px padding, 8px gap between cards |
 | Unit text | 14px/400, `--text`, the distilled knowledge unit content |
-| Unit metadata row | 11px/500, `--text-dim`: knowledge type tag, novelty score, extraction path badges |
-| Extraction path badges | Colored pill badges (11px): EntityRuler=`--cyan`, LLM=`--purple`, Semantic=`--accent`, Heading=`--orange` |
+| Unit metadata row | 11px/400, `--text-dim`: knowledge type tag, novelty score, extraction path badges |
+| Extraction path badges | Colored pill badges (11px): EntityRuler=`--cyan`, LLM=`--purple`, Semantic=`--path-semantic`, Heading=`--orange` |
 | Confidence score | ConfidenceBadge component (pill badge, colored by band, shows numeric 0-100 + star >= 80) |
 | Review controls | Row of buttons per unit (see ReviewControls below) |
 
@@ -222,10 +224,10 @@ Exceptions:
 
 | Property | Specification |
 |----------|---------------|
-| Header | "Source Context" 14px/600 + file path 11px/500 `--text-dim` |
+| Header | "Source Context" 14px/600 + file path 11px/400 `--text-dim` |
 | Source text | 14px/400 `--text`, `--surface` bg, 16px padding |
 | Highlighted span | `--highlight` background where the knowledge unit was extracted from |
-| Chapter/section breadcrumb | 11px/500, `--text-dim`, above source text: "Chapter 5 > Cross-Examination > Expert Witnesses" |
+| Chapter/section breadcrumb | 11px/400, `--text-dim`, above source text: "Chapter 5 > Cross-Examination > Expert Witnesses" |
 | No source available | `--text-dim` italic: "Source file not available on disk" |
 
 ### ReviewControls
@@ -267,8 +269,8 @@ Badge: `rounded-full px-2 py-0.5 text-xs font-bold tabular-nums`. Star glyph app
 |----------|---------------|
 | Activation | Click "Edit" button or press `E` |
 | Textarea | 14px/400, `--surface2` bg, `--accent` border (2px), auto-height |
-| Save | "Save" button (`--accent` bg, white text) + `Ctrl+Enter` |
-| Cancel | "Cancel" ghost button + `Escape` |
+| Save | "Save Edit" button (`--accent` bg, white text) + `Ctrl+Enter` |
+| Cancel | "Discard Edit" ghost button + `Escape` |
 | Character count | 11px `--text-dim`, bottom-right of textarea |
 
 ### LoadingSkeleton (Claude's Discretion)
@@ -285,8 +287,8 @@ Pulse animation: `--surface2` to `--surface3` oscillation, 1.5s duration, ease-i
 
 | Scenario | Display |
 |----------|---------|
-| Pipeline not run | Centered in detail pane: "No extraction data" heading (16px/600 `--text`), "Run the pipeline first: `folio-insights extract <dir>`" body (14px/400 `--text-dim`), monospace code block for CLI command |
-| API connection failed | Red status dot in header + banner at top of right panes: "Cannot connect to API server" (14px/500 `--red`), "Start the server: `folio-insights serve`" (13px/400 `--text-dim`) |
+| Pipeline not run | Centered in detail pane: "No extraction data" heading (18px/600 `--text`), "Run the pipeline first: `folio-insights extract <dir>`" body (14px/400 `--text-dim`), monospace code block for CLI command |
+| API connection failed | Red status dot in header + banner at top of right panes: "Cannot connect to API server" (14px/600 `--red`), "Start the server: `folio-insights serve`" (13px/400 `--text-dim`) |
 | Source file missing | In source context pane: "Source file not found" (14px/400 `--text-dim` italic), file path displayed, "The file may have been moved or deleted" (13px/400 `--text-dim`) |
 | Empty corpus | Full-page centered: "No corpora found" heading, "Create a corpus and run the extraction pipeline" body, link to docs |
 
@@ -307,6 +309,8 @@ Pulse animation: `--surface2` to `--surface3` oscillation, 1.5s duration, ease-i
 | Confidence filter labels | "All ({n})" / "High ({n})" / "Medium ({n})" / "Low ({n})" |
 | Tree empty filter | "No concepts match your filter" |
 | Review progress | "{approved}/{total} units reviewed" in toolbar |
+| Inline editor save | "Save Edit" |
+| Inline editor cancel | "Discard Edit" |
 
 ---
 
