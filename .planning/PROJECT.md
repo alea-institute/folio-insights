@@ -49,6 +49,8 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 
 **FOLIO Ontology:** The Functional Ontology for Legal Information Objects (from alea-institute/FOLIO on GitHub) provides ~18,000 standardized legal concepts with IRIs, branch categories, preferred/alternative labels, and definitions. To be fetched from GitHub.
 
+**folio-python:** The `folio-python` library (at `~/Coding Projects/folio-python`) provides the authoritative IRI generation method (`FOLIO.generate_iri()` in `folio/graph.py`) using a WebProtege-compatible algorithm: UUID4 → base64 → alphanumeric-only filter → `https://folio.openlegalstandard.org/{token}`. This must be used for all new IRI generation.
+
 **Knowledge Types to Extract:**
 1. **Actionable advice** — techniques, strategies, tips (e.g., "always pin down the expert's methodology before challenging conclusions")
 2. **Legal principles** — foundational rules that govern advocacy (e.g., "the rule of completeness")
