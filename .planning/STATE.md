@@ -35,20 +35,20 @@ Progress: [████████░░] 87%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 15.0 min
-- Total execution time: 1.25 hours
+- Total plans completed: 7
+- Average duration: 11.7 min
+- Total execution time: 1.37 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-knowledge-extraction-pipeline | 4/4 | 71 min | 17.8 min |
-| 01.1-upload-processing-ui | 1/4 | 4 min | 4.0 min |
+| 01.1-upload-processing-ui | 3/4 | 11 min | 3.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 9 min, 6 min, 40 min, 4 min
-- Trend: Fast (01.1-01 backend-only, no frontend)
+- Last 5 plans: 6 min, 40 min, 4 min, 2 min, 5 min
+- Trend: Fast (frontend component plans execute quickly)
 
 *Updated after each plan completion*
 
@@ -80,6 +80,9 @@ Recent decisions affecting current work:
 - [01.1-01]: Lazy import of _output_dir from api.main in route modules to avoid circular imports
 - [01.1-01]: Upload validates all file extensions upfront before processing any, rejecting batch with 400
 - [01.1-01]: ZIP extraction writes to sources dir directly, skipping __MACOSX entries and directories
+- [01.1-03]: ConfirmDialog uses {@html} for message to support bold corpus names in delete confirmation
+- [01.1-03]: Focus trap in ConfirmDialog manual (Tab/Shift+Tab interception), no external dependency
+- [01.1-03]: Task 1 already committed by prior 01.1-01 execution -- verified and reused
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T14:15:19Z
-Stopped at: Completed 01.1-01 (corpus CRUD + file upload API)
-Resume file: .planning/phases/01.1-upload-processing-ui/01.1-02-PLAN.md
+Last session: 2026-03-18T14:16:02Z
+Stopped at: Completed 01.1-03 (frontend shared infrastructure)
+Resume file: .planning/phases/01.1-upload-processing-ui/01.1-04-PLAN.md
