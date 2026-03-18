@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { selectedCorpus } from '$lib/stores/corpus';
+	import CorpusSidebar from '$lib/components/CorpusSidebar.svelte';
 </script>
 
 <div class="upload-layout">
-	<aside class="sidebar-placeholder">
-		<p class="sidebar-note">Corpus sidebar will be added in Task 2</p>
-	</aside>
+	<CorpusSidebar />
 	<div class="upload-main">
 		{#if $selectedCorpus}
 			<div class="upload-content">
@@ -26,23 +25,6 @@
 	.upload-layout {
 		display: flex;
 		height: 100%;
-	}
-
-	.sidebar-placeholder {
-		width: 280px;
-		flex-shrink: 0;
-		background: var(--surface);
-		border-right: 1px solid var(--border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.sidebar-note {
-		font-size: 13px;
-		color: var(--text-dim);
-		padding: var(--md);
-		text-align: center;
 	}
 
 	.upload-main {
