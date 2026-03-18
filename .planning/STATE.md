@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 01.1-03 (frontend shared infrastructure)
-last_updated: "2026-03-18T14:16:02Z"
-last_activity: 2026-03-18 -- Completed 01.1-03 (frontend shared infrastructure)
+stopped_at: Completed 01.1-02 (processing engine backend)
+last_updated: "2026-03-18T14:22:59Z"
+last_activity: 2026-03-18 -- Completed 01.1-02 (processing engine backend)
 progress:
   total_phases: 4
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 01.1 Upload & Processing UI -- Plans 01-03 complete, continuing to Plan 04
+**Current focus:** Phase 01.1 Upload & Processing UI -- Plans 01-03 complete, Plan 02 backfilled, continuing to Plan 04
 
 ## Current Position
 
 Phase: 01.1 of 4 (Upload & Processing UI)
-Plan: 3 of 4 in current phase
-Status: Plan 01.1-03 Complete
-Last activity: 2026-03-18 -- Completed 01.1-03 (frontend shared infrastructure)
+Plan: 3 of 4 in current phase (01.1-02 backfilled, 01.1-04 remaining)
+Status: Plan 01.1-02 Complete
+Last activity: 2026-03-18 -- Completed 01.1-02 (processing engine backend)
 
 Progress: [████████░░] 87%
 
@@ -36,19 +36,19 @@ Progress: [████████░░] 87%
 
 **Velocity:**
 - Total plans completed: 7
-- Average duration: 11.7 min
-- Total execution time: 1.37 hours
+- Average duration: 11.1 min
+- Total execution time: 1.42 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-knowledge-extraction-pipeline | 4/4 | 71 min | 17.8 min |
-| 01.1-upload-processing-ui | 3/4 | 11 min | 3.7 min |
+| 01.1-upload-processing-ui | 3/4 | 14 min | 4.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 6 min, 40 min, 4 min, 2 min, 5 min
-- Trend: Fast (frontend component plans execute quickly)
+- Last 5 plans: 40 min, 4 min, 2 min, 5 min, 3 min
+- Trend: Fast (backend plans execute quickly with clear patterns)
 
 *Updated after each plan completion*
 
@@ -83,6 +83,10 @@ Recent decisions affecting current work:
 - [01.1-03]: ConfirmDialog uses {@html} for message to support bold corpus names in delete confirmation
 - [01.1-03]: Focus trap in ConfirmDialog manual (Tab/Shift+Tab interception), no external dependency
 - [01.1-03]: Task 1 already committed by prior 01.1-01 execution -- verified and reused
+- [01.1-02]: JobManager keyed by corpus_id (one job file per corpus) matching folio-enrich disk-based pattern
+- [01.1-02]: Pipeline runner iterates orchestrator._stages directly to inject progress callbacks between stages
+- [01.1-02]: SSE generator polls job file every 0.5s with typed events (status, activity, complete, error)
+- [01.1-02]: Atomic writes use asyncio.to_thread() wrapping sync tempfile+os.replace to avoid blocking event loop
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T14:16:02Z
-Stopped at: Completed 01.1-03 (frontend shared infrastructure)
+Last session: 2026-03-18T14:22:59Z
+Stopped at: Completed 01.1-02 (processing engine backend)
 Resume file: .planning/phases/01.1-upload-processing-ui/01.1-04-PLAN.md
