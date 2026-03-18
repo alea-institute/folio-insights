@@ -48,10 +48,13 @@ Plans:
   3. A "Process" button triggers pipeline processing on all unprocessed files in the corpus; the corpus registry skips already-processed files by SHA-256 hash
   4. Real-time SSE progress shows stage-by-stage pipeline advancement (progress bar with stage pills) plus a collapsible activity log with timestamped messages
   5. On processing completion, the UI auto-navigates to the review viewer with the processed corpus selected
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 01.1 to break down)
+- [ ] 01.1-01-PLAN.md -- Backend corpus CRUD API, file upload with ZIP extraction, Pydantic models
+- [ ] 01.1-02-PLAN.md -- Backend pipeline processing trigger, job manager, SSE streaming endpoint
+- [ ] 01.1-03-PLAN.md -- Frontend routing, navigation tabs, corpus store, API client, corpus sidebar with dialogs
+- [ ] 01.1-04-PLAN.md -- Frontend upload zone, file list, process button, progress display, activity log, auto-navigation
 
 ### Phase 2: Task Hierarchy Discovery
 **Goal**: The system organizes all extracted knowledge units into a discovered hierarchy of advocacy tasks (Task > Subtask), with best practices, principles, and pitfalls as annotation-property metadata on each Task/Subtask class — so querying "how do I take an expert deposition" returns the class with its advice metadata attached
@@ -86,11 +89,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3
+Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
-| 1.1 Upload & Processing UI | 0/? | Not started | - |
+| 1.1 Upload & Processing UI | 0/4 | Not started | - |
 | 2. Task Hierarchy Discovery | 0/2 | Not started | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
