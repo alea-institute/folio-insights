@@ -1,20 +1,43 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/stores';
 	import { confidenceFilter } from '$lib/stores/tree';
 	import { reviewStats, refreshStats } from '$lib/stores/review';
+	import { corpora, selectedCorpus, loadCorpora } from '$lib/stores/corpus';
+	import NavTabs from '$lib/components/NavTabs.svelte';
 
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
 
-	let corpus = $state('default');
+	let activePage = $derived<'upload' | 'review'>(
+		$page.url.pathname.startsWith('/upload') ? 'upload' : 'review'
+	);
 
 	onMount(() => {
-		refreshStats(corpus);
+		loadCorpora();
+		refreshStats($selectedCorpus?.id ?? 'default');
+	});
+
+	// When selectedCorpus changes, refresh stats
+	$effect(() => {
+		const sc = $selectedCorpus;
+		if (sc) {
+			refreshStats(sc.id);
+		}
 	});
 
 	function setFilter(band: 'all' | 'high' | 'medium' | 'low') {
 		$confidenceFilter = band;
+	}
+
+	function handleCorpusChange(e: Event) {
+		const select = e.target as HTMLSelectElement;
+		const corpusId = select.value;
+		const corpus = $corpora.find((c) => c.id === corpusId);
+		if (corpus) {
+			$selectedCorpus = corpus;
+		}
 	}
 </script>
 
@@ -23,62 +46,104 @@
 		<div class="header-left">
 			<h1 class="app-title">FOLIO <span class="accent">Insights</span></h1>
 			<div class="corpus-selector">
-				<select bind:value={corpus} aria-label="Corpus selector">
-					<option value="default">default</option>
+				<select
+					value={$selectedCorpus?.id ?? ''}
+					onchange={handleCorpusChange}
+					aria-label="Corpus selector"
+				>
+					{#if $corpora.length === 0}
+						<option value="">No corpora</option>
+					{/if}
+					{#each $corpora as corpus}
+						<option value={corpus.id}>{corpus.name}</option>
+					{/each}
 				</select>
 			</div>
+			<NavTabs {activePage} />
 		</div>
-		<div class="header-center">
-			<div class="confidence-tabs" role="tablist" aria-label="Confidence filter">
-				<button
-					role="tab"
-					class="tab"
-					class:active={$confidenceFilter === 'all'}
-					aria-selected={$confidenceFilter === 'all'}
-					onclick={() => setFilter('all')}
-				>
-					All {#if $reviewStats}({$reviewStats.total}){/if}
-				</button>
-				<button
-					role="tab"
-					class="tab tab-high"
-					class:active={$confidenceFilter === 'high'}
-					aria-selected={$confidenceFilter === 'high'}
-					onclick={() => setFilter('high')}
-				>
-					High {#if $reviewStats}({$reviewStats.by_confidence.high}){/if}
-				</button>
-				<button
-					role="tab"
-					class="tab tab-medium"
-					class:active={$confidenceFilter === 'medium'}
-					aria-selected={$confidenceFilter === 'medium'}
-					onclick={() => setFilter('medium')}
-				>
-					Medium {#if $reviewStats}({$reviewStats.by_confidence.medium}){/if}
-				</button>
-				<button
-					role="tab"
-					class="tab tab-low"
-					class:active={$confidenceFilter === 'low'}
-					aria-selected={$confidenceFilter === 'low'}
-					onclick={() => setFilter('low')}
-				>
-					Low {#if $reviewStats}({$reviewStats.by_confidence.low}){/if}
+		{#if activePage === 'review'}
+			<div class="header-center">
+				<div class="confidence-tabs" role="tablist" aria-label="Confidence filter">
+					<button
+						role="tab"
+						class="tab"
+						class:active={$confidenceFilter === 'all'}
+						aria-selected={$confidenceFilter === 'all'}
+						onclick={() => setFilter('all')}
+					>
+						All {#if $reviewStats}({$reviewStats.total}){/if}
+					</button>
+					<button
+						role="tab"
+						class="tab tab-high"
+						class:active={$confidenceFilter === 'high'}
+						aria-selected={$confidenceFilter === 'high'}
+						onclick={() => setFilter('high')}
+					>
+						High {#if $reviewStats}({$reviewStats.by_confidence.high}){/if}
+					</button>
+					<button
+						role="tab"
+						class="tab tab-medium"
+						class:active={$confidenceFilter === 'medium'}
+						aria-selected={$confidenceFilter === 'medium'}
+						onclick={() => setFilter('medium')}
+					>
+						Medium {#if $reviewStats}({$reviewStats.by_confidence.medium}){/if}
+					</button>
+					<button
+						role="tab"
+						class="tab tab-low"
+						class:active={$confidenceFilter === 'low'}
+						aria-selected={$confidenceFilter === 'low'}
+						onclick={() => setFilter('low')}
+					>
+						Low {#if $reviewStats}({$reviewStats.by_confidence.low}){/if}
+					</button>
+				</div>
+			</div>
+			<div class="header-right">
+				{#if $reviewStats}
+					<span class="review-progress"
+						>{$reviewStats.approved}/{$reviewStats.total} units reviewed</span
+					>
+				{/if}
+				<button class="settings-btn" aria-label="Settings">
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="3" />
+						<path
+							d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+						/>
+					</svg>
 				</button>
 			</div>
-		</div>
-		<div class="header-right">
-			{#if $reviewStats}
-				<span class="review-progress">{$reviewStats.approved}/{$reviewStats.total} units reviewed</span>
-			{/if}
-			<button class="settings-btn" aria-label="Settings">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="12" cy="12" r="3" />
-					<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-				</svg>
-			</button>
-		</div>
+		{:else}
+			<div class="header-center"></div>
+			<div class="header-right">
+				<button class="settings-btn" aria-label="Settings">
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="3" />
+						<path
+							d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+						/>
+					</svg>
+				</button>
+			</div>
+		{/if}
 	</header>
 	<main class="main-content">
 		{@render children()}
@@ -108,6 +173,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--md);
+		height: 100%;
 	}
 
 	.app-title {

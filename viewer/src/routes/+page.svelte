@@ -4,6 +4,7 @@
 	import { bulkApprove } from '$lib/api/client';
 	import { treeData, selectedConcept, viewMode, confidenceFilter } from '$lib/stores/tree';
 	import { loadUnits, selectedUnit, navigateUnit, submitReview, refreshStats, editorOpen, announcement } from '$lib/stores/review';
+	import { selectedCorpus } from '$lib/stores/corpus';
 	import FolioTree from '$lib/components/FolioTree.svelte';
 	import DetailView from '$lib/components/DetailView.svelte';
 	import SourceContext from '$lib/components/SourceContext.svelte';
@@ -22,8 +23,10 @@
 	const TOP_MIN_PCT = 20;
 	const TOP_MAX_PCT = 80;
 
+	let corpusId = $derived($selectedCorpus?.id ?? 'default');
+
 	onMount(async () => {
-		const result = await fetchTree('default');
+		const result = await fetchTree(corpusId);
 		if (!('error' in result)) {
 			$treeData = result;
 		}
@@ -128,13 +131,13 @@
 	}
 
 	async function handleBulkApprove() {
-		const result = await bulkApprove('default', undefined, 0.8);
+		const result = await bulkApprove(corpusId, undefined, 0.8);
 		if (!('error' in result)) {
-			await refreshStats('default');
+			await refreshStats(corpusId);
 			const concept = $selectedConcept;
 			if (concept) {
 				const conf = $confidenceFilter === 'all' ? undefined : $confidenceFilter;
-				await loadUnits('default', concept.iri, conf);
+				await loadUnits(corpusId, concept.iri, conf);
 			}
 		}
 	}
@@ -143,7 +146,7 @@
 		$selectedConcept = node;
 		if (node) {
 			const confValue = $confidenceFilter === 'all' ? undefined : $confidenceFilter;
-			loadUnits('default', node.iri, confValue);
+			loadUnits(corpusId, node.iri, confValue);
 		}
 		focusedPane = 'detail';
 	}
@@ -154,7 +157,7 @@
 		const concept = $selectedConcept;
 		if (concept) {
 			const confValue = conf === 'all' ? undefined : conf;
-			loadUnits('default', concept.iri, confValue);
+			loadUnits(corpusId, concept.iri, confValue);
 		}
 	});
 </script>

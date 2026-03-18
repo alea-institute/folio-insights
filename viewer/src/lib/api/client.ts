@@ -166,3 +166,88 @@ export interface ReviewStats {
 export async function fetchStats(corpus: string): Promise<ReviewStats | { error: string }> {
 	return request<ReviewStats>(`${API_BASE}/api/v1/review/stats${qs({ corpus })}`);
 }
+
+// ---------------------------------------------------------------------------
+// Corpus
+// ---------------------------------------------------------------------------
+
+export interface CorpusInfo {
+	id: string;
+	name: string;
+	file_count: number;
+	processing_status: string;
+	last_processed: string | null;
+	created_at: string;
+}
+
+export interface CorpusFile {
+	filename: string;
+	size_bytes: number;
+	format: string;
+}
+
+export async function fetchCorpora(): Promise<CorpusInfo[] | { error: string }> {
+	return request<CorpusInfo[]>(`${API_BASE}/api/v1/corpora`);
+}
+
+export async function createCorpusApi(name: string): Promise<CorpusInfo | { error: string }> {
+	return request<CorpusInfo>(`${API_BASE}/api/v1/corpora`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ name }),
+	});
+}
+
+export async function deleteCorpusApi(corpusId: string): Promise<void | { error: string }> {
+	const res = await fetch(`${API_BASE}/api/v1/corpora/${corpusId}`, { method: 'DELETE' });
+	if (!res.ok) return { error: `${res.status}: ${await res.text()}` };
+}
+
+export async function fetchCorpusFiles(
+	corpusId: string
+): Promise<CorpusFile[] | { error: string }> {
+	return request<CorpusFile[]>(`${API_BASE}/api/v1/corpora/${corpusId}/files`);
+}
+
+// ---------------------------------------------------------------------------
+// Upload
+// ---------------------------------------------------------------------------
+
+export async function uploadFiles(
+	corpusId: string,
+	files: FileList | File[]
+): Promise<{ uploaded: Array<{ filename: string; size: number }>; count: number } | { error: string }> {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append('files', file);
+	}
+	try {
+		const res = await fetch(`${API_BASE}/api/v1/corpus/${corpusId}/upload`, {
+			method: 'POST',
+			body: formData,
+		});
+		if (!res.ok) return { error: `${res.status}: ${await res.text()}` };
+		return await res.json();
+	} catch (err) {
+		return { error: String(err) };
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Processing
+// ---------------------------------------------------------------------------
+
+export async function triggerProcessing(
+	corpusId: string
+): Promise<{ job_id: string; status: string } | { error: string }> {
+	return request<{ job_id: string; status: string }>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/process`,
+		{
+			method: 'POST',
+		}
+	);
+}
+
+export function getSSEUrl(corpusId: string): string {
+	return `${API_BASE}/api/v1/corpus/${corpusId}/stream`;
+}

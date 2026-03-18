@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from api.db.session import get_db
-from api.routes import review, source, tree
+from api.routes import corpus, review, source, tree, upload
 
 # ---------------------------------------------------------------------------
 # Application
@@ -40,6 +40,8 @@ app.add_middleware(
 app.include_router(tree.router, prefix="/api/v1")
 app.include_router(review.router, prefix="/api/v1")
 app.include_router(source.router, prefix="/api/v1")
+app.include_router(corpus.router)
+app.include_router(upload.router)
 
 # ---------------------------------------------------------------------------
 # In-memory extraction data store
