@@ -249,8 +249,9 @@ class IngestionStage(InsightsPipelineStage):
         if not source_dir.exists():
             raise FileNotFoundError(f"Source directory not found: {source_dir}")
 
-        # Initialize or load corpus registry
-        registry = CorpusRegistry(job.corpus_name)
+        # Load existing registry from corpus output dir so re-runs skip already-processed files
+        corpus_dir = settings.output_dir / job.corpus_name
+        registry = CorpusRegistry.load(corpus_dir, job.corpus_name)
 
         # Collect all supported files
         all_files = sorted(
