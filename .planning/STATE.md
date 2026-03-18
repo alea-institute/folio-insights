@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 01.1-02 (processing engine backend)
-last_updated: "2026-03-18T14:22:59Z"
-last_activity: 2026-03-18 -- Completed 01.1-02 (processing engine backend)
+status: completed
+stopped_at: Completed 01.1-04 (upload components and processing UI) - Phase 01.1 complete
+last_updated: "2026-03-18T16:51:42.074Z"
+last_activity: 2026-03-18 -- Completed 01.1-04 (upload components and processing UI)
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 87
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -21,36 +21,37 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 01.1 Upload & Processing UI -- Plans 01-03 complete, Plan 02 backfilled, continuing to Plan 04
+**Current focus:** Phase 01.1 Upload & Processing UI complete (all 4 plans). Ready for Phase 2.
 
 ## Current Position
 
-Phase: 01.1 of 4 (Upload & Processing UI)
-Plan: 3 of 4 in current phase (01.1-02 backfilled, 01.1-04 remaining)
-Status: Plan 01.1-02 Complete
-Last activity: 2026-03-18 -- Completed 01.1-02 (processing engine backend)
+Phase: 01.1 of 4 (Upload & Processing UI) -- COMPLETE
+Plan: 4 of 4 in current phase (all complete)
+Status: Phase 01.1 Complete
+Last activity: 2026-03-18 -- Completed 01.1-04 (upload components and processing UI)
 
-Progress: [████████░░] 87%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 11.1 min
-- Total execution time: 1.42 hours
+- Total plans completed: 8
+- Average duration: 10.9 min
+- Total execution time: 1.55 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-knowledge-extraction-pipeline | 4/4 | 71 min | 17.8 min |
-| 01.1-upload-processing-ui | 3/4 | 14 min | 4.7 min |
+| 01.1-upload-processing-ui | 4/4 | 22 min | 5.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 40 min, 4 min, 2 min, 5 min, 3 min
-- Trend: Fast (backend plans execute quickly with clear patterns)
+- Last 5 plans: 4 min, 2 min, 5 min, 3 min, 8 min
+- Trend: Fast (UI plans execute quickly with established component patterns)
 
 *Updated after each plan completion*
+| Phase 01.1 P04 | 8 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,12 @@ Recent decisions affecting current work:
 - [01.1-02]: Pipeline runner iterates orchestrator._stages directly to inject progress callbacks between stages
 - [01.1-02]: SSE generator polls job file every 0.5s with typed events (status, activity, complete, error)
 - [01.1-02]: Atomic writes use asyncio.to_thread() wrapping sync tempfile+os.replace to avoid blocking event loop
+- [01.1-04]: Processing store uses module-level EventSource with startProcessingStream/closeStream lifecycle functions
+- [01.1-04]: UploadZone supports file picker and folder upload via separate hidden inputs (webkitdirectory)
+- [01.1-04]: FileList uses text badges for format display rather than SVG icons
+- [01.1-04]: ProgressDisplay derives stage states from currentStage position in ordered STAGES array
+- [01.1-04]: Upload page renders four conditional states: no corpus, idle, processing, complete
+- [01.1-04]: Auto-navigation uses $effect watching processingStatus + 1.5s setTimeout + goto()
 
 ### Pending Todos
 
@@ -99,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T14:22:59Z
-Stopped at: Completed 01.1-02 (processing engine backend)
-Resume file: .planning/phases/01.1-upload-processing-ui/01.1-04-PLAN.md
+Last session: 2026-03-18T16:51:42.071Z
+Stopped at: Completed 01.1-04 (upload components and processing UI) - Phase 01.1 complete
+Resume file: None

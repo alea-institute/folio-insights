@@ -13,7 +13,7 @@ Alea Advocate delivers a batch pipeline that extracts structured advocacy knowle
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Knowledge Extraction Pipeline** - Ingest multi-format source files and produce typed, FOLIO-tagged knowledge units with confidence scores, lineage, batch CLI execution, and interactive review viewer (completed 2026-03-17)
-- [ ] **Phase 1.1: Upload & Processing UI** - Document upload, corpus management, and real-time pipeline processing in the web UI (INSERTED)
+- [x] **Phase 1.1: Upload & Processing UI** - Document upload, corpus management, and real-time pipeline processing in the web UI (INSERTED) (completed 2026-03-18)
 - [ ] **Phase 2: Task Hierarchy Discovery** - Discover advocacy tasks from extracted knowledge and build a validated hierarchical task tree across the corpus
 - [ ] **Phase 3: Ontology Output and Delivery** - Generate validated OWL and companion files serving all three consumption modes, with incremental corpus support
 
@@ -51,10 +51,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01.1-01-PLAN.md -- Backend corpus CRUD API, file upload with ZIP extraction, Pydantic models
-- [ ] 01.1-02-PLAN.md -- Backend pipeline processing trigger, job manager, SSE streaming endpoint
-- [ ] 01.1-03-PLAN.md -- Frontend routing, navigation tabs, corpus store, API client, corpus sidebar with dialogs
-- [ ] 01.1-04-PLAN.md -- Frontend upload zone, file list, process button, progress display, activity log, auto-navigation
+- [x] 01.1-01-PLAN.md -- Backend corpus CRUD API, file upload with ZIP extraction, Pydantic models
+- [x] 01.1-02-PLAN.md -- Backend pipeline processing trigger, job manager, SSE streaming endpoint
+- [x] 01.1-03-PLAN.md -- Frontend routing, navigation tabs, corpus store, API client, corpus sidebar with dialogs
+- [x] 01.1-04-PLAN.md -- Frontend upload zone, file list, process button, progress display, activity log, auto-navigation
 
 ### Phase 2: Task Hierarchy Discovery
 **Goal**: The system organizes all extracted knowledge units into a discovered hierarchy of advocacy tasks (Task > Subtask), with best practices, principles, and pitfalls as annotation-property metadata on each Task/Subtask class — so querying "how do I take an expert deposition" returns the class with its advice metadata attached
@@ -94,6 +94,6 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
-| 1.1 Upload & Processing UI | 0/4 | Not started | - |
+| 1.1 Upload & Processing UI | 4/4 | Complete | 2026-03-18 |
 | 2. Task Hierarchy Discovery | 0/2 | Not started | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
