@@ -38,21 +38,21 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 02-01-01 | 01 | 1 | TASK-01 | unit | `pytest tests/test_task_discovery.py` | ❌ W0 | ⬜ pending |
-| 02-01-02 | 01 | 1 | TASK-02 | unit | `pytest tests/test_hierarchy_builder.py` | ❌ W0 | ⬜ pending |
-| 02-02-01 | 02 | 2 | TASK-03 | unit | `pytest tests/test_cross_source_merger.py` | ❌ W0 | ⬜ pending |
-| 02-02-02 | 02 | 2 | TASK-04 | unit | `pytest tests/test_contradiction_detector.py` | ❌ W0 | ⬜ pending |
+| 02-01-01 | 01 | 1 | TASK-01 | unit | `pytest tests/test_task_discovery.py` | W0 | pending |
+| 02-01-02 | 01 | 1 | TASK-02 | unit | `pytest tests/test_hierarchy.py` | W0 | pending |
+| 02-02-01 | 02 | 2 | TASK-03 | unit | `pytest tests/test_merging.py` | W0 | pending |
+| 02-02-02 | 02 | 2 | TASK-04 | unit | `pytest tests/test_contradictions.py` | W0 | pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: pending / green / red / flaky*
 
 ---
 
 ## Wave 0 Requirements
 
 - [ ] `tests/test_task_discovery.py` — stubs for TASK-01
-- [ ] `tests/test_hierarchy_builder.py` — stubs for TASK-02
-- [ ] `tests/test_cross_source_merger.py` — stubs for TASK-03
-- [ ] `tests/test_contradiction_detector.py` — stubs for TASK-04
+- [ ] `tests/test_hierarchy.py` — stubs for TASK-02
+- [ ] `tests/test_merging.py` — stubs for TASK-03
+- [ ] `tests/test_contradictions.py` — stubs for TASK-04
 - [ ] `tests/conftest.py` — shared fixtures (extend existing)
 
 *Existing pytest infrastructure covers framework installation.*
