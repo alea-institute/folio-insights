@@ -65,11 +65,14 @@ Plans:
   2. Each discovered task contains a hierarchical tree of subtasks, with best practices, principles, and pitfalls stored as annotation-property metadata on each Task/Subtask class (confidence and source metadata in companion SKOS file)
   3. Task hierarchy fragments discovered across multiple source files are merged into a single coherent tree without duplicates
   4. Contradictory advice from different sources on the same task is detected and flagged with both positions preserved
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 02-01: Task discovery and hierarchical tree construction
-- [ ] 02-02: Cross-source merging, deduplication, and contradiction detection
+- [ ] 02-01-PLAN.md -- Data models, test scaffolds, and discovery stages 1-3 (heading analysis, FOLIO mapping, content clustering)
+- [ ] 02-02-PLAN.md -- Discovery stages 4-6 (hierarchy construction, cross-source merging, contradiction detection), orchestrator, and CLI
+- [ ] 02-03-PLAN.md -- SQLite schema extension, API endpoints (discovery trigger, task review, contradiction resolution, export)
+- [ ] 02-04-PLAN.md -- Frontend stores, API client, and core task viewer components (TaskTree, TaskDetail, FilterToolbar, ContradictionView)
+- [ ] 02-05-PLAN.md -- Frontend dashboard, discovery trigger on upload page, navigation routing, keyboard shortcuts, visual verification
 
 ### Phase 3: Ontology Output and Delivery
 **Goal**: The complete knowledge structure is serialized as a validated, FOLIO-compatible OWL module with companion files that serve SPARQL queries, LLM RAG retrieval, and human browsing -- and the pipeline supports incremental corpus growth
@@ -95,5 +98,5 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
 | 1.1 Upload & Processing UI | 4/4 | Complete | 2026-03-18 |
-| 2. Task Hierarchy Discovery | 0/2 | Not started | - |
+| 2. Task Hierarchy Discovery | 0/5 | Not started | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
