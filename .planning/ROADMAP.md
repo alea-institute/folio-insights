@@ -98,5 +98,5 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
 | 1.1 Upload & Processing UI | 4/4 | Complete | 2026-03-18 |
-| 2. Task Hierarchy Discovery | 0/5 | Not started | - |
+| 2. Task Hierarchy Discovery | 4/5 | In Progress | - |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
