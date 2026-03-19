@@ -1,7 +1,8 @@
 """Batch CLI entry point for folio-insights.
 
 Provides the `folio-insights extract <directory>` command that runs
-the full extraction pipeline and produces JSON output.
+the full extraction pipeline and `folio-insights discover <corpus>`
+that runs the 6-stage task discovery pipeline.
 
 Uses Click for argument parsing per CONTEXT.md decision.
 """
@@ -158,6 +159,122 @@ def extract(
     click.echo(f"  Medium confidence: {len(gated['medium'])}")
     click.echo(f"  Low confidence:    {len(gated['low'])}")
     click.echo(f"Output: {output}/{corpus}/extraction.json")
+
+
+@cli.command("discover")
+@click.argument("corpus_name")
+@click.option(
+    "--output", "-o",
+    default="./output",
+    show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Output directory containing extraction results.",
+)
+@click.option(
+    "--cluster-threshold",
+    default=0.5,
+    show_default=True,
+    type=float,
+    help="Distance threshold for content clustering (lower = more clusters).",
+)
+@click.option(
+    "--contradiction-threshold",
+    default=0.7,
+    show_default=True,
+    type=float,
+    help="NLI score threshold for contradiction LLM follow-up.",
+)
+@click.option(
+    "--resume/--no-resume",
+    default=True,
+    show_default=True,
+    help="Resume from last checkpoint.",
+)
+@click.option(
+    "--verbose", "-v",
+    is_flag=True,
+    default=False,
+    help="Enable verbose (DEBUG) logging.",
+)
+def discover(
+    corpus_name: str,
+    output: str,
+    cluster_threshold: float,
+    contradiction_threshold: float,
+    resume: bool,
+    verbose: bool,
+) -> None:
+    """Discover advocacy tasks from extracted knowledge units in CORPUS_NAME.
+
+    Reads extraction.json from the corpus output directory and runs
+    the 6-stage task discovery pipeline: heading analysis, FOLIO mapping,
+    content clustering, hierarchy construction, cross-source merging,
+    and contradiction detection.
+
+    Output is written to {output}/{corpus_name}/discovery.json and task_tree.json.
+    """
+    _setup_logging(verbose)
+
+    output_path = Path(output)
+    extraction_path = output_path / corpus_name / "extraction.json"
+
+    if not extraction_path.exists():
+        click.echo(
+            f"Error: No extraction output found at {extraction_path}. "
+            "Run 'folio-insights extract' first.",
+            err=True,
+        )
+        sys.exit(1)
+
+    # Build settings from CLI options
+    from folio_insights.config import Settings
+
+    settings = Settings(
+        output_dir=output_path,
+        corpus_name=corpus_name,
+    )
+
+    # Create and run discovery pipeline
+    from folio_insights.pipeline.discovery.orchestrator import (
+        TaskDiscoveryOrchestrator,
+    )
+
+    # Check for review database (optional -- enables decision persistence)
+    db_path = output_path / corpus_name / "review.db"
+    orchestrator = TaskDiscoveryOrchestrator(
+        settings,
+        db_path=db_path if db_path.exists() else None,
+    )
+
+    click.echo(f"Discovering tasks for corpus: {corpus_name}")
+    click.echo(f"Source: {extraction_path}")
+    click.echo(f"Cluster threshold: {cluster_threshold}")
+    click.echo(f"Contradiction threshold: {contradiction_threshold}")
+    click.echo("")
+
+    try:
+        job = asyncio.run(
+            orchestrator.run(corpus_name, resume=resume)
+        )
+    except FileNotFoundError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    except Exception as exc:
+        click.echo(f"Error: Discovery pipeline failed: {exc}", err=True)
+        logger.debug("Discovery error details", exc_info=True)
+        sys.exit(1)
+
+    # Print summary
+    task_count = len(job.task_hierarchy.tasks) if job.task_hierarchy else 0
+    contradiction_count = len(job.contradictions)
+    orphan_count = len(job.orphan_unit_ids)
+
+    click.echo("--- Discovery Summary ---")
+    click.echo(f"Tasks discovered:    {task_count}")
+    click.echo(f"Contradictions found: {contradiction_count}")
+    click.echo(f"Orphan units:        {orphan_count}")
+    click.echo(f"Output: {output}/{corpus_name}/discovery.json")
+    click.echo(f"Tree:   {output}/{corpus_name}/task_tree.json")
 
 
 @cli.command("serve")
