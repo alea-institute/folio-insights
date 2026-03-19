@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Knowledge Extraction Pipeline** - Ingest multi-format source files and produce typed, FOLIO-tagged knowledge units with confidence scores, lineage, batch CLI execution, and interactive review viewer (completed 2026-03-17)
 - [x] **Phase 1.1: Upload & Processing UI** - Document upload, corpus management, and real-time pipeline processing in the web UI (INSERTED) (completed 2026-03-18)
-- [ ] **Phase 2: Task Hierarchy Discovery** - Discover advocacy tasks from extracted knowledge and build a validated hierarchical task tree across the corpus
+- [x] **Phase 2: Task Hierarchy Discovery** - Discover advocacy tasks from extracted knowledge and build a validated hierarchical task tree across the corpus (completed 2026-03-19)
 - [ ] **Phase 3: Ontology Output and Delivery** - Generate validated OWL and companion files serving all three consumption modes, with incremental corpus support
 
 ## Phase Details
@@ -68,11 +68,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Data models, test scaffolds, and discovery stages 1-3 (heading analysis, FOLIO mapping, content clustering)
-- [ ] 02-02-PLAN.md -- Discovery stages 4-6 (hierarchy construction, cross-source merging, contradiction detection), orchestrator, and CLI
-- [ ] 02-03-PLAN.md -- SQLite schema extension, API endpoints (discovery trigger, task review, contradiction resolution, export)
-- [ ] 02-04-PLAN.md -- Frontend stores, API client, and core task viewer components (TaskTree, TaskDetail, FilterToolbar, ContradictionView)
-- [ ] 02-05-PLAN.md -- Frontend dashboard, discovery trigger on upload page, navigation routing, keyboard shortcuts, visual verification
+- [x] 02-01-PLAN.md -- Data models, test scaffolds, and discovery stages 1-3 (heading analysis, FOLIO mapping, content clustering)
+- [x] 02-02-PLAN.md -- Discovery stages 4-6 (hierarchy construction, cross-source merging, contradiction detection), orchestrator, and CLI
+- [x] 02-03-PLAN.md -- SQLite schema extension, API endpoints (discovery trigger, task review, contradiction resolution, export)
+- [x] 02-04-PLAN.md -- Frontend stores, API client, and core task viewer components (TaskTree, TaskDetail, FilterToolbar, ContradictionView)
+- [x] 02-05-PLAN.md -- Frontend dashboard, discovery trigger on upload page, navigation routing, keyboard shortcuts, visual verification
 
 ### Phase 3: Ontology Output and Delivery
 **Goal**: The complete knowledge structure is serialized as a validated, FOLIO-compatible OWL module with companion files that serve SPARQL queries, LLM RAG retrieval, and human browsing -- and the pipeline supports incremental corpus growth
@@ -98,5 +98,5 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
 | 1.1 Upload & Processing UI | 4/4 | Complete | 2026-03-18 |
-| 2. Task Hierarchy Discovery | 4/5 | In Progress | - |
+| 2. Task Hierarchy Discovery | 5/5 | Complete | 2026-03-19 |
 | 3. Ontology Output and Delivery | 0/2 | Not started | - |
