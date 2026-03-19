@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-19T20:55:29.641Z"
-last_activity: 2026-03-19 -- Completed 02-02 (discovery pipeline stages 4-6, orchestrator, CLI)
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-19T21:04:56Z"
+last_activity: 2026-03-19 -- Completed 02-03 (discovery API layer, export, task CRUD, contradiction resolution)
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 02 Task Hierarchy Discovery in progress (Plan 02 of 5 complete).
+**Current focus:** Phase 02 Task Hierarchy Discovery in progress (Plan 03 of 5 complete).
 
 ## Current Position
 
 Phase: 02 of 4 (Task Hierarchy Discovery)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In Progress
-Last activity: 2026-03-19 -- Completed 02-02 (discovery pipeline stages 4-6, orchestrator, CLI)
+Last activity: 2026-03-19 -- Completed 02-03 (discovery API layer, export, task CRUD, contradiction resolution)
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 85%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 10.0 min
-- Total execution time: 1.72 hours
+- Total plans completed: 11
+- Average duration: 9.7 min
+- Total execution time: 1.83 hours
 
 **By Phase:**
 
@@ -45,15 +45,16 @@ Progress: [████████░░] 77%
 |-------|-------|-------|----------|
 | 01-knowledge-extraction-pipeline | 4/4 | 71 min | 17.8 min |
 | 01.1-upload-processing-ui | 4/4 | 22 min | 5.5 min |
-| 02-task-hierarchy-discovery | 2/5 | 10 min | 5.0 min |
+| 02-task-hierarchy-discovery | 3/5 | 17 min | 5.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 3 min, 8 min, 4 min, 6 min
-- Trend: Fast (pipeline stages and orchestrator follow established Phase 1 patterns)
+- Last 5 plans: 3 min, 8 min, 4 min, 6 min, 7 min
+- Trend: Fast (API endpoints follow established Phase 1 patterns)
 
 *Updated after each plan completion*
 | Phase 02 P01 | 4 min | 2 tasks | 14 files |
 | Phase 02 P02 | 6 min | 2 tasks | 7 files |
+| Phase 02 P03 | 7 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,11 @@ Recent decisions affecting current work:
 - [02-02]: ContradictionDetector lazy-loads NLI model on first use to avoid heavy imports at startup
 - [02-02]: Discovery checkpoints stored in discovery_checkpoints/ dir separate from extraction checkpoints/
 - [02-02]: CLI discover command checks for review.db existence for optional decision persistence
+- [02-03]: Discovery jobs use {corpus_id}_discovery key in same JobManager to coexist with extraction jobs
+- [02-03]: Task tree built from SQLite queries (task_decisions + task_unit_links) rather than reading JSON files
+- [02-03]: Bulk approve by confidence reads task_tree.json for confidence scores not stored in SQLite
+- [02-03]: Hierarchy merge operation uses UPDATE OR IGNORE for unit links then deletes conflicting duplicates
+- [02-03]: HTML export uses inline dark-theme CSS matching app.css variables for consistent visual identity
 
 ### Pending Todos
 
@@ -120,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-19T20:55:29.639Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-03-19T21:04:56Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
