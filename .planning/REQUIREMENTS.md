@@ -44,9 +44,9 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Task Structure
 
 - [x] **TASK-01**: System discovers top-level advocacy tasks from the texts themselves (e.g., depositions, opening statements, motions, cross-examination)
-- [ ] **TASK-02**: System builds hierarchical task trees: Task > Subtask > Best Practice / Principle / Pitfall
-- [ ] **TASK-03**: System merges task hierarchy fragments discovered across multiple source files into a single coherent tree
-- [ ] **TASK-04**: System detects and flags contradictory advice from different sources on the same task
+- [x] **TASK-02**: System builds hierarchical task trees: Task > Subtask > Best Practice / Principle / Pitfall
+- [x] **TASK-03**: System merges task hierarchy fragments discovered across multiple source files into a single coherent tree
+- [x] **TASK-04**: System detects and flags contradictory advice from different sources on the same task
 
 ### Ontology Output
 
@@ -116,9 +116,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | QUAL-03 | Phase 1 | Complete |
 | PIPE-02 | Phase 1 | Complete |
 | TASK-01 | Phase 2 | Complete |
-| TASK-02 | Phase 2 | Pending |
-| TASK-03 | Phase 2 | Pending |
-| TASK-04 | Phase 2 | Pending |
+| TASK-02 | Phase 2 | Complete |
+| TASK-03 | Phase 2 | Complete |
+| TASK-04 | Phase 2 | Complete |
 | OWL-01 | Phase 3 | Pending |
 | OWL-02 | Phase 3 | Pending |
 | OWL-03 | Phase 3 | Pending |
