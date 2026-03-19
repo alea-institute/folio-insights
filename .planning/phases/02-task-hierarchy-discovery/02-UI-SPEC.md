@@ -33,8 +33,8 @@ Declared values (multiples of 4, inherited from `app.css`):
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| xs | 4px (`var(--xs)`) | Icon gaps, inline padding, pill internal padding |
-| sm | 8px (`var(--sm)`) | Compact element spacing, tree node horizontal padding, filter chip gaps |
+| xs | 4px (`var(--xs)`) | Icon gaps, inline padding, pill internal padding, filter chip vertical padding |
+| sm | 8px (`var(--sm)`) | Compact element spacing, tree node horizontal padding, filter chip horizontal padding, filter chip gaps |
 | md | 16px (`var(--md)`) | Default element spacing, pane padding, section headers |
 | lg | 24px (`var(--lg)`) | Header bar horizontal padding, dialog internal padding, empty state padding |
 | xl | 32px (`var(--xl)`) | Dashboard card spacing, major layout gaps |
@@ -50,19 +50,23 @@ Exceptions:
 
 ## Typography
 
-All sizes and weights are inherited from Phase 1's established patterns. Phase 2 adds no new type roles.
+Phase 2 uses exactly 4 font sizes and 2 font weights. All values are inherited from Phase 1's established patterns and consolidated for contract compliance.
 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
-| Body | 14px | 400 | 1.5 | Unit text, dialog messages, source text, task descriptions |
-| Label | 13px | 400 | 1.3 | Tree node labels, nav tabs, button labels, filter chips, metadata, corpus sidebar items |
-| Small | 11px | 400-700 | 1.3 | Badge text, IRI display, breadcrumbs, pill labels, confidence scores, timestamps, type tags |
-| Heading | 18px | 600 | 1.2 | Concept labels, section headings, empty state headings, task names in detail pane |
-| Dialog title | 16px | 600 | 1.2 | Modal dialog headings, contradiction resolution headings |
+| Small | 11px | 400 | 1.3 | Badge text, IRI display (monospace), breadcrumbs, pill labels, confidence scores, timestamps, type tags, filter chip labels, group labels, toggle labels, metadata |
+| Body | 14px | 400 | 1.5 | Unit text, dialog messages, source text, task descriptions, tree node labels, nav tabs, button labels, filter group titles, corpus sidebar items |
+| Heading | 18px | 600 | 1.2 | Concept labels, section headings, empty state headings, task names in detail pane, modal dialog headings, contradiction resolution headings |
+| Display | 28px | 600 | 1.2 | Dashboard stat card values |
 
 Monospace: system monospace at 11px for IRI display (established in DetailView.svelte).
 
 Letter spacing: -0.3px on headings, 0.5px on uppercase labels/pills (both established).
+
+**Consolidation notes:**
+- Former 13px "Label" role merged into 14px Body. Tree node labels, nav tabs, buttons, and filter chips all use 14px.
+- Former 16px "Dialog title" role merged into 18px Heading. Modal dialog headings use 18px, same as section headings.
+- Weight 500 eliminated. Tree node labels (previously 500) use 400, distinguished from structural ancestors by color (`--text` for task nodes vs `--text-dim` for ancestor nodes).
 
 ---
 
@@ -176,6 +180,18 @@ Three-pane layout identical to review page structure:
 - **Dividers:** Same 4px draggable dividers with `--accent` hover color (established pattern)
 - **Dashboard:** Toggle-able overlay panel, positioned top-right below header, 480px wide, max 70vh tall, shadow `0 8px 32px rgba(0, 0, 0, 0.4)`
 
+### Primary Focal Point (first load)
+
+When the Tasks page loads with a corpus selected and tasks discovered:
+- **The first task node in the tree is auto-selected.** The tree scrolls to top, the first task node receives `--highlight` background and `--accent` left border, and its detail pane populates with that task's content.
+- This ensures the user sees a populated detail pane immediately rather than an empty "No task selected" state.
+
+When the Tasks page loads with no corpus selected:
+- **The empty state in the tree pane is the focal point.** The "No corpus selected" heading is centered vertically at 18px/600, drawing the eye to the action required.
+
+When the Tasks page loads with a corpus selected but no tasks discovered:
+- **The empty state message is the focal point**, with a "Discover Tasks" inline link/button styled in `--accent` to guide the user to the upload page.
+
 ### Upload Page Extension
 
 After processing completes, the upload content area gains:
@@ -197,15 +213,17 @@ The DiscoverButton replaces the ProcessButton's position in the vertical flow. I
 ### Node Anatomy
 
 ```
-[chevron 12px] [label 13px] [unit_count 11px dim] [review_indicator] [flags]
+[chevron 12px] [label 14px] [unit_count 11px dim] [review_indicator] [flags]
 ```
 
-- **Task nodes (is_task: true):** Label at 13px weight 500, unit count badge in parentheses `(23)` at 11px in `--text-dim`, review indicator (checkmark / partial / empty circle), optional flag icons
-- **Structural ancestor nodes (is_task: false):** Label at 13px weight 400 in `--text-dim`, no badge, no review indicator -- visible for hierarchy context only
+- **Task nodes (is_task: true):** Label at 14px weight 400, `color: var(--text)`, unit count badge in parentheses `(23)` at 11px in `--text-dim`, review indicator (checkmark / partial / empty circle), optional flag icons
+- **Structural ancestor nodes (is_task: false):** Label at 14px weight 400, `color: var(--text-dim)`, no badge, no review indicator -- visible for hierarchy context only
 - **Selected node:** `background: var(--highlight)`, `border-left: 2px solid var(--accent)`, label color `var(--accent)`
 - **Node height:** 28px (established)
 - **Indentation:** 16px per depth level (established child-node padding pattern)
 - **DnD active state:** Dragged node gets `opacity: 0.6` + `outline: 1px dashed var(--accent)`. Drop target shows 2px `--accent` line at above/below position, or `background: var(--highlight)` for "drop as child"
+
+**Task vs ancestor distinction:** Task nodes are distinguished from structural ancestors solely by text color (`--text` vs `--text-dim`), the presence of the unit count badge, and the review indicator. No weight difference is needed.
 
 ### Review Progress Indicators (per node)
 
@@ -217,15 +235,15 @@ The DiscoverButton replaces the ProcessButton's position in the vertical flow. I
 
 ### Flag Indicators (inline, after review indicator)
 
-| Flag | Visual | Color |
-|------|--------|-------|
-| Has contradictions | Inline SVG: two arrows pointing at each other | `--red` |
-| Has orphan units | Inline SVG: question mark in circle | `--orange` |
-| Jurisdiction-sensitive | Inline SVG: map pin | `--orange` |
-| Manually created | Inline SVG: pencil | `--text-dim` |
-| Procedural task | Inline SVG: numbered list | `--purple` |
+| Flag | Visual | Color | Accessible Label |
+|------|--------|-------|-----------------|
+| Has contradictions | Inline SVG: two arrows pointing at each other | `--red` | `title="Has contradictions"` + `aria-label="Has contradictions"` |
+| Has orphan units | Inline SVG: question mark in circle | `--orange` | `title="Has orphan units"` + `aria-label="Has orphan units"` |
+| Jurisdiction-sensitive | Inline SVG: map pin | `--orange` | `title="Jurisdiction-sensitive"` + `aria-label="Jurisdiction-sensitive"` |
+| Manually created | Inline SVG: pencil | `--text-dim` | `title="Manually created"` + `aria-label="Manually created"` |
+| Procedural task | Inline SVG: numbered list | `--purple` | `title="Procedural task"` + `aria-label="Procedural task"` |
 
-Flag icons: 10px, rendered inline at the end of the node row with 4px gaps.
+Flag icons: 12px (minimum touch-friendly size for inline indicators), rendered inline at the end of the node row with 4px gaps. Each SVG element carries both `title` (for mouse hover tooltip) and `aria-label` (for screen readers) attributes.
 
 ### Toggle Control
 
@@ -250,7 +268,7 @@ Two-button toggle group (same pattern as view-toggle in +page.svelte): `backgrou
 [Confidence badge - reuse ConfidenceBadge component]
 ```
 
-- Task type badge: Pill at 10px uppercase, `letter-spacing: 0.5px`
+- Task type badge: Pill at 11px uppercase, `letter-spacing: 0.5px`
   - Procedural: `background: rgba(176, 126, 232, 0.15)`, `color: var(--purple)`
   - Categorical: `background: var(--surface3)`, `color: var(--text-dim)`
 
@@ -277,7 +295,7 @@ Below the header, knowledge units are grouped by type. Each group has a collapsi
   ...
 ```
 
-- Group header: 13px weight 600, `color: var(--text)`, group count in `--text-dim`
+- Group header: 14px weight 600, `color: var(--text)`, group count in `--text-dim`
 - "Approve All" button per group: 11px, `color: var(--green)`, right-aligned, visible on hover
 - Unit cards: Same visual pattern as existing DetailView unit cards (surface2 background, border, 6px radius, status dot, confidence badge, type tag, extraction path badges)
 - Contradiction-flagged units: Left border `2px solid var(--red)` + subtle background tint `var(--contradiction)`
@@ -287,7 +305,7 @@ Below the header, knowledge units are grouped by type. Each group has a collapsi
 Reuse existing ReviewControls pattern. Extended toolbar for task context:
 
 ```
-[Approve] [Reject] [Edit] [Move (M)] [Skip] [Approve All High]
+[Approve] [Reject] [Edit] [Move (M)] [Skip Unit] [Approve All High]
 ```
 
 - "Move" button: `background: transparent`, `border: 1px solid var(--orange)`, `color: var(--orange)` -- triggers DnD mode or task picker dropdown
@@ -313,7 +331,7 @@ Renders inside TaskDetail when a contradiction is selected or when viewing a tas
 +----------------------------+----------------------------+
 | Contradiction type: partial                             |
 | NLI score: 0.87                                         |
-+--[Keep Both]--[Prefer A]--[Prefer B]--[Merge]--[Jurisdiction]-+
++--[Keep Both]--[Prefer A]--[Prefer B]--[Merge Statement]--[Mark Jurisdictional]-+
 ```
 
 - Two columns, each with `background: var(--contradiction)` tint
@@ -323,8 +341,8 @@ Renders inside TaskDetail when a contradiction is selected or when viewing a tas
   - "Keep Both": `border: 1px solid var(--text-dim)`, `color: var(--text-dim)`
   - "Prefer A": `border: 1px solid var(--accent)`, `color: var(--accent)`
   - "Prefer B": `border: 1px solid var(--accent)`, `color: var(--accent)`
-  - "Merge": `border: 1px solid var(--orange)`, `color: var(--orange)` -- opens inline text editor
-  - "Jurisdiction": `border: 1px solid var(--orange)`, `color: var(--orange)`
+  - "Merge Statement": `border: 1px solid var(--orange)`, `color: var(--orange)` -- opens inline text editor
+  - "Mark Jurisdictional": `border: 1px solid var(--orange)`, `color: var(--orange)`
 - NLI score: Displayed as percentage, 11px, `color: var(--text-dim)`, with label "NLI: 87%"
 - Contradiction type label: 11px uppercase pill, `letter-spacing: 0.5px`
   - "full": `color: var(--red)`, `background: rgba(224, 85, 85, 0.15)`
@@ -346,11 +364,11 @@ Horizontal bar, sticky at the top of the TaskDetail pane, below the task header.
 
 ### Filter Chip Style
 
-- Inactive: `background: var(--surface2)`, `color: var(--text-dim)`, `border-radius: 9999px`, `padding: 2px 10px`, `font-size: 11px`
+- Inactive: `background: var(--surface2)`, `color: var(--text-dim)`, `border-radius: 9999px`, `padding: var(--xs) var(--sm)` (4px 8px), `font-size: 11px`
 - Active: `background: var(--highlight)`, `color: var(--accent)`, `border: 1px solid var(--accent-dim)`
 - Hover (inactive): `color: var(--text)`
-- Group labels ("Type:", "Confidence:", etc.): 11px uppercase, `letter-spacing: 0.5px`, `color: var(--text-dim)`, `margin-right: 4px`
-- Groups separated by `8px` gap; chips within group separated by `4px` gap
+- Group labels ("Type:", "Confidence:", etc.): 11px uppercase, `letter-spacing: 0.5px`, `color: var(--text-dim)`, `margin-right: var(--xs)` (4px)
+- Groups separated by `var(--sm)` (8px) gap; chips within group separated by `var(--xs)` (4px) gap
 - Entire toolbar: `padding: var(--sm) var(--md)`, `border-bottom: 1px solid var(--border)`, `background: var(--surface)`, `flex-wrap: wrap`, `gap: var(--sm)`
 
 ---
@@ -386,7 +404,7 @@ Signal toggle pills (same style as stage pills): filter which evidence type is s
 - LLM reasoning text at 14px
 - Background tint: `var(--discovery-llm)`
 
-Each section: `padding: var(--sm) var(--md)`, `border-bottom: 1px solid var(--border)`, section title at 13px weight 600.
+Each section: `padding: var(--sm) var(--md)`, `border-bottom: 1px solid var(--border)`, section title at 14px weight 600.
 
 ---
 
@@ -433,15 +451,15 @@ Displayed inline within the TaskDetail area when a re-run is detected and new ch
 ### Change Row Anatomy
 
 ```
-[icon] [change description - 14px]     [Accept] [Reject]
+[icon] [change description - 14px]     [Accept Change] [Reject Change]
 ```
 
 - Added (new task/unit): `background: var(--diff-added)`, green "+" icon
 - Removed (task/unit removed): `background: var(--diff-removed)`, red "-" icon
 - Changed (hierarchy modification): `background: var(--diff-changed)`, orange "~" icon
-- Accept button: `color: var(--green)`, outline style
-- Reject button: `color: var(--red)`, outline style
-- "Accept All" / "Reject All" bulk actions at top: same pattern as "Approve All" in ReviewControls
+- "Accept Change" button: `color: var(--green)`, outline style
+- "Reject Change" button: `color: var(--red)`, outline style
+- "Accept All Changes" / "Reject All Changes" bulk actions at top: same pattern as "Approve All" in ReviewControls
 
 ---
 
@@ -456,7 +474,7 @@ Mirrors the existing ProcessButton pattern.
 | Processing | `var(--accent)` | "Discovering..." | Disabled, shows spinner animation |
 | Complete | `var(--green)` | "Tasks Discovered" | Transitions to link/button navigating to /tasks |
 
-Button: `height: 36px`, `padding: 0 var(--md)`, `border-radius: 4px`, `font-size: 13px`, `font-weight: 600`.
+Button: `height: 36px`, `padding: 0 var(--md)`, `border-radius: 4px`, `font-size: 14px`, `font-weight: 600`.
 
 ---
 
@@ -497,6 +515,16 @@ Progress bar: 3px height, `border-radius: 2px`, same color logic (accent during 
 | Manual task creation | "Create a new task manually. Name it, choose its parent in the FOLIO hierarchy, and assign knowledge units." |
 | Diff view header | "Changes detected from re-run. Review and accept or reject each change." |
 | Dashboard toggle tooltip | "Task summary dashboard" |
+| DiffView: accept action | "Accept Change" |
+| DiffView: reject action | "Reject Change" |
+| DiffView: bulk accept | "Accept All Changes" |
+| DiffView: bulk reject | "Reject All Changes" |
+| ContradictionView: keep both | "Keep Both" |
+| ContradictionView: prefer A | "Prefer A" |
+| ContradictionView: prefer B | "Prefer B" |
+| ContradictionView: merge | "Merge Statement" |
+| ContradictionView: jurisdiction | "Mark Jurisdictional" |
+| ReviewControls: skip | "Skip Unit" |
 | Processing stage: heading_analysis | "Heading Analysis" |
 | Processing stage: folio_mapping | "FOLIO Mapping" |
 | Processing stage: content_clustering | "Content Clustering" |
@@ -575,6 +603,7 @@ any -> merged (via G key or merge dialog)
 - `prefers-reduced-motion`: disable all transition/animation durations (established in app.css)
 - Focus-visible: 2px solid `var(--accent)` outline with 2px offset (established)
 - Minimum touch target: 44px for interactive elements on tree nodes and filter chips
+- All tree flag icons: must include both `title` attribute (hover tooltip) and `aria-label` attribute (screen reader) with descriptive text (see Flag Indicators table above)
 
 ---
 
