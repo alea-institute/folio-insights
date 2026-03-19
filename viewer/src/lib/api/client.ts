@@ -251,3 +251,251 @@ export async function triggerProcessing(
 export function getSSEUrl(corpusId: string): string {
 	return `${API_BASE}/api/v1/corpus/${corpusId}/stream`;
 }
+
+// ---------------------------------------------------------------------------
+// Task Discovery
+// ---------------------------------------------------------------------------
+
+export interface TaskTreeNode {
+	id: string;
+	path: string; // LTree dot-notation: "1.2.3"
+	label: string;
+	folio_iri: string;
+	unit_count: number;
+	review_status: string; // "unreviewed" | "partial" | "complete"
+	is_task: boolean;
+	has_contradictions: boolean;
+	has_orphans: boolean;
+	is_jurisdiction_sensitive: boolean;
+	is_procedural: boolean;
+	is_manual: boolean;
+	sortOrder: number;
+	depth: number;
+}
+
+export interface TaskDetailResponse {
+	id: string;
+	label: string;
+	description: string;
+	folio_iri: string;
+	folio_label: string;
+	parent_task_id: string | null;
+	depth: number;
+	is_procedural: boolean;
+	canonical_order: number | null;
+	unit_type_counts: Record<string, number>;
+	confidence: number;
+	review_status: string;
+	has_contradictions: boolean;
+	has_orphans: boolean;
+	is_jurisdiction_sensitive: boolean;
+	is_manual: boolean;
+}
+
+export interface TaskUnitGroup {
+	type: string;
+	units: KnowledgeUnitResponse[];
+}
+
+export interface ContradictionResponse {
+	id: string;
+	task_id: string;
+	unit_id_a: string;
+	unit_id_b: string;
+	unit_text_a: string;
+	unit_text_b: string;
+	source_a: string;
+	source_b: string;
+	authority_a: number;
+	authority_b: number;
+	confidence_a: number;
+	confidence_b: number;
+	nli_score: number;
+	contradiction_type: string;
+	resolution: string | null;
+	resolved_text: string | null;
+	resolver_note: string;
+}
+
+export interface DiscoveryStatsResponse {
+	total_tasks: number;
+	total_subtasks: number;
+	total_units_assigned: number;
+	orphan_count: number;
+	contradiction_count: number;
+	contradictions_resolved: number;
+	review_progress_pct: number;
+	by_confidence: Record<string, number>;
+	by_unit_type: Record<string, number>;
+	source_coverage: Record<string, number>;
+}
+
+export async function fetchTaskTree(
+	corpusId: string,
+	mode?: string
+): Promise<TaskTreeNode[] | { error: string }> {
+	return request<TaskTreeNode[]>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/tree${qs({ mode })}`
+	);
+}
+
+export async function fetchTaskDetail(
+	corpusId: string,
+	taskId: string
+): Promise<TaskDetailResponse | { error: string }> {
+	return request<TaskDetailResponse>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/${taskId}`
+	);
+}
+
+export async function fetchTaskUnits(
+	corpusId: string,
+	taskId: string
+): Promise<TaskUnitGroup[] | { error: string }> {
+	return request<TaskUnitGroup[]>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/${taskId}/units`
+	);
+}
+
+export async function reviewTask(
+	corpusId: string,
+	taskId: string,
+	status: string,
+	editedLabel?: string,
+	note?: string
+): Promise<TaskDetailResponse | { error: string }> {
+	return request<TaskDetailResponse>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/${taskId}/review`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ status, edited_label: editedLabel, note }),
+		}
+	);
+}
+
+export async function bulkApproveTasks(
+	corpusId: string,
+	taskIds?: string[],
+	confidenceMin?: number
+): Promise<{ approved_count: number; task_ids: string[] } | { error: string }> {
+	return request(`${API_BASE}/api/v1/corpus/${corpusId}/tasks/bulk-approve`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ task_ids: taskIds, confidence_min: confidenceMin }),
+	});
+}
+
+export async function createTask(
+	corpusId: string,
+	label: string,
+	folioIri?: string,
+	parentTaskId?: string
+): Promise<TaskDetailResponse | { error: string }> {
+	return request<TaskDetailResponse>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/tasks`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				label,
+				folio_iri: folioIri,
+				parent_task_id: parentTaskId,
+			}),
+		}
+	);
+}
+
+export async function deleteTask(
+	corpusId: string,
+	taskId: string
+): Promise<void | { error: string }> {
+	const res = await fetch(
+		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/${taskId}`,
+		{ method: 'DELETE' }
+	);
+	if (!res.ok) return { error: `${res.status}: ${await res.text()}` };
+}
+
+export async function submitHierarchyEdit(
+	corpusId: string,
+	editType: string,
+	sourceTaskId?: string,
+	targetTaskId?: string,
+	detail?: string
+): Promise<{ success: boolean } | { error: string }> {
+	return request(`${API_BASE}/api/v1/corpus/${corpusId}/tasks/hierarchy-edit`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			edit_type: editType,
+			source_task_id: sourceTaskId,
+			target_task_id: targetTaskId,
+			detail,
+		}),
+	});
+}
+
+export async function fetchContradictions(
+	corpusId: string,
+	status?: string
+): Promise<ContradictionResponse[] | { error: string }> {
+	return request<ContradictionResponse[]>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/contradictions${qs({ status })}`
+	);
+}
+
+export async function resolveContradiction(
+	corpusId: string,
+	contradictionId: string,
+	resolution: string,
+	resolvedText?: string,
+	note?: string
+): Promise<ContradictionResponse | { error: string }> {
+	return request<ContradictionResponse>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/contradictions/${contradictionId}/resolve`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				resolution,
+				resolved_text: resolvedText,
+				note,
+			}),
+		}
+	);
+}
+
+export async function fetchDiscoveryStats(
+	corpusId: string
+): Promise<DiscoveryStatsResponse | { error: string }> {
+	return request<DiscoveryStatsResponse>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/discovery/stats`
+	);
+}
+
+export interface DiscoveryDiffEntry {
+	type: 'added' | 'removed' | 'changed';
+	id: string;
+	description: string;
+}
+
+export async function fetchDiscoveryDiff(
+	corpusId: string
+): Promise<DiscoveryDiffEntry[] | { error: string }> {
+	return request<DiscoveryDiffEntry[]>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/discovery/diff`
+	);
+}
+
+export async function triggerDiscovery(
+	corpusId: string
+): Promise<{ job_id: string; status: string } | { error: string }> {
+	return request(`${API_BASE}/api/v1/corpus/${corpusId}/discover`, {
+		method: 'POST',
+	});
+}
+
+export function getDiscoverySSEUrl(corpusId: string): string {
+	return `${API_BASE}/api/v1/corpus/${corpusId}/discover/stream`;
+}

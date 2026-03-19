@@ -21,6 +21,7 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
+		"@keenmate/svelte-treeview": "^4.8.0",
 		"@sveltejs/adapter-static": "^3.0.10"
 	}
 }

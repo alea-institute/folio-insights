@@ -30,6 +30,16 @@
 	--lg: 24px;
 	--xl: 32px;
 	--2xl: 48px;
+	/* Phase 2: Task Hierarchy Discovery */
+	--contradiction: rgba(224, 85, 85, 0.12);
+	--orphan: rgba(232, 165, 76, 0.12);
+	--jurisdiction: rgba(232, 165, 76, 0.12);
+	--discovery-heading: rgba(94, 196, 212, 0.15);
+	--discovery-cluster: rgba(176, 126, 232, 0.15);
+	--discovery-llm: rgba(108, 140, 255, 0.15);
+	--diff-added: rgba(76, 175, 124, 0.12);
+	--diff-removed: rgba(224, 85, 85, 0.12);
+	--diff-changed: rgba(232, 165, 76, 0.12);
 }
 
 * {
