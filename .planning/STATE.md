@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 01.1-04 (upload components and processing UI) - Phase 01.1 complete
-last_updated: "2026-03-18T17:07:49.689Z"
-last_activity: 2026-03-18 -- Completed 01.1-04 (upload components and processing UI)
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-19T20:46:00.020Z"
+last_activity: 2026-03-19 -- Completed 02-01 (task discovery models and pipeline stages 1-3)
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 13
+  completed_plans: 9
+  percent: 69
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 01.1 Upload & Processing UI complete (all 4 plans). Ready for Phase 2.
+**Current focus:** Phase 02 Task Hierarchy Discovery in progress (Plan 01 of 5 complete).
 
 ## Current Position
 
-Phase: 01.1 of 4 (Upload & Processing UI) -- COMPLETE
-Plan: 4 of 4 in current phase (all complete)
-Status: Phase 01.1 Complete
-Last activity: 2026-03-18 -- Completed 01.1-04 (upload components and processing UI)
+Phase: 02 of 4 (Task Hierarchy Discovery)
+Plan: 2 of 5 in current phase
+Status: In Progress
+Last activity: 2026-03-19 -- Completed 02-01 (task discovery models and pipeline stages 1-3)
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 10.9 min
-- Total execution time: 1.55 hours
+- Total plans completed: 9
+- Average duration: 10.3 min
+- Total execution time: 1.62 hours
 
 **By Phase:**
 
@@ -45,13 +45,14 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01-knowledge-extraction-pipeline | 4/4 | 71 min | 17.8 min |
 | 01.1-upload-processing-ui | 4/4 | 22 min | 5.5 min |
+| 02-task-hierarchy-discovery | 1/5 | 4 min | 4.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 2 min, 5 min, 3 min, 8 min
-- Trend: Fast (UI plans execute quickly with established component patterns)
+- Last 5 plans: 2 min, 5 min, 3 min, 8 min, 4 min
+- Trend: Fast (pipeline model and stage creation follows established patterns)
 
 *Updated after each plan completion*
-| Phase 01.1 P04 | 8 | 3 tasks | 7 files |
+| Phase 02 P01 | 4 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,12 @@ Recent decisions affecting current work:
 - [01.1-04]: ProgressDisplay derives stage states from currentStage position in ordered STAGES array
 - [01.1-04]: Upload page renders four conditional states: no corpus, idle, processing, complete
 - [01.1-04]: Auto-navigation uses $effect watching processingStatus + 1.5s setTimeout + goto()
+- [02-01]: DiscoveryStage ABC mirrors InsightsPipelineStage but uses DiscoveryJob to keep pipelines independent
+- [02-01]: Heading paths with < 2 knowledge units filtered as too sparse for task candidates
+- [02-01]: FolioMappingStage marks unmapped candidates as proposed_siblings in job metadata
+- [02-01]: ContentClusteringStage skips clusters with > 70% overlap with existing heading candidates
+- [02-01]: LLM labeling gracefully degrades to word-based fallback when LLMBridge unavailable
+- [02-01]: SentenceTransformer model loaded as lazy singleton to avoid repeated initialization
 
 ### Pending Todos
 
@@ -106,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T16:51:42.071Z
-Stopped at: Completed 01.1-04 (upload components and processing UI) - Phase 01.1 complete
+Last session: 2026-03-19T20:46:00.019Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None
