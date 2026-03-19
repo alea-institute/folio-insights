@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 # folio-insights specific LLM task names
 INSIGHTS_TASKS: tuple[str, ...] = (
+    # Phase 1: extraction pipeline
     "boundary",
     "classifier",
     "distiller",
@@ -23,6 +24,11 @@ INSIGHTS_TASKS: tuple[str, ...] = (
     "heading_mapper",
     "concept",
     "branch_judge",
+    # Phase 2: task discovery pipeline
+    "task_discovery",
+    "task_ordering",
+    "contradiction",
+    "orphan_assignment",
 )
 
 
