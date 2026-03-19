@@ -10,8 +10,12 @@
 
 	let { children } = $props();
 
-	let activePage = $derived<'upload' | 'review'>(
-		$page.url.pathname.startsWith('/upload') ? 'upload' : 'review'
+	let activePage = $derived<'upload' | 'tasks' | 'review'>(
+		$page.url.pathname.startsWith('/upload')
+			? 'upload'
+			: $page.url.pathname.startsWith('/tasks')
+				? 'tasks'
+				: 'review'
 	);
 
 	onMount(() => {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { activePage }: { activePage: 'upload' | 'review' } = $props();
+	let { activePage }: { activePage: 'upload' | 'tasks' | 'review' } = $props();
 </script>
 
 <nav class="nav-tabs" role="tablist" aria-label="Page navigation">
@@ -12,6 +12,16 @@
 		data-sveltekit-preload-data
 	>
 		Upload
+	</a>
+	<a
+		href="/tasks"
+		role="tab"
+		aria-selected={activePage === 'tasks'}
+		class="nav-tab"
+		class:active={activePage === 'tasks'}
+		data-sveltekit-preload-data
+	>
+		Tasks
 	</a>
 	<a
 		href="/"
