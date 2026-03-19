@@ -18,6 +18,13 @@
 		{ key: 'Tab', action: 'Cycle focus between panes', scope: 'Any' },
 	];
 
+	const taskShortcuts = [
+		{ key: 'M', action: 'Move task to new parent', scope: 'Task tree' },
+		{ key: 'G', action: 'Merge selected task into another', scope: 'Task tree' },
+		{ key: 'Shift+A', action: 'Bulk approve all high-confidence tasks', scope: 'Tasks page' },
+		{ key: '1 / 2 / 3 / 4', action: 'Confidence filter: all / high / medium / low', scope: 'Tasks page' },
+	];
+
 	export function toggle() {
 		visible = !visible;
 	}
@@ -47,8 +54,19 @@
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Keyboard shortcuts" onkeydown={handleKeydown} tabindex="-1">
 			<h2 class="modal-title">Keyboard Shortcuts</h2>
+			<h3 class="section-title">Review</h3>
 			<div class="shortcut-list">
 				{#each shortcuts as s}
+					<div class="shortcut-row">
+						<kbd class="shortcut-key">{s.key}</kbd>
+						<span class="shortcut-action">{s.action}</span>
+						<span class="shortcut-scope">{s.scope}</span>
+					</div>
+				{/each}
+			</div>
+			<h3 class="section-title">Task Operations</h3>
+			<div class="shortcut-list">
+				{#each taskShortcuts as s}
 					<div class="shortcut-row">
 						<kbd class="shortcut-key">{s.key}</kbd>
 						<span class="shortcut-action">{s.action}</span>
@@ -104,6 +122,20 @@
 		font-size: 18px;
 		font-weight: 600;
 		margin-bottom: var(--md);
+	}
+
+	.section-title {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--text-dim);
+		margin-top: var(--md);
+		margin-bottom: var(--xs);
+	}
+
+	.section-title:first-of-type {
+		margin-top: 0;
 	}
 
 	.shortcut-list {

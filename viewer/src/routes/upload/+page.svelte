@@ -14,7 +14,16 @@
 		closeStream,
 		resetProcessing,
 	} from '$lib/stores/processing';
-	import { uploadFiles, fetchCorpusFiles, triggerProcessing } from '$lib/api/client';
+	import {
+		discoveryStatus,
+		discoveryStage,
+		discoveryProgress,
+		discoveryLog,
+		startDiscoveryStream,
+		closeDiscoveryStream,
+		resetDiscovery,
+	} from '$lib/stores/discovery';
+	import { uploadFiles, fetchCorpusFiles, triggerProcessing, triggerDiscovery } from '$lib/api/client';
 	import type { CorpusFile } from '$lib/api/client';
 
 	import CorpusSidebar from '$lib/components/CorpusSidebar.svelte';
@@ -23,21 +32,26 @@
 	import ProcessButton from '$lib/components/ProcessButton.svelte';
 	import ProgressDisplay from '$lib/components/ProgressDisplay.svelte';
 	import ActivityLog from '$lib/components/ActivityLog.svelte';
+	import DiscoverButton from '$lib/components/DiscoverButton.svelte';
+	import DiscoveryProgress from '$lib/components/DiscoveryProgress.svelte';
 
 	let files = $state<Array<{ filename: string; size_bytes: number; format: string; status: string }>>([]);
 	let uploading = $state(false);
 	let activityExpanded = $state(false);
 	let navTimer: ReturnType<typeof setTimeout> | null = null;
+	let discoveryNavTimer: ReturnType<typeof setTimeout> | null = null;
 
 	// Load files when corpus changes
 	$effect(() => {
 		const corpus = $selectedCorpus;
 		if (corpus) {
 			resetProcessing();
+			resetDiscovery();
 			loadFiles(corpus.id);
 		} else {
 			files = [];
 			resetProcessing();
+			resetDiscovery();
 		}
 	});
 
@@ -51,6 +65,18 @@
 		}
 	});
 
+	// Auto-navigate to tasks on discovery completion
+	$effect(() => {
+		if ($discoveryStatus === 'complete') {
+			discoveryNavTimer = setTimeout(() => {
+				goto('/tasks');
+			}, 1500);
+			return () => {
+				if (discoveryNavTimer) clearTimeout(discoveryNavTimer);
+			};
+		}
+	});
+
 	// Auto-expand activity log on error
 	$effect(() => {
 		if ($processingStatus === 'error') {
@@ -60,13 +86,28 @@
 
 	// Status announcement text for screen readers
 	let statusAnnouncement = $derived(
-		$processingStatus === 'processing' && $currentStage
-			? `Processing stage: ${$currentStage}`
-			: $processingStatus === 'complete'
-				? `Processing complete. ${$totalUnits} knowledge units extracted.`
-				: $processingStatus === 'error'
-					? `Processing failed. ${$processingError || 'Check the activity log for details.'}`
-					: ''
+		$discoveryStatus === 'processing' && $discoveryStage
+			? `Discovery stage: ${$discoveryStage}`
+			: $discoveryStatus === 'complete'
+				? 'Task discovery complete.'
+				: $processingStatus === 'processing' && $currentStage
+					? `Processing stage: ${$currentStage}`
+					: $processingStatus === 'complete'
+						? `Processing complete. ${$totalUnits} knowledge units extracted.`
+						: $processingStatus === 'error'
+							? `Processing failed. ${$processingError || 'Check the activity log for details.'}`
+							: ''
+	);
+
+	// Derive discovery button status
+	let discoverStatus = $derived<'ready' | 'disabled' | 'processing' | 'complete'>(
+		$discoveryStatus === 'complete'
+			? 'complete'
+			: $discoveryStatus === 'processing'
+				? 'processing'
+				: $processingStatus === 'complete'
+					? 'ready'
+					: 'disabled'
 	);
 
 	async function loadFiles(corpusId: string) {
@@ -99,13 +140,23 @@
 		}
 	}
 
+	async function handleDiscover() {
+		if (!$selectedCorpus) return;
+		const result = await triggerDiscovery($selectedCorpus.id);
+		if (!('error' in result)) {
+			startDiscoveryStream($selectedCorpus.id);
+		}
+	}
+
 	function handleRemoveFile(filename: string) {
 		files = files.filter((f) => f.filename !== filename);
 	}
 
 	onDestroy(() => {
 		closeStream();
+		closeDiscoveryStream();
 		if (navTimer) clearTimeout(navTimer);
+		if (discoveryNavTimer) clearTimeout(discoveryNavTimer);
 	});
 </script>
 
@@ -120,7 +171,7 @@
 				</p>
 			</div>
 		{:else if $processingStatus === 'complete'}
-			<!-- Complete state: green progress, success message, auto-navigating -->
+			<!-- Complete state: green progress, success message, discovery trigger -->
 			<div class="upload-content">
 				<ProgressDisplay
 					progress={100}
@@ -130,6 +181,18 @@
 				<p class="success-text">
 					Processing complete &mdash; {files.length} files processed, {$totalUnits} knowledge units extracted.
 				</p>
+				<DiscoverButton status={discoverStatus} onclick={handleDiscover} />
+				{#if $discoveryStatus === 'processing' || $discoveryStatus === 'complete'}
+					<DiscoveryProgress
+						currentStage={$discoveryStage}
+						progress={$discoveryProgress}
+						status={$discoveryStatus}
+					/>
+					<ActivityLog entries={$discoveryLog} />
+				{/if}
+				{#if $discoveryStatus === 'complete'}
+					<a href="/tasks" class="review-link" data-sveltekit-preload-data>Review Task Tree</a>
+				{/if}
 			</div>
 		{:else if $processingStatus === 'processing'}
 			<!-- Processing state: progress display replaces upload zone -->
@@ -224,6 +287,19 @@
 	.reconnecting-text {
 		font-size: 11px;
 		color: var(--orange);
+	}
+
+	.review-link {
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--accent);
+		text-decoration: none;
+		text-align: center;
+		padding: var(--sm) 0;
+	}
+
+	.review-link:hover {
+		text-decoration: underline;
 	}
 
 	.sr-only {
