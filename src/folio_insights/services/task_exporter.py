@@ -1,13 +1,16 @@
 """Multi-format task hierarchy exporter.
 
-Produces Markdown, JSON, and HTML exports of discovered task hierarchies
-with their linked knowledge units grouped by type.
+Produces Markdown, JSON, HTML, OWL, Turtle, JSON-LD, and browsable HTML
+exports of discovered task hierarchies with their linked knowledge units
+grouped by type.
 """
 
 from __future__ import annotations
 
+import shutil
 from collections import defaultdict
 from html import escape
+from pathlib import Path
 from typing import Any
 
 
@@ -318,5 +321,393 @@ tr.resolved {{ background: rgba(100, 255, 218, 0.05); }}
 <p class="summary">Corpus: {corpus} | Tasks: {task_count} | Contradictions: {contra_count}</p>
 {"".join(body_parts)}
 {contra_html}
+</body>
+</html>"""
+
+    # ------------------------------------------------------------------ #
+    # OWL / Turtle / JSON-LD / Browsable HTML exports
+    # ------------------------------------------------------------------ #
+
+    async def export_owl(
+        self,
+        tasks: list[dict],
+        units_by_task: dict[str, list[dict]],
+        contradictions: list[dict],
+        metadata: dict,
+        db_path: Path,
+        output_dir: Path,
+    ) -> tuple[str, str, str | None]:
+        """Export OWL (RDF/XML) and Turtle, generate changelog.
+
+        Returns (rdfxml_content, turtle_content, changelog_content).
+        """
+        from folio_insights.services.changelog_generator import ChangelogGenerator
+        from folio_insights.services.iri_manager import IRIManager
+        from folio_insights.services.owl_serializer import OWLSerializer
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build IRI map
+        iri_manager = IRIManager(db_path)
+        iri_map: dict[str, str] = {}
+        corpus = metadata.get("corpus", "default")
+        for task in tasks:
+            # Tasks already have folio_iri from discovery; persist if needed
+            if task.get("folio_iri"):
+                iri_map[task["id"]] = task["folio_iri"]
+            else:
+                iri_map[task["id"]] = await iri_manager.get_or_create_iri(
+                    task["id"], "task", corpus
+                )
+        for task in tasks:
+            for unit in units_by_task.get(task["id"], []):
+                iri_map[unit["id"]] = await iri_manager.get_or_create_iri(
+                    unit["id"], "unit", corpus
+                )
+
+        # Build graph
+        serializer = OWLSerializer()
+        graph = serializer.build_graph(
+            tasks, units_by_task, iri_map, contradictions, metadata
+        )
+
+        # Serialize
+        rdfxml = serializer.serialize_rdfxml(graph)
+        turtle = serializer.serialize_turtle(graph)
+
+        owl_path = output_dir / "folio-insights.owl"
+        ttl_path = output_dir / "folio-insights.ttl"
+
+        # Changelog: archive previous, generate diff
+        changelog_gen = ChangelogGenerator()
+        prev_graph = changelog_gen.load_previous_graph(owl_path)
+        changelog_gen.archive_current(owl_path)
+        changelog = changelog_gen.generate(graph, prev_graph, corpus)
+
+        owl_path.write_text(rdfxml, encoding="utf-8")
+        ttl_path.write_text(turtle, encoding="utf-8")
+        (output_dir / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
+
+        return rdfxml, turtle, changelog
+
+    def export_owl_validate(
+        self,
+        graph: "Graph",  # noqa: F821 -- rdflib.Graph
+        output_dir: Path,
+    ) -> str:
+        """Run SHACL validation and write report.
+
+        Returns the validation report as markdown.
+        """
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        validator = SHACLValidator()
+        report = validator.generate_report(graph)
+        (output_dir / "validation-report.md").write_text(
+            report.markdown, encoding="utf-8"
+        )
+        return report.markdown
+
+    async def export_jsonld(
+        self,
+        tasks: list[dict],
+        units_by_task: dict[str, list[dict]],
+        db_path: Path,
+        output_dir: Path,
+    ) -> str:
+        """Export per-task JSON-LD chunks as JSONL.
+
+        Returns the JSONL content string.
+        """
+        from folio_insights.services.iri_manager import IRIManager
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Build IRI map
+        iri_manager = IRIManager(db_path)
+        iri_map: dict[str, str] = {}
+        corpus = "default"
+        for task in tasks:
+            if task.get("folio_iri"):
+                iri_map[task["id"]] = task["folio_iri"]
+            else:
+                iri_map[task["id"]] = await iri_manager.get_or_create_iri(
+                    task["id"], "task", corpus
+                )
+        for task in tasks:
+            for unit in units_by_task.get(task["id"], []):
+                iri_map[unit["id"]] = await iri_manager.get_or_create_iri(
+                    unit["id"], "unit", corpus
+                )
+
+        builder = JSONLDBuilder()
+        chunks = builder.build_all_chunks(tasks, units_by_task, iri_map)
+
+        # Copy context.jsonld to output dir
+        context_src = Path(__file__).parent.parent / "export" / "context.jsonld"
+        if context_src.exists():
+            shutil.copy2(str(context_src), str(output_dir / "context.jsonld"))
+
+        jsonl_path = output_dir / "folio-insights.jsonld"
+        builder.write_jsonl(chunks, jsonl_path)
+        return jsonl_path.read_text(encoding="utf-8")
+
+    def export_browsable_html(
+        self,
+        tasks: list[dict],
+        units_by_task: dict[str, list[dict]],
+        contradictions: list[dict],
+        metadata: dict,
+    ) -> str:
+        """Generate a static browsable HTML site with sidebar navigation.
+
+        Returns the complete HTML string for index.html.
+        """
+        # Build parent-child map
+        children_map: dict[str | None, list[dict]] = defaultdict(list)
+        for t in tasks:
+            children_map[t.get("parent_task_id")].append(t)
+
+        corpus = escape(metadata.get("corpus", ""))
+        task_count = len(tasks)
+
+        # Build sidebar navigation links
+        def _nav_item(task: dict, depth: int) -> str:
+            tid = escape(task["id"])
+            label = escape(task["label"])
+            indent = f"padding-left: {12 + depth * 16}px"
+            parts = [f'<li><a href="#{tid}" style="{indent}">{label}</a>']
+            kids = children_map.get(task["id"], [])
+            if kids:
+                parts.append("<ul>")
+                for child in kids:
+                    parts.append(_nav_item(child, depth + 1))
+                parts.append("</ul>")
+            parts.append("</li>")
+            return "\n".join(parts)
+
+        nav_items: list[str] = []
+        for root in children_map.get(None, []):
+            nav_items.append(_nav_item(root, 0))
+
+        # Build main content sections
+        def _task_section(task: dict, depth: int) -> str:
+            tid = escape(task["id"])
+            label = escape(task["label"])
+            heading_tag = f"h{min(depth + 2, 6)}"
+            parts = [
+                f'<details class="task-section" id="{tid}" open>',
+                f"<summary><{heading_tag}>{label}</{heading_tag}></summary>",
+                '<div class="task-body">',
+            ]
+
+            task_units = units_by_task.get(task["id"], [])
+            if task_units:
+                grouped = group_units_by_type(task_units)
+                for type_key, unit_list in grouped.items():
+                    type_name = escape(_type_label(type_key))
+                    parts.append(f'<h4 class="unit-group-label">{type_name}</h4>')
+                    for u in unit_list:
+                        text = escape(u.get("text", "").strip())
+                        conf = u.get("confidence", 0)
+                        source = escape(u.get("source_file", ""))
+                        conf_level = (
+                            "high" if conf >= 0.8
+                            else "medium" if conf >= 0.5
+                            else "low"
+                        )
+                        parts.append('<div class="unit-card">')
+                        parts.append(f'<p class="unit-text">{text}</p>')
+                        parts.append('<div class="unit-meta">')
+                        parts.append(
+                            f'<span class="confidence-badge {conf_level}">'
+                            f"{conf:.0%}</span>"
+                        )
+                        parts.append(
+                            f'<span class="source-ref">{source}</span>'
+                        )
+                        parts.append("</div></div>")
+
+            for child in children_map.get(task["id"], []):
+                parts.append(_task_section(child, depth + 1))
+
+            parts.append("</div></details>")
+            return "\n".join(parts)
+
+        content_parts: list[str] = []
+        for root in children_map.get(None, []):
+            content_parts.append(_task_section(root, 0))
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOLIO Insights -- {corpus}</title>
+<style>
+:root {{
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242736;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa3;
+    --accent: #6c8cff;
+    --accent-dim: rgba(108, 140, 255, 0.25);
+    --border: #2e3348;
+    --green: #4caf7c;
+    --orange: #e8a54c;
+    --red: #e05555;
+}}
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+}}
+.sidebar {{
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}}
+.sidebar h2 {{
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 0 16px 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+}}
+.sidebar ul {{
+    list-style: none;
+}}
+.sidebar a {{
+    display: block;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 16px;
+    transition: background 150ms, color 150ms;
+}}
+.sidebar a:hover {{
+    background: var(--surface2);
+    color: var(--text);
+}}
+.main {{
+    flex: 1;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}}
+.main > header {{
+    margin-bottom: 32px;
+}}
+.main > header h1 {{
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}}
+.main > header p {{
+    font-size: 13px;
+    color: var(--text-dim);
+}}
+.task-section {{
+    margin-bottom: 16px;
+}}
+.task-section > summary {{
+    cursor: pointer;
+    list-style: none;
+    padding: 8px 0;
+}}
+.task-section > summary::-webkit-details-marker {{ display: none; }}
+.task-section > summary h2,
+.task-section > summary h3,
+.task-section > summary h4,
+.task-section > summary h5,
+.task-section > summary h6 {{
+    font-weight: 600;
+    color: var(--text);
+    display: inline;
+}}
+.task-body {{
+    padding-left: 16px;
+    border-left: 2px solid var(--border);
+    margin-top: 8px;
+}}
+.unit-group-label {{
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 16px 0 8px;
+}}
+.unit-card {{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 8px;
+}}
+.unit-text {{
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 8px;
+}}
+.unit-meta {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+.confidence-badge {{
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 9999px;
+}}
+.confidence-badge.high {{
+    background: rgba(76, 175, 124, 0.15);
+    color: var(--green);
+}}
+.confidence-badge.medium {{
+    background: rgba(232, 165, 76, 0.15);
+    color: var(--orange);
+}}
+.confidence-badge.low {{
+    background: rgba(224, 85, 85, 0.15);
+    color: var(--red);
+}}
+.source-ref {{
+    font-size: 11px;
+    color: var(--text-dim);
+}}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+<h2>Task Hierarchy</h2>
+<ul>
+{"".join(nav_items)}
+</ul>
+</nav>
+<div class="main">
+<header>
+<h1>FOLIO Insights</h1>
+<p>Corpus: {corpus} | {task_count} tasks</p>
+</header>
+{"".join(content_parts)}
+</div>
 </body>
 </html>"""

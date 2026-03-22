@@ -277,6 +277,224 @@ def discover(
     click.echo(f"Tree:   {output}/{corpus_name}/task_tree.json")
 
 
+@cli.command("export")
+@click.argument("corpus_name")
+@click.option(
+    "--output", "-o",
+    default="./output",
+    show_default=True,
+    type=click.Path(resolve_path=True),
+    help="Output directory containing extraction results.",
+)
+@click.option(
+    "--format", "-f", "formats",
+    default="owl,ttl,jsonld,html,md",
+    show_default=True,
+    help="Comma-separated formats: owl,ttl,jsonld,html,md",
+)
+@click.option(
+    "--approved-only/--all",
+    default=True,
+    show_default=True,
+    help="Export only approved tasks (default: approved-only).",
+)
+@click.option(
+    "--validate/--no-validate",
+    default=True,
+    show_default=True,
+    help="Run SHACL validation after export.",
+)
+@click.option(
+    "--verbose", "-v",
+    is_flag=True,
+    default=False,
+    help="Enable verbose (DEBUG) logging.",
+)
+def export(
+    corpus_name: str,
+    output: str,
+    formats: str,
+    approved_only: bool,
+    validate: bool,
+    verbose: bool,
+) -> None:
+    """Export approved tasks as OWL ontology and companion files.
+
+    Reads review.db from the corpus output directory and exports the
+    approved task hierarchy in the requested formats.
+
+    Supported formats: owl (RDF/XML), ttl (Turtle), jsonld (JSON-LD),
+    html (browsable site), md (Markdown outline).
+    """
+    _setup_logging(verbose)
+
+    output_path = Path(output)
+    corpus_dir = output_path / corpus_name
+    db_path = corpus_dir / "review.db"
+
+    if not db_path.exists():
+        click.echo(
+            f"Error: No review database found at {db_path}. "
+            "Run 'folio-insights discover' first.",
+            err=True,
+        )
+        sys.exit(1)
+
+    # Load data from review.db using sync sqlite3
+    import json as _json
+    import sqlite3
+
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+
+    # Load tasks
+    if approved_only:
+        task_rows = conn.execute(
+            "SELECT * FROM task_decisions WHERE corpus_name = ? AND status = 'approved' "
+            "ORDER BY canonical_order, label",
+            (corpus_name,),
+        ).fetchall()
+    else:
+        task_rows = conn.execute(
+            "SELECT * FROM task_decisions WHERE corpus_name = ? "
+            "ORDER BY canonical_order, label",
+            (corpus_name,),
+        ).fetchall()
+
+    if not task_rows:
+        click.echo("Error: No tasks found to export.", err=True)
+        conn.close()
+        sys.exit(1)
+
+    tasks = [
+        {
+            "id": r["task_id"],
+            "label": r["edited_label"] or r["label"],
+            "folio_iri": r["folio_iri"],
+            "parent_task_id": r["parent_task_id"],
+            "is_procedural": bool(r["is_procedural"]),
+            "canonical_order": r["canonical_order"],
+            "is_manual": bool(r["is_manual"]),
+            "status": r["status"],
+        }
+        for r in task_rows
+    ]
+
+    # Load unit links
+    link_rows = conn.execute(
+        "SELECT task_id, unit_id FROM task_unit_links WHERE corpus_name = ?",
+        (corpus_name,),
+    ).fetchall()
+
+    task_unit_map: dict[str, list[str]] = {}
+    for r in link_rows:
+        task_unit_map.setdefault(r["task_id"], []).append(r["unit_id"])
+
+    # Load extraction.json for unit details
+    extraction_path = corpus_dir / "extraction.json"
+    if extraction_path.exists():
+        ext_data = _json.loads(extraction_path.read_text(encoding="utf-8"))
+        all_units = {u["id"]: u for u in ext_data.get("units", [])}
+    else:
+        all_units = {}
+
+    units_by_task: dict[str, list[dict]] = {}
+    for tid, uids in task_unit_map.items():
+        units_by_task[tid] = [all_units[uid] for uid in uids if uid in all_units]
+
+    # Load contradictions
+    contra_rows = conn.execute(
+        "SELECT * FROM contradictions WHERE corpus_name = ?",
+        (corpus_name,),
+    ).fetchall()
+    contradictions = [
+        {
+            "task_id": r["task_id"],
+            "unit_id_a": r["unit_id_a"],
+            "unit_id_b": r["unit_id_b"],
+            "nli_score": r["nli_score"],
+            "contradiction_type": r["contradiction_type"],
+            "resolution": r["resolution"],
+        }
+        for r in contra_rows
+    ]
+    conn.close()
+
+    metadata = {
+        "corpus": corpus_name,
+        "total_tasks": len(tasks),
+        "total_units": sum(len(v) for v in units_by_task.values()),
+    }
+
+    # Parse formats
+    format_list = [f.strip().lower() for f in formats.split(",") if f.strip()]
+
+    click.echo(f"Exporting corpus: {corpus_name}")
+    click.echo(f"Formats: {', '.join(format_list)}")
+    click.echo(f"Tasks: {len(tasks)} ({'approved only' if approved_only else 'all'})")
+    click.echo("")
+
+    from folio_insights.services.task_exporter import TaskExporter
+
+    exporter = TaskExporter()
+    produced_files: list[str] = []
+
+    # OWL and Turtle
+    if "owl" in format_list or "ttl" in format_list:
+        rdfxml, turtle, changelog = asyncio.run(
+            exporter.export_owl(
+                tasks, units_by_task, contradictions, metadata, db_path, corpus_dir
+            )
+        )
+        if "owl" in format_list:
+            produced_files.append(f"folio-insights.owl ({len(rdfxml)} bytes)")
+        if "ttl" in format_list:
+            produced_files.append(f"folio-insights.ttl ({len(turtle)} bytes)")
+        if changelog:
+            produced_files.append("CHANGELOG.md")
+
+        # Validation
+        if validate:
+            from folio_insights.services.owl_serializer import OWLSerializer
+
+            serializer = OWLSerializer()
+            graph = serializer.build_graph(
+                tasks, units_by_task,
+                {t["id"]: t["folio_iri"] for t in tasks if t.get("folio_iri")},
+                contradictions, metadata,
+            )
+            report_md = exporter.export_owl_validate(graph, corpus_dir)
+            produced_files.append("validation-report.md")
+            if "FAIL" in report_md:
+                click.echo("Warning: SHACL validation has failures.", err=True)
+
+    # JSON-LD
+    if "jsonld" in format_list:
+        asyncio.run(
+            exporter.export_jsonld(tasks, units_by_task, db_path, corpus_dir)
+        )
+        produced_files.append("folio-insights.jsonld")
+
+    # HTML browsable
+    if "html" in format_list:
+        html = exporter.export_browsable_html(
+            tasks, units_by_task, contradictions, metadata
+        )
+        (corpus_dir / "browsable-index.html").write_text(html, encoding="utf-8")
+        produced_files.append("browsable-index.html")
+
+    # Markdown
+    if "md" in format_list:
+        md = exporter.export_markdown(tasks, units_by_task)
+        (corpus_dir / "task-hierarchy.md").write_text(md, encoding="utf-8")
+        produced_files.append("task-hierarchy.md")
+
+    click.echo("--- Export Summary ---")
+    for pf in produced_files:
+        click.echo(f"  {pf}")
+    click.echo(f"Output: {corpus_dir}/")
+
+
 @cli.command("serve")
 @click.option(
     "--port", "-p",
