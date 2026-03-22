@@ -83,11 +83,11 @@ Plans:
   2. All three consumption modes work: SPARQL queries return structured results, JSON-LD chunks are suitable for LLM RAG retrieval, and human-browsable output (HTML/MD) renders the knowledge hierarchy
   3. The OWL output passes validation (well-formed XML, valid RDF, no IRI collisions, referential integrity, namespace consistency) and includes annotated diffs and SHACL validation for FOLIO maintainer review
   4. Adding new source files to the corpus produces updated output without reprocessing previously processed files
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: OWL and companion file generation with IRI strategy
-- [ ] 03-02: Multi-consumer output formats, validation pipeline, and incremental processing
+- [ ] 03-01-PLAN.md -- Core OWL serialization engine: IRI manager, graph builder, SHACL validator, changelog generator, JSON-LD RAG chunks
+- [ ] 03-02-PLAN.md -- Multi-consumer delivery: extend TaskExporter, CLI export command, API endpoints, ExportDialog UI with validation display
 
 ## Progress
 
