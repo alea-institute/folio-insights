@@ -48,12 +48,14 @@ All values inherited from existing project conventions established across Phases
 
 | Role | Size | Weight | Line Height | Usage in This Phase |
 |------|------|--------|-------------|---------------------|
-| Body | 14px | 400 | 1.5 | Dialog description text, format descriptions, validation report body |
-| Label | 11px uppercase, letter-spacing 0.5px | 600 | 1.3 | Field labels in export dialog ("OUTPUT FORMATS", "OPTIONS"), checkbox labels use 13px/400 |
+| Body | 14px | 400 | 1.5 | Dialog description text, format descriptions, validation report body, checkbox labels |
+| Label | 11px uppercase, letter-spacing 0.5px | 600 | 1.3 | Field labels in export dialog ("OUTPUT FORMATS", "OPTIONS") |
 | Heading | 18px | 600 | 1.2 | Export dialog title ("Export Ontology") |
 | Small | 11px | 400 | 1.3 | Validation status badges, file size estimates, footnotes |
 
-Source: Established in ConfirmDialog (title: 16px/600), ManualTaskDialog (heading: 18px/600, label: 11px uppercase), ConfidenceBadge (11px/700).
+Declared sizes: 11px, 14px, 18px, 24px (4 sizes). Declared weights: 400, 600 (2 weights).
+
+Source: Established in ConfirmDialog (title: 18px/600), ManualTaskDialog (heading: 18px/600, label: 11px uppercase), ConfidenceBadge (11px/600).
 
 ---
 
@@ -120,7 +122,7 @@ Additional semantic colors used in this phase:
 |  IRIs: 42 new | 0 collisions        |
 |  -----------------------------------+
 |                                      |
-|            Cancel    Export Ontology  |
+|            Close    Export Ontology   |
 +--------------------------------------+
 ```
 
@@ -142,7 +144,7 @@ Additional semantic colors used in this phase:
 - Size: 16x16px custom checkbox (not native)
 - Unchecked: `var(--surface2)` background, `var(--border)` border, 4px border-radius
 - Checked: `var(--accent)` background, white checkmark SVG (12x12 stroke-width 2)
-- Label: 13px, `var(--text)`, 8px gap from checkbox
+- Label: 14px, `var(--text)`, 8px gap from checkbox
 - Description (optional per format): 11px, `var(--text-dim)`, indented under label
 
 **Focus trap:** Manual Tab/Shift+Tab interception matching ConfirmDialog and ManualTaskDialog pattern.
@@ -169,11 +171,11 @@ Additional semantic colors used in this phase:
 ```
 
 **Badge styling (reuses ConfidenceBadge pattern):**
-- PASS: `rgba(76, 175, 124, 0.15)` background, `#4caf7c` text, 11px/700 font
-- WARN: `rgba(232, 165, 76, 0.15)` background, `#e8a54c` text, 11px/700 font
-- FAIL: `rgba(224, 85, 85, 0.15)` background, `#e05555` text, 11px/700 font
+- PASS: `rgba(76, 175, 124, 0.15)` background, `#4caf7c` text, 11px/600 font
+- WARN: `rgba(232, 165, 76, 0.15)` background, `#e8a54c` text, 11px/600 font
+- FAIL: `rgba(224, 85, 85, 0.15)` background, `#e05555` text, 11px/600 font
 - Border-radius: 9999px (pill shape, matching ConfidenceBadge)
-- Padding: 1px 8px (matching ConfidenceBadge)
+- Padding: 4px 8px (`var(--xs)` vertical, `var(--sm)` horizontal)
 
 **Container:** `var(--surface2)` background, 1px `var(--border)` border, 6px border-radius, `var(--sm)` padding. Appears with 150ms opacity transition.
 
@@ -198,7 +200,7 @@ Additional semantic colors used in this phase:
 
 **Placement:** In `.header-right` for the tasks page, between the dashboard toggle icon and settings icon.
 
-**After export completes:** Show a transient text indicator "Exported" in `var(--green)` at 13px, auto-fading after 3 seconds via opacity transition (150ms ease). Same pattern as `.review-progress` text element.
+**After export completes:** Show a transient text indicator "Exported" in `var(--green)` at 14px, auto-fading after 3 seconds via opacity transition (150ms ease). Same pattern as `.review-progress` text element.
 
 ---
 
@@ -209,6 +211,7 @@ Additional semantic colors used in this phase:
 | Primary CTA | "Export Ontology" |
 | Dialog title | "Export Ontology" |
 | Dialog description | "Export approved tasks and knowledge units as FOLIO-compatible ontology files." |
+| Dialog dismiss CTA | "Close" |
 | Empty state heading | "No approved tasks" |
 | Empty state body | "Approve tasks in the task tree before exporting. Use 'a' to approve the selected task or Shift+A to bulk approve high-confidence tasks." |
 | Error state | "Export failed: {error_message}. Check that the corpus has approved tasks and try again." |
@@ -242,7 +245,7 @@ Additional semantic colors used in this phase:
 5. Button enters exporting state; checkboxes become disabled; overlay click does not close dialog
 6. On completion: ValidationSummary appears with pass/warn/fail badges; button changes to "Download Files"; individual format links appear below checkboxes (each format that was selected gets a download link)
 7. User clicks "Download Files" to download a ZIP of all selected formats, or clicks individual format links
-8. Dialog closes on Escape or Cancel (not during export)
+8. Dialog closes on Escape or "Close" button (not during export)
 
 ### Download Mechanism
 
@@ -264,6 +267,7 @@ Additional semantic colors used in this phase:
 
 - Dialog uses `role="dialog"` (not `alertdialog` — export is not destructive) with `aria-modal="true"`
 - `aria-labelledby` points to dialog title, `aria-describedby` points to description paragraph
+- Close button (`[x]`) uses `aria-label="Close export dialog"`
 - Checkboxes use native `<input type="checkbox">` with `<label>` association (not custom divs with role="checkbox")
 - ValidationSummary badges use `aria-label` for screen reader context (e.g., `aria-label="SHACL validation: passed"`)
 - Export progress announced via `aria-live="polite"` region (reuse existing `.sr-only` pattern from Tasks page)
@@ -286,10 +290,10 @@ The static HTML site generated in `browsable/` directory must match the existing
 | Link hover | `#8ea8ff` (lighter accent for hover state) |
 | Font | `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` |
 | Body font size | 14px |
-| Heading sizes | h1: 24px, h2: 18px, h3: 16px |
+| Heading sizes | h1: 24px, h2: 18px, h3: 14px |
 | Container max-width | 960px, centered |
 | Card styling | `background: #1a1d27; border: 1px solid #2e3348; border-radius: 8px; padding: 24px` |
-| Confidence badge | Same pill pattern as ConfidenceBadge.svelte (11px/700, pill shape, semantic colors at 15% opacity) |
+| Confidence badge | Same pill pattern as ConfidenceBadge.svelte (11px/600, pill shape, semantic colors at 15% opacity) |
 | Navigation | Sidebar with task tree links, fixed-width 240px on desktop, collapsible on mobile |
 
 ---
