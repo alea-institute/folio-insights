@@ -1,10 +1,12 @@
-"""Tests for OWL export engine: IRI manager and OWL serializer.
+"""Tests for OWL export engine: IRI manager, OWL serializer, SHACL validator,
+changelog generator, and JSON-LD builder.
 
 Covers requirements: OWL-01, OWL-02, OWL-04, OWL-05, PIPE-01.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 import tempfile
@@ -411,3 +413,321 @@ class TestOWLSerializer:
         unit_iri = URIRef(SAMPLE_IRI_MAP["unit-1"])
         task1_iri = URIRef(SAMPLE_TASKS[0]["folio_iri"])
         assert (unit_iri, RDF.type, task1_iri) in g
+
+
+# =========================================================================== #
+# Helper: build a valid graph for validator/changelog tests
+# =========================================================================== #
+
+
+def _build_valid_graph() -> Graph:
+    """Build a known-valid OWL graph using OWLSerializer with sample data."""
+    from folio_insights.services.owl_serializer import OWLSerializer
+
+    ser = OWLSerializer()
+    return ser.build_graph(
+        SAMPLE_TASKS,
+        SAMPLE_UNITS_BY_TASK,
+        SAMPLE_IRI_MAP,
+        SAMPLE_CONTRADICTIONS,
+        SAMPLE_METADATA,
+    )
+
+
+# =========================================================================== #
+# SHACL Validator Tests
+# =========================================================================== #
+
+
+class TestSHACLValidator:
+    """Test SHACL validation of OWL graphs."""
+
+    def test_shacl_valid_graph(self) -> None:
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        validator = SHACLValidator()
+        result = validator.validate(_build_valid_graph())
+        assert result.conforms is True
+
+    def test_shacl_missing_label(self) -> None:
+        """A class without rdfs:label should cause a SHACL violation."""
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        g = _build_valid_graph()
+        # Add a class without a label
+        bad_class = URIRef("https://folio.openlegalstandard.org/nolabel")
+        g.add((bad_class, RDF.type, OWL.Class))
+
+        validator = SHACLValidator()
+        result = validator.validate(g)
+        assert result.conforms is False
+        assert len(result.violations) >= 1
+
+    def test_shacl_missing_provenance(self) -> None:
+        """An individual without prov:wasDerivedFrom should cause a violation."""
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        g = Graph()
+        g.bind("owl", OWL)
+        g.bind("rdfs", RDFS)
+        g.bind("prov", PROV)
+
+        # Ontology stub
+        ont = URIRef("https://folio.openlegalstandard.org/modules/folio-insights")
+        g.add((ont, RDF.type, OWL.Ontology))
+
+        # Individual without prov:wasDerivedFrom
+        ind = URIRef("https://folio.openlegalstandard.org/badunit")
+        g.add((ind, RDF.type, OWL.NamedIndividual))
+        g.add((ind, RDFS.label, Literal("Bad unit")))
+
+        validator = SHACLValidator()
+        result = validator.validate(g)
+        assert result.conforms is False
+
+    def test_generate_report_heading(self) -> None:
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        validator = SHACLValidator()
+        report = validator.generate_report(_build_valid_graph())
+        assert "# Validation Report" in report.markdown
+
+    def test_generate_report_status_markers(self) -> None:
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        validator = SHACLValidator()
+        report = validator.generate_report(_build_valid_graph())
+        # Should have PASS/WARN/FAIL markers
+        assert any(c.status in ("PASS", "WARN", "FAIL") for c in report.checks)
+
+    def test_check_iri_uniqueness(self) -> None:
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        validator = SHACLValidator()
+        violations = validator.check_iri_uniqueness(_build_valid_graph())
+        # Valid graph should have no duplicate IRIs
+        assert len(violations) == 0
+
+    def test_check_referential_integrity(self) -> None:
+        from folio_insights.services.shacl_validator import SHACLValidator
+
+        validator = SHACLValidator()
+        violations = validator.check_referential_integrity(_build_valid_graph())
+        # Valid graph should have no dangling references
+        assert len(violations) == 0
+
+
+# =========================================================================== #
+# Changelog Generator Tests
+# =========================================================================== #
+
+
+class TestChangelogGenerator:
+    """Test diff computation and changelog generation."""
+
+    def test_changelog_first_export(self) -> None:
+        from folio_insights.services.changelog_generator import ChangelogGenerator
+
+        gen = ChangelogGenerator()
+        changelog = gen.generate(_build_valid_graph(), None, "trial-advocacy")
+        assert "CHANGELOG" in changelog
+        assert "First export" in changelog or "first export" in changelog.lower()
+
+    def test_changelog_with_diff(self) -> None:
+        from folio_insights.services.changelog_generator import ChangelogGenerator
+
+        prev_graph = _build_valid_graph()
+
+        # Build a new graph with an extra task
+        from folio_insights.services.owl_serializer import OWLSerializer
+
+        extended_tasks = SAMPLE_TASKS + [
+            {
+                "id": "task-3",
+                "label": "Redirect Examination",
+                "folio_iri": "https://folio.openlegalstandard.org/ghi789",
+                "parent_task_id": None,
+                "is_procedural": False,
+                "canonical_order": 3,
+                "is_manual": False,
+                "status": "approved",
+            },
+        ]
+        extended_iri_map = {
+            **SAMPLE_IRI_MAP,
+            "task-3": "https://folio.openlegalstandard.org/ghi789",
+        }
+
+        ser = OWLSerializer()
+        new_graph = ser.build_graph(
+            extended_tasks,
+            SAMPLE_UNITS_BY_TASK,
+            extended_iri_map,
+            SAMPLE_CONTRADICTIONS,
+            SAMPLE_METADATA,
+        )
+
+        gen = ChangelogGenerator()
+        changelog = gen.generate(new_graph, prev_graph, "trial-advocacy")
+        assert "CHANGELOG" in changelog
+        assert "Added" in changelog or "added" in changelog.lower() or "New" in changelog
+        assert "Statistics" in changelog or "statistics" in changelog.lower()
+
+    def test_changelog_statistics_section(self) -> None:
+        from folio_insights.services.changelog_generator import ChangelogGenerator
+
+        gen = ChangelogGenerator()
+        changelog = gen.generate(_build_valid_graph(), _build_valid_graph(), "test")
+        assert "Statistics" in changelog or "statistics" in changelog.lower()
+
+    def test_changelog_markdown_structure(self) -> None:
+        from folio_insights.services.changelog_generator import ChangelogGenerator
+
+        gen = ChangelogGenerator()
+        changelog = gen.generate(_build_valid_graph(), None, "test")
+        assert changelog.startswith("#")
+
+
+# =========================================================================== #
+# JSON-LD Builder Tests
+# =========================================================================== #
+
+
+class TestJSONLDBuilder:
+    """Test per-task JSON-LD chunk generation for RAG."""
+
+    def test_jsonld_chunk_structure(self) -> None:
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        builder = JSONLDBuilder()
+        chunk = builder.build_task_chunk(
+            SAMPLE_TASKS[0],
+            SAMPLE_UNITS_BY_TASK.get("task-1", []),
+            [SAMPLE_TASKS[1]],  # subtasks
+            SAMPLE_IRI_MAP,
+        )
+        assert "@context" in chunk
+        assert "@id" in chunk
+        assert "@type" in chunk
+        assert "rdfs:label" in chunk
+        assert "fi:units" in chunk
+
+    def test_jsonld_chunk_context_reference(self) -> None:
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        builder = JSONLDBuilder()
+        chunk = builder.build_task_chunk(
+            SAMPLE_TASKS[0],
+            SAMPLE_UNITS_BY_TASK.get("task-1", []),
+            [],
+            SAMPLE_IRI_MAP,
+        )
+        assert chunk["@context"] == "./context.jsonld"
+
+    def test_jsonld_chunk_subtasks(self) -> None:
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        builder = JSONLDBuilder()
+        chunk = builder.build_task_chunk(
+            SAMPLE_TASKS[0],
+            SAMPLE_UNITS_BY_TASK.get("task-1", []),
+            [SAMPLE_TASKS[1]],
+            SAMPLE_IRI_MAP,
+        )
+        assert "fi:subtasks" in chunk
+        assert len(chunk["fi:subtasks"]) == 1
+
+    def test_jsonld_chunk_units_data(self) -> None:
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        builder = JSONLDBuilder()
+        chunk = builder.build_task_chunk(
+            SAMPLE_TASKS[0],
+            SAMPLE_UNITS_BY_TASK.get("task-1", []),
+            [],
+            SAMPLE_IRI_MAP,
+        )
+        units = chunk["fi:units"]
+        assert len(units) == 3
+        assert units[0]["@type"] == "owl:NamedIndividual"
+        assert "fi:unitType" in units[0]
+        assert "fi:confidence" in units[0]
+        assert "dc:source" in units[0]
+
+    def test_jsonld_write_jsonl(self, tmp_path: Path) -> None:
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        builder = JSONLDBuilder()
+        chunks = [
+            builder.build_task_chunk(
+                SAMPLE_TASKS[0],
+                SAMPLE_UNITS_BY_TASK.get("task-1", []),
+                [SAMPLE_TASKS[1]],
+                SAMPLE_IRI_MAP,
+            ),
+            builder.build_task_chunk(
+                SAMPLE_TASKS[1],
+                SAMPLE_UNITS_BY_TASK.get("task-2", []),
+                [],
+                SAMPLE_IRI_MAP,
+            ),
+        ]
+        out = tmp_path / "test.jsonl"
+        builder.write_jsonl(chunks, out)
+
+        lines = out.read_text().strip().splitlines()
+        assert len(lines) == 2
+        # Each line is valid JSON
+        for line in lines:
+            parsed = json.loads(line)
+            assert "@context" in parsed
+
+    def test_jsonld_build_all_chunks(self) -> None:
+        from folio_insights.services.jsonld_builder import JSONLDBuilder
+
+        builder = JSONLDBuilder()
+        chunks = builder.build_all_chunks(
+            SAMPLE_TASKS, SAMPLE_UNITS_BY_TASK, SAMPLE_IRI_MAP
+        )
+        # Only root tasks (no parent) become top-level chunks
+        root_tasks = [t for t in SAMPLE_TASKS if t["parent_task_id"] is None]
+        assert len(chunks) == len(root_tasks)
+
+
+# =========================================================================== #
+# Static Asset Tests
+# =========================================================================== #
+
+
+class TestStaticAssets:
+    """Test that static export assets are valid."""
+
+    def test_context_jsonld_valid(self) -> None:
+        context_path = (
+            Path(__file__).parent.parent
+            / "src"
+            / "folio_insights"
+            / "export"
+            / "context.jsonld"
+        )
+        data = json.loads(context_path.read_text())
+        ctx = data["@context"]
+        assert ctx["folio"] == "https://folio.openlegalstandard.org/"
+        assert "owl" in ctx
+        assert "rdfs" in ctx
+        assert "skos" in ctx
+        assert "dc" in ctx
+        assert "prov" in ctx
+        assert "fi" in ctx
+
+    def test_shapes_ttl_valid(self) -> None:
+        shapes_path = (
+            Path(__file__).parent.parent
+            / "src"
+            / "folio_insights"
+            / "export"
+            / "shapes.ttl"
+        )
+        g = Graph()
+        g.parse(str(shapes_path), format="turtle")
+        assert len(g) > 0
