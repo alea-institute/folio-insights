@@ -50,15 +50,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Ontology Output
 
-- [ ] **OWL-01**: System produces valid OWL with core structural mappings (classes, properties, cross-references) compatible with FOLIO
-- [ ] **OWL-02**: System produces a companion SKOS/RDFS file for detailed advice content linked to OWL via IRIs
+- [x] **OWL-01**: System produces valid OWL with core structural mappings (classes, properties, cross-references) compatible with FOLIO
+- [x] **OWL-02**: System produces a companion SKOS/RDFS file for detailed advice content linked to OWL via IRIs
 - [ ] **OWL-03**: System supports multiple consumption modes: SPARQL/API queries, LLM RAG retrieval (JSON-LD chunks), and human browsing (HTML/MD)
-- [ ] **OWL-04**: System produces a FOLIO-incorporation-ready format — standalone OWL module using FOLIO namespace conventions, with annotated diffs and SHACL validation, so FOLIO maintainers can review and merge additions
-- [ ] **OWL-05**: System generates new FOLIO IRIs using folio-python's WebProtege-compatible algorithm (UUID4 → base64 → alphanumeric filter → `https://folio.openlegalstandard.org/{token}`)
+- [x] **OWL-04**: System produces a FOLIO-incorporation-ready format — standalone OWL module using FOLIO namespace conventions, with annotated diffs and SHACL validation, so FOLIO maintainers can review and merge additions
+- [x] **OWL-05**: System generates new FOLIO IRIs using folio-python's WebProtege-compatible algorithm (UUID4 → base64 → alphanumeric filter → `https://folio.openlegalstandard.org/{token}`)
 
 ### Pipeline
 
-- [ ] **PIPE-01**: System handles incremental corpus growth — new files processed without reprocessing entire corpus
+- [x] **PIPE-01**: System handles incremental corpus growth — new files processed without reprocessing entire corpus
 - [x] **PIPE-02**: Pipeline runs as batch process (CLI or script-triggered)
 
 ## v2 Requirements
@@ -119,12 +119,12 @@ Deferred to future release. Tracked but not in current roadmap.
 | TASK-02 | Phase 2 | Complete |
 | TASK-03 | Phase 2 | Complete |
 | TASK-04 | Phase 2 | Complete |
-| OWL-01 | Phase 3 | Pending |
-| OWL-02 | Phase 3 | Pending |
+| OWL-01 | Phase 3 | Complete |
+| OWL-02 | Phase 3 | Complete |
 | OWL-03 | Phase 3 | Pending |
-| OWL-04 | Phase 3 | Pending |
-| OWL-05 | Phase 3 | Pending |
-| PIPE-01 | Phase 3 | Pending |
+| OWL-04 | Phase 3 | Complete |
+| OWL-05 | Phase 3 | Complete |
+| PIPE-01 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total

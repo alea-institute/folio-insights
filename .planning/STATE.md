@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Not Started
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-20T19:11:37.626Z"
-last_activity: 2026-03-19 -- Completed 02-05 (frontend dashboard, discovery trigger, navigation, visual verification)
+status: In Progress
+stopped_at: Completed 03-01 (OWL serialization engine)
+last_updated: "2026-03-22T22:18:55Z"
+last_activity: 2026-03-22 -- Completed 03-01 (OWL serialization engine with IRI manager, SHACL validator, changelog, JSON-LD builder)
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
+  total_plans: 15
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -21,23 +21,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 02 Task Hierarchy Discovery complete. Ready for Phase 03 (Ontology Output and Delivery).
+**Current focus:** Phase 03 Ontology Output and Delivery in progress. Plan 01 (OWL serialization engine) complete. Ready for Plan 02.
 
 ## Current Position
 
 Phase: 03 of 4 (Ontology Output and Delivery)
-Plan: 1 of 2 in current phase
-Status: Not Started
-Last activity: 2026-03-19 -- Completed 02-05 (frontend dashboard, discovery trigger, navigation, visual verification)
+Plan: 2 of 2 in current phase
+Status: In Progress
+Last activity: 2026-03-22 -- Completed 03-01 (OWL serialization engine)
 
-Progress: [██████████] 100%
+Progress: [█████████▒] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: 9.5 min
-- Total execution time: 2.16 hours
+- Total plans completed: 14
+- Average duration: 9.4 min
+- Total execution time: 2.3 hours
 
 **By Phase:**
 
@@ -46,17 +46,18 @@ Progress: [██████████] 100%
 | 01-knowledge-extraction-pipeline | 4/4 | 71 min | 17.8 min |
 | 01.1-upload-processing-ui | 4/4 | 22 min | 5.5 min |
 | 02-task-hierarchy-discovery | 5/5 | 37 min | 7.4 min |
+| 03-ontology-output-and-delivery | 1/2 | 8 min | 8.0 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 6 min, 7 min, 8 min, 12 min
-- Trend: Slight increase (final plan included checkpoint verification across sessions)
+- Last 5 plans: 6 min, 7 min, 8 min, 12 min, 8 min
+- Trend: Stable around 8 min average
 
 *Updated after each plan completion*
-| Phase 02 P01 | 4 min | 2 tasks | 14 files |
 | Phase 02 P02 | 6 min | 2 tasks | 7 files |
 | Phase 02 P03 | 7 min | 2 tasks | 9 files |
 | Phase 02 P04 | 8 min | 2 tasks | 13 files |
 | Phase 02 P05 | 12 min | 3 tasks | 10 files |
+| Phase 03 P01 | 8 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,12 @@ Recent decisions affecting current work:
 - [02-05]: DiscoverButton follows ProcessButton 4-state lifecycle for consistency across upload workflow
 - [02-05]: Dashboard toggle placed in header-right as grid icon matching compact header action pattern
 - [02-05]: Keyboard shortcuts organized in REVIEW and TASK OPERATIONS sections for clarity
+- [03-01]: Reimplemented folio-python IRI algorithm standalone to avoid 10s ontology download on every export
+- [03-01]: Advice text aggregated as fi: annotation properties on task classes per CONTEXT.md single-file architecture
+- [03-01]: Entity-level changelog diffing (compare IRI sets) instead of full triple-level graph subtraction
+- [03-01]: Custom compact JSON-LD chunks for RAG instead of rdflib expanded form (3x smaller)
+- [03-01]: rdflib serializes OWL as rdf:Description (valid RDF/XML) not owl:Ontology shorthand
+- [03-01]: Namespace pre-binding pattern: all g.bind() before any g.add() to prevent ns1: artifacts
 
 ### Pending Todos
 
@@ -136,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20T19:11:37.624Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-ontology-output-and-delivery/03-CONTEXT.md
+Last session: 2026-03-22T22:18:55Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-ontology-output-and-delivery/03-02-PLAN.md
