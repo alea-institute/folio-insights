@@ -499,3 +499,47 @@ export async function triggerDiscovery(
 export function getDiscoverySSEUrl(corpusId: string): string {
 	return `${API_BASE}/api/v1/corpus/${corpusId}/discover/stream`;
 }
+
+// ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
+
+export interface ExportValidationCheck {
+	name: string;
+	status: 'PASS' | 'WARN' | 'FAIL';
+	details: string;
+}
+
+export interface ExportValidationResult {
+	conforms: boolean;
+	checks: ExportValidationCheck[];
+	markdown: string;
+}
+
+export async function triggerExport(
+	corpusId: string,
+	formats: string[],
+): Promise<{ success: boolean; validation?: ExportValidationResult } | { error: string }> {
+	// Trigger export via bundle endpoint which generates all files server-side
+	return request(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ formats }),
+	});
+}
+
+export async function fetchExportValidation(
+	corpusId: string,
+): Promise<ExportValidationResult | { error: string }> {
+	return request<ExportValidationResult>(
+		`${API_BASE}/api/v1/corpus/${corpusId}/export/validation`
+	);
+}
+
+export function getExportDownloadUrl(corpusId: string, format: string): string {
+	return `${API_BASE}/api/v1/corpus/${corpusId}/export/${format}`;
+}
+
+export function getExportBundleUrl(corpusId: string, formats: string[]): string {
+	return `${API_BASE}/api/v1/corpus/${corpusId}/export/bundle?formats=${formats.join(',')}`;
+}

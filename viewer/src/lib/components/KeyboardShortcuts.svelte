@@ -19,6 +19,7 @@
 	];
 
 	const taskShortcuts = [
+		{ key: 'x', action: 'Export ontology', scope: 'Tasks page' },
 		{ key: 'M', action: 'Move task to new parent', scope: 'Task tree' },
 		{ key: 'G', action: 'Merge selected task into another', scope: 'Task tree' },
 		{ key: 'Shift+A', action: 'Bulk approve all high-confidence tasks', scope: 'Tasks page' },

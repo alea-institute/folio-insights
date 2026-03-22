@@ -25,6 +25,7 @@
 	import DiscoveryEvidence from '$lib/components/DiscoveryEvidence.svelte';
 	import TaskDashboard from '$lib/components/TaskDashboard.svelte';
 	import ManualTaskDialog from '$lib/components/ManualTaskDialog.svelte';
+	import ExportDialog from '$lib/components/ExportDialog.svelte';
 	import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
 
 	let leftWidth = $state(320);
@@ -35,7 +36,10 @@
 	let focusedPane = $state<'tree' | 'detail' | 'evidence'>('tree');
 	let showDashboard = $state(false);
 	let showManualTaskDialog = $state(false);
+	let showExportDialog = $state(false);
 	let shortcutsRef: KeyboardShortcuts | undefined = $state();
+
+	let hasApprovedTasks = $derived($taskTreeData.some((n) => n.is_task && n.review_status === 'complete'));
 
 	const LEFT_MIN = 280;
 	const LEFT_MAX = 480;
@@ -166,8 +170,17 @@
 
 		// Escape: close modals/dashboard
 		if (e.key === 'Escape') {
+			if (showExportDialog) { showExportDialog = false; return; }
 			if (showDashboard) { showDashboard = false; return; }
 			if (showManualTaskDialog) { showManualTaskDialog = false; return; }
+			return;
+		}
+
+		// x: open export dialog
+		if (e.key === 'x' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+			if (corpusId && !showExportDialog && !showManualTaskDialog) {
+				showExportDialog = true;
+			}
 			return;
 		}
 
@@ -268,6 +281,17 @@
 		onclick={() => (focusedPane = 'tree')}
 	>
 		<div class="tree-header">
+			<button
+				class="export-btn"
+				onclick={() => (showExportDialog = true)}
+				disabled={!corpusId}
+				aria-label="Export ontology"
+			>
+				<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M6 1v7M3 5l3 3 3-3M2 10h8" />
+				</svg>
+				Export
+			</button>
 			<button class="new-task-btn" onclick={() => (showManualTaskDialog = true)} aria-label="Create new task">
 				<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M6 1v10M1 6h10" />
@@ -341,6 +365,14 @@
 	ondismiss={() => (showManualTaskDialog = false)}
 />
 
+<!-- Export Dialog -->
+<ExportDialog
+	open={showExportDialog}
+	corpusId={corpusId}
+	hasApprovedTasks={hasApprovedTasks}
+	ondismiss={() => (showExportDialog = false)}
+/>
+
 <!-- Keyboard Shortcuts Modal -->
 <KeyboardShortcuts bind:this={shortcutsRef} />
 
@@ -394,6 +426,32 @@
 		padding: var(--xs) var(--sm);
 		border-bottom: 1px solid var(--border);
 		flex-shrink: 0;
+	}
+
+	.export-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--xs);
+		padding: var(--xs) var(--sm);
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--accent);
+		background: transparent;
+		border: 1px solid var(--accent-dim);
+		border-radius: 4px;
+		cursor: pointer;
+		transition: background 150ms ease;
+	}
+
+	.export-btn:hover:not(:disabled) {
+		background: var(--highlight);
+	}
+
+	.export-btn:disabled {
+		background: var(--surface3);
+		color: var(--text-dim);
+		cursor: not-allowed;
+		border-color: var(--border);
 	}
 
 	.new-task-btn {
