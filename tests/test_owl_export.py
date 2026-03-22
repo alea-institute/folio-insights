@@ -394,7 +394,9 @@ class TestOWLSerializer:
         g = self._build_graph()
         ser = OWLSerializer()
         xml = ser.serialize_rdfxml(g)
-        assert "<owl:Ontology" in xml
+        # rdflib uses rdf:Description with rdf:type, not <owl:Ontology> shorthand
+        assert "folio-insights" in xml
+        assert "owl#Ontology" in xml
 
     def test_serialize_turtle(self) -> None:
         from folio_insights.services.owl_serializer import OWLSerializer

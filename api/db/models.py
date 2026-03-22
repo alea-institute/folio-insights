@@ -92,10 +92,22 @@ CREATE TABLE IF NOT EXISTS source_authority (
     UNIQUE(corpus_name, source_file)
 );
 
+CREATE TABLE IF NOT EXISTS iri_registry (
+    entity_id TEXT NOT NULL UNIQUE,
+    entity_type TEXT NOT NULL,
+    iri TEXT NOT NULL UNIQUE,
+    corpus_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deprecated_at TEXT,
+    superseded_by TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_task_corpus ON task_decisions(corpus_name);
 CREATE INDEX IF NOT EXISTS idx_task_status ON task_decisions(status);
 CREATE INDEX IF NOT EXISTS idx_task_parent ON task_decisions(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_tul_task ON task_unit_links(task_id);
 CREATE INDEX IF NOT EXISTS idx_tul_unit ON task_unit_links(unit_id);
 CREATE INDEX IF NOT EXISTS idx_contradiction_task ON contradictions(task_id);
+CREATE INDEX IF NOT EXISTS idx_iri_entity ON iri_registry(entity_id);
+CREATE INDEX IF NOT EXISTS idx_iri_iri ON iri_registry(iri);
 """
