@@ -12,22 +12,22 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Ingest mixed MD source files (chapter extracts + synthesized notes) of variable length — *Validated in Phase 01: Knowledge Extraction Pipeline*
+- [x] Detect advice unit boundaries (sentence-level to multi-paragraph) using LLM intelligence — *Validated in Phase 01: Knowledge Extraction Pipeline*
+- [x] Tag all extracted knowledge units against full FOLIO ontology (~18,000 concepts) — *Validated in Phase 01: Knowledge Extraction Pipeline*
+- [x] Reuse folio-enrich's EntityRuler + LLM dual-path extraction and 5-stage confidence scoring — *Validated in Phase 01: Knowledge Extraction Pipeline*
+- [x] Produce enriched output with spans/nested spans that is both human-reviewable and machine-parseable — *Validated in Phase 01: Knowledge Extraction Pipeline*
+- [x] Discover top-level advocacy tasks from texts (depositions, opening statements, motions, etc.) — *Validated in Phase 02: Task Hierarchy Discovery*
+- [x] Build hierarchical task trees with sub-tasks and best practices under each — *Validated in Phase 02: Task Hierarchy Discovery*
+- [x] Extract all knowledge types: advice, principles, citations, procedural rules, pitfalls — *Validated in Phase 02: Task Hierarchy Discovery*
+- [x] Map extracted advice into FOLIO OWL with core mappings in OWL and detailed advice in companion file — *Validated in Phase 03: Ontology Output and Delivery*
+- [x] Import structured advice into the FOLIO OWL file — *Validated in Phase 03: Ontology Output and Delivery*
+- [x] Support multiple consumption modes: SPARQL/API, LLM-powered legal AI, direct UI browsing — *Validated in Phase 03: Ontology Output and Delivery*
+- [x] Automated quality-first approach — minimize manual review with spot-checking — *Validated in Phase 01: Knowledge Extraction Pipeline*
 
 ### Active
 
-- [ ] Ingest mixed MD source files (chapter extracts + synthesized notes) of variable length
-- [ ] Detect advice unit boundaries (sentence-level to multi-paragraph) using LLM intelligence
-- [ ] Tag all extracted knowledge units against full FOLIO ontology (~18,000 concepts)
-- [ ] Reuse folio-enrich's EntityRuler + LLM dual-path extraction and 5-stage confidence scoring
-- [ ] Produce enriched output with spans/nested spans that is both human-reviewable and machine-parseable
-- [ ] Discover top-level advocacy tasks from texts (depositions, opening statements, motions, etc.)
-- [ ] Build hierarchical task trees with sub-tasks and best practices under each
-- [ ] Extract all knowledge types: advice, principles, citations, procedural rules, pitfalls
-- [ ] Map extracted advice into FOLIO OWL with core mappings in OWL and detailed advice in companion file
-- [ ] Import structured advice into the FOLIO OWL file
-- [ ] Support multiple consumption modes: SPARQL/API, LLM-powered legal AI, direct UI browsing
-- [ ] Automated quality-first approach — minimize manual review with spot-checking
+(All requirements validated — see above)
 
 ### Out of Scope
 
@@ -87,4 +87,4 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 | Use folio-python's IRI generation for all new IRIs | WebProtege-compatible algorithm ensures compatibility with FOLIO's existing IRI patterns | — Pending |
 
 ---
-*Last updated: 2026-03-17 after initialization*
+*Last updated: 2026-04-04 — All 4 phases complete (01: Knowledge Extraction Pipeline, 01.1: Upload & Processing UI, 02: Task Hierarchy Discovery, 03: Ontology Output and Delivery). Milestone v1.0 ready for completion.*
