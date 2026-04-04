@@ -13,11 +13,9 @@ from collections import defaultdict
 
 from folio_insights.models.task import TaskCandidate
 from folio_insights.pipeline.discovery.stages.base import DiscoveryStage, DiscoveryJob
+from folio_insights.services.heading_context import _PROXIMITY_WEIGHTS
 
 logger = logging.getLogger(__name__)
-
-# Same proximity weights as HeadingContextExtractor
-_DEPTH_CONFIDENCE = [1.0, 0.7, 0.4]
 
 # Minimum number of knowledge units under a heading to form a task candidate
 _MIN_UNITS_PER_HEADING = 2
@@ -56,8 +54,8 @@ class HeadingAnalysisStage(DiscoveryStage):
 
             # Determine confidence based on heading depth
             depth = len(heading_path) - 1  # 0-indexed depth
-            confidence_idx = min(depth, len(_DEPTH_CONFIDENCE) - 1)
-            confidence = _DEPTH_CONFIDENCE[confidence_idx]
+            confidence_idx = min(depth, len(_PROXIMITY_WEIGHTS) - 1)
+            confidence = _PROXIMITY_WEIGHTS[confidence_idx]
 
             candidate = TaskCandidate(
                 label=heading_path[-1],  # deepest heading

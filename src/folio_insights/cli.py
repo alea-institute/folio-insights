@@ -512,10 +512,14 @@ def export(
 def serve(port: int, host: str) -> None:
     """Start the FastAPI review viewer server.
 
-    (Placeholder -- full implementation in Plan 01-04.)
+    Launches the interactive review viewer on the specified host and port.
+    The viewer provides task tree browsing, review workflows, and export dialogs.
     """
-    click.echo(f"Review viewer server placeholder. Will start on {host}:{port}")
-    click.echo("Full implementation coming in Plan 01-04.")
+    click.echo(f"Starting review viewer on {host}:{port}")
+    click.echo("Press Ctrl+C to stop.")
+
+    from api.main import serve as _serve
+    _serve(host=host, port=port)
 
 
 def main() -> None:
