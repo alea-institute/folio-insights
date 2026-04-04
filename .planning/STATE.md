@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 03-02 tasks, checkpoint pending human verification
-last_updated: "2026-04-04T01:56:27.739Z"
+stopped_at: Executing phase 03.1 gap closure
+last_updated: "2026-04-04T02:50:05.914Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 4
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 03 of 4 (Ontology Output and Delivery)
-Plan: Not started
+Plan: 1 of 2 in current phase
 Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
@@ -61,6 +61,7 @@ Progress: [█████████▒] 93%
 | Phase 02 P05 | 12 min | 3 tasks | 10 files |
 | Phase 03 P01 | 8 min | 2 tasks | 11 files |
 | Phase 03 P02 | 2 min | 2 tasks | 9 files |
+| Phase 03.1 P01 | 2 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [Phase 03]: CLI export uses sync sqlite3 for synchronous Click context; async methods via asyncio.run()
 - [Phase 03]: ExportDialog uses 4-state machine (idle/exporting/complete/error) matching existing dialog patterns
 - [Phase 03]: Bundle endpoint builds ZIP in-memory using Python zipfile for single-request download
+- [Phase 03.1]: triggerExport uses direct fetch for ZIP binary responses, not request<T>() helper
+- [Phase 03.1]: Recursive tree traversal required for nested TaskTreeNode trees (hasApprovedInTree, collectTasks)
 
 ### Pending Todos
 
@@ -149,6 +152,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T01:45:39.541Z
-Stopped at: Completed 03-02 tasks, checkpoint pending human verification
+Last session: 2026-04-04T02:50:05.913Z
+Stopped at: Executing phase 03.1 gap closure
 Resume file: None

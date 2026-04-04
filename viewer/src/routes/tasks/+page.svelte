@@ -39,7 +39,24 @@
 	let showExportDialog = $state(false);
 	let shortcutsRef: KeyboardShortcuts | undefined = $state();
 
-	let hasApprovedTasks = $derived($taskTreeData.some((n) => n.is_task && n.review_status === 'complete'));
+	function hasApprovedInTree(nodes: TaskTreeNode[]): boolean {
+		for (const n of nodes) {
+			if (n.is_task && n.review_status === 'approved') return true;
+			if (n.children && hasApprovedInTree(n.children)) return true;
+		}
+		return false;
+	}
+
+	function collectTasks(nodes: TaskTreeNode[]): TaskTreeNode[] {
+		const result: TaskTreeNode[] = [];
+		for (const n of nodes) {
+			if (n.is_task) result.push(n);
+			if (n.children) result.push(...collectTasks(n.children));
+		}
+		return result;
+	}
+
+	let hasApprovedTasks = $derived(hasApprovedInTree($taskTreeData));
 
 	const LEFT_MIN = 280;
 	const LEFT_MAX = 480;
@@ -256,7 +273,7 @@
 	}
 
 	function navigateTask(direction: number) {
-		const nodes = $taskTreeData.filter((n) => n.is_task);
+		const nodes = collectTasks($taskTreeData);
 		if (nodes.length === 0) return;
 		const currentIdx = nodes.findIndex((n) => n.id === $selectedTaskId);
 		const nextIdx = Math.max(0, Math.min(nodes.length - 1, currentIdx + direction));

@@ -52,7 +52,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **OWL-01**: System produces valid OWL with core structural mappings (classes, properties, cross-references) compatible with FOLIO
 - [x] **OWL-02**: System produces a companion SKOS/RDFS file for detailed advice content linked to OWL via IRIs
-- [ ] **OWL-03**: System supports multiple consumption modes: SPARQL/API queries, LLM RAG retrieval (JSON-LD chunks), and human browsing (HTML/MD)
+- [x] **OWL-03**: System supports multiple consumption modes: SPARQL/API queries, LLM RAG retrieval (JSON-LD chunks), and human browsing (HTML/MD)
 - [x] **OWL-04**: System produces a FOLIO-incorporation-ready format — standalone OWL module using FOLIO namespace conventions, with annotated diffs and SHACL validation, so FOLIO maintainers can review and merge additions
 - [x] **OWL-05**: System generates new FOLIO IRIs using folio-python's WebProtege-compatible algorithm (UUID4 → base64 → alphanumeric filter → `https://folio.openlegalstandard.org/{token}`)
 
