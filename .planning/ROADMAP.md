@@ -104,7 +104,11 @@ Plans:
   6. HeadingAnalysisStage imports HeadingContextExtractor constants instead of duplicating
   7. Wave-0 scaffold test stubs are either implemented or removed
   8. Deduplicator uses bridge embedding service or the standalone model choice is documented as intentional
-**Plans**: TBD (created by /gsd:plan-phase 03.1)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 03.1-01-PLAN.md -- Fix blocking UI export breaks: hasApprovedTasks guard, triggerExport ZIP handling, TaskTreeNode type alignment, API is_task field
+- [ ] 03.1-02-PLAN.md -- CLI serve wiring, heading constant import, scaffold test replacement, deduplicator design doc
 
 ## Progress
 
@@ -117,4 +121,4 @@ Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 3.1
 | 1.1 Upload & Processing UI | 4/4 | Complete | 2026-03-18 |
 | 2. Task Hierarchy Discovery | 5/5 | Complete | 2026-03-19 |
 | 3. Ontology Output and Delivery | 2/2 | Complete | 2026-04-04 |
-| 3.1 Export UI Integration Fixes & Tech Debt | 0/1 | Not started | - |
+| 3.1 Export UI Integration Fixes & Tech Debt | 0/2 | Not started | - |
