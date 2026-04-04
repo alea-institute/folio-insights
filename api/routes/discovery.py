@@ -308,6 +308,7 @@ async def get_task_tree(
                 "is_procedural": bool(row["is_procedural"]),
                 "canonical_order": row["canonical_order"],
                 "is_manual": bool(row["is_manual"]),
+                "is_task": True,
                 "depth": 0,
                 "children": [],
             }

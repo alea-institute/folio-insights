@@ -259,19 +259,18 @@ export function getSSEUrl(corpusId: string): string {
 
 export interface TaskTreeNode {
 	id: string;
-	path: string; // LTree dot-notation: "1.2.3"
 	label: string;
 	folio_iri: string;
 	unit_count: number;
-	review_status: string; // "unreviewed" | "partial" | "complete"
+	review_status: string; // "unreviewed" | "partial" | "approved" | "rejected"
 	is_task: boolean;
 	has_contradictions: boolean;
 	has_orphans: boolean;
 	is_jurisdiction_sensitive: boolean;
 	is_procedural: boolean;
 	is_manual: boolean;
-	sortOrder: number;
 	depth: number;
+	children: TaskTreeNode[];
 }
 
 export interface TaskDetailResponse {
@@ -520,13 +519,24 @@ export interface ExportValidationResult {
 export async function triggerExport(
 	corpusId: string,
 	formats: string[],
-): Promise<{ success: boolean; validation?: ExportValidationResult } | { error: string }> {
-	// Trigger export via bundle endpoint which generates all files server-side
-	return request(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ formats }),
-	});
+): Promise<{ success: boolean } | { error: string }> {
+	try {
+		const res = await fetch(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ formats }),
+		});
+		if (!res.ok) {
+			const body = await res.text();
+			return { error: `${res.status}: ${body}` };
+		}
+		// Bundle endpoint returns ZIP binary on success.
+		// We don't parse it -- just confirm success. The actual download
+		// happens via getExportBundleUrl which triggers a browser download.
+		return { success: true };
+	} catch (err) {
+		return { error: String(err) };
+	}
 }
 
 export async function fetchExportValidation(
