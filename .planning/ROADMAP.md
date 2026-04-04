@@ -15,7 +15,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Knowledge Extraction Pipeline** - Ingest multi-format source files and produce typed, FOLIO-tagged knowledge units with confidence scores, lineage, batch CLI execution, and interactive review viewer (completed 2026-03-17)
 - [x] **Phase 1.1: Upload & Processing UI** - Document upload, corpus management, and real-time pipeline processing in the web UI (INSERTED) (completed 2026-03-18)
 - [x] **Phase 2: Task Hierarchy Discovery** - Discover advocacy tasks from extracted knowledge and build a validated hierarchical task tree across the corpus (completed 2026-03-19)
-- [ ] **Phase 3: Ontology Output and Delivery** - Generate validated OWL and companion files serving all three consumption modes, with incremental corpus support
+- [x] **Phase 3: Ontology Output and Delivery** - Generate validated OWL and companion files serving all three consumption modes, with incremental corpus support (completed 2026-04-04)
+- [ ] **Phase 3.1: Export UI Integration Fixes & Tech Debt** - Fix blocking UI export wiring, CLI serve stub, and cross-phase tech debt (INSERTED — gap closure)
 
 ## Phase Details
 
@@ -89,14 +90,31 @@ Plans:
 - [x] 03-01-PLAN.md -- Core OWL serialization engine: IRI manager, graph builder, SHACL validator, changelog generator, JSON-LD RAG chunks
 - [x] 03-02-PLAN.md -- Multi-consumer delivery: extend TaskExporter, CLI export command, API endpoints, ExportDialog UI with validation display
 
+### Phase 03.1: Export UI Integration Fixes & Tech Debt (INSERTED — gap closure)
+**Goal**: Fix the 2 blocking UI export integration breaks so the full Upload→Export user journey works in the browser, wire the CLI serve command, and clean up cross-phase tech debt
+**Depends on**: Phase 3
+**Requirements**: OWL-01, OWL-03, PIPE-01, QUAL-01, QUAL-03, TASK-02
+**Gap Closure**: Closes gaps from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. ExportDialog enables the "Export Ontology" button when approved tasks exist (hasApprovedTasks derived correctly from API response)
+  2. Clicking "Export Ontology" successfully triggers the backend export and displays ValidationSummary with PASS/WARN/FAIL badges (no JSON parse error on ZIP response)
+  3. Download links work for individual formats and bundled ZIP
+  4. `folio-insights serve` starts the FastAPI server (no longer a stub)
+  5. TaskTreeNode type matches API response (path/sortOrder either returned by API or removed from type)
+  6. HeadingAnalysisStage imports HeadingContextExtractor constants instead of duplicating
+  7. Wave-0 scaffold test stubs are either implemented or removed
+  8. Deduplicator uses bridge embedding service or the standalone model choice is documented as intentional
+**Plans**: TBD (created by /gsd:plan-phase 03.1)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
+Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3 -> 3.1
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Knowledge Extraction Pipeline | 4/4 | Complete   | 2026-03-17 |
 | 1.1 Upload & Processing UI | 4/4 | Complete | 2026-03-18 |
 | 2. Task Hierarchy Discovery | 5/5 | Complete | 2026-03-19 |
-| 3. Ontology Output and Delivery | 0/2 | Not started | - |
+| 3. Ontology Output and Delivery | 2/2 | Complete | 2026-04-04 |
+| 3.1 Export UI Integration Fixes & Tech Debt | 0/1 | Not started | - |
