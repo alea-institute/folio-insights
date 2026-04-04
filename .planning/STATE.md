@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Executing phase 03.1 gap closure
-last_updated: "2026-04-04T02:50:05.914Z"
+stopped_at: Completed phase 03.1 execution
+last_updated: "2026-04-04T02:53:33.385Z"
 last_activity: 2026-04-04
 progress:
   total_phases: 4
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 03 of 4 (Ontology Output and Delivery)
-Plan: 1 of 2 in current phase
+Plan: 2 of 2 in current phase
 Status: Phase complete — ready for verification
 Last activity: 2026-04-04
 
@@ -62,6 +62,7 @@ Progress: [█████████▒] 93%
 | Phase 03 P01 | 8 min | 2 tasks | 11 files |
 | Phase 03 P02 | 2 min | 2 tasks | 9 files |
 | Phase 03.1 P01 | 2 min | 2 tasks | 3 files |
+| Phase 03.1 P02 | 5 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Bundle endpoint builds ZIP in-memory using Python zipfile for single-request download
 - [Phase 03.1]: triggerExport uses direct fetch for ZIP binary responses, not request<T>() helper
 - [Phase 03.1]: Recursive tree traversal required for nested TaskTreeNode trees (hasApprovedInTree, collectTasks)
+- [Phase 03.1]: CLI serve uses lazy import of api.main.serve matching existing CLI pattern
+- [Phase 03.1]: heading_analysis imports _PROXIMITY_WEIGHTS from heading_context eliminating duplicated constant
+- [Phase 03.1]: Deduplicator standalone model documented as intentional design choice
 
 ### Pending Todos
 
@@ -152,6 +156,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T02:50:05.913Z
-Stopped at: Executing phase 03.1 gap closure
+Last session: 2026-04-04T02:53:33.384Z
+Stopped at: Completed phase 03.1 execution
 Resume file: None

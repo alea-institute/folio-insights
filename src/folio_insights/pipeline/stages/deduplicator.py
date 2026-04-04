@@ -157,6 +157,11 @@ class DeduplicatorStage(InsightsPipelineStage):
         deduped = [u for i, u in enumerate(units) if i not in remove_indices]
         return deduped, removed_count
 
+    # Design choice: Uses standalone sentence-transformers (all-MiniLM-L6-v2)
+    # instead of the folio_bridge embedding service. This is intentional:
+    # the deduplicator runs in the extraction pipeline which may execute
+    # before folio_bridge is configured. The model is identical to what
+    # folio_bridge wraps, loaded as a lazy singleton via _get_model().
     def _encode_units(self, units: list[KnowledgeUnit]) -> np.ndarray | None:
         """Encode unit texts using sentence-transformers."""
         try:
