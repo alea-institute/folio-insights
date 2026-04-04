@@ -86,8 +86,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Core OWL serialization engine: IRI manager, graph builder, SHACL validator, changelog generator, JSON-LD RAG chunks
-- [ ] 03-02-PLAN.md -- Multi-consumer delivery: extend TaskExporter, CLI export command, API endpoints, ExportDialog UI with validation display
+- [x] 03-01-PLAN.md -- Core OWL serialization engine: IRI manager, graph builder, SHACL validator, changelog generator, JSON-LD RAG chunks
+- [x] 03-02-PLAN.md -- Multi-consumer delivery: extend TaskExporter, CLI export command, API endpoints, ExportDialog UI with validation display
 
 ## Progress
 
