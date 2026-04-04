@@ -92,6 +92,10 @@ async def run_pipeline_with_progress(
             doc_count = len(insights_job.documents)
             if stage.name == "ingestion":
                 detail = f"{doc_count} documents ingested"
+            elif stage.name == "structure_parser":
+                structured = insights_job.metadata.get("structured", {})
+                elem_count = sum(len(v) for v in structured.values())
+                detail = f"{elem_count} elements across {len(structured)} files"
             else:
                 detail = f"{unit_count} units"
 
@@ -108,6 +112,11 @@ async def run_pipeline_with_progress(
         output_dir = settings.output_dir
         corpus_dir = output_dir / corpus_name
         await orchestrator._write_output(insights_job, corpus_name, corpus_dir)
+
+        # Invalidate cached extraction data so subsequent API reads get fresh data
+        from api.main import load_extraction
+
+        load_extraction(corpus_name)
 
         # Mark complete
         job.status = ProcessingStatus.COMPLETED

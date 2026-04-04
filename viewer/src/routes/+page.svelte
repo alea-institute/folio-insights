@@ -25,11 +25,23 @@
 
 	let corpusId = $derived($selectedCorpus?.id ?? 'default');
 
-	onMount(async () => {
-		const result = await fetchTree(corpusId);
-		if (!('error' in result)) {
-			$treeData = result;
-		}
+	// Reload tree when corpus changes (including initial mount)
+	$effect(() => {
+		const cid = corpusId;
+		fetchTree(cid).then((result) => {
+			if (!('error' in result)) {
+				$treeData = result;
+				// Auto-select first node if nothing is selected
+				if (!$selectedConcept && result.length > 0) {
+					const first = result[0].children.length > 0 ? result[0].children[0] : result[0];
+					if (first.iri) {
+						$selectedConcept = first;
+						const confValue = $confidenceFilter === 'all' ? undefined : $confidenceFilter;
+						loadUnits(cid, first.iri, confValue);
+					}
+				}
+			}
+		});
 	});
 
 	function handleHDragStart(e: MouseEvent) {

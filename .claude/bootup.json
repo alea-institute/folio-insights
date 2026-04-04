@@ -1,0 +1,16 @@
+{
+  "servers": [
+    {
+      "name": "API (FastAPI)",
+      "cwd": ".",
+      "command": ".venv/bin/python -c \"from api.main import serve; serve(port=9925)\"",
+      "url": "http://localhost:9925"
+    },
+    {
+      "name": "Viewer (SvelteKit)",
+      "cwd": "viewer",
+      "command": "npx vite dev --port 9926",
+      "url": "http://localhost:9926"
+    }
+  ]
+}

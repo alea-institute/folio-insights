@@ -24,6 +24,15 @@
 		}
 	}
 
+	function handleBranchClick(branch: TreeNode) {
+		// Leaf branches (like "All Units", "Untagged") are directly selectable
+		const isLeaf = branch.iri && branch.children.length === 0;
+		if (!isLeaf) {
+			toggleNode(branch);
+		}
+		selectNode(branch);
+	}
+
 	function handleKeydown(e: KeyboardEvent, node: TreeNode) {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
@@ -70,17 +79,22 @@
 		<div role="tree" aria-label="FOLIO concept tree">
 			{#each visibleTree as branch}
 				{@const isExpanded = expandedNodes.has(branch.label)}
+				{@const isBranchSelected = $selectedConcept?.iri === branch.iri}
+				{@const isLeafBranch = !!branch.iri && branch.children.length === 0}
 				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<div
 					role="treeitem"
-					aria-expanded={isExpanded}
-					aria-selected={false}
+					aria-expanded={isLeafBranch ? undefined : isExpanded}
+					aria-selected={isBranchSelected}
 					class="tree-node branch-node"
 					class:expanded={isExpanded}
-					onclick={() => toggleNode(branch)}
+					class:selected={isBranchSelected}
+					class:leaf-branch={isLeafBranch}
+					onclick={() => handleBranchClick(branch)}
 					onkeydown={(e) => handleKeydown(e, branch)}
 					tabindex="0"
 				>
+					{#if !isLeafBranch}
 					<span class="chevron">
 						{#if isExpanded}
 							<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -88,11 +102,16 @@
 							<svg width="12" height="12" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
 						{/if}
 					</span>
+					{:else}
+					<span class="leaf-icon">
+						<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="2.5" fill="currentColor" opacity="0.4"/></svg>
+					</span>
+					{/if}
 					<span class="node-label">{branch.label}</span>
 					<span class="node-count">{branch.unit_count}</span>
 				</div>
 
-				{#if isExpanded}
+				{#if isExpanded && branch.children.length > 0}
 					<div role="group" class="tree-children">
 						{#each branch.children as child}
 							{@const isSelected = $selectedConcept?.iri === child.iri}
@@ -192,6 +211,14 @@
 		width: 16px;
 		flex-shrink: 0;
 		color: var(--text-dim);
+	}
+
+	.leaf-icon {
+		display: flex;
+		align-items: center;
+		width: 16px;
+		flex-shrink: 0;
+		color: var(--accent);
 	}
 
 	.node-label {

@@ -7,7 +7,7 @@ human_verification:
   - test: "Run `folio-insights extract sources/ --output /tmp/test_out` with actual source files present"
     expected: "Extraction JSON produced at /tmp/test_out/default/extraction.json with typed, FOLIO-tagged knowledge units"
     why_human: "End-to-end pipeline requires LLM API keys and folio-enrich on disk. All unit tests mock these; real execution cannot be verified programmatically."
-  - test: "Start the API server with `cd alea-advocate && .venv/bin/uvicorn api.main:app --port 8742`, open http://localhost:8742 in a browser"
+  - test: "Start the API server with `cd folio-insights && .venv/bin/uvicorn api.main:app --port 8742`, open http://localhost:8742 in a browser"
     expected: "Three-pane layout renders with FOLIO tree on left, detail view upper-right, source context lower-right. Dark theme matches UI-SPEC (#0f1117 background, #6c8cff accent)."
     why_human: "Visual verification of SvelteKit UI rendering requires a browser. The build exists (viewer/build/) but visual correctness of dark theme, pane layout, and component integration cannot be verified by grep or test runner."
   - test: "Click a FOLIO concept in the tree, press A to approve a unit, then refresh the page"
@@ -138,7 +138,7 @@ human_verification:
 
 #### 1. End-to-End Pipeline Execution
 
-**Test:** Run `cd alea-advocate && .venv/bin/folio-insights extract sources/ --output /tmp/test_out --verbose`
+**Test:** Run `cd folio-insights && .venv/bin/folio-insights extract sources/ --output /tmp/test_out --verbose`
 **Expected:** Pipeline completes all 7 stages, produces `/tmp/test_out/default/extraction.json` with valid structured units containing type, folio_tags, confidence, lineage, and source_section fields.
 **Why human:** Requires LLM API keys (Anthropic or other provider) configured in `.env`. Also requires folio-enrich to be accessible at the configured path for bridge imports. Unit tests mock these dependencies.
 

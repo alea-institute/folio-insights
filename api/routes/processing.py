@@ -64,12 +64,16 @@ def _now_iso() -> str:
 
 
 @router.post("/corpus/{corpus_id}/process", status_code=202)
-async def start_processing(corpus_id: str) -> dict:
+async def start_processing(corpus_id: str, force: bool = False) -> dict:
     """Trigger pipeline processing for a corpus.
 
     Returns 202 Accepted with the job id. Processing runs in a
     background asyncio task. Connect to the SSE stream endpoint
     to follow progress in real time.
+
+    Args:
+        force: If True, clear the corpus registry so all files are
+               re-ingested and re-processed from scratch.
     """
     output = _output_dir()
     corpus_meta = output / corpus_id / "corpus-meta.json"
@@ -82,6 +86,13 @@ async def start_processing(corpus_id: str) -> dict:
     existing = await jm.load_by_corpus(corpus_id)
     if existing is not None and existing.status == ProcessingStatus.PROCESSING:
         raise HTTPException(status_code=409, detail="Processing already in progress")
+
+    # Clear corpus registry if force-reprocessing
+    if force:
+        registry_path = output / corpus_id / f"corpus-{corpus_id}.json"
+        if registry_path.exists():
+            registry_path.unlink()
+            logger.info("Cleared corpus registry for force re-processing: %s", corpus_id)
 
     # Create new job
     now = _now_iso()

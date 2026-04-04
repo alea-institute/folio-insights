@@ -16,13 +16,22 @@ def _build_tree(units: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Groups units by their ``folio_tags`` IRIs and returns a flat-or-nested
     structure with unit counts per concept.  Concepts that share a ``branch``
     are grouped as children of a synthetic branch node.
+
+    When units exist but have no FOLIO tags (e.g. when LLM tagging fails),
+    an "All Units" node is prepended so the Review UI can still display them.
     """
+    total_units = len(units)
+
     # Collect concepts and counts
     concept_map: dict[str, dict[str, Any]] = {}
     concept_units: dict[str, int] = defaultdict(int)
+    tagged_unit_count = 0
 
     for unit in units:
-        for tag in unit.get("folio_tags", []):
+        tags = unit.get("folio_tags", [])
+        if tags:
+            tagged_unit_count += 1
+        for tag in tags:
             iri = tag["iri"]
             concept_units[iri] += 1
             if iri not in concept_map:
@@ -47,6 +56,34 @@ def _build_tree(units: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     # Build top-level tree
     tree: list[dict[str, Any]] = []
+
+    # Prepend "All Units" node so users can browse all units regardless of
+    # FOLIO tagging status.  This is essential when LLM-dependent tagging
+    # stages fail and units have no folio_tags.
+    if total_units > 0:
+        tree.append(
+            {
+                "iri": "__all__",
+                "label": "All Units",
+                "branch": "",
+                "unit_count": total_units,
+                "children": [],
+            }
+        )
+
+    # Add untagged-only node when some units lack FOLIO tags
+    untagged_count = total_units - tagged_unit_count
+    if untagged_count > 0 and tagged_unit_count > 0:
+        tree.append(
+            {
+                "iri": "__untagged__",
+                "label": "Untagged",
+                "branch": "",
+                "unit_count": untagged_count,
+                "children": [],
+            }
+        )
+
     for branch_name in sorted(branches):
         children = sorted(branches[branch_name], key=lambda n: n["label"])
         tree.append(

@@ -52,10 +52,35 @@ def _read_corpus_info(corpus_id: str) -> CorpusInfo:
     sources = _sources_dir(corpus_id)
     file_count = len([f for f in sources.iterdir() if f.is_file()]) if sources.exists() else 0
 
+    # Determine processing status from job file
+    processing_status = "not_processed"
+    last_processed = None
+    job_path = _output_dir() / ".jobs" / f"{corpus_id}.json"
+    if job_path.exists():
+        try:
+            job_data = json.loads(job_path.read_text(encoding="utf-8"))
+            job_status = job_data.get("status", "")
+            if job_status == "completed":
+                processing_status = "completed"
+                last_processed = job_data.get("updated_at")
+            elif job_status == "processing":
+                processing_status = "processing"
+            elif job_status == "failed":
+                processing_status = "failed"
+            elif job_status == "pending":
+                processing_status = "pending"
+        except (json.JSONDecodeError, KeyError):
+            pass
+    elif (_corpus_dir(corpus_id) / "extraction.json").exists():
+        # Fallback: extraction.json exists but no job file
+        processing_status = "completed"
+
     return CorpusInfo(
         id=meta["id"],
         name=meta["name"],
         file_count=file_count,
+        processing_status=processing_status,
+        last_processed=last_processed,
         created_at=meta["created_at"],
     )
 

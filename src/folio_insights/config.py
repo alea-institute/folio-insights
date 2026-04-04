@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     doctor_url: str | None = None
 
     # LLM configuration (provider agnostic)
-    llm_provider: str = "anthropic"
-    llm_model: str = "claude-sonnet-4-6"
+    llm_provider: str = "google"
+    llm_model: str = "gemini-2.5-flash-lite"
 
     # Confidence thresholds
     confidence_high: float = 0.8

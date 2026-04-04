@@ -152,7 +152,13 @@ def test_tree_endpoint(client: TestClient):
     tree = resp.json()
     assert len(tree) >= 1  # at least one branch
 
-    # Find a concept node
+    # First node should be "All Units"
+    all_units_node = tree[0]
+    assert all_units_node["iri"] == "__all__"
+    assert all_units_node["label"] == "All Units"
+    assert all_units_node["unit_count"] == 4
+
+    # Find concept nodes in branch children
     all_children = []
     for branch_node in tree:
         assert "unit_count" in branch_node
@@ -163,6 +169,108 @@ def test_tree_endpoint(client: TestClient):
     xexam = next((c for c in all_children if c["label"] == "Cross-Examination"), None)
     assert xexam is not None
     assert xexam["unit_count"] == 3
+
+
+def test_tree_all_units_untagged(tmp_path: Path):
+    """Tree includes 'All Units' and no 'Untagged' when ALL units lack folio_tags."""
+    corpus_dir = tmp_path / "nofolio"
+    corpus_dir.mkdir()
+    extraction = {
+        "corpus": "nofolio",
+        "total_units": 2,
+        "units": [
+            {"id": "u1", "text": "Hello", "folio_tags": [], "confidence": 0.0,
+             "unit_type": "advice", "original_span": {}, "source_file": "",
+             "source_section": [], "surprise_score": 0.0, "content_hash": "a",
+             "lineage": [], "cross_references": []},
+            {"id": "u2", "text": "World", "folio_tags": [], "confidence": 0.0,
+             "unit_type": "advice", "original_span": {}, "source_file": "",
+             "source_section": [], "surprise_score": 0.0, "content_hash": "b",
+             "lineage": [], "cross_references": []},
+        ],
+    }
+    (corpus_dir / "extraction.json").write_text(json.dumps(extraction))
+
+    api_main.configure(output_dir=tmp_path, corpus_name="nofolio")
+    api_main._extraction_data.clear()
+    api_main.load_extraction("nofolio")
+
+    client = TestClient(app)
+    resp = client.get("/api/v1/tree", params={"corpus": "nofolio"})
+    assert resp.status_code == 200
+    tree = resp.json()
+
+    # Should have exactly one node: "All Units"
+    assert len(tree) == 1
+    assert tree[0]["iri"] == "__all__"
+    assert tree[0]["label"] == "All Units"
+    assert tree[0]["unit_count"] == 2
+
+    # No "Untagged" node when ALL units are untagged (no concept branches to contrast)
+    labels = [n["label"] for n in tree]
+    assert "Untagged" not in labels
+
+
+def test_units_all_iri(client: TestClient):
+    """GET /api/v1/units with concept_iri=__all__ returns all units."""
+    resp = client.get(
+        "/api/v1/units",
+        params={"corpus": "default", "concept_iri": "__all__"},
+    )
+    assert resp.status_code == 200
+    units = resp.json()
+    assert len(units) == 4  # all sample units
+
+
+def test_units_untagged_iri(tmp_path: Path):
+    """GET /api/v1/units with concept_iri=__untagged__ returns only untagged units."""
+    corpus_dir = tmp_path / "mixed"
+    corpus_dir.mkdir()
+    extraction = {
+        "corpus": "mixed",
+        "total_units": 3,
+        "units": [
+            {"id": "tagged", "text": "Tagged", "folio_tags": [
+                {"iri": "http://example.org/A", "label": "A", "confidence": 0.9,
+                 "extraction_path": "llm", "branch": "B"}
+            ], "confidence": 0.9, "unit_type": "advice", "original_span": {},
+             "source_file": "", "source_section": [], "surprise_score": 0.0,
+             "content_hash": "c", "lineage": [], "cross_references": []},
+            {"id": "untagged1", "text": "Untagged 1", "folio_tags": [],
+             "confidence": 0.0, "unit_type": "advice", "original_span": {},
+             "source_file": "", "source_section": [], "surprise_score": 0.0,
+             "content_hash": "d", "lineage": [], "cross_references": []},
+            {"id": "untagged2", "text": "Untagged 2", "folio_tags": [],
+             "confidence": 0.0, "unit_type": "advice", "original_span": {},
+             "source_file": "", "source_section": [], "surprise_score": 0.0,
+             "content_hash": "e", "lineage": [], "cross_references": []},
+        ],
+    }
+    (corpus_dir / "extraction.json").write_text(json.dumps(extraction))
+
+    api_main.configure(output_dir=tmp_path, corpus_name="mixed")
+    api_main._extraction_data.clear()
+    api_main.load_extraction("mixed")
+
+    client = TestClient(app)
+
+    # __untagged__ returns only untagged
+    resp = client.get(
+        "/api/v1/units",
+        params={"corpus": "mixed", "concept_iri": "__untagged__"},
+    )
+    assert resp.status_code == 200
+    units = resp.json()
+    assert len(units) == 2
+    ids = {u["id"] for u in units}
+    assert ids == {"untagged1", "untagged2"}
+
+    # __all__ returns everything
+    resp_all = client.get(
+        "/api/v1/units",
+        params={"corpus": "mixed", "concept_iri": "__all__"},
+    )
+    assert len(resp_all.json()) == 3
 
 
 def test_units_endpoint(client: TestClient):

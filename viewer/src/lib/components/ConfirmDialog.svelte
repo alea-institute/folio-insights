@@ -11,6 +11,8 @@
 		inputLabel = '',
 		inputPlaceholder = '',
 		inputValidation,
+		loading = false,
+		errorMessage = '',
 		onconfirm,
 		ondismiss,
 	}: {
@@ -23,6 +25,8 @@
 		inputLabel?: string;
 		inputPlaceholder?: string;
 		inputValidation?: (value: string) => string | null;
+		loading?: boolean;
+		errorMessage?: string;
 		onconfirm: (value?: string) => void;
 		ondismiss: () => void;
 	} = $props();
@@ -56,13 +60,13 @@
 
 		if (e.key === 'Escape') {
 			e.preventDefault();
-			ondismiss();
+			if (!loading) ondismiss();
 			return;
 		}
 
 		if (e.key === 'Enter') {
 			e.preventDefault();
-			handleConfirm();
+			if (!loading) handleConfirm();
 			return;
 		}
 
@@ -91,6 +95,7 @@
 	}
 
 	function handleConfirm() {
+		if (loading) return;
 		if (variant === 'input') {
 			if (!inputValue.trim()) return;
 			if (inputValidation) {
@@ -116,7 +121,7 @@
 
 {#if open}
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-	<div class="overlay" onclick={ondismiss} onkeydown={handleKeydown}>
+	<div class="overlay" onclick={() => { if (!loading) ondismiss(); }} onkeydown={handleKeydown}>
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="dialog"
@@ -146,6 +151,7 @@
 						placeholder={inputPlaceholder}
 						bind:value={inputValue}
 						oninput={handleInputChange}
+						disabled={loading}
 					/>
 					{#if validationError}
 						<p class="validation-error">{validationError}</p>
@@ -153,18 +159,26 @@
 				</div>
 			{/if}
 
+			{#if errorMessage}
+				<p class="error-message" role="alert">{errorMessage}</p>
+			{/if}
+
 			<div class="dialog-actions">
-				<button class="btn btn-dismiss" onclick={ondismiss}>
+				<button class="btn btn-dismiss" onclick={ondismiss} disabled={loading}>
 					{dismissLabel}
 				</button>
 				<button
 					class="btn btn-confirm"
 					class:btn-destructive={variant === 'destructive'}
 					class:btn-accent={variant !== 'destructive'}
-					disabled={variant === 'input' && !inputValue.trim()}
+					disabled={(variant === 'input' && !inputValue.trim()) || loading}
 					onclick={handleConfirm}
 				>
-					{confirmLabel}
+					{#if loading}
+						Creating...
+					{:else}
+						{confirmLabel}
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -237,6 +251,10 @@
 		border-color: var(--red);
 	}
 
+	.dialog-input:disabled {
+		opacity: 0.6;
+	}
+
 	.dialog-input::placeholder {
 		color: var(--text-dim);
 	}
@@ -245,6 +263,16 @@
 		font-size: 11px;
 		color: var(--red);
 		margin-top: var(--xs);
+	}
+
+	.error-message {
+		font-size: 13px;
+		color: var(--red);
+		margin-bottom: var(--md);
+		padding: var(--xs) var(--sm);
+		background: rgba(239, 68, 68, 0.08);
+		border-radius: 4px;
+		border: 1px solid rgba(239, 68, 68, 0.2);
 	}
 
 	.dialog-actions {

@@ -90,12 +90,20 @@ async def list_units(
     data = get_extraction_data(corpus)
     units = data.get("units", [])
 
-    # Filter by concept IRI
+    # Filter by concept IRI (with special virtual IRIs)
     if concept_iri:
-        units = [
-            u for u in units
-            if any(t["iri"] == concept_iri for t in u.get("folio_tags", []))
-        ]
+        if concept_iri == "__all__":
+            pass  # Return all units - no filtering
+        elif concept_iri == "__untagged__":
+            units = [
+                u for u in units
+                if not u.get("folio_tags")
+            ]
+        else:
+            units = [
+                u for u in units
+                if any(t["iri"] == concept_iri for t in u.get("folio_tags", []))
+            ]
 
     # Filter by confidence band
     if confidence:

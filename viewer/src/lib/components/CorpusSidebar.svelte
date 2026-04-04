@@ -2,9 +2,12 @@
 	import {
 		corpora,
 		selectedCorpus,
+		corpusLoading,
+		corpusError,
 		createCorpus,
 		deleteCorpus,
 		selectCorpus,
+		clearCorpusError,
 	} from '$lib/stores/corpus';
 	import type { CorpusInfo } from '$lib/api/client';
 	import ConfirmDialog from './ConfirmDialog.svelte';
@@ -12,12 +15,31 @@
 	let showCreateDialog = $state(false);
 	let showDeleteDialog = $state(false);
 	let deleteTarget = $state<CorpusInfo | null>(null);
+	let creating = $state(false);
+	let createError = $state('');
 
-	function handleCreate(value?: string) {
-		if (value) {
-			createCorpus(value);
+	async function handleCreate(value?: string) {
+		if (!value) {
+			showCreateDialog = false;
+			return;
 		}
+		creating = true;
+		createError = '';
+		const result = await createCorpus(value);
+		creating = false;
+		if (result) {
+			showCreateDialog = false;
+			createError = '';
+		} else {
+			createError = $corpusError || 'Failed to create corpus. Is the API server running?';
+		}
+	}
+
+	function handleCreateDismiss() {
+		if (creating) return;
 		showCreateDialog = false;
+		createError = '';
+		clearCorpusError();
 	}
 
 	function handleDeleteClick(e: MouseEvent, corpus: CorpusInfo) {
@@ -26,9 +48,9 @@
 		showDeleteDialog = true;
 	}
 
-	function handleDeleteConfirm() {
+	async function handleDeleteConfirm() {
 		if (deleteTarget) {
-			deleteCorpus(deleteTarget.id);
+			await deleteCorpus(deleteTarget.id);
 		}
 		showDeleteDialog = false;
 		deleteTarget = null;
@@ -47,9 +69,14 @@
 
 	function formatStatus(corpus: CorpusInfo): string {
 		if (corpus.processing_status === 'processing') return 'Processing...';
-		if (corpus.last_processed) {
-			const date = new Date(corpus.last_processed);
-			return `Processed ${date.toLocaleDateString()}`;
+		if (corpus.processing_status === 'pending') return 'Pending...';
+		if (corpus.processing_status === 'failed') return 'Processing failed';
+		if (corpus.processing_status === 'completed' || corpus.last_processed) {
+			if (corpus.last_processed) {
+				const date = new Date(corpus.last_processed);
+				return `Processed ${date.toLocaleDateString()}`;
+			}
+			return 'Processed';
 		}
 		return 'Not processed';
 	}
@@ -131,8 +158,10 @@
 	inputLabel="Corpus Name"
 	inputPlaceholder="Enter a name for the new corpus"
 	inputValidation={validateCorpusName}
+	loading={creating}
+	errorMessage={createError}
 	onconfirm={handleCreate}
-	ondismiss={() => (showCreateDialog = false)}
+	ondismiss={handleCreateDismiss}
 />
 
 <!-- Delete corpus dialog -->

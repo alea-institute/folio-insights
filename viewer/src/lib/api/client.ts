@@ -1,11 +1,11 @@
 /**
  * API client for the folio-insights Review Viewer backend.
  *
- * In dev mode the Vite proxy forwards /api to localhost:8700.
- * In production the SvelteKit build is served by FastAPI on the same origin.
+ * All /api requests use relative URLs. In dev mode, the Vite proxy forwards
+ * them to localhost:8700. In production, FastAPI serves the SPA on the same origin.
  */
 
-const API_BASE = import.meta.env.DEV ? 'http://localhost:8700' : '';
+const API_BASE = '';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -238,10 +238,11 @@ export async function uploadFiles(
 // ---------------------------------------------------------------------------
 
 export async function triggerProcessing(
-	corpusId: string
+	corpusId: string,
+	force: boolean = true
 ): Promise<{ job_id: string; status: string } | { error: string }> {
 	return request<{ job_id: string; status: string }>(
-		`${API_BASE}/api/v1/corpus/${corpusId}/process`,
+		`${API_BASE}/api/v1/corpus/${corpusId}/process${qs({ force: force ? 'true' : undefined })}`,
 		{
 			method: 'POST',
 		}
