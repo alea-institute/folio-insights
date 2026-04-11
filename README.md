@@ -1,11 +1,12 @@
 # FOLIO Insights
 
-Extract structured advocacy knowledge from legal textbooks and map it to the
+Extract structured advocacy knowledge from legal knowledge sources and map it to the
 [FOLIO legal ontology](https://github.com/alea-institute/FOLIO) as a validated,
 browsable, queryable OWL module.
 
-FOLIO Insights reads legal advocacy source material — textbook chapters, practice
-guides, synthesized notes — and turns it into a task-organized knowledge base
+FOLIO Insights reads legal knowledge sources — practice guides, treatises,
+continuing-legal-education materials, synthesized notes — and turns it into a
+task-organized knowledge base
 where every piece of advice, every principle, every citation, every procedural
 rule, and every pitfall is distilled, tagged against 27K+ FOLIO concepts, and
 attached to a discovered advocacy task (e.g., *Expert Depositions*, *Opening
@@ -19,10 +20,11 @@ human browsing.
 
 ## Why This Exists
 
-Legal advocacy knowledge lives in long-form prose: dense chapters, numbered
+Legal advocacy knowledge lives in long-form prose: dense sections, numbered
 rules, embedded case cites, footnotes inside footnotes. Finding *all* the
-cross-examination advice across five textbooks means reading five textbooks.
-Finding the contradictions between them means reading them twice.
+cross-examination advice across five knowledge sources means reading five
+knowledge sources. Finding the contradictions between them means reading them
+twice.
 
 FOLIO Insights distills that material into structured, task-organized knowledge
 so that any practitioner, AI system, or application querying *"how do I take
