@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Project:** Alea Advocate (Legal Knowledge Extraction & Ontology Enrichment)
+**Project:** FOLIO Insights (Legal Knowledge Extraction & Ontology Enrichment)
 **Researched:** 2026-03-17
 
 ## Foundational Constraint: Extend folio-enrich

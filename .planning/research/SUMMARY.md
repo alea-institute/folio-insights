@@ -1,13 +1,13 @@
 # Project Research Summary
 
-**Project:** Alea Advocate — Legal Knowledge Extraction & Ontology Enrichment
+**Project:** FOLIO Insights — Legal Knowledge Extraction & Ontology Enrichment
 **Domain:** Legal NLP / Ontology engineering / Knowledge graph construction
 **Researched:** 2026-03-17
 **Confidence:** HIGH
 
 ## Executive Summary
 
-Alea Advocate is a specialized batch pipeline that extracts structured advocacy knowledge from legal textbooks (in Markdown format) and enriches the FOLIO ontology with a hierarchical task-centric knowledge structure. It is not a general-purpose NLP tool — it is a purpose-built extension on top of the existing `folio-enrich` system, which already handles FOLIO concept tagging, confidence scoring, and RDF serialization. The recommended approach is to build a **separate batch orchestrator** that imports `folio-enrich` services as a library via a bridge adapter rather than modifying its internals, adding exactly four new Python packages (`instructor`, `owlrl`, `pySHACL`, `networkx`) on top of the existing stack. The entire product value rests on a four-stage pipeline: (1) extract and classify knowledge units from MD source files with FOLIO concept tags, (2) discover and build a hierarchical advocacy task tree across the corpus, (3) generate OWL and companion JSON-LD output, and (4) validate the standalone ontology module before delivery.
+FOLIO Insights is a specialized batch pipeline that extracts structured advocacy knowledge from legal textbooks (in Markdown format) and enriches the FOLIO ontology with a hierarchical task-centric knowledge structure. It is not a general-purpose NLP tool — it is a purpose-built extension on top of the existing `folio-enrich` system, which already handles FOLIO concept tagging, confidence scoring, and RDF serialization. The recommended approach is to build a **separate batch orchestrator** that imports `folio-enrich` services as a library via a bridge adapter rather than modifying its internals, adding exactly four new Python packages (`instructor`, `owlrl`, `pySHACL`, `networkx`) on top of the existing stack. The entire product value rests on a four-stage pipeline: (1) extract and classify knowledge units from MD source files with FOLIO concept tags, (2) discover and build a hierarchical advocacy task tree across the corpus, (3) generate OWL and companion JSON-LD output, and (4) validate the standalone ontology module before delivery.
 
 The critical architectural decision is the "core in OWL, details in companion file" split — formal class hierarchy in a standalone `advocacy-knowledge.owl` module that references FOLIO via `rdfs:seeAlso` rather than physically merging with the 293,603-line FOLIO.owl, and detailed advice content in a linked `advocacy-companion.jsonld` file. This keeps FOLIO interoperable and upgradeable while allowing rich annotation. The system serves three output consumers that must be designed for from day one: SPARQL queries, LLM RAG retrieval, and human browsing. Designing for one and retrofitting the others is a documented high-cost failure mode — the data model must accommodate all three from the initial `KnowledgeUnit` design.
 
@@ -75,7 +75,7 @@ All four research files converge on the same feature prioritization. The pipelin
 
 ### Architecture Approach
 
-The system is a four-stage batch pipeline that builds on top of folio-enrich without modifying it. The key structural insight verified by direct folio-enrich codebase inspection is that folio-enrich is a general-purpose document enrichment tool with 586 tests across 45 files — adding advocacy-specific stages to its orchestrator would pollute its architecture and risk breaking its test suite. Instead, folio-enrich services (`FolioService`, `EmbeddingService`, LLM registry) are imported as a library via a `FolioEnrichBridgeStage` adapter. The alea-advocate orchestrator runs its own four-stage pipeline with checkpointing (each stage writes JSON to disk before the next stage begins, enabling resume from the last checkpoint on failure).
+The system is a four-stage batch pipeline that builds on top of folio-enrich without modifying it. The key structural insight verified by direct folio-enrich codebase inspection is that folio-enrich is a general-purpose document enrichment tool with 586 tests across 45 files — adding advocacy-specific stages to its orchestrator would pollute its architecture and risk breaking its test suite. Instead, folio-enrich services (`FolioService`, `EmbeddingService`, LLM registry) are imported as a library via a `FolioEnrichBridgeStage` adapter. The folio-insights orchestrator runs its own four-stage pipeline with checkpointing (each stage writes JSON to disk before the next stage begins, enabling resume from the last checkpoint on failure).
 
 **Major components:**
 1. **MD Ingestion** — parse source files into heading hierarchy, sections, paragraphs with structural metadata (`section_path: list[str]`)

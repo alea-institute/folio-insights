@@ -229,5 +229,5 @@ This is a novel niche (legal advocacy knowledge extraction into FOLIO ontology),
 - Existing `folio-enrich` codebase (~/Coding Projects/folio-enrich): pipeline architecture, annotation models, 13 export formats, FOLIO service, OWL updater
 
 ---
-*Feature research for: Legal knowledge extraction and ontology enrichment (Alea Advocate)*
+*Feature research for: Legal knowledge extraction and ontology enrichment (FOLIO Insights)*
 *Researched: 2026-03-17*

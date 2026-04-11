@@ -14,7 +14,7 @@ Ingest source files (multi-format) and produce typed, FOLIO-tagged knowledge uni
 ## Implementation Decisions
 
 ### Project Identity
-- Rename from "Alea Advocate" to **folio-insights** — done in Plan 01-01 (scaffolding). pyproject.toml, package name, CLI entry point, and all references start as `folio-insights`
+- Renamed from "Alea Advocate" to **FOLIO Insights** (`folio-insights`) — done in Plan 01-01 (scaffolding). pyproject.toml, package name, CLI entry point, and all references use `folio-insights`
 - Reflects broader applicability beyond advocacy (transactional, bankruptcy, advisory, regulatory)
 
 ### Source Ingestion (Multi-Format)

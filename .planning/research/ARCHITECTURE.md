@@ -9,7 +9,7 @@
 The system is a four-stage batch pipeline that extends the existing folio-enrich codebase. Each stage transforms its input into a progressively more structured form, ultimately producing OWL-compatible ontology extensions. The key architectural insight: this is NOT a modification to folio-enrich's runtime pipeline -- it is a **separate batch orchestrator** that reuses folio-enrich's services (`FolioService`, `EmbeddingService`, LLM registry) as imported libraries, then adds three entirely new components on top.
 
 ```
-                         alea-advocate Pipeline
+                         folio-insights Pipeline
                          =====================
 
   +-----------+     +----------------+     +---------------+     +-------------+
@@ -400,7 +400,7 @@ confidence < 0.60   -> Exclude, log to review/ directory
 
 **Why bad:** folio-enrich is a general-purpose document enrichment tool with 586 tests across 45 files. Adding advocacy-textbook-specific stages pollutes its architecture, creates coupling, and risks breaking existing tests. The two projects have different lifecycles.
 
-**Instead:** Import folio-enrich's services as a library. Build a separate orchestrator in alea-advocate that calls into `FolioService`, `EmbeddingService`, etc. directly.
+**Instead:** Import folio-enrich's services as a library. Build a separate orchestrator in folio-insights that calls into `FolioService`, `EmbeddingService`, etc. directly.
 
 ### Anti-Pattern 2: Putting Full Advice Text in OWL Axioms
 
@@ -458,7 +458,7 @@ Stage 4 depends on: Stage 3 output (generated OWL)
 ## Project Structure
 
 ```
-alea-advocate/
+folio-insights/
   src/
     advocate/
       __init__.py
