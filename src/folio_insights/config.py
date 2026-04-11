@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -12,13 +11,18 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Global configuration for folio-insights."""
 
-    # Bridge paths
-    folio_enrich_path: Path = Path(
-        os.path.expanduser("~/Coding Projects/folio-enrich/backend")
-    )
-    folio_mapper_path: Path = Path(
-        os.path.expanduser("~/Coding Projects/folio-mapper/backend")
-    )
+    # Bridge paths -- folio-insights imports services from sibling repos via
+    # a sys.path bridge (see src/folio_insights/services/bridge/).
+    # Defaults assume folio-enrich and folio-mapper are cloned as sibling
+    # directories next to this repo. Override with environment variables
+    # FOLIO_INSIGHTS_FOLIO_ENRICH_PATH / FOLIO_INSIGHTS_FOLIO_MAPPER_PATH
+    # or a .env file (see .env.example).
+    #
+    # Source repos:
+    #   https://github.com/alea-institute/folio-enrich
+    #   https://github.com/alea-institute/folio-mapper
+    folio_enrich_path: Path = Path("../folio-enrich/backend")
+    folio_mapper_path: Path = Path("../folio-mapper/backend")
 
     # Doctor microservice (optional, for WPD files)
     doctor_url: str | None = None

@@ -32,7 +32,9 @@ def _get_mapper_path() -> str | None:
     if not os.path.isdir(resolved):
         logger.warning(
             "folio-mapper backend not found at %s. "
-            "Tabular file parsing will use fallback.",
+            "Tabular file parsing (CSV/XLSX/TSV) will use a basic CSV fallback. "
+            "For full support, clone https://github.com/alea-institute/folio-mapper "
+            "as a sibling directory, or set FOLIO_INSIGHTS_FOLIO_MAPPER_PATH.",
             resolved,
         )
         _mapper_path = None

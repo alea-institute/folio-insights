@@ -47,8 +47,16 @@ def _get_enrich_path() -> str:
 
     if not os.path.isdir(enrich_path):
         raise FileNotFoundError(
-            f"folio-enrich backend not found at {enrich_path}. "
-            f"Set FOLIO_INSIGHTS_FOLIO_ENRICH_PATH or update .env"
+            f"folio-enrich backend not found at {enrich_path}.\n"
+            f"\n"
+            f"folio-insights imports services from folio-enrich via a sys.path\n"
+            f"bridge. Clone folio-enrich as a sibling directory:\n"
+            f"\n"
+            f"    git clone https://github.com/alea-institute/folio-enrich\n"
+            f"\n"
+            f"Or set the FOLIO_INSIGHTS_FOLIO_ENRICH_PATH environment variable\n"
+            f"(or FOLIO_ENRICH_PATH in a .env file) to point at an existing\n"
+            f"folio-enrich/backend directory."
         )
     return enrich_path
 
