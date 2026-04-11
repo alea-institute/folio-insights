@@ -207,7 +207,7 @@ Ingest source files (multi-format) and produce typed, FOLIO-tagged knowledge uni
 - **folio-python**: IRI generation for new individuals
 - **FOLIO OWL GitHub**: Output feeds to FOLIO GitHub, consumed by folio-enrich and folio-mapper
 - **Free Law Project Doctor**: WPD and legacy format conversion
-- **Source files**: .docx and .pdf files in `sources/` subdirectories (3 textbooks currently)
+- **Source files**: .docx and .pdf files in user-provided directories (path passed via CLI argument)
 
 </code_context>
 

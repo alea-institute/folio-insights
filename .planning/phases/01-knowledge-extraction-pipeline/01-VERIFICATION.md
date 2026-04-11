@@ -4,7 +4,7 @@ verified: 2026-03-17T23:45:00Z
 status: human_needed
 score: 20/20 must-haves verified
 human_verification:
-  - test: "Run `folio-insights extract sources/ --output /tmp/test_out` with actual source files present"
+  - test: "Run `folio-insights extract ~/path/to/textbooks/ --output /tmp/test_out` with actual source files present"
     expected: "Extraction JSON produced at /tmp/test_out/default/extraction.json with typed, FOLIO-tagged knowledge units"
     why_human: "End-to-end pipeline requires LLM API keys and folio-enrich on disk. All unit tests mock these; real execution cannot be verified programmatically."
   - test: "Start the API server with `cd folio-insights && .venv/bin/uvicorn api.main:app --port 8742`, open http://localhost:8742 in a browser"

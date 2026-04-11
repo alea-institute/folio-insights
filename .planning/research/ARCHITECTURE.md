@@ -497,7 +497,7 @@ folio-insights/
       quality/
         confidence_gate.py           # Threshold-based output filtering
         spot_checker.py              # Random sampling for manual review
-  sources/                           # MD source files (gitignored)
+  # (source files live outside the repo; path is user-provided via CLI)
   output/                            # Pipeline output directory
     checkpoints/                     # Stage checkpoint files (JSON)
     advocacy-knowledge.owl           # Generated OWL module

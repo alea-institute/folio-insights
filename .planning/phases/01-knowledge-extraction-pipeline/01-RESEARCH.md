@@ -212,7 +212,7 @@ folio-insights/
     db/
       models.py                       # SQLite schema for review decisions
       session.py                      # aiosqlite session management
-  sources/                            # Source files (gitignored)
+  # (source files live outside the repo; path is user-provided via CLI)
   output/                             # Pipeline output directory
     checkpoints/                      # Stage checkpoint files (JSON)
     review/                           # Low-confidence units for manual review
