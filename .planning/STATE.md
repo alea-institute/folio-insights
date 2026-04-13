@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed phase 03.1 execution
-last_updated: "2026-04-04T09:59:43.883Z"
-last_activity: 2026-04-04
+status: executing
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-04-13T02:03:06.764Z"
+last_activity: 2026-04-13
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
-  percent: 93
+  total_phases: 2
+  completed_phases: 1
+  total_plans: 7
+  completed_plans: 5
+  percent: 71
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 03 Ontology Output and Delivery in progress. Plan 01 (OWL serialization engine) complete. Ready for Plan 02.
+**Current focus:** Phase 01 — deploy-on-railway-as-dev-server
 
 ## Current Position
 
-Phase: 03.1 of 4 (Ontology Output and Delivery)
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-04
+Phase: 01 (deploy-on-railway-as-dev-server) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-13
 
 Progress: [█████████▒] 93%
 
@@ -63,6 +63,7 @@ Progress: [█████████▒] 93%
 | Phase 03 P02 | 2 min | 2 tasks | 9 files |
 | Phase 03.1 P01 | 2 min | 2 tasks | 3 files |
 | Phase 03.1 P02 | 5 min | 2 tasks | 7 files |
+| Phase 01 P01 | 9 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,14 @@ Recent decisions affecting current work:
 - [Phase 03.1]: CLI serve uses lazy import of api.main.serve matching existing CLI pattern
 - [Phase 03.1]: heading_analysis imports _PROXIMITY_WEIGHTS from heading_context eliminating duplicated constant
 - [Phase 03.1]: Deduplicator standalone model documented as intentional design choice
+- [Phase 01-01]: Used npm (not pnpm) for viewer build — lockfile is package-lock.json
+- [Phase 01-01]: Belt-and-suspenders uv pip install of fastapi + uvicorn[standard] + python-multipart on top of project install — pyproject.toml does not declare them as direct deps
+- [Phase 01-01]: Bundled output/ (3.8 MB) into image rather than Railway volume — simplest dev path per CONTEXT.md
+- [Phase 01-01]: Image size 8.67 GB (vs 2.5 GB soft target) dominated by torch + CUDA libs pulled by sentence-transformers; not blocking Railway deploy, CPU-only torch deferred
+
+### Roadmap Evolution
+
+- Phase 1 added: Deploy on Railway as Dev server (2026-04-12) — first phase of post-v1.0 work; numbering restarted after v1.0 archive
 
 ### Pending Todos
 
@@ -156,6 +165,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T02:53:33.384Z
-Stopped at: Completed phase 03.1 execution
+Last session: 2026-04-13T02:02:55.713Z
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
