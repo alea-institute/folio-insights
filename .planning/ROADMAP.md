@@ -36,5 +36,5 @@
 
 Plans:
 - [x] 01-01-PLAN.md — Multi-stage Dockerfile + .dockerignore + /health endpoint
-- [ ] 01-02-PLAN.md — railway.toml + frontend relative-URL audit + regression smoke test
+- [x] 01-02-PLAN.md — railway.toml + frontend relative-URL audit + regression smoke test
 - [ ] 01-03-PLAN.md — User-driven Railway deploy + README section + STATE.md URL record

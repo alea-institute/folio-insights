@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-13T02:03:06.764Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-13T02:07:16.102Z"
 last_activity: 2026-04-13
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 01 (deploy-on-railway-as-dev-server) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-13
 
@@ -64,6 +64,7 @@ Progress: [█████████▒] 93%
 | Phase 03.1 P01 | 2 min | 2 tasks | 3 files |
 | Phase 03.1 P02 | 5 min | 2 tasks | 7 files |
 | Phase 01 P01 | 9 min | 3 tasks | 3 files |
+| Phase 01-deploy-on-railway-as-dev-server P02 | 2 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,9 @@ Recent decisions affecting current work:
 - [Phase 01-01]: Belt-and-suspenders uv pip install of fastapi + uvicorn[standard] + python-multipart on top of project install — pyproject.toml does not declare them as direct deps
 - [Phase 01-01]: Bundled output/ (3.8 MB) into image rather than Railway volume — simplest dev path per CONTEXT.md
 - [Phase 01-01]: Image size 8.67 GB (vs 2.5 GB soft target) dominated by torch + CUDA libs pulled by sentence-transformers; not blocking Railway deploy, CPU-only torch deferred
+- [Phase 01-02]: Replaced stale 'localhost:8700' port reference in client.ts docstring with neutral vite.config.ts reference — audit grep flags literal port numbers even in comments
+- [Phase 01-02]: railway.toml omits startCommand — Dockerfile CMD expands ${PORT:-8000} and adding one here would bypass that substitution
+- [Phase 01-02]: healthcheckTimeout = 120s to accommodate heavy image boot (torch + sentence-transformers); restartPolicyMaxRetries = 3 to surface crash loops as deploy failures
 
 ### Roadmap Evolution
 
@@ -165,6 +169,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T02:02:55.713Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-13T02:07:16.100Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
