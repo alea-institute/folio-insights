@@ -73,6 +73,9 @@ Progress: [█████████▒] 93%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- [Phase 1]: Deployed to Railway as dev server — live URL: https://folio-insights-production.up.railway.app (single service, Dockerfile builder, /health healthcheck)
+- [Phase 1]: Whitelisted output/default and output/test1 in .gitignore so bundled corpora ship in the Railway build context (future generated output stays gitignored)
+
 - [Roadmap]: Extend folio-enrich via bridge adapter, not modify its internals
 - [Roadmap]: 3-phase structure following pipeline data dependencies (Extract -> Task Tree -> OWL)
 - [Roadmap]: Phase 1 includes full extraction pipeline end-to-end (ingestion through quality output)
