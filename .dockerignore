@@ -1,0 +1,40 @@
+# Python
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.egg-info
+dist
+build
+
+# Node / frontend
+viewer/node_modules
+viewer/build
+viewer/.svelte-kit
+
+# Git / IDE
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Planning / docs not needed in image
+.planning
+.claude
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data / secrets
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+tests/fixtures/large
