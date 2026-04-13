@@ -712,8 +712,8 @@ def export_task_hierarchy_markdown(
 |----------|-------|
 | Framework | pytest 8.0+ with pytest-asyncio 0.25+ |
 | Config file | `pyproject.toml` [tool.pytest.ini_options] |
-| Quick run command | `cd "/home/damienriehl/Coding Projects/folio-insights" && .venv/bin/pytest tests/ -x --timeout=30` |
-| Full suite command | `cd "/home/damienriehl/Coding Projects/folio-insights" && .venv/bin/pytest tests/ --timeout=60` |
+| Quick run command | `.venv/bin/pytest tests/ -x --timeout=30` |
+| Full suite command | `.venv/bin/pytest tests/ --timeout=60` |
 
 ### Phase Requirements -> Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
