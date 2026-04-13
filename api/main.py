@@ -29,6 +29,13 @@ async def lifespan(application: FastAPI):
 
 app = FastAPI(title="folio-insights Review Viewer", lifespan=lifespan)
 
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    """Liveness probe for Railway + Docker HEALTHCHECK."""
+    return {"status": "ok"}
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:8700"],
