@@ -2,7 +2,8 @@
  * API client for the folio-insights Review Viewer backend.
  *
  * All /api requests use relative URLs. In dev mode, the Vite proxy forwards
- * them to localhost:8700. In production, FastAPI serves the SPA on the same origin.
+ * them to the FastAPI backend (see viewer/vite.config.ts for the proxy target).
+ * In production, FastAPI serves the SPA on the same origin.
  */
 
 const API_BASE = '';
