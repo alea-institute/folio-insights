@@ -1,0 +1,20 @@
+# Railway configuration for folio-insights dev deploy.
+# See https://docs.railway.com/reference/config-as-code
+#
+# Scope: single-service dev deployment (Phase 1).
+# Prod hardening (custom domain, replicas, auth) is out of scope.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Railway polls this path after the container boots. If it doesn't return
+# HTTP 2xx within healthcheckTimeout, the deploy is rolled back.
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+
+# Restart on unexpected exit (OOM, uncaught exception). Keep retries small;
+# persistent crash should surface as a failed deploy, not a restart loop.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
