@@ -288,6 +288,52 @@ By design, FOLIO Insights does **not**:
 
 ---
 
+## Deploying to Railway
+
+A dev environment is deployed on Railway at **https://folio-insights-production.up.railway.app**
+from a single multi-stage [Dockerfile](Dockerfile) that bundles the built SvelteKit viewer
+and the FastAPI backend into one service. [`railway.toml`](railway.toml) pins the builder
+and healthcheck. The pattern mirrors the sibling projects `folio-enrich` and `folio-mapper`.
+
+### One-time setup
+
+```bash
+npm i -g @railway/cli
+railway login
+railway init --name folio-insights   # or: railway link  (if the project already exists)
+railway service folio-insights
+```
+
+### Deploy
+
+```bash
+railway up                # uploads the build context, builds the Dockerfile, deploys
+railway domain            # prints (or generates) the *.up.railway.app URL
+```
+
+Connect the service to GitHub in the Railway dashboard (Service → Settings → Source →
+`master`) to get auto-redeploy on push.
+
+### Verify
+
+```bash
+URL="https://folio-insights-production.up.railway.app"
+curl -sf "$URL/health"                  # {"status":"ok"}
+curl -sI "$URL/" | head -1              # HTTP/2 200
+curl -sf "$URL/api/v1/corpora"          # JSON list of bundled corpora
+```
+
+### Notes
+
+- Data: the two baseline corpora `output/default/` and `output/test1/` are whitelisted
+  in `.gitignore` and bundled into the image so the viewer has data to render. Other
+  generated output stays git-ignored.
+- Image size is large (~8.7 GB) because `sentence-transformers` pulls torch + CUDA libs.
+  If you need a slimmer image, pin CPU-only torch in the Dockerfile.
+- First build on Railway takes 10-15 minutes; subsequent builds reuse cached layers.
+
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE).
