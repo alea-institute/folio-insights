@@ -19,5 +19,8 @@ build/
 *.swp
 *.swo
 
-# Output
-output/
+# Output — ignore generated corpora by default, but ship the two baseline corpora
+# used by the Railway dev deploy so the image has data to render.
+output/*
+!output/default/
+!output/test1/

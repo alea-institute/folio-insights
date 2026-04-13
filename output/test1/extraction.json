@@ -1,0 +1,17 @@
+{
+  "corpus": "test1",
+  "generated_at": "2026-03-23T00:35:29.547039+00:00",
+  "total_units": 0,
+  "by_confidence": {
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {},
+  "units": [],
+  "summary": {
+    "documents_processed": 0,
+    "folio_concepts_used": 0,
+    "dedup_count": 0
+  }
+}
