@@ -10,11 +10,21 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 
 ## Current State
 
-**Shipped:** v1.0 MVP (2026-04-04)
-**Codebase:** 26,198 LOC (17,510 Python + 8,688 Svelte/TS), 255 source files, 197 tests passing
-**Tech stack:** Python 3.11+, FastAPI, SvelteKit, SQLite (aiosqlite), rdflib, pyshacl, sentence-transformers
+**Shipped:** v1.1 Railway Dev Deploy + UAT Gap Closure (2026-04-20)
+**Live URL:** https://folio-insights-production.up.railway.app
+**Tests:** 203 passing (197 at v1.0 + 6 UAT regression tests from v1.1)
+**Tech stack:** Python 3.11+, FastAPI, SvelteKit, SQLite (aiosqlite), rdflib, pyshacl, sentence-transformers; Dockerfile + railway.toml for Railway
 
-**What v1.0 delivers:**
+**What v1.1 adds on top of v1.0:**
+- Railway dev deploy: multi-stage Dockerfile (node:20-slim → python:3.11-slim), bundled viewer + API + 3.8 MB extraction dataset, `/health` healthcheck, non-root runtime, 120s healthcheck timeout
+- `railway.toml` config-as-code + frontend relative-URL audit (zero hardcoded dev ports)
+- **UAT I-1:** LLM-path FOLIO IRI resolution at 0.6 threshold + `proposed_class` routing (+4 tests)
+- **UAT I-2:** Bundle export 422 → 404 parity (+2 tests)
+- **UAT I-3:** Vite proxy 8700 → 9925 (unblocks viewer dev-mode UI)
+- **UAT I-4:** Deterministic `output/demo/` approved-task fixture + idempotent seed script
+- **UAT I-5:** `.dockerignore` excludes `output/.jobs/` — bundled corpora report `processing_status="completed"` on live Railway
+
+**What v1.0 delivers (still core):**
 - CLI batch pipeline: `folio-insights extract` → `discover` → `export`
 - Web UI: Upload → Process → Discover Tasks → Review → Export (full end-to-end)
 - 14-format document ingestion with tiered boundary detection
