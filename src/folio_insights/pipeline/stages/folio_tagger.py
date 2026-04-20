@@ -40,6 +40,15 @@ class FolioTaggerStage(InsightsPipelineStage):
       4. heading_context: Document structure heading mapping
     """
 
+    # Minimum FolioService.search_by_label score to accept a label-to-IRI
+    # resolution as canonical. Calibrated from UAT I-1: LLM-generated labels
+    # are often hyphenated/lower-cased (e.g. 'cross-examine' vs 'Cross-Examination'),
+    # which scored 0.6-0.7 against the FOLIO catalogue. The old threshold of 0.7
+    # rejected most LLM-path matches, producing empty IRIs. 0.6 is the floor
+    # that resolves well-known FOLIO labels without admitting spurious matches
+    # (confirmed against the 27K-label FOLIO catalogue).
+    _FOLIO_LABEL_RESOLUTION_THRESHOLD = 0.6
+
     @property
     def name(self) -> str:
         return "folio_tagger"
@@ -240,27 +249,46 @@ class FolioTaggerStage(InsightsPipelineStage):
         reconciled: list[ReconciledConcept],
         folio_service: Any,
     ) -> list[ConceptTag]:
-        """Convert reconciled concepts to ConceptTag objects."""
+        """Convert reconciled concepts to ConceptTag objects.
+
+        IRI resolution: if the reconciled concept has no IRI, try
+        ``folio_service.search_by_label(rc.label)`` and accept the top match if
+        score >= 0.6. If resolution fails, the tag retains ``iri=''`` AND its
+        ``extraction_path`` is rewritten to ``'proposed_class'`` so downstream
+        consumers (proposed_classes.json, OWL exporter) can route correctly.
+
+        See UAT Issue I-1 for the bug this fixes.
+        """
         tags: list[ConceptTag] = []
 
         for rc in reconciled:
-            # Determine primary extraction path
+            # Determine primary extraction path from reconciler metadata
             if rc.contributing_paths:
                 primary_path = rc.contributing_paths[0]
             else:
                 primary_path = "unknown"
 
-            # Try to resolve IRI via FolioService if empty
+            # Resolve IRI via FolioService if the reconciled concept lacks one
             iri = rc.iri
-            if not iri and rc.label and folio_service:
+            if not iri and rc.label and folio_service is not None:
                 try:
                     results = folio_service.search_by_label(rc.label)
                     if results:
                         top_match, top_score = results[0]
-                        if top_score >= 0.7:
-                            iri = getattr(top_match, "iri", "")
+                        if top_score >= self._FOLIO_LABEL_RESOLUTION_THRESHOLD:
+                            iri = getattr(top_match, "iri", "") or ""
                 except Exception:
-                    pass
+                    logger.warning(
+                        "search_by_label failed for label=%r",
+                        rc.label,
+                        exc_info=True,
+                    )
+
+            # If still no IRI, this concept is a proposed class — rewrite the
+            # extraction path so downstream consumers can distinguish "LLM
+            # extracted but no FOLIO match" from ordinary LLM-path hits.
+            if not iri:
+                primary_path = "proposed_class"
 
             tag = ConceptTag(
                 iri=iri,
