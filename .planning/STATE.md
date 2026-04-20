@@ -1,16 +1,26 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: complete
-stopped_at: Phase 02 complete (2026-04-20) — all 5 UAT issues closed on live Railway URL
-last_updated: "2026-04-20T21:35:00.000Z"
-last_activity: 2026-04-20 -- Phase 02 Wave 2 deployed (02-05) — I-5 closed on live URL
+milestone: v1.1
+milestone_name: post-v1.0 Railway dev deploy + UAT gap closure
+status: ready_to_archive
+stopped_at: Phase 02 complete + pushed to origin/master 5ca74f2; ready to audit + archive as v1.1
+last_updated: "2026-04-20T21:56:00.000Z"
+last_activity: 2026-04-20 -- Wave 2 deployed; 5a59878 history-split + force-pushed; awaiting /gsd-audit-milestone 1.1 → /gsd-complete-milestone 1.1
+
+resume_next_session: |
+  Milestone v1.1 scope: Phase 01 (deploy-on-railway-as-dev-server, 3/3 plans) + Phase 02 (uat-gap-fixes, 5/5 plans).
+  All 8 plans have SUMMARY.md. Live URL verified: test1 + demo processing_status=completed, /health 200, / 200.
+  Origin tip: 5ca74f2 (fix(02-02) split clean; duplicate e681a258 dropped as patch-already-upstream).
+  Next commands (fresh session, in order):
+    1. /gsd-audit-milestone 1.1   — produce .planning/v1.1-MILESTONE-AUDIT.md
+    2. /gsd-complete-milestone 1.1 — archive .planning/milestones/v1.1-{ROADMAP,REQUIREMENTS}.md; tag v1.1
+    3. /gsd-new-milestone          — v2.0; brief already prepared at .planning/v2.0-MILESTONE-BRIEF.md
+  Safety: backup-pre-split-20260420T213817Z still preserves pre-rebase state.
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 12
-  completed_plans: 12
+  completed_plans: 13
   percent: 100
 ---
 
@@ -172,6 +182,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T21:32:51.446Z
-Stopped at: context exhaustion at 92% (2026-04-20)
+Last session: 2026-04-20T21:51:11.997Z
+Stopped at: context exhaustion at 91% (2026-04-20)
 Resume file: None
