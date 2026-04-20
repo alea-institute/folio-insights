@@ -294,19 +294,33 @@ async def export_validation(corpus_id: str) -> JSONResponse:
 
 
 class BundleRequest(BaseModel):
-    """Request body for export bundle."""
-    formats: list[str]
+    """Request body for export bundle.
+
+    All fields optional — handler returns 404 (not 422) on missing body
+    when the corpus has no approved tasks, matching sibling export routes.
+    """
+    formats: list[str] = ["owl", "ttl"]
 
 
 @router.post("/corpus/{corpus_id}/export/bundle")
-async def export_bundle(corpus_id: str, body: BundleRequest) -> Response:
-    """Generate and return a ZIP bundle of requested export formats."""
+async def export_bundle(
+    corpus_id: str, body: BundleRequest | None = None
+) -> Response:
+    """Generate and return a ZIP bundle of requested export formats.
+
+    Returns 404 "No approved tasks to export" when the corpus has no
+    approved tasks — matches sibling owl/ttl/jsonld/validation endpoints
+    so clients can treat 404 as "no data" uniformly (see UAT Issue I-2).
+    """
     from src.folio_insights.services.task_exporter import TaskExporter
 
     tasks, units_by_task, contradictions, metadata = await _load_export_data(corpus_id)
     approved = _get_approved_tasks(tasks)
     if not approved:
         raise HTTPException(status_code=404, detail="No approved tasks to export")
+
+    if body is None:
+        body = BundleRequest()
 
     db_path = _output_dir() / corpus_id / "review.db"
     output_dir = _output_dir() / corpus_id
