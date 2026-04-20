@@ -47,10 +47,10 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — I-3: Fix vite proxy target 8700 → 9925 (Wave 1)
-- [ ] 02-02-PLAN.md — I-2: Bundle export 422 → 404 parity + regression tests (Wave 1)
-- [ ] 02-03-PLAN.md — I-1: LLM-path FOLIO IRI resolution at 0.6 threshold + proposed_class routing (Wave 1)
-- [ ] 02-04-PLAN.md — I-4: Seed output/demo/ corpus fixture for export validation (Wave 1)
+- [x] 02-01-PLAN.md — I-3: Fix vite proxy target 8700 → 9925 (Wave 1) — completed 2026-04-19
+- [x] 02-02-PLAN.md — I-2: Bundle export 422 → 404 parity + regression tests (Wave 1) — completed 2026-04-19
+- [x] 02-03-PLAN.md — I-1: LLM-path FOLIO IRI resolution at 0.6 threshold + proposed_class routing (Wave 1) — completed 2026-04-19
+- [x] 02-04-PLAN.md — I-4: Seed output/demo/ corpus fixture for export validation (Wave 1) — completed 2026-04-19
 - [ ] 02-05-PLAN.md — I-5: Exclude output/.jobs/ from Docker context + Railway redeploy checkpoint (Wave 2)
 
 **Source:** .planning/phases/COMPREHENSIVE-UAT.md (Issues I-1 through I-5)
