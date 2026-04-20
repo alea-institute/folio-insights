@@ -245,3 +245,129 @@ def test_folio_tagger_stage_name():
     assert "llm" in source
     assert "semantic" in source
     assert "heading_context" in source
+
+
+# ---------- UAT I-1 regression: LLM-path IRI resolution ----------
+
+
+def _make_folio_mock(results):
+    """Helper: build a mock FolioService whose search_by_label returns `results`."""
+    from unittest.mock import MagicMock
+
+    mock = MagicMock()
+    mock.search_by_label.return_value = results
+    return mock
+
+
+def test_llm_path_resolves_folio_iri_at_06_threshold():
+    """UAT I-1: LLM-path label with FOLIO score 0.65 resolves to canonical IRI.
+
+    Current code uses a 0.7 threshold, so this test FAILS on unmodified
+    folio_tagger.py. After the fix lowers the threshold to 0.6, it passes.
+    """
+    from unittest.mock import MagicMock
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept_mock = MagicMock(
+        iri="https://folio.openlegalstandard.org/abc123",
+        preferred_label="Cross-Examination",
+    )
+    folio_svc = _make_folio_mock([(concept_mock, 0.65)])
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri="",
+            label="cross-examine",
+            confidence=0.7,
+            contributing_paths=["llm"],
+            branch="",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, folio_svc)
+    assert len(tags) == 1
+    assert tags[0].iri == "https://folio.openlegalstandard.org/abc123"
+    assert tags[0].label == "cross-examine"
+
+
+def test_llm_path_unresolved_label_routes_to_proposed_class():
+    """UAT I-1: LLM-path label with NO FOLIO match becomes extraction_path='proposed_class'.
+
+    This makes downstream consumers (proposed_classes.json, OWL exporter)
+    correctly distinguish 'LLM found it but FOLIO doesn't have it' from
+    'ordinary LLM path tag that happens to be empty'.
+    """
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    folio_svc = _make_folio_mock([])  # no FOLIO match
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri="",
+            label="totally-novel-concept-xyz",
+            confidence=0.6,
+            contributing_paths=["llm"],
+            branch="",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, folio_svc)
+    assert len(tags) == 1
+    assert tags[0].iri == ""
+    assert tags[0].extraction_path == "proposed_class"
+    assert tags[0].label == "totally-novel-concept-xyz"
+
+
+def test_llm_path_high_score_still_resolves():
+    """Regression guard: score 0.92 still resolves (pre-existing behavior preserved)."""
+    from unittest.mock import MagicMock
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept_mock = MagicMock(
+        iri="https://folio.openlegalstandard.org/ggg777",
+        preferred_label="Expert Witness",
+    )
+    folio_svc = _make_folio_mock([(concept_mock, 0.92)])
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri="",
+            label="expert witness",
+            confidence=0.7,
+            contributing_paths=["llm"],
+            branch="",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, folio_svc)
+    assert tags[0].iri == "https://folio.openlegalstandard.org/ggg777"
+
+
+def test_llm_path_low_score_routes_to_proposed_class():
+    """UAT I-1: match score below 0.6 is treated as 'no match' and routed to proposed_class."""
+    from unittest.mock import MagicMock
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept_mock = MagicMock(iri="https://folio.test/weak", preferred_label="Weak Match")
+    folio_svc = _make_folio_mock([(concept_mock, 0.4)])
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri="",
+            label="ambiguous-term",
+            confidence=0.5,
+            contributing_paths=["llm"],
+            branch="",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, folio_svc)
+    assert tags[0].iri == ""
+    assert tags[0].extraction_path == "proposed_class"
