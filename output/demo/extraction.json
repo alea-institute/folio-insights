@@ -1,0 +1,62 @@
+{
+  "corpus": "demo",
+  "total_units": 2,
+  "units": [
+    {
+      "id": "unit-demo-001",
+      "text": "Always prepare witnesses thoroughly before direct examination.",
+      "unit_type": "best_practice",
+      "source_file": "demo-advocacy.md",
+      "confidence": 0.92,
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/demo-witness-prep",
+          "label": "Witness Preparation",
+          "confidence": 0.88,
+          "extraction_path": "llm",
+          "branch": "Litigation"
+        }
+      ],
+      "original_span": {
+        "start": 0,
+        "end": 60,
+        "source_file": "demo-advocacy.md"
+      },
+      "source_section": [
+        "Chapter 1: Preparation"
+      ],
+      "surprise_score": 0.4,
+      "content_hash": "demohash001",
+      "lineage": "demo-advocacy.md",
+      "cross_references": []
+    },
+    {
+      "id": "unit-demo-002",
+      "text": "Counsel may use cross-examination to impeach an expert witness for bias, lack of foundation, or prior inconsistent statements.",
+      "unit_type": "advice",
+      "source_file": "demo-advocacy.md",
+      "confidence": 0.9,
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/demo-cross-exam",
+          "label": "Cross-Examination",
+          "confidence": 0.9,
+          "extraction_path": "llm",
+          "branch": "Litigation"
+        }
+      ],
+      "original_span": {
+        "start": 120,
+        "end": 300,
+        "source_file": "demo-advocacy.md"
+      },
+      "source_section": [
+        "Chapter 2: Impeachment Techniques"
+      ],
+      "surprise_score": 0.6,
+      "content_hash": "demohash002",
+      "lineage": "demo-advocacy.md",
+      "cross_references": []
+    }
+  ]
+}
