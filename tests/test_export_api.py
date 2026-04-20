@@ -267,7 +267,10 @@ async def test_export_bundle_returns_zip(
 async def test_export_bundle_404_no_approved(
     client: AsyncClient, configure_tmp_output: Path
 ):
-    """POST /corpus/{id}/export/bundle returns 404 when no approved tasks."""
+    """UAT I-2: POST bundle returns 404 (not 422) when corpus has no approved tasks.
+
+    Detail string must match sibling owl/ttl/jsonld/validation routes exactly.
+    """
     corpus_id = await _seed_corpus_no_approved(configure_tmp_output, client)
 
     resp = await client.post(
@@ -275,3 +278,45 @@ async def test_export_bundle_404_no_approved(
         json={"formats": ["owl"]},
     )
     assert resp.status_code == 404
+    assert resp.json() == {"detail": "No approved tasks to export"}
+
+
+async def test_export_bundle_404_no_approved_missing_body(
+    client: AsyncClient, configure_tmp_output: Path
+):
+    """UAT I-2: POST bundle with no body returns 404 (not 422) when no approved tasks."""
+    corpus_id = await _seed_corpus_no_approved(configure_tmp_output, client)
+
+    resp = await client.post(f"/api/v1/corpus/{corpus_id}/export/bundle")
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": "No approved tasks to export"}
+
+
+async def test_export_bundle_404_no_tasks_at_all(
+    client: AsyncClient, configure_tmp_output: Path
+):
+    """UAT I-2: POST bundle with zero task_decisions returns 404 via _load_export_data."""
+    resp = await client.post("/api/v1/corpora", json={"name": "Totally Empty"})
+    assert resp.status_code == 201
+    corpus_id = resp.json()["id"]
+    corpus_dir = configure_tmp_output / corpus_id
+
+    (corpus_dir / "extraction.json").write_text(
+        '{"corpus":"' + corpus_id + '","total_units":0,"units":[]}'
+    )
+    api_main._extraction_data.clear()
+    api_main.load_extraction(corpus_id)
+
+    import aiosqlite
+
+    db_path = corpus_dir / "review.db"
+    async with aiosqlite.connect(str(db_path)) as db:
+        await db.executescript(SCHEMA_SQL)
+        await db.commit()
+
+    resp = await client.post(
+        f"/api/v1/corpus/{corpus_id}/export/bundle",
+        json={"formats": ["owl"]},
+    )
+    assert resp.status_code == 404
+    assert resp.json() == {"detail": "No discovered tasks found"}
