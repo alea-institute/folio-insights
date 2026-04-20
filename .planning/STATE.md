@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: shipped
-stopped_at: context exhaustion at 91% (2026-04-20)
+milestone: v2.0
+milestone_name: shards-as-axioms
+status: defining_requirements
+stopped_at: null
 last_updated: "2026-04-20T22:02:17.238Z"
-last_activity: 2026-04-20 — v1.1 milestone archived; tag v1.1 created
+last_activity: 2026-04-20 — v2.0 milestone started; phase numbering reset; v1.1 phases archived
 progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 20
-  completed_plans: 21
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,11 +25,15 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 ## Current Position
 
-Milestone: v1.1 — SHIPPED 2026-04-20
-Live URL: https://folio-insights-production.up.railway.app (/health 200, / 200, /api/v1/corpora 200)
-Last activity: 2026-04-20 — v1.1 milestone archived; tag v1.1 created
+Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-20 — v2.0 milestone started; phase numbering reset; v1.1 phases archived to `.planning/milestones/v1.1-phases/`
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
+
+Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
 ## Performance Metrics
 
@@ -185,6 +189,6 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-20T22:02:17.236Z
-Stopped at: context exhaustion at 91% (2026-04-20)
-Resume file: None
+Last session: 2026-04-20 — v2.0 shards-as-axioms milestone started
+Stopped at: —
+Resume file: `.planning/v2.0-MILESTONE-BRIEF.md` (40+ pre-resolved decisions)
