@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-20T21:36:13.992Z",
+  "phase": null,
+  "phase_name": "pre-milestone planning (v2.0-shards-as-axioms)",
+  "phase_dir": ".planning/",
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Read PHILOSOPHY.md + PRD-v2.0-draft-2.md §0/§5/§6/§21", "status": "done"},
+    {"id": 2, "name": "Route /gsd-do input → /gsd-new-milestone target", "status": "done"},
+    {"id": 3, "name": "Run 40+ clarifying questions via AskUserQuestion tool (10 batches)", "status": "done"},
+    {"id": 4, "name": "Draft .planning/v2.0-MILESTONE-BRIEF.md consolidating all decisions", "status": "done"},
+    {"id": 5, "name": "Save feedback memory: always use AskUserQuestion tool for clarifying questions", "status": "done"}
+  ],
+  "remaining_tasks": [
+    {"id": 6, "name": "Invoke /gsd-new-milestone with .planning/v2.0-MILESTONE-BRIEF.md as input", "status": "not_started"},
+    {"id": 7, "name": "/gsd-plan-phase Phase 0 (PHILOSOPHY.md rename, perf harness, Dagger CI, Oxigraph spike)", "status": "not_started"}
+  ],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {"decision": "Milestone name: v2.0-shards-as-axioms", "rationale": "Mirrors PHILOSOPHY.md title; names philosophical through-line", "phase": null},
+    {"decision": "Scope: Everything including v2.1", "rationale": "User wants full refactor in one milestone; open-ended ship window", "phase": null},
+    {"decision": "Phase decomposition: fine-grained per PRD subsection (~25+ phases)", "rationale": "User preference for granular checkpoints", "phase": null},
+    {"decision": "Commit granularity: per atomic change; section boundaries = PR scope", "rationale": "User interpretation of PRD §0 'commit per section'", "phase": null},
+    {"decision": "Branch: master, no V1_COMPAT flag (greenfield, no v1 corpora exist)", "rationale": "Reconciled user's 'Master + flag' + 'No flag' choices: nothing to preserve", "phase": null},
+    {"decision": "Triplestore: Oxigraph (pyoxigraph) + rdflib bridge", "rationale": "Scale 1M-10M shards; Rust speed + rdflib ecosystem for pyshacl/JSON-LD", "phase": null},
+    {"decision": "Reasoner: owlready2 (pure-Python HermiT)", "rationale": "Python-native ergonomics; OWL 2 EL sufficient", "phase": null},
+    {"decision": "Job queue: Arq + REDIS_URL (12-factor)", "rationale": "Async-native; matches exp-backoff+DLQ retry policy", "phase": null},
+    {"decision": "LLM: agnostic via instructor in §9 refactor", "rationale": "Decision #5 compliance in v2.0; Claude default", "phase": null},
+    {"decision": "DID methods: key + web + plc (all three)", "rationale": "Federated community priority", "phase": null},
+    {"decision": "UI: SvelteKit 5 + adapter-node (SSR)", "rationale": "Preserve v1 work; unlock deep-link shard URLs + SPARQL streaming", "phase": null},
+    {"decision": "UI design: /gsd-ui-phase upfront with fresh bold aesthetic", "rationale": "Shards-as-axioms thesis warrants distinctive visual language", "phase": null},
+    {"decision": "Auth: OAuth (GitHub/Google) + DID binding", "rationale": "Balance familiar UX with federated-identity support", "phase": null},
+    {"decision": "Governance own phase; PROV-O log; §21.10 downstream-weighs (no quorum)", "rationale": "Minimal trust infra; keeps decision #10 posture", "phase": null},
+    {"decision": "SHACL: hybrid Pydantic-generated + hand-written advanced; per-corpus enforcement", "rationale": "Single source of truth for 80% + escape hatch for sh:sparql", "phase": null},
+    {"decision": "Test-first (red-green-refactor); WCAG 2.1 AA blocking gate", "rationale": "Quality bar; PRD acceptance tests as failing-first anchors", "phase": null},
+    {"decision": "Cluster validator (§8 P3): auto-flag + manual override + cheap LLM arbiter (all three)", "rationale": "Maximum coverage with human-in-the-loop", "phase": null},
+    {"decision": "Benchmark corpora: advocacy + FRE + Restatement of Contracts", "rationale": "Real-world coverage; tests polysemy + supersession", "phase": null},
+    {"decision": "Packaging: single Docker image; CI: GitHub Actions + Dagger", "rationale": "Host-agnostic deployment; reproducible CI", "phase": null},
+    {"decision": "Docs: mkdocs-material + notebooks (JupyterLite demos + self-hosted depth)", "rationale": "Four consumer audiences need varied onboarding surfaces", "phase": null},
+    {"decision": "Warrants: one-line `Warrant:` in every commit message (no hooks)", "rationale": "Lightweight; preserves PRD §5/§21 traceability; honor-system", "phase": null},
+    {"decision": "Versioning: CalVer (YYYY.MM); License: MIT (keep)", "rationale": "User choice; matches sibling repos", "phase": null},
+    {"decision": "Community artifacts: CONTRIBUTING + CoC + RFC process + GOVERNANCE", "rationale": "Federated community requires onboarding + decision-log infrastructure", "phase": null},
+    {"decision": "Export formats: combined.ttl + abox/tbox + JSON-LD frames + SPARQL CONSTRUCT + N-Quads + Neo4j", "rationale": "Four consumer audiences × different tooling preferences", "phase": null},
+    {"decision": "PII: redaction on ingest + opt-in private corpora (encrypted at rest)", "rationale": "Legal sources may include sensitive facts; default-safe posture", "phase": null},
+    {"decision": "Threat model: adversarial reviewer (bad-faith promotions) + passive attackers", "rationale": "Federated community admits bad actors; plan for them", "phase": null},
+    {"decision": "Security audits: pre-release (crypto+OAuth) + post-release fuller audit", "rationale": "Ship-gate + periodic review", "phase": null}
+  ],
+  "uncommitted_files": [
+    ".planning/v2.0-MILESTONE-BRIEF.md",
+    ".planning/HANDOFF.json",
+    ".planning/.continue-here.md",
+    "2026-04-19_Philosophy.md",
+    "PRD-v2.0-draft-2.md"
+  ],
+  "next_action": "Run /gsd-new-milestone with .planning/v2.0-MILESTONE-BRIEF.md as input spec. After it generates .planning/milestones/v2.0-shards-as-axioms/ and ROADMAP, kick off /gsd-plan-phase for Phase 0 (PHILOSOPHY.md rename + perf benchmark harness + Dagger CI skeleton + Oxigraph+rdflib-bridge spike).",
+  "context_notes": "Session was pre-milestone planning for a massive v1→v2 refactor guided by PRD-v2.0-draft-2.md (2006 lines) and PHILOSOPHY.md (522 lines). User invoked /gsd-do asking to plan a new milestone with deep pre-work iteration. Delivered 10 batches of structured AskUserQuestion calls (~40 questions total) to elicit every load-bearing decision before writing a single line of planning. All answers captured in .planning/v2.0-MILESTONE-BRIEF.md. User explicitly requested all Q&A via AskUserQuestion UI from now on — saved as feedback memory at ~/.claude/projects/-home-damienriehl-Coding-Projects-folio-insights/memory/feedback_ask-user-question-ui.md. Context was exhausted (92%) before /gsd-new-milestone could be invoked; resume in fresh session."
+}
