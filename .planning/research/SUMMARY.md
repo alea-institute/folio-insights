@@ -1,232 +1,219 @@
 # Project Research Summary
 
-**Project:** FOLIO Insights — Legal Knowledge Extraction & Ontology Enrichment
-**Domain:** Legal NLP / Ontology engineering / Knowledge graph construction
-**Researched:** 2026-03-17
-**Confidence:** HIGH
+**Project:** FOLIO Insights v2.0 — shards-as-axioms milestone
+**Domain:** Federated shard-based legal knowledge graph with DID-signed attestations, SPARQL endpoint, and polysemy-first review UI (refactor-in-place on v1.1 FastAPI / SvelteKit / aiosqlite base)
+**Researched:** 2026-04-20
+**Confidence:** HIGH on stack + architecture; MEDIUM-HIGH on features; HIGH on pitfalls
 
 ## Executive Summary
 
-FOLIO Insights is a specialized batch pipeline that extracts structured advocacy knowledge from legal textbooks (in Markdown format) and enriches the FOLIO ontology with a hierarchical task-centric knowledge structure. It is not a general-purpose NLP tool — it is a purpose-built extension on top of the existing `folio-enrich` system, which already handles FOLIO concept tagging, confidence scoring, and RDF serialization. The recommended approach is to build a **separate batch orchestrator** that imports `folio-enrich` services as a library via a bridge adapter rather than modifying its internals, adding exactly four new Python packages (`instructor`, `owlrl`, `pySHACL`, `networkx`) on top of the existing stack. The entire product value rests on a four-stage pipeline: (1) extract and classify knowledge units from MD source files with FOLIO concept tags, (2) discover and build a hierarchical advocacy task tree across the corpus, (3) generate OWL and companion JSON-LD output, and (4) validate the standalone ontology module before delivery.
+v2.0 is a **refactor-in-place** — not a rewrite — layered on the existing v1.1 extraction pipeline, FastAPI app, and SvelteKit viewer. The locked 40+ decisions from the milestone brief (Oxigraph/pyoxigraph, owlready2, instructor, Arq, SvelteKit 5 adapter-node, DID via did:key/web/plc, OAuth binding, PROV-O governance) are **all validated against PyPI on research date and still current-stable**, with four concrete risks surfaced that the brief didn't anticipate. The v1 7-stage pipeline is preserved; a **new Stage 8 "Shard Minter"** converts each `KnowledgeUnit` into a 15-field Pydantic `Shard`, signs it with a DID, SHACL-validates it, cluster-validates it (owlready2+HermiT), and bulk-loads it into pyoxigraph with a parallel rdflib bridge for pyshacl/JSON-LD. The v1 aiosqlite DB is preserved for relational indexes; pyoxigraph becomes the RDF system of record. A new `worker` Docker stage adds a JVM for HermiT; the `web` stage stays JVM-free.
 
-The critical architectural decision is the "core in OWL, details in companion file" split — formal class hierarchy in a standalone `advocacy-knowledge.owl` module that references FOLIO via `rdfs:seeAlso` rather than physically merging with the 293,603-line FOLIO.owl, and detailed advice content in a linked `advocacy-companion.jsonld` file. This keeps FOLIO interoperable and upgradeable while allowing rich annotation. The system serves three output consumers that must be designed for from day one: SPARQL queries, LLM RAG retrieval, and human browsing. Designing for one and retrofitting the others is a documented high-cost failure mode — the data model must accommodate all three from the initial `KnowledgeUnit` design.
+The research surfaces **four corrections/additions to the brief** that must land in the roadmap: (1) **owlready2 is NOT pure-Python** — HermiT ships as a JVM jar (RISK-1); (2) **no off-the-shelf Pydantic-to-SHACL generator exists** — ~150 LOC must be written in-repo (RISK-2); (3) **pyoxigraph 0.5.x dropped RDF-star in favor of RDF 1.2** — triple terms in subject position no longer work, which invalidates several PRD §20 example queries and requires a syntax audit (**BLOCKING Phase 0**); (4) **identity stack needs specific picks** — `authlib > fastapi-users` (DID-first identity), `PyNaCl + cryptography + atproto + dag-cbor + jcs` for DID signing, `didkit` is dead and must be avoided. Feature-space research confirms v2.0's novelty zone — **polysemy forks with analogia predicates, contest-vs-supersede-vs-retract three-way split, DID-signed per-action attestations** — has no direct UX precedent; Wikidata/Solid/ActivityPub/YASGUI inform table stakes but not the hard cases, so the `/gsd-discuss-phase` work for Phase 15 UI must budget design iteration time.
 
-The two highest risks are (1) advice boundary detection granularity — if segmentation into knowledge units is wrong, every downstream stage inherits the error with no recovery short of full re-extraction — and (2) LLM hallucination, which is particularly dangerous because the "ideas not expressions" extraction philosophy actively encourages rephrasing that can drift from source material. Both must be addressed in Phase 1 with gold-standard validation sets and source grounding verification, not deferred. FOLIO concept mapping recall collapse (80%+ of extractions concentrating on 50 generic concepts) and task hierarchy over/under-splitting are Phase 2 risks requiring vocabulary bridging and minimum evidence thresholds respectively.
-
----
+Key risks are all **mitigable with discipline**: Phase 0 is a **hard gate** with 7 deliverables (Oxigraph spike, HermiT perf baseline, Dagger CI, 1M-triple load generator, SSR streaming prototype) that either validate the stack or trigger a pivot (Fuseki / Rust `reasonable` reasoner / defer streaming). The critical-path chain `0 → 2 → 3 → 6 → 7 → 8 → 9 → 10 → 11 → 13 → 14 → 15 → 16 → 17 → 19 → 20` is ~16 phases; observability (Phase 12), community artifacts (Phase 18), and UI design (Phase 14) can **parallel-track** off critical path. Security audit (Phase 19) is non-negotiable before release — DID signing, OAuth, rate limiting, and write API input validation all require scrutiny, and two BLOCKING security pitfalls (SPARQL `SERVICE` SSRF, DID key-rotation break of historical signatures) must be addressed by design, not post-hoc.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing `folio-enrich` stack (Python 3.13, FastAPI, spaCy 3.8.11, rdflib 7.6.0, FAISS, folio-python 0.2.0) is the foundation — all new work is additive. Only four genuinely new production dependencies are needed: `instructor` for structured LLM output with Pydantic auto-retry, `owlrl` for OWL2 RL reasoning without a JVM dependency, `pySHACL` for SHACL constraint validation of generated RDF, and `networkx` for in-memory task tree operations before RDF serialization. A dual-library strategy including Owlready2 was evaluated and explicitly rejected because it cannot handle punned entities (a documented limitation that would cause silent data loss with FOLIO classes that appear as individuals in some contexts), requires Java for its HermiT/Pellet reasoner, and would introduce a parallel graph system conflicting with folio-enrich's existing rdflib-based architecture.
+The locked stack validates against the latest PyPI releases (all 40+ packages verified same-day as research). The **one correction** is that `owlready2` is not pure-Python and requires JVM 17 in the worker Docker stage (+~200 MB). The **one gap** is the absence of a Pydantic-to-SHACL generator library, requiring ~150 LOC in-repo (`src/folio_insights/shapes/pydantic_to_shacl.py`). See `.planning/research/STACK.md` for full version pins.
 
 **Core technologies:**
-- **rdflib 7.6.0** — OWL/RDF graph construction, SPARQL, multi-format serialization — already in folio-enrich; handles FOLIO.owl's RDF/XML format natively
-- **instructor 1.14.5** — structured LLM output with Pydantic validation and auto-retry — replaces fragile JSON parsing; type-safe objects for every extraction; supports Anthropic, OpenAI, and 15+ providers
-- **folio-python 0.2.0** — FOLIO ontology access, 18K concept index, 7-strategy label search, IRI resolution — already in folio-enrich; critical for concept mapping
-- **owlrl 7.1.4** — OWL2 RL forward-chaining inference — pure Python, no JVM; sufficient for consistency checking without Owlready2
-- **pySHACL 0.31.0** — SHACL constraint validation of generated OWL output before delivery
-- **networkx 3.0+** — in-memory task tree graph operations (cycle detection, topological sort, subtree extraction) before SKOS serialization
-- **spaCy 3.8.11** — sentence segmentation, dependency parsing; structural pre-pass to feed into LLM extraction prompts
-- **markdown-it-py** — MD AST parsing for heading hierarchy and section boundary extraction from source files
-- **Skosify 2.0.1** (optional) — SKOS hierarchy validation (cycle breaking, duplicate label detection) on companion file output
+- **pyoxigraph 0.5.7** — canonical RDF 1.2 / SPARQL-star store (RocksDB, ~200K triples/sec insert); replaces rdflib-on-SQLite from v1
+- **rdflib 7.6.0** — bridge adapter only (pyshacl input + JSON-LD + Turtle-star canonicalization); NOT the primary store
+- **pyshacl 0.31.0 + owlready2 0.50 (HermiT/JVM)** — SHACL validation + OWL 2 EL TBox reasoning; cluster validator runs in worker tier only
+- **instructor 1.15.1** — LLM provider abstraction (Claude default; OpenAI + Ollama CI matrix); replaces v1's direct Anthropic calls
+- **Arq 0.28.0 + Redis 7.4** — async job queue; replaces v1's disk-based job_manager
+- **SvelteKit 5.55.4 + adapter-node 5.5.4 + Vite 8.0.9** — SSR replaces v1's adapter-static; unlocks deep-link shard pages + SSE streaming
+- **FastAPI 0.136.0 + Pydantic 2.13.3 + authlib 1.7.0** — preserved/extended from v1; adds OAuth + DID middleware
+- **DID crypto stack** — `cryptography` + `PyNaCl` (ed25519 hot path) + `joserfc` (JWS) + `atproto` (did:plc resolver) + `dag-cbor` + `jcs` (RFC 8785); reject `didkit`, `pydid`, `python-jose`, `fastapi-users`
+- **Observability triple** — structlog 25.5.0 + OpenTelemetry 1.41.0 + prometheus-client 0.25.0
+- **Dev tooling** — ruff 0.15.11, mypy 1.20.1 strict, pytest 9.0.3, Playwright 1.59.1 + axe-core 4.11.3 (WCAG 2.1 AA gate)
 
 ### Expected Features
 
-All four research files converge on the same feature prioritization. The pipeline delivers no value until advice unit boundary detection and FOLIO concept tagging both work end-to-end — these are co-dependencies that gate everything downstream.
+v2.0 inherits UX patterns from five overlapping ecosystems (Wikidata/Wikibase statement ranks, Solid/LDP content negotiation, ActivityPub HTTP signatures, IETF RFC process, YASGUI/SPARQL tooling) but diverges in three novel zones with **no direct precedent**: (A) polysemy forks via `distinguo` with analogia predicates, (B) three-way contest-vs-supersede-vs-retract disambiguation, (C) DID-signed per-action attestations over content hashes. 10 categories A–J; see FEATURES.md.
 
-**Must have (table stakes — P1):**
-- MD source ingestion with heading hierarchy preservation
-- Advice unit boundary detection with "ideas not expressions" distillation embedded in extraction prompts
-- Knowledge type classification (advice / principle / citation / procedural rule / pitfall — five types)
-- FOLIO concept tagging via folio-enrich's three-path hybrid extraction (EntityRuler + LLM + semantic ruler)
-- Multi-stage confidence scoring (reuse folio-enrich's 5-stage pipeline)
-- Task hierarchy discovery from corpus — LLM-driven induction, not from a predefined list (this is an explicit PROJECT.md key decision)
-- Hierarchical task tree construction (Task > Sub-task > Best Practice / Principle / Pitfall)
-- OWL output generation as standalone module with ADV-prefixed IRIs
-- Companion JSON-LD file for detailed advice content linked to OWL IRIs
-- Extraction provenance and lineage tracking for every knowledge unit
-- Human-reviewable JSON intermediate output for quality spot-checking
-- Batch CLI execution (no real-time interactive mode — explicitly out of scope)
+**Must have (P1, GA):**
+- 15-field shard envelope + 5 subtypes (SimpleAssertion, DisputedProposition, ConflictingAuthorities, Gloss, Hypothesis)
+- Provenance-hash IRIs + content-negotiated dereference
+- DID-signed attestations on every action + signature-verification badge
+- Governance model (4 role tiers, PROV-O log, RFC process)
+- FOLIO v2 vocabulary + mini-BFO spine
+- All 7 §8 design principles (cluster validator, framework detector, dependency graph, TBox/ABox, closed-world, polysemy detector, BFO classifier)
+- LLM-provider-agnostic pipeline (Claude default; OpenAI + Ollama CI)
+- SHACL hybrid (Pydantic-gen + 6 hand-written shapes)
+- Review UI: deep-link pages, polysemy fork UI, supersession timeline, contest/supersede/retract wizards, SPARQL explorer
+- Public SPARQL read endpoint + DID-gated REST write API (NOT SPARQL UPDATE on public endpoint)
+- Community artifacts: CONTRIBUTING, CoC (Contributor Covenant 2.1), GOVERNANCE, RFC
+- WCAG 2.1 AA + P95 SPARQL <500ms @ 1M triples
 
-**Should have (competitive differentiators — P2):**
-- Surprise/novelty flagging for counterintuitive insights (contrastive LLM prompting)
-- Cross-document advice deduplication (embedding similarity + LLM judge for ambiguous pairs)
-- Confidence-gated auto-approval (≥0.80 auto-approve, 0.60–0.80 spot-check, <0.60 exclude and log)
-- Idempotent re-runnable pipeline with content-hash-based change detection
-- Multi-consumer output formats (SPARQL-optimized RDF, RAG-optimized JSON chunks, browsable HTML/MD)
+**Should have (P1/P2 differentiators):**
+- Dependency graph visualizer; prime-analogate picker + proportional-relation editor; retraction cascade preview; warrant trace-back UI; pre-shipped SPARQL query templates; streaming SSE results; governance log timeline viewer; "What will I be signing?" preview
 
-**Defer (v2+ — P3):**
-- Cross-source task tree merging (only valuable with substantial multi-book corpus overlap)
-- Conflict detection across sources (requires cross-source merging)
-- Incremental corpus growth without full reprocessing (only needed when corpus is large enough)
-- SPARQL query optimization of RDF schema after initial query patterns are validated
-- FOLIO candidate concept reporting for unmatched knowledge units
-- Importance-aware extraction ranking beyond novelty/confidence
+**Defer (v2+):**
+- Hardware-key signing; multi-sig attestations; corpus fork genealogy; "Explain this query" LLM helper; GraphQL endpoint; live WebSocket subscriptions; mobile-first apps
 
-**Anti-features (explicitly out of scope per PROJECT.md):**
-- User-facing legal advice UI
-- Substantive legal correctness evaluation
-- Real-time / interactive processing mode
-- Automatic FOLIO ontology extension (governance concern)
-- Full source text preservation (copyright risk)
-- Multi-language support (English-only source corpus)
+**Explicit anti-features (DO NOT BUILD):**
+- Inline shard editing on public pages; vote up/down (§21.10); hide rejected objections; auto-apply distinguo; majority-vote contest resolution; unified delete button; unrestricted SPARQL UPDATE; server-held signing keys; anonymous contributions; auto-sync between corpora
 
 ### Architecture Approach
 
-The system is a four-stage batch pipeline that builds on top of folio-enrich without modifying it. The key structural insight verified by direct folio-enrich codebase inspection is that folio-enrich is a general-purpose document enrichment tool with 586 tests across 45 files — adding advocacy-specific stages to its orchestrator would pollute its architecture and risk breaking its test suite. Instead, folio-enrich services (`FolioService`, `EmbeddingService`, LLM registry) are imported as a library via a `FolioEnrichBridgeStage` adapter. The folio-insights orchestrator runs its own four-stage pipeline with checkpointing (each stage writes JSON to disk before the next stage begins, enabling resume from the last checkpoint on failure).
+**Refactor-in-place.** v1.1's 7-stage pipeline preserved; new **Stage 8 (Shard Minter)** appended. Web tier augmented; SvelteKit adapter-static → adapter-node swap. Two-stage Docker split isolates JVM to worker; web stays lean.
 
 **Major components:**
-1. **MD Ingestion** — parse source files into heading hierarchy, sections, paragraphs with structural metadata (`section_path: list[str]`)
-2. **Stage 1: FOLIO Tagger** — two-pass knowledge unit boundary detection (structural heuristics then LLM refinement), type classification, FOLIO concept tagging via bridge to folio-enrich services, surprise scoring, distillation; produces `KnowledgeUnit` objects with full lineage trail
-3. **Stage 2: Task Tree Builder** — two-pass LLM-driven task discovery (task identification across corpus, then per-task hierarchical organization), cross-reference assignment, near-duplicate detection; produces validated `TaskTree` JSON
-4. **Stage 3: OWL Mapper** — task tree to OWL axioms with deterministic ADV-prefixed IRI generation (BLAKE2b hash of task path), companion JSON-LD with full knowledge unit content; produces `advocacy-knowledge.owl` + `advocacy-companion.jsonld`
-5. **Stage 4: OWL Validator** — 7-step validation pipeline (XML well-formedness, RDF parse, IRI collision check, referential integrity, namespace consistency, companion link integrity, roundtrip parse test)
-6. **Corpus Registry** — content-hash-based tracking of processed files for incremental processing
-7. **Quality Gate** — confidence-gated output filtering at Stage 1→2 boundary and Stage 3 output
+1. **Shard Minter** (NEW, §6) — `KnowledgeUnit` → 15-field `Shard` with subtype routing, provenance-hash IRI, framework detection, BFO classification, DID signing
+2. **DID Signer/Verifier** (NEW, §6.5) — did:key/web/plc; JCS canonicalization; signing-time key capture
+3. **pyoxigraph Store** (REPLACES rdflib-as-store) — RDF 1.2 / SPARQL-star; named graphs per corpus + shared TBox + per-corpus governance log
+4. **rdflib Bridge** (AUGMENT) — adapter only; pyshacl + JSON-LD + Turtle-star
+5. **SHACL Validator** (AUGMENT) — 6 hand-written shapes + Pydantic-to-SHACL generator
+6. **Cluster Validator** (NEW, §P1) — owlready2+HermiT subprocess; WORKER TIER ONLY; async warn-only
+7. **Arq Worker** (REPLACES v1 disk job_manager)
+8. **FastAPI + authlib + DID middleware** (AUGMENT) — OAuth → DID binding
+9. **Public SPARQL Endpoint** (NEW) — read-only, rate-limited, 30s timeout, 10K cap
+10. **DID-gated Write API** (NEW) — REST wrapper; bypasses SPARQL UPDATE
+11. **Governance Service** (NEW, §3.1) — PROV-O log writer
+12. **Framework Registry + BFO Classifier + Polysemy Detector** (NEW, §P2/P7/P6)
+13. **SvelteKit 5 SSR** — deep-link shard pages, polysemy UI, supersession timeline, SPARQL explorer, SSE streaming
 
-**Key patterns to follow:**
-- Bridge pattern for folio-enrich services (import specific services: EntityRuler, EmbeddingService, LLM concepts, reconciliation — do NOT run the full 16-stage pipeline per knowledge unit)
-- Batch orchestrator with per-stage JSON checkpointing for resumability
-- Deterministic IRI generation (same corpus always produces same IRIs; idempotent re-runs)
-- Per-document extraction results stored separately from merged corpus output (enables corpus-level reconciliation re-runs without full reprocessing)
-- Standalone OWL module with `rdfs:seeAlso` links to FOLIO (no physical merge into 293K-line FOLIO.owl)
+**Seven v2.0 patterns:** Shard-as-Transaction; Canonical-Content-Hash as Signature Target; Named-Graph-per-Corpus + Shared TBox + Separate Governance; Pipeline Stage Append (not mutate); Worker-Side Reasoning / Web-Side Query; Append-Only Everywhere; Build-Time SHACL Generation.
 
 ### Critical Pitfalls
 
-1. **Advice boundary detection granularity mismatch** — LLMs produce inconsistent segmentation; legal advocacy prose interleaves multiple techniques without explicit delimiters; deep hierarchies in textbooks are an unsolved problem for state-of-the-art LLMs. Prevention: gold-standard validation set of 50–100 manually annotated boundaries from representative source material; precision/recall metrics against this set before scaling; two-pass detection (structural heuristics handle 70–80% cheaply; LLM resolves ambiguous cases).
+35+ pitfalls across 6 dimensions; **10 "sink v2.0"** per PITFALLS.md executive summary:
 
-2. **LLM hallucination in knowledge extraction** — the "ideas not expressions" mandate encourages rephrasing that opens the door to semantic drift, fabricated citations, and advice that is generically true but not in the source text. LLMs assign consistently high confidence to their own fabrications, so confidence scoring alone cannot catch this. Prevention: source grounding verification for every extraction (identify the specific source span; flag if none found), citations treated as near-verbatim extraction, LLM temperature set to 0 for extraction, explicit negative instructions ("do not include anything not in the provided text").
+1. **Oxigraph 0.5.x dropped RDF-star for RDF 1.2 — `<<?s ?p ?o>>` subject position breaks** (BLOCKING Phase 0) — Phase 0 spike tests annotation pattern; pin `==0.5.7`; rewrite every §20 example; document NOT SUPPORTED; CI regression test
+2. **Retraction cascade collapsed into supersession (or vice versa) — §21.9 crux** (BLOCKING Phase 9+15) — mandatory three-way disambiguation prompt; three distinct CLI commands; blast-radius preview; NO shared codepath; UX copy testing with legal users
+3. **Provenance-hash IRI non-determinism (whitespace/encoding drift)** (BLOCKING Phase 4) — `canonicalize_source_span()` with NFC + LF + trim; RFC 3986 URI normalization; property test; nightly re-hash verification
+4. **Public SPARQL endpoint exposes `SERVICE` / `FROM NAMED` → SSRF + DoS** (BLOCKING Phase 16+19) — strip SERVICE from AST; allow-list trusted endpoints; 30s timeout; 10K cap; rate-limit by IP + DID
+5. **JCS canonicalization on `model_dump()` → signature non-determinism** (BLOCKING Phase 6) — always go through `jcs.canonicalize()`; exclude `signatures` + `content_edits`; property test `verify(sign(x))` across shuffled field orders
+6. **DID key rotation breaks historical signatures** (HIGH Phase 6+19) — capture `signing_key_id` in AttestedSignature; cache historical did.json snapshots; did:plc operation-log pinning; CI `test_signature_survives_key_rotation.py`
+7. **SHACL validation on rdflib bridge at 1M triples blows P95 SLO** (HIGH Phase 0+11) — Phase 0 perf harness; per-shard incremental not per-corpus batch; pre-compile shapes at startup
+8. **Polysemy detector false positives on legal terms-of-art that SHOULD be polysemous** (HIGH Phase 1+9) — Phase 1 *consideration* spike; human-gated accept/reject/modify always; FP test set; per-framework threshold
+9. **Arq migration leaves v1 disk-based jobs orphaned** (MEDIUM Phase 10) — side-by-side feature flag; reconciliation script; cutover at Phase 12
+10. **owlready2/HermiT JVM cold-start + OOM in worker container** (MEDIUM Phase 0) — Phase 0 benchmark gate; async cluster validation; chunked; `-Xmx` tuning; fallback to Rust `reasonable`
 
-3. **FOLIO concept mapping recall collapse** — naive matching concentrates 80%+ of mappings on 50 generic FOLIO concepts while thousands of specific appropriate concepts go unused, because advocacy textbooks use practitioner language that doesn't match formal ontology preferred labels. Prevention: vocabulary bridge using `skos:altLabel` and concept definitions (not just preferred labels), pre-filtering FOLIO concepts by branch relevance to reduce search space per extraction, monitoring concept distribution statistics (flag when top 20 concepts account for >70% of all mappings).
-
-4. **Task hierarchy over/under-splitting** — LLMs confidently produce hierarchies whether or not the underlying structure supports them; no ground truth exists for what the "right" task hierarchy looks like. Prevention: seed taxonomy from source material tables of contents as structural prior (not fixed taxonomy), minimum evidence threshold (at least 5 distinct advice units per task node before promotion to confirmed), human review checkpoint specifically for top-level task structure.
-
-5. **OWL ontology corruption during import** — programmatic OWL generation introduces silent structural errors (polysemous elements, missing disjointness, namespace collisions, class/instance confusion) that corrupt SPARQL results without immediate visible failures; OOPS! catalogue documents 40+ such pitfalls. Prevention: OOPS! pitfall scanner on every generated OWL output as CI check, never use string manipulation for OWL serialization, always use rdflib's graph API, keep generated content in standalone module (not merged into FOLIO.owl).
-
----
+Additional watchlist: Pydantic discriminated-union collapse (use `Literal[...]`); shard IRI collision above 2³²; governance log append-only enforcement (SHACL + SQLite triggers); role-assertion loop; FOLIO vocab churn (LD1, pin `fi:vocabVersion`); GitHub username takeover → DID impersonation (F7); SPARQL injection (Q3, `initBindings`); named-graph-unaware queries (Q4); OTel prompt-attribute bloat (I4); WCAG AA pass-once regression (U2).
 
 ## Implications for Roadmap
 
-Architecture research identifies clear stage data dependencies: Stage 1 must produce knowledge units before Stage 2 can build task trees; Stage 2 must produce task trees before Stage 3 can generate OWL; Stage 4 validates Stage 3's output. This dictates a natural four-phase structure aligned with the four pipeline stages. The pitfalls research adds a critical cross-cutting constraint: multi-consumer output design must be addressed at the data model level in Phase 1, not deferred to the export phase — the `KnowledgeUnit` model must support SPARQL, RAG retrieval, and human browsing from initial design.
+Research validates the brief's 20-phase structure with **one refinement and one expansion**: (a) add **Phase 0 exit gates** as explicit pass criteria (5 gates); (b) sub-phase Phase 9 per principle (9.P1..P7) and Phase 15 per UI surface.
 
-### Phase 1: Foundation + Core Extraction Pipeline
+### Phase 0: Foundations (BLOCKS ALL)
+**Rationale:** Validates locked stack. Three BLOCKING risks (RDF-12, HermiT JVM, SSR streaming) resolve here or roadmap pivots.
+**Delivers:** PHILOSOPHY.md rename; Oxigraph+rdflib spike; HermiT-in-Docker perf baseline; Dagger CI; 1M-triple load generator; SSR streaming prototype; two-stage Dockerfile prototype.
+**Exit gates:** P95 SPARQL < 500ms @ 1M; worker image < 500 MB; SSR latency < 200ms; RDF 1.2 annotation pattern works; Dagger CI runs.
 
-**Rationale:** Everything depends on Stage 1. If boundary detection is wrong, every downstream stage inherits the error — and the two highest-risk pitfalls (boundary granularity, hallucination) must be solved here, not discovered later. folio-enrich integration via the bridge pattern must also be established before any FOLIO tagging is possible. The multi-consumer data model must be designed correctly from the start.
-**Delivers:** Working extraction of typed, FOLIO-tagged knowledge units from MD source files; human-reviewable JSON output with full lineage; gold-standard boundary validation set with measurable precision/recall; source grounding coverage metric above threshold.
-**Addresses (FEATURES.md P1):** MD source ingestion, advice unit boundary detection, "ideas not expressions" distillation, knowledge type classification, FOLIO concept tagging, multi-stage confidence scoring, lineage tracking, human-reviewable output.
-**Avoids (PITFALLS.md):** Advice boundary granularity mismatch (gold standard + two-pass detection), LLM hallucination (source grounding verification, temperature 0, negative instructions in prompts), multi-consumer data model afterthought (`KnowledgeUnit` model designed for all three consumers from day one).
-**Stack:** spaCy (structural pre-pass), instructor (structured LLM output), FolioEnrichBridgeStage (imports folio-enrich services), markdown-it-py (MD AST parsing), rdflib + Pydantic (data models).
-**Research flag:** Needs deeper research on prompt engineering for legal advocacy text segmentation and gold-standard validation set construction methodology before implementation begins.
+### Phase 1: Polysemy/distinguo Spike (parallel with Phase 2)
+**Rationale:** Validates §16 Risk 2 via canonical *consideration* example.
 
-### Phase 2: Task Hierarchy Discovery and Structuring
+### Phases 2–6: Shard Envelope & DID Substrate (SEQUENTIAL, critical path)
+- **2 — §6.1 envelope:** Pydantic `Shard`; round-trip tests
+- **3 — §6.2 subtypes:** Discriminated-union with `Literal` tags
+- **4 — §6.3 IRI scheme:** `mint_shard_iri()` with canonicalization; collision detector
+- **5 — §6.4 versioning:** `ContentEdit` + append-only SHACL guard; `get_shard_at()`
+- **6 — §6.5 DID attestations:** did:key/web/plc; JCS `canonical_content_hash()`; signing-time key capture
 
-**Rationale:** Task tree building has strict data dependency on Phase 1 output. The hierarchy IS the product's organizational backbone — "any practitioner querying 'how do I take an expert deposition' gets a structured, hierarchical set of techniques, principles, and warnings" (PROJECT.md). The vocabulary bridge for FOLIO mapping recall should also be built here, using real Phase 1 mapping output to identify where the practitioner-to-formal-label gap is widest.
-**Delivers:** Validated hierarchical task tree across corpus; cross-references for multi-task knowledge units; near-duplicate detection and deduplication; vocabulary bridge improving FOLIO concept recall; surprise/novelty scoring on knowledge units.
-**Addresses (FEATURES.md P1/P2):** Task hierarchy discovery (LLM-driven, not predefined), hierarchical task tree construction, cross-document advice deduplication, surprise/novelty flagging.
-**Avoids (PITFALLS.md):** Task hierarchy over/under-splitting (seed taxonomy prior, minimum evidence threshold of 5 units per node, human review checkpoint for top-level structure), FOLIO concept mapping recall collapse (vocabulary bridge with altLabel matching, branch pre-filtering, concept distribution monitoring).
-**Stack:** networkx (in-memory tree operations, cycle detection, topological sort), instructor (LLM-driven task discovery structured output), FAISS (near-duplicate detection via embedding cosine similarity ~0.85 threshold).
-**Research flag:** Needs research on task hierarchy merging strategies across source files; prompt engineering for two-pass task discovery; vocabulary bridge construction approach against actual source material.
+### Phase 7: Governance Model (§3.1)
+Role assertions; PROV-O log; minimum-admin invariant; append-only SHACL + SQLite triggers.
 
-### Phase 3: OWL Output Generation and Companion File
+### Phase 8: FOLIO v2 Vocab + Mini-BFO Spine (§7)
+`fi:*` TTL; `bfo_mapping.ttl`; `owl:versionIRI` scheme.
 
-**Rationale:** OWL generation depends on a validated task tree from Phase 2. This phase is structurally more mechanical than Phases 1 and 2 once mapping rules are defined, but OWL corruption risks are high and the companion file must serve all three consumer modes. The standalone module strategy (not physical merge into FOLIO.owl) is non-negotiable for maintainability.
-**Delivers:** `advocacy-knowledge.owl` standalone module with ADV-prefixed deterministic IRIs, `rdfs:subClassOf` hierarchy mirroring task tree, `rdfs:seeAlso` links to FOLIO; `advocacy-companion.jsonld` with full advice content, confidence scores, source citations; validated output passing OOPS! scanner and OWL consistency check; all three consumer modes (SPARQL, RAG chunks, human-browsable HTML/MD) tested with realistic queries.
-**Addresses (FEATURES.md P1/P2):** OWL output generation, companion file generation, SPARQL-optimized knowledge structure, multi-consumer output formats.
-**Avoids (PITFALLS.md):** OWL ontology corruption (OOPS! scanner as CI check, 7-step validation pipeline, no physical FOLIO.owl merge), multi-consumer output mismatch (all three consumption modes tested before declaring phase complete).
-**Stack:** rdflib 7.6.0 (OWL/SKOS serialization, JSON-LD), owlrl (OWL2 RL consistency checking), pySHACL (SHACL constraint validation), lxml (XML well-formedness), Skosify (SKOS hierarchy validation), folio-python (IRI collision checking against FOLIO concept space).
-**Research flag:** IRI generation strategy (ADV-prefixed BLAKE2b hash) needs validation against FOLIO's actual IRI format conventions to confirm no unforeseen collision patterns. Standard OWL generation patterns are well-documented; no other deep research needed.
+### Phase 9: Seven Design Principles (§8) — SUB-PHASE per principle
+9.P1 cluster validator, 9.P2 framework detector, 9.P3 dependency graph, 9.P4 TBox/ABox, 9.P5 closed-world, 9.P6 polysemy, 9.P7 BFO.
 
-### Phase 4: Pipeline Quality and Incremental Processing
+### Phase 10: Pipeline + LLM-Agnostic Refactor (§9)
+Stage 8 Shard Minter; `instructor.from_provider()` with CI matrix; Arq migration with side-by-side feature flag; single-layer retry.
 
-**Rationale:** Cross-cutting concerns that wrap the pipeline — confidence-gated output, idempotent re-runs, corpus registry, spot-check tooling — are essential before iterating on extraction quality with a growing corpus. The key architectural requirement is designing incremental processing as a document-level vs. corpus-level reconciliation split, not just hash-based file tracking, to avoid the "inconsistent state" pitfall when new source material restructures the task hierarchy.
-**Delivers:** Idempotent, re-runnable pipeline (reprocessing a processed document produces no duplicates); confidence-gated auto-approval with configurable thresholds calibrated against real extraction output; corpus registry tracking processed files with content hashes; spot-check sampling tooling for manual review of flagged units; hierarchy health check after new document additions.
-**Addresses (FEATURES.md P2):** Confidence-gated auto-approval, idempotent pipeline, incremental corpus growth foundation.
-**Avoids (PITFALLS.md):** Incremental processing creating inconsistent state (document-level vs. corpus-level reconciliation split; per-document results stored separately; hierarchy health check on each new batch; deduplication at corpus reconciliation time, not document processing time).
-**Stack:** Pydantic (CorpusManifest model), FAISS (incremental embedding deduplication across corpus), SHA-256 content-hash-based file change detection.
-**Research flag:** Standard patterns; no deep research needed. Implementation should follow the document-level vs. corpus-level split documented in PITFALLS.md.
+### Phase 11: SHACL Hybrid (§10)
+6 hand-written shapes + Pydantic-to-SHACL generator (~150 LOC, RISK-2); build-time TTL emission.
+
+### Phase 12: Observability (parallelize from Phase 6)
+structlog + OTel + Prometheus; prompt-attribute truncation; aggregate cost tracking.
+
+### Phase 13: Storage Layer (§11) — GATE
+Oxigraph Store; named-graph writer; rdflib bridge; nightly TTL dump; incremental SHACL.
+
+### Phase 14: UI Design Contract (pre-§12; parallelize from Phase 8)
+SvelteKit adapter-node full swap; component library skeleton; axe-core CI gate; bold aesthetic via `/gsd-ui-phase`.
+
+### Phase 15: Review UI (§12) — SUB-PHASE per surface
+15.shard-page, 15.polysemy-fork, 15.supersession-timeline, 15.contest-wizard, 15.retract-supersede-disambiguation, 15.dependency-graph, 15.sparql-explorer. Heavy `/gsd-discuss-phase` for 15.polysemy + 15.contest-wizard.
+
+### Phase 16: Public SPARQL Endpoint
+Read-only `/sparql` with SERVICE-stripping + allow-list + rate limit + timeout + cap; NO SPARQL UPDATE; `initBindings`; templates with GRAPH scoping; DID-gated REST write API; SHACL validation endpoint.
+
+### Phase 17: Testing Consolidation (§13)
+203 v1 + ~425 new tests; Tier 3 golden-set harness; DID rotation scenarios; SHACL-at-scale.
+
+### Phase 18: Community Artifacts + Docs (§15; parallelize from Phase 7)
+CONTRIBUTING, CoC, GOVERNANCE, RFC, mkdocs-material, JupyterLite, SPARQL cookbook.
+
+### Phase 19: Pre-Release Security Audit (BLOCKS RELEASE)
+Crypto; OAuth; DID rotation; SPARQL; rate limiting; write API; F7 scenario.
+
+### Phase 20: Release Cut
+v2.0.0 CalVer; Railway multi-service deploy; public SPARQL announce; benchmark corpora ingested.
 
 ### Phase Ordering Rationale
 
-- Stage data dependencies (Stage 1 → 2 → 3 → 4) map directly to phases — there is no viable alternative ordering without producing unusable intermediate output.
-- The two highest-risk pitfalls (boundary detection granularity, LLM hallucination) both occur in Phase 1 and have the highest recovery cost if discovered late; front-loading gold-standard validation is not optional for project health.
-- The vocabulary bridge (FOLIO concept mapping recall collapse) belongs in Phase 2 rather than Phase 1 because it requires seeing real mapping output to identify where practitioner-vs-formal-label gaps are most severe.
-- OWL generation in Phase 3 is structurally simpler than Phases 1 and 2 but requires rigorous validation; the standalone module approach deliberately avoids touching FOLIO.owl and its associated risk.
-- Cross-cutting quality concerns (Phase 4) must be formalized before the corpus grows but depend on real confidence distributions from Phases 1–3 to calibrate thresholds correctly.
-- Architecture research (ARCHITECTURE.md) explicitly confirms this build order under "Suggested Build Order" with the same rationale.
+- §6 subsections strictly sequential
+- §3.1 Governance requires §6.5
+- §7 vocab before §8 principles
+- §8 principles before §9 pipeline
+- §10 SHACL before §11 storage enforcement
+- Phase 14 UI design before Phase 15 per-feature UI
+- Phase 19 audit is non-negotiable release gate
+- Phase 0 is the meta-gate
 
 ### Research Flags
 
-Phases needing deeper research during planning:
+**Needs `/gsd-research-phase`:**
+- Phase 0 (RDF-12 migration; HermiT JVM tuning; SSR streaming; Dagger)
+- Phase 6 (DID key rotation per method; JCS edge cases; atproto for signing)
+- Phase 9.P6 (polysemy FP curation; LLM-vs-rule hybrid — core novel service)
+- Phase 11 (Pydantic-to-SHACL generator design)
+- Phase 14 (heavy `/gsd-ui-phase`; bold aesthetic direction)
+- Phase 15.polysemy, 15.contest-wizard (no UX precedent; `/gsd-discuss-phase` + UX copy testing)
+- Phase 16 (SPARQL security hardening; RDF-12 templates)
+- Phase 19 (security audit vendors; DID threat models)
 
-- **Phase 1:** Prompt engineering for advice boundary detection in legal advocacy text has no established best practice — needs research into instructor-based document segmentation patterns, optimal context window strategies for long chapters, and validation set construction methodology before implementation.
-- **Phase 2:** Task hierarchy discovery via LLM across a corpus is an active research area with known failure modes; the two-pass discovery strategy needs prompt engineering research. Vocabulary bridge construction requires analyzing actual source material vocabulary against FOLIO labels/altLabels — cannot be completed without access to source materials.
-- **Phase 3 (partial):** ADV-prefix IRI generation strategy needs validation against FOLIO's actual IRI format conventions before implementation to confirm no unforeseen collision or format incompatibility risks.
-
-Phases with standard, well-documented patterns (skip research-phase):
-
-- **Phase 3 (OWL generation):** rdflib OWL generation, SKOS companion file structure, pySHACL validation, OOPS! scanner integration are all well-documented. The companion-file architecture pattern is from W3C guidance.
-- **Phase 4 (incremental processing):** Content-hash change detection, corpus registry, and document-level vs. corpus-level reconciliation split are straightforward engineering patterns with clear implementation guidance from ARCHITECTURE.md.
-
----
+**Standard patterns (skip):** Phase 2/3/4/5 (Pydantic v2); Phase 7 (PROV-O); Phase 8 (TTL); Phase 10 (`instructor` + Arq); Phase 12 (obs standard); Phase 13 (pyoxigraph named graphs); Phase 17 (pytest); Phase 18 (mkdocs); Phase 20 (Railway).
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions verified on PyPI and GitHub with release dates. folio-enrich dependency list inspected directly from `backend/pyproject.toml`. Owlready2 rejection backed by documented punned-entity limitation in independent benchmark. All 4 new dependencies are actively maintained (latest releases 2025–2026). |
-| Features | HIGH | Feature landscape derives directly from explicit PROJECT.md requirements and key decisions. Feature dependencies verified against folio-enrich's actual codebase. Academic research confirms LLM-based segmentation patterns and multi-consumer design requirements. |
-| Architecture | HIGH | Bridge pattern recommendation backed by direct folio-enrich codebase inspection: `PipelineStage` ABC, `FolioService` singleton, `EmbeddingService`, `RDFExporter`, `OWLUpdateManager` all directly examined. FOLIO.owl format confirmed from 293K-line disk cache. All integration points are concrete, not speculative. |
-| Pitfalls | HIGH | Each pitfall backed by multiple authoritative sources: legal NLP surveys, OOPS! catalogue (40+ catalogued OWL pitfalls), LLM confidence calibration research, OWL reasoner comparison papers, taxonomy construction research. Pitfall-to-phase mapping provides actionable prevention with concrete metrics. |
+| Stack | HIGH | 40+ packages PyPI-verified on research date; RISK-1/2 surfaced with mitigations; RISK-3/4 flagged for Phase 0 |
+| Features | MEDIUM-HIGH | Table stakes HIGH (five ecosystem precedents); differentiators HIGH (PRD decisions); novel UX zones MEDIUM-LOW (no direct precedent) — flagged for Phase 15 `/gsd-discuss-phase` |
+| Architecture | HIGH | Integration seams verified against v1.1 source; PRD build order validated; two-stage Docker split solid; MEDIUM on SSR streaming |
+| Pitfalls | HIGH | 35+ cross-validated across STACK RISK-1..4 + ARCHITECTURE anti-patterns + PRD §16 risks; Oxigraph drop verified from CHANGELOG; SPARQL security verified against IBM LQE CVEs + OWASP |
 
-**Overall confidence:** HIGH
+**Overall confidence:** HIGH — 40+ decisions hold up; four corrections addressable in Phase 0 / 6 / 11; no fundamental re-scoping needed.
 
 ### Gaps to Address
 
-- **Source material vocabulary analysis:** The vocabulary bridge for FOLIO concept mapping (addressing recall collapse) requires analyzing actual advocacy textbook terminology against FOLIO's 18K concept labels, alternative labels, and definitions. This can only be done with access to the source materials and cannot be completed from research alone. Must be the first task in Phase 2.
-- **Confidence threshold calibration:** The thresholds in the confidence gate (0.80 auto-approve, 0.60–0.80 spot-check, <0.60 exclude) are initial estimates based on folio-enrich's existing pipeline patterns. Actual thresholds must be calibrated against real extraction output from Phase 1 before Phase 4 implementation. Do not treat these as fixed values.
-- **Gold-standard boundary validation set construction:** Research confirms this is essential for Phase 1 success, but constructing it requires manual annotation of 50–100 advice boundaries from actual source material. This is a human task that must be scoped into Phase 1 effort estimates.
-- **Task hierarchy seed taxonomy:** A seed taxonomy of top-level advocacy tasks (derived from source material tables of contents) should be established before Phase 2 task discovery begins. This requires examining the actual source materials, not general research.
-- **LLM provider selection for extraction tasks:** instructor supports 15+ providers. The optimal provider for legal text extraction (Anthropic Claude vs. OpenAI) at temperature 0 has not been benchmarked against advocacy textbook content specifically. folio-enrich's per-task LLM routing infrastructure supports provider switching, but routing configuration for new task types needs to be defined during Phase 1 setup.
-- **folio-python 0.2.0 LLM search capabilities:** The library's LLM-powered search features (mentioned in FOLIO April 2025 release notes) have not been fully evaluated for advocacy concept matching. May reduce the need for custom vocabulary bridging — investigate during Phase 2.
-
----
+1. **SvelteKit 5 adapter-node SSE streaming** — no v1 precedent; Phase 0 prototype or defer to post-GA
+2. **Oxigraph 0.5 RDF-star → RDF 1.2 exact semantics for §20 queries** — Phase 0 spike rewrites examples
+3. **Polysemy detector FP tuning** — Phase 1 spike + Phase 9.P6 iterative
+4. **UX for distinguo/contest/supersede** — Phase 15 UX copy testing with legal users
+5. **Benchmark corpus bias (US-federal-centric)** — flag v2.1; document release notes
+6. **DID key-rotation operational discipline at federated scale** — Phase 6 + Phase 19 scenarios
+7. **JupyterHub self-hosting ops load** — Phase 18 runbook
 
 ## Sources
 
-### Primary (HIGH confidence — verified against official sources or direct codebase inspection)
+**Primary (internal):** `.planning/v2.0-MILESTONE-BRIEF.md`, `PRD-v2.0-draft-2.md`, `PHILOSOPHY.md` (pending rename), `.planning/PROJECT.md`, `.planning/research/{STACK,FEATURES,ARCHITECTURE,PITFALLS}.md`, v1.1 codebase.
 
-- **folio-enrich codebase** (directly inspected): `pipeline/orchestrator.py`, `pipeline/stages/base.py`, `services/export/rdf_exporter.py`, `services/folio/folio_service.py`, `services/folio/owl_updater.py`, `services/folio/owl_cache.py`, `models/annotation.py`, `backend/pyproject.toml`
-- **FOLIO.owl** (disk cache at `~/.folio/cache/github/*.owl`, 293,603 lines): OWL Class structure with `rdfs:subClassOf`, `rdfs:label`, `skos:prefLabel`, `skos:definition`, `skos:altLabel`, `skos:example` annotations; Object Properties with `rdfs:domain`, `rdfs:range`, `owl:inverseOf`; IRI patterns confirmed
-- [rdflib PyPI](https://pypi.org/project/rdflib/) — v7.6.0, Feb 13, 2026
-- [instructor PyPI](https://pypi.org/project/instructor/) — v1.14.5, Jan 29, 2026
-- [pySHACL GitHub](https://github.com/RDFLib/pySHACL/releases) — v0.31.0, Jan 16, 2026
-- [OWL-RL GitHub](https://github.com/RDFLib/OWL-RL) — v7.1.4
-- [folio-python GitHub](https://github.com/alea-institute/folio-python) — v0.2.0
-- [FOLIO GitHub](https://github.com/alea-institute/FOLIO) — ~18K concepts, structure confirmed
-- [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/) — W3C Recommendation
-- [W3C: Using OWL and SKOS](https://www.w3.org/2006/07/SWD/SKOS/skos-and-owl/master.html) — OWL/SKOS integration patterns for companion files
+**Primary (external HIGH):** pyoxigraph 0.5.7 PyPI + Oxigraph CHANGELOG 0.5.0-beta.1 (source of D1); owlready2 reasoning docs (RISK-1); instructor multi-provider integrations; Arq 0.28.0; FastAPI 0.136.0; Authlib FastAPI OAuth; W3C DID Core + did:plc spec v0.1 + AT Proto Identity; W3C PROV-O; RFC 8785 JCS; SvelteKit 5 adapter-node; sib-swiss/sparql-editor; OpenTelemetry Python 1.41.0.
 
-### Secondary (MEDIUM confidence — community consensus, multiple sources agree)
+**Secondary (MEDIUM):** WorkOS FastAPI auth 2026; Wikidata Help:Ranking + Deprecation; Solid Project; ActivityPub HTTP Signatures; IETF RFC process; Martin Fowler Bitemporal History; ABA Stare Decisis; Risks of did:plc; FAIR Cookbook IDs; IBM LQE CVEs.
 
-- [Comparing Python ontology libraries (2025)](https://incenp.org/notes/2025/comparing-python-ontology-libraries.html) — rdflib vs. Owlready2 benchmark; punned entity limitation confirmed; rdflib recommended for RDF/XML manipulation
-- [OOPS! OntOlogy Pitfall Scanner Catalogue](https://oops.linkeddata.es/catalogue.jsp) — 40+ catalogued OWL ontology development pitfalls
-- [LLM-Enhanced Semantic Text Segmentation (MDPI, 2025)](https://www.mdpi.com/2076-3417/15/19/10849) — LLM embeddings significantly improve semantic text segmentation accuracy
-- [Automated Taxonomy Construction Using LLMs (MDPI, 2025)](https://www.mdpi.com/2673-4117/6/11/283) — taxonomy induction strategies; general term boundary problems
-- [A Language Model based Framework for New Concept Placement in Ontologies](https://arxiv.org/html/2402.17897) — concept placement challenges; "edges are over 3.5x the number of concepts" — search space complexity
-- [Knowledge Graphs, LLMs, and Hallucinations (ScienceDirect)](https://www.sciencedirect.com/science/article/pii/S1570826824000301) — KG-RAG hallucination mitigation; confidence score limitations
-- [Survey on legal information extraction](https://link.springer.com/article/10.1007/s10115-025-02600-5) — comprehensive survey of NLP challenges in legal domain
-- [Leveraging LLMs for legal terms extraction](https://link.springer.com/article/10.1007/s10506-025-09448-8) — boundary annotation discrepancies between experts and LLMs
-- [FOLIO April 2025 Updates](https://openlegalstandard.org/april-2025-folio-updates/) — folio-python v0.2.0 release notes
-- [Ontology enrichment using a large language model (ScienceDirect, 2025)](https://www.sciencedirect.com/science/article/pii/S1532046425000942) — automated concept placement evaluation; "zero-shot LLM prompting is still not adequate"
-
-### Tertiary (LOW confidence — single source or inference)
-
-- [From LLMs to Knowledge Graphs: Production-Ready Systems (2025)](https://medium.com/@claudiubranzan/from-llms-to-knowledge-graphs-building-production-ready-graph-systems-in-2025-2b4aff1ec99a) — production KG construction patterns; single source, needs validation
-- [TaxoGen: Unsupervised Topic Taxonomy Construction](https://arxiv.org/pdf/1812.09551) — general term boundary problems in taxonomy construction; academic, needs domain validation for legal advocacy context
-- [Incremental Ontology Population and Enrichment through Semantic-based Text Mining](https://www.researchgate.net/publication/292139184_Incremental_Ontology_Population_and_Enrichment_through_Semantic-based_Text_Mining) — incremental enrichment challenges; older research, patterns may have evolved
+**Tertiary (LOW, needs validation):** SvelteKit + SSE community examples; legal-KG polysemy literature; DAO governance attack patterns.
 
 ---
-*Research completed: 2026-03-17*
+*Research completed: 2026-04-20*
 *Ready for roadmap: yes*
+*Downstream: REQUIREMENTS.md → ROADMAP.md*
