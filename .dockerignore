@@ -38,3 +38,10 @@ Thumbs.db
 
 # Test artifacts
 tests/fixtures/large
+
+# Per-corpus job state (output/.jobs/) — excluded so Railway never ships
+# stale or failed-state job JSON. Bundled corpora with extraction.json
+# fall back to processing_status='completed' via api/routes/corpus.py
+# line ~74-76. Fixes UAT Issue I-5.
+output/.jobs
+output/.jobs/**
