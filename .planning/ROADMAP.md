@@ -37,4 +37,20 @@
 Plans:
 - [x] 01-01-PLAN.md — Multi-stage Dockerfile + .dockerignore + /health endpoint
 - [x] 01-02-PLAN.md — railway.toml + frontend relative-URL audit + regression smoke test
-- [ ] 01-03-PLAN.md — User-driven Railway deploy + README section + STATE.md URL record
+- [x] 01-03-PLAN.md — User-driven Railway deploy + README section + STATE.md URL record
+
+### Phase 2: UAT Gap Fixes
+
+**Goal:** Close the 5 issues surfaced by the comprehensive UAT sweep so every user-observable deliverable shipped in v1.0 + the Railway deploy works end-to-end from viewer dev-mode through ontology export — specifically: resolve LLM-path FOLIO tags to canonical IRIs, fix vite proxy port mismatch, normalize bundle-export error contract, seed an approved-task demo corpus for export validation, and clean up the Railway `processing_status=failed` artifact.
+**Requirements**: none (gap closure — sourced from COMPREHENSIVE-UAT.md)
+**Depends on:** Phase 1 (Railway deploy — I-5 is a post-deploy cleanup item)
+**Plans:** 5 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — I-3: Fix vite proxy target 8700 → 9925 (Wave 1)
+- [ ] 02-02-PLAN.md — I-2: Bundle export 422 → 404 parity + regression tests (Wave 1)
+- [ ] 02-03-PLAN.md — I-1: LLM-path FOLIO IRI resolution at 0.6 threshold + proposed_class routing (Wave 1)
+- [ ] 02-04-PLAN.md — I-4: Seed output/demo/ corpus fixture for export validation (Wave 1)
+- [ ] 02-05-PLAN.md — I-5: Exclude output/.jobs/ from Docker context + Railway redeploy checkpoint (Wave 2)
+
+**Source:** .planning/phases/COMPREHENSIVE-UAT.md (Issues I-1 through I-5)
