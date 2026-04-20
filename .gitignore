@@ -24,3 +24,4 @@ build/
 output/*
 !output/default/
 !output/test1/
+!output/demo/
