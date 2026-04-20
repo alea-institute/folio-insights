@@ -1,26 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: post-v1.0 Railway dev deploy + UAT gap closure
-status: ready_to_archive
-stopped_at: Phase 02 complete + pushed to origin/master 5ca74f2; ready to audit + archive as v1.1
-last_updated: "2026-04-20T21:56:00.000Z"
-last_activity: 2026-04-20 -- Wave 2 deployed; 5a59878 history-split + force-pushed; awaiting /gsd-audit-milestone 1.1 → /gsd-complete-milestone 1.1
-
-resume_next_session: |
-  Milestone v1.1 scope: Phase 01 (deploy-on-railway-as-dev-server, 3/3 plans) + Phase 02 (uat-gap-fixes, 5/5 plans).
-  All 8 plans have SUMMARY.md. Live URL verified: test1 + demo processing_status=completed, /health 200, / 200.
-  Origin tip: 5ca74f2 (fix(02-02) split clean; duplicate e681a258 dropped as patch-already-upstream).
-  Next commands (fresh session, in order):
-    1. /gsd-audit-milestone 1.1   — produce .planning/v1.1-MILESTONE-AUDIT.md
-    2. /gsd-complete-milestone 1.1 — archive .planning/milestones/v1.1-{ROADMAP,REQUIREMENTS}.md; tag v1.1
-    3. /gsd-new-milestone          — v2.0; brief already prepared at .planning/v2.0-MILESTONE-BRIEF.md
-  Safety: backup-pre-split-20260420T213817Z still preserves pre-rebase state.
+milestone: v1.0
+milestone_name: milestone
+status: shipped
+stopped_at: context exhaustion at 91% (2026-04-20)
+last_updated: "2026-04-20T22:02:17.238Z"
+last_activity: 2026-04-20 — v1.1 milestone archived; tag v1.1 created
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 12
-  completed_plans: 13
+  total_phases: 7
+  completed_phases: 6
+  total_plans: 20
+  completed_plans: 21
   percent: 100
 ---
 
@@ -28,17 +18,16 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-17)
+See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 02 — uat-gap-fixes
+**Current focus:** Planning v2.0 — brief at `.planning/v2.0-MILESTONE-BRIEF.md`
 
 ## Current Position
 
-Phase: 02 (uat-gap-fixes) — COMPLETE
-Plan: 5 of 5 (all plans landed; Wave 2 deployed to Railway 2026-04-20)
-Status: 02-01/02/03/04/05 committed; pytest 203/203 passing; live URL verified (test1 + demo both processing_status=completed; /health 200; / 200)
-Last activity: 2026-04-20 -- Phase 02 Wave 2 deployed (02-05) — all 5 UAT issues (I-1..I-5) closed
+Milestone: v1.1 — SHIPPED 2026-04-20
+Live URL: https://folio-insights-production.up.railway.app (/health 200, / 200, /api/v1/corpora 200)
+Last activity: 2026-04-20 — v1.1 milestone archived; tag v1.1 created
 
 Progress: [██████████] 100%
 
@@ -180,8 +169,22 @@ None yet.
 - [Phase 1]: Gold-standard validation set (50-100 annotated boundaries) requires manual annotation of source material
 - [Phase 1]: LLM provider selection for extraction tasks needs benchmarking against advocacy text
 
+## Deferred Items
+
+Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v1.0-inherited (pre-date v1.1 scope); v1.1's own work — Phase 01 deploy-on-railway (3/3 plans) + Phase 02 uat-gap-fixes (5/5 plans) — is fully verified via `.planning/v1.1-MILESTONE-AUDIT.md`.
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | corpus-processing-no-extraction | awaiting_human_verify |
+| debug | create-corpus-silent-fail | awaiting_human_verify |
+| debug | llm-api-config | awaiting_human_verify |
+| uat_gap | Phase 03 03-HUMAN-UAT.md (4 pending scenarios) | partial |
+| verification_gap | Phase 01 01-VERIFICATION.md | human_needed |
+| verification_gap | Phase 01.1 01.1-VERIFICATION.md | human_needed |
+| verification_gap | Phase 03 03-VERIFICATION.md | human_needed |
+
 ## Session Continuity
 
-Last session: 2026-04-20T21:51:11.997Z
+Last session: 2026-04-20T22:02:17.236Z
 Stopped at: context exhaustion at 91% (2026-04-20)
 Resume file: None

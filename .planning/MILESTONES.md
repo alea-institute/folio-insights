@@ -1,5 +1,25 @@
 # Milestones
 
+## v1.1 Railway Dev Deploy + UAT Gap Closure (Shipped: 2026-04-20)
+
+**Phases completed:** 2 phases, 8 plans, ~17 tasks
+**Git range:** since tag `v1.0` (2026-04-04); 31 commits on master (incl. docs + parallel-planning WIP)
+**Known deferred items at close:** 7 v1.0-inherited (see STATE.md Deferred Items)
+**Audit:** [v1.1-MILESTONE-AUDIT.md](milestones/v1.1-MILESTONE-AUDIT.md) — passed, 5/5 UAT reqs, 8/8 integration checks
+
+**Key accomplishments:**
+
+- Live Railway dev server at `https://folio-insights-production.up.railway.app` — single service, multi-stage Dockerfile (node:20-slim → python:3.11-slim), bundled SvelteKit viewer + FastAPI API + 3.8 MB extraction dataset, `/health` healthcheck, non-root runtime
+- `railway.toml` config-as-code with DOCKERFILE builder + `/health` healthcheck (120s timeout) + restart-on-failure policy; frontend relative-URL audit (zero hardcoded dev ports in `viewer/src/`)
+- **UAT I-3** (blocker): Vite proxy `8700 → 9925` — unblocks all viewer dev-mode UI testing
+- **UAT I-2** (minor): Bundle export `422 → 404` parity with sibling owl/ttl/jsonld endpoints + 2 regression tests
+- **UAT I-1** (major): LLM-path FOLIO IRI resolution at 0.6 threshold + `extraction_path="proposed_class"` fallback for unresolved labels + 4 regression tests
+- **UAT I-4**: Deterministic `output/demo/` approved-task fixture (2 approved + 2 task_unit_links) + idempotent `scripts/seed_demo_corpus.py` — unblocks end-to-end export validation
+- **UAT I-5** (minor): `.dockerignore` exclusion of `output/.jobs/` — bundled corpora now report `processing_status="completed"` on live Railway (verified post-deploy); Railway autodeploy reconnected mid-checkpoint
+- pytest 197 → 203 passed (+6 regression tests, 0 failures)
+
+---
+
 ## v1.0 MVP (Shipped: 2026-04-04)
 
 **Phases completed:** 5 phases, 17 plans, 40 tasks
