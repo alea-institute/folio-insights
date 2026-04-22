@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: shards-as-axioms
-status: awaiting_roadmap_review
-stopped_at: "Task 8b — ROADMAP review + finalize (session 2 paused at 79% ctx)"
-last_updated: "2026-04-22T14:10:00.000Z"
-last_activity: 2026-04-22 — REQUIREMENTS.md committed (c2604b5); ROADMAP.md drafted by gsd-roadmapper (23 phases) WIP-committed (e2a7980); paused before Task 8b review round
+status: milestone_initialized
+stopped_at: null
+last_updated: "2026-04-22T15:00:00.000Z"
+last_activity: 2026-04-22 — v2.0 milestone init complete (8/8); ROADMAP finalized (23 phases, all 5 roadmapper deviations approved as-is); ready to begin Phase 0 (HARD GATE foundations)
 progress:
   total_phases: 23
   completed_phases: 0
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 ## Current Position
 
-Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20
-Phase: Not started (defining requirements)
+Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
+Phase: 0 of 20 (+ 3 decimal phases: 13.5, 18.5; + sub-phases within 6/9/15/16) — Foundations / HARD GATE (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-20 — v2.0 milestone started; phase numbering reset; v1.1 phases archived to `.planning/milestones/v1.1-phases/`
+Status: Milestone initialized — ROADMAP finalized with 23 phases; ready for Phase 0
+Last activity: 2026-04-22 — /gsd-new-milestone v2.0 complete (8/8); ROADMAP approved as-is (all 5 roadmapper deviations); /gsd-next routes to /gsd-discuss-phase 0
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -189,7 +189,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-22 — v2.0 milestone init Tasks 7 + 8a completed
-Stopped at: Task 8b — ROADMAP review round deferred to fresh session (paused at 79% ctx to avoid mid-iteration exhaustion)
-Resume file: `.planning/.continue-here.md` + `.planning/HANDOFF.json`
-Resume action: `/gsd-resume-work` → read ROADMAP + 5 roadmapper deviations → AskUserQuestion for approval → finalize commit → delete checkpoint artifacts → push
+Last session: 2026-04-22 — /gsd-new-milestone v2.0 COMPLETE (8/8)
+Stopped at: Milestone initialized; Phase 0 not started
+Resume file: none (one-shot checkpoint artifacts deleted at milestone init close)
+Resume action: `/gsd-next` → `/gsd-discuss-phase 0` (Foundations HARD GATE — RDF-12 + P95 SPARQL + image size + SSR latency + Dagger CI)
