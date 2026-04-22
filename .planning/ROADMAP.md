@@ -88,7 +88,15 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   - SSR streaming prototype (adapter-node)
   - Two-stage Dockerfile prototype (web JVM-free / worker JVM)
   - Decision artifact: `keep=pyoxigraph` OR `pivot=fuseki`
-**Plans**: TBD
+**Plans**: 8 plans across 5 waves (see `.planning/phases/00-foundations-hard-gate/`)
+  - Wave 1: `00-01-PLAN.md` — prep-deps-rename-wave0-scaffold (deps pin, PHILOSOPHY.md rename, tests/bench/ scaffold)
+  - Wave 2: `00-02-PLAN.md` — bench-generator-1m-triple-corpus (deterministic 1M N-Quads generator; D-14/D-15/D-16)
+  - Wave 2: `00-04-PLAN.md` — two-stage-dockerfiles-and-railway-split (Dockerfile.web JVM-free + Dockerfile.worker JVM + adapter-node swap)
+  - Wave 3: `00-03-PLAN.md` — gate1-rdf12-rewrites-and-store-wrapper (13 gold queries + 5 adversarial + PyoxigraphStore wrapper; STORAGE-04 Gate 1)
+  - Wave 3: `00-05-PLAN.md` — dagger-ci-pipeline-and-gate5-digest (Dagger SDK pipeline + requirements.lock hashes + Gate 5 bit-identical digest)
+  - Wave 4: `00-06-PLAN.md` — gate2-sparql-p95-harness (pytest-benchmark pedantic + 6-pass tuning playbook; QUALITY-01 Gate 2)
+  - Wave 4: `00-07-PLAN.md` — ssr-prototype-gate3-gate4-hermit-harness (3 SSR surfaces + HermiT harness + Gates 3/4 tests + D-11 opt-in)
+  - Wave 5: `00-08-PLAN.md` — decision-md-synthesis-and-fuseki-pivot-scaffold (DECISION.md per D-17 + BRANCH-GUIDANCE.md + fuseki/ scaffold)
 
 ---
 
