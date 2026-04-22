@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: shards-as-axioms
-status: milestone_initialized
-stopped_at: null
-last_updated: "2026-04-22T15:00:00.000Z"
-last_activity: 2026-04-22 — v2.0 milestone init complete (8/8); ROADMAP finalized (23 phases, all 5 roadmapper deviations approved as-is); ready to begin Phase 0 (HARD GATE foundations)
+milestone_name: milestone
+status: Milestone initialized — ROADMAP finalized with 23 phases; ready for Phase 0
+stopped_at: context exhaustion at 91% (2026-04-22)
+last_updated: "2026-04-22T15:58:21.130Z"
+last_activity: 2026-04-22 — /gsd-new-milestone v2.0 complete (8/8); ROADMAP approved as-is (all 5 roadmapper deviations); /gsd-next routes to /gsd-discuss-phase 0
 progress:
-  total_phases: 23
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -189,7 +189,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-22 — /gsd-new-milestone v2.0 COMPLETE (8/8)
-Stopped at: Milestone initialized; Phase 0 not started
-Resume file: none (one-shot checkpoint artifacts deleted at milestone init close)
-Resume action: `/gsd-next` → `/gsd-discuss-phase 0` (Foundations HARD GATE — RDF-12 + P95 SPARQL + image size + SSR latency + Dagger CI)
+Last session: 2026-04-22T15:58:21.127Z
+Stopped at: context exhaustion at 91% (2026-04-22)
+Resume file: None
+Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
