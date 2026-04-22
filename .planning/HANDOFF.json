@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-22T13:25:24.646Z",
+  "timestamp": "2026-04-22T14:10:00.000Z",
   "phase": null,
-  "phase_name": "v2.0 milestone initialization (post-research, pre-requirements)",
+  "phase_name": "v2.0 milestone initialization (Task 8 review + finalize pending)",
   "phase_dir": ".planning/",
   "plan": null,
-  "task": 6,
+  "task": 8,
   "total_tasks": 8,
   "status": "paused",
   "completed_tasks": [
@@ -14,21 +14,30 @@
     {"id": 3, "name": "Archive v1.1 phases to .planning/milestones/v1.1-phases/", "status": "done", "commit": "38ec167"},
     {"id": 4, "name": "Commit PROJECT/STATE + phase archive", "status": "done", "commit": "38ec167"},
     {"id": 5, "name": "Run 4 parallel researchers (Stack/Features/Architecture/Pitfalls)", "status": "done", "commit": "b646c20"},
-    {"id": 6, "name": "Synthesize research into SUMMARY.md (self-written; synthesizer was blocked from file writes)", "status": "done", "commit": "b646c20"}
+    {"id": 6, "name": "Synthesize research into SUMMARY.md", "status": "done", "commit": "b646c20"},
+    {"id": 7, "name": "Define REQUIREMENTS.md with REQ-IDs by category", "status": "done", "commit": "c2604b5"},
+    {"id": "8a", "name": "Draft v2.0 ROADMAP.md via gsd-roadmapper (23 phases, all P1 mapped)", "status": "done", "commit": "e2a7980"}
   ],
   "remaining_tasks": [
-    {"id": 7, "name": "Define REQUIREMENTS.md with REQ-IDs by category", "status": "not_started"},
-    {"id": 8, "name": "Spawn gsd-roadmapper and approve ROADMAP.md (reset phase numbering at 1)", "status": "not_started"}
+    {"id": "8b", "name": "User review of roadmapper's 5 flagged deviations via AskUserQuestion", "status": "not_started"},
+    {"id": "8c", "name": "Iterate ROADMAP.md if changes requested; otherwise promote WIP commit to final via amend OR follow-up commit 'docs: finalize milestone v2.0 roadmap (23 phases)'", "status": "not_started"},
+    {"id": "8d", "name": "Delete .continue-here.md and HANDOFF.json (one-shot artifacts)", "status": "not_started"},
+    {"id": "8e", "name": "Update STATE.md: status=milestone_initialized, stopped_at=null, progress_total_phases=23", "status": "not_started"},
+    {"id": "8f", "name": "Commit cleanup + STATE update as 'chore: finalize v2.0 milestone init (8/8)'", "status": "not_started"}
   ],
   "blockers": [],
-  "human_actions_pending": [],
-  "decisions": [
-    {"decision": "Reset phase numbering to 1 for v2.0", "rationale": "Major version break; brief structures phases as 0/1/2..20; v1.1 phases archived", "phase": null},
-    {"decision": "Ran fresh 4-researcher + synthesizer pass despite brief's 40+ pre-resolved decisions", "rationale": "User chose 'Research first' to validate locked choices against current ecosystem", "phase": null},
-    {"decision": "Wrote SUMMARY.md directly instead of via synthesizer", "rationale": "Synthesizer's harness blocked file writes; returned content as message; orchestrator wrote file and committed", "phase": null},
-    {"decision": "v1.0 research archived to .planning/milestones/v1.0-research/", "rationale": "Preserve historical record; clear .planning/research/ for fresh v2.0 outputs", "phase": null}
+  "human_actions_pending": [
+    "Review .planning/ROADMAP.md (23 phases, 719 lines) — WIP-committed at e2a7980",
+    "Decide on 5 roadmapper-flagged deviations from research §Implications (see context_notes)"
+  ],
+  "decisions_session_2": [
+    {"decision": "Scope discipline: Aggressive GA", "rationale": "User selected 'Aggressive GA — promote some Defers' via AskUserQuestion; promoted ALL 4 Defer items (HW-key signing, multi-sig attestations, 'explain this query' LLM helper, corpus fork + genealogy) to P2"},
+    {"decision": "Private corpora promoted from Should-Have to P1", "rationale": "User selected 'Include in P1' via AskUserQuestion; envelope encryption model chosen (app-layer symmetric key wrapped by admin DID pubkey via cryptography.hazmat)"},
+    {"decision": "Phase 0 HARD GATE with Apache Jena Fuseki pre-specified pivot", "rationale": "User selected 'Trigger stack pivot' + 'Apache Jena Fuseki' via AskUserQuestion; ROADMAP Phase 0 encodes 5 exit criteria and keep/pivot branch"},
+    {"decision": "Novel UX rigor gates: all 3 selected", "rationale": "User selected ALL three options (UX-testing acceptance criteria, mandate /gsd-discuss-phase, rollback/escape-hatch) for Phase 15.polysemy + 15.contest"},
+    {"decision": "ROADMAP committed WIP rather than held in working tree", "rationale": "User asked to pause with clean context; WIP commit e2a7980 keeps tree clean, next session reviews + finalizes"}
   ],
   "uncommitted_files": [],
-  "next_action": "Resume at Step 9 (Define Requirements) of /gsd-new-milestone workflow. Read .planning/research/SUMMARY.md + .planning/v2.0-MILESTONE-BRIEF.md + .planning/research/FEATURES.md §Feature Landscape. Present 10 feature categories (A-J from FEATURES.md) with Must-Have/Should-Have/Defer breakdown via AskUserQuestion for scope confirmation. Generate REQUIREMENTS.md with REQ-IDs grouped by category, continuing from existing v1 REQ numbering. Commit with 'docs: define milestone v2.0 requirements'. Then spawn gsd-roadmapper with --reset-phase-numbers behavior (starting at Phase 1).",
-  "context_notes": "Pre-milestone planning completed in prior session delivered .planning/v2.0-MILESTONE-BRIEF.md with 40+ pre-resolved decisions (Oxigraph stack, DID methods, Arq+Redis, SvelteKit 5 adapter-node, etc.). This session executed steps 3-8 of /gsd-new-milestone workflow: confirmed summary, chose reset-phase-numbers + research-first, updated PROJECT/STATE, archived v1.1 phases, ran 4 parallel research agents + synthesis. Research surfaced 4 corrections the brief missed: (1) owlready2 needs JVM not pure-Python, (2) Pydantic-to-SHACL generator doesn't exist (~150 LOC gap), (3) Oxigraph 0.5.x dropped RDF-star for RDF 1.2 — BLOCKING Phase 0, (4) identity stack needs specific picks (authlib > fastapi-users). Critical path confirmed at 16 phases with Phase 0 foundations as hard gate with 5 exit criteria. Paused at 91% context before starting REQUIREMENTS+ROADMAP which are substantial fresh-session work."
+  "next_action": "Resume at Task 8b (ROADMAP review). Read .planning/ROADMAP.md. Present roadmapper's 5 flagged deviations via AskUserQuestion (multiSelect): (1) Phase 13.5 private corpora decimal-phase placement, (2) Phase 18.5 corpus-fork decimal-phase placement, (3) DID-08+09 absorbed as Phase 6.2+6.3 sub-phases rather than standalone, (4) SPARQL-09/10/11/12 tracked as 16.* P2 sub-plans rather than separate phase, (5) Phase 14 'parallel-track but gating' nuance. If user approves all-as-is, promote WIP commit (amend OR follow-up 'docs: finalize milestone v2.0 roadmap'). If user requests changes, iterate ROADMAP sections then commit. Then delete .continue-here.md + HANDOFF.json, update STATE.md (status=milestone_initialized, total_phases=23), commit 'chore: finalize v2.0 milestone init (8/8)', push. After that: /gsd-next will route to /gsd-discuss-phase 0 (foundations HARD GATE).",
+  "context_notes": "Session 2 (2026-04-22) completed Tasks 7+8a of /gsd-new-milestone v2.0. Scope confirmation via 2 AskUserQuestion rounds (4+3 questions) landed on Aggressive GA + 4 Defer promotions + private corpora P1 + novel UX gates. REQUIREMENTS.md (c2604b5) has 14 categories (SHARD/DID/GOV/VOCAB/PRINCIPLE/LLM/SHACL/STORAGE/SPARQL/UI/CORPUS/OBS/SEC/QUALITY) with 90+ REQ-IDs. ROADMAP.md (e2a7980 WIP) has 23 phases (Phase 0 + 1-20 + 13.5 + 18.5, plus sub-phases 6.2/6.3/9.P1-7/15.*/16.*). All P1 REQ-IDs mapped (0 orphans); P2 REQ-IDs mapped as stretch. Context paused at ~79% (34% remaining) before Task 8b review round to avoid running out mid-iteration. Session 2 did NOT run ROADMAP approval loop; that's the first action for session 3."
 }

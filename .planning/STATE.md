@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: shards-as-axioms
-status: defining_requirements
-stopped_at: null
-last_updated: "2026-04-20T22:02:17.238Z"
-last_activity: 2026-04-20 — v2.0 milestone started; phase numbering reset; v1.1 phases archived
+status: awaiting_roadmap_review
+stopped_at: "Task 8b — ROADMAP review + finalize (session 2 paused at 79% ctx)"
+last_updated: "2026-04-22T14:10:00.000Z"
+last_activity: 2026-04-22 — REQUIREMENTS.md committed (c2604b5); ROADMAP.md drafted by gsd-roadmapper (23 phases) WIP-committed (e2a7980); paused before Task 8b review round
 progress:
-  total_phases: 0
+  total_phases: 23
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -189,6 +189,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-20 — v2.0 shards-as-axioms milestone started
-Stopped at: —
-Resume file: `.planning/v2.0-MILESTONE-BRIEF.md` (40+ pre-resolved decisions)
+Last session: 2026-04-22 — v2.0 milestone init Tasks 7 + 8a completed
+Stopped at: Task 8b — ROADMAP review round deferred to fresh session (paused at 79% ctx to avoid mid-iteration exhaustion)
+Resume file: `.planning/.continue-here.md` + `.planning/HANDOFF.json`
+Resume action: `/gsd-resume-work` → read ROADMAP + 5 roadmapper deviations → AskUserQuestion for approval → finalize commit → delete checkpoint artifacts → push
