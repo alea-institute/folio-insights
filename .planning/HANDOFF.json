@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-22T18:24:03Z",
+  "timestamp": "2026-04-22T20:42:35Z",
   "trigger": "precompact-auto",
   "phase": "00-foundations-hard-gate",
   "phase_dir": ".planning/phases/00-foundations-hard-gate",
   "git": {
     "branch": "master",
-    "head": "3719d3d",
-    "modified_files": 2
+    "head": "8a0b3cd",
+    "modified_files": 6
   },
   "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session."
 }
