@@ -34,3 +34,8 @@ ci/__pycache__/
 # Local env vars (example is committed; actual .env.docker is NOT)
 .env.docker
 
+# pytest-benchmark run-history cache (Plan 00-06 Gate 2 harness).
+# bench-results.json is committed (Plan 00-08 DECISION.md consumes it directly);
+# .benchmarks/ is per-run autosave history and should stay local.
+.benchmarks/
+
