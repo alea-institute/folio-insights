@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 00-03-PLAN.md
-last_updated: "2026-04-23T02:51:24.280Z"
+stopped_at: Completed 00-05-PLAN.md
+last_updated: "2026-04-23T03:22:39.377Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 00 (foundations-hard-gate) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-04-23
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 63%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -72,6 +72,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 00 P02 | 5 | 1 tasks | 7 files |
 | Phase 0 P4 | 13 | 3 tasks | 7 files |
 | Phase 00-foundations-hard-gate P03 | 32min | 2 tasks | 24 files |
+| Phase 0 P5 | 27 | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,10 @@ Recent decisions affecting current work:
 - 00-03: gold queries target rdf:Statement reification (Plan 02 P2-D2); annotation-pipe preserved in SPARQL # comments for file-discipline; D-04 STRICT PASSED on 1M corpus — no Fuseki pivot
 - 00-03: SEC-01 SSRF mitigation at PyoxigraphStore wrapper (ServiceClauseBlocked) — pyoxigraph 0.5.x TCP-connect timeout variance 5-135s against 169.254.169.254 makes network-timeout defence unreliable
 - 00-03: Q11 rewritten nested SELECT + outer FILTER because pyoxigraph 0.5.x HAVING drops rows against xsd:integer bound variable
+- 00-05-D1: ci/ package rename (local dagger/ would shadow dagger-io SDK via sys.path[0])
+- 00-05-D2: worker reasoning-subset lockfile (requirements.worker.lock) — Gate 5 step 5 demands hash-pinning for both tiers
+- 00-05-D3: opentelemetry-exporter-otlp-proto-grpc required at runtime by dagger-io 0.20.x (not pulled transitively)
+- 00-05: Gate 5 Mode 1 VERDICT = PASS — local Dagger pipeline produces bit-identical digests across back-to-back runs (web + worker)
 
 ### Roadmap Evolution
 
@@ -208,8 +213,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T02:51:24.275Z
-Stopped at: Completed 00-03-PLAN.md
+Last session: 2026-04-23T03:22:39.373Z
+Stopped at: Completed 00-05-PLAN.md
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
