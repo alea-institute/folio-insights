@@ -13,6 +13,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"svelte": "^5.51.0",
@@ -21,7 +22,6 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
-		"@keenmate/svelte-treeview": "^4.8.0",
-		"@sveltejs/adapter-static": "^3.0.10"
+		"@keenmate/svelte-treeview": "^4.8.0"
 	}
 }
