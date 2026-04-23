@@ -1,13 +1,99 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-23T22:18:38Z",
-  "trigger": "precompact-auto",
+  "timestamp": "2026-04-23T22:20:22Z",
+  "trigger": "pause-work",
   "phase": "00-foundations-hard-gate",
   "phase_dir": ".planning/phases/00-foundations-hard-gate",
+  "status": "complete",
+  "plans_total": 8,
+  "plans_done": 8,
+  "completed_tasks": [
+    {"plan": "00-01", "title": "bench-generator-and-rdf12-fixture-suite", "commit_tail": "f8…"},
+    {"plan": "00-02", "title": "gate2-harness-p95-and-d05-sparql-warm", "commit_tail": "…"},
+    {"plan": "00-03", "title": "pyoxigraph-store-wrapper-and-hermit-harness", "commit_tail": "…"},
+    {"plan": "00-04", "title": "ci-lockfiles-and-hash-pinned-builds", "commit_tail": "…"},
+    {"plan": "00-05", "title": "dockerfiles-worker-jlink-musllinux", "commit_tail": "…"},
+    {"plan": "00-06", "title": "api-and-worker-bootstrap-with-fastapi-celery", "commit_tail": "…"},
+    {"plan": "00-07", "title": "ssr-prototype-gate3-gate4-hermit-harness", "commit_tail": "357b174"},
+    {"plan": "00-08", "title": "decision-synthesis-and-fuseki-pivot-scaffold", "commit_tail": "4909d9a"}
+  ],
+  "verification_status": {
+    "uat": {
+      "status": "complete",
+      "tests_total": 10,
+      "tests_passed": 10,
+      "issues": 0,
+      "commit": "7bf4196",
+      "artifact": ".planning/phases/00-foundations-hard-gate/00-UAT.md"
+    },
+    "security": {
+      "status": "verified",
+      "threats_total": 40,
+      "threats_closed": 40,
+      "threats_open": 0,
+      "accepted_risks": 12,
+      "commit": "f69c9ca",
+      "artifact": ".planning/phases/00-foundations-hard-gate/00-SECURITY.md"
+    }
+  },
   "git": {
     "branch": "master",
-    "head": "f69c9ca",
-    "modified_files": 1
+    "head": "cd118fc",
+    "ahead_of_origin": 42,
+    "working_tree_clean": true
   },
-  "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session."
+  "human_actions_pending": [
+    {
+      "id": "HA-1",
+      "title": "Gate 4 human verification (D-07 cross-process determinism)",
+      "blocking": false,
+      "detail": "Requires hyperfine + two long-running SPARQL servers; documented in 00-07-MEASUREMENTS.md as deferred. Not a Phase 0 blocker — Gate 4 gate is deferred to Phase 1 or later ops pass."
+    },
+    {
+      "id": "HA-2",
+      "title": "D-11 HermiT reasoning check",
+      "blocking": false,
+      "detail": "Skipped without FOLIO_RUN_D11=1 + ~200 MB fixture. Skip-safe test fires cleanly; full run deferred."
+    },
+    {
+      "id": "HA-3",
+      "title": "git-lfs push for fixtures/bench.nq",
+      "blocking": false,
+      "detail": "Fixture generation is deterministic + CI-regeneratable; LFS push optional and deferred until a CI job actually needs the large binary."
+    },
+    {
+      "id": "HA-4",
+      "title": "Railway bit-identical digest rerun (Gate 5 D-09)",
+      "blocking": false,
+      "detail": "Local collect passes (4 tests). Railway-skipif parametrizations require Railway env; deferred to deployment phase."
+    }
+  ],
+  "decisions": [
+    {
+      "id": "DEC-00-01",
+      "title": "Phase 0 storage verdict: keep=pyoxigraph",
+      "source": "00-DECISION.md, 00-BRANCH-GUIDANCE.md",
+      "rationale": "Gate 2 warm P95 max = 118.78 ms (>4x headroom under 500 ms target); all 13 queries pass. No trigger to pivot to Fuseki. Fuseki scaffold retained as v2.1 re-evaluation option."
+    },
+    {
+      "id": "DEC-00-02",
+      "title": "RDF-12 reification uses rdf:Statement, not << >>",
+      "source": "00-01-SUMMARY.md (Pitfall 1 honored)",
+      "rationale": "pyoxigraph 0.5.7 SPARQL parser rejects subject-term triple syntax. 13 gold tests verify zero `<<` in fixture."
+    },
+    {
+      "id": "DEC-00-03",
+      "title": "UAT executed programmatically, not interactively",
+      "source": "user request during /gsd-verify-work 00",
+      "rationale": "User override: 'Can you please run the smoke test -- and all of these tests -- programmatically?'"
+    },
+    {
+      "id": "DEC-00-04",
+      "title": "SECURITY State B synthesis from PLAN threat models",
+      "source": "/gsd-secure-phase 00 workflow",
+      "rationale": "No prior SECURITY.md; built 40-threat register from 8 plans' threat_model blocks. Plan 00-03 STRIDE remap IDs disambiguated with `′` suffix."
+    }
+  ],
+  "next_action": "Either /gsd-plan-phase 01 (Polysemy spike — no storage touchpoint, straight start) OR /gsd-ui-review 00 (optional SSR visual audit). Phase 0 is COMPLETE — UAT + SECURITY both closed. No mandatory gates remain.",
+  "note": "Resume with /gsd-resume-work to read this handoff + .continue-here.md in a fresh session."
 }
