@@ -22,6 +22,7 @@
 		"vite": "^7.3.1"
 	},
 	"dependencies": {
-		"@keenmate/svelte-treeview": "^4.8.0"
+		"@keenmate/svelte-treeview": "^4.8.0",
+		"@polka/compression": "^1.0.0-next.25"
 	}
 }
