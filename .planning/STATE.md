@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: "PreCompact (auto) at 2026-04-23T02:24:49Z"
-last_updated: "2026-04-23T02:24:49.286Z"
+stopped_at: Completed 00-03-PLAN.md
+last_updated: "2026-04-23T02:51:24.280Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 3
-  percent: 38
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 00 (foundations-hard-gate) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-04-23
 
-Progress: [████░░░░░░] 38%
+Progress: [█████░░░░░] 50%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -71,6 +71,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 0 P1 | 4 | 2 tasks | 8 files |
 | Phase 00 P02 | 5 | 1 tasks | 7 files |
 | Phase 0 P4 | 13 | 3 tasks | 7 files |
+| Phase 00-foundations-hard-gate P03 | 32min | 2 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,9 @@ Recent decisions affecting current work:
 - [00-04-D2]: Worker install scoped to reasoning subset (pyoxigraph/owlready2/rdflib/oxrdflib) — Rule 2 deviation avoids torch pulling 2GB into worker image
 - [00-04-D3]: 3-stage Dockerfile.worker (jre-builder / deps-builder / runtime) keeps gcc/g++/musl-dev out of final image even though owlready2 ships sdist-only
 - [00-04-D4]: Base image digests pinned to manifest-list sha256 (not per-arch); regenerate quarterly via docker buildx imagetools inspect
+- 00-03: gold queries target rdf:Statement reification (Plan 02 P2-D2); annotation-pipe preserved in SPARQL # comments for file-discipline; D-04 STRICT PASSED on 1M corpus — no Fuseki pivot
+- 00-03: SEC-01 SSRF mitigation at PyoxigraphStore wrapper (ServiceClauseBlocked) — pyoxigraph 0.5.x TCP-connect timeout variance 5-135s against 169.254.169.254 makes network-timeout defence unreliable
+- 00-03: Q11 rewritten nested SELECT + outer FILTER because pyoxigraph 0.5.x HAVING drops rows against xsd:integer bound variable
 
 ### Roadmap Evolution
 
@@ -204,8 +208,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T02:24:49.284Z
-Stopped at: PreCompact (auto) at 2026-04-23T02:24:49Z
+Last session: 2026-04-23T02:51:24.275Z
+Stopped at: Completed 00-03-PLAN.md
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
