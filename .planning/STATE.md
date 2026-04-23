@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 00-07-PLAN.md
-last_updated: "2026-04-23T03:45:23.501Z"
+status: verifying
+stopped_at: Completed 00-08-PLAN.md — Phase 0 HARD GATE CLOSED (verdict=keep=pyoxigraph)
+last_updated: "2026-04-23T17:13:01.260Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 00 (foundations-hard-gate) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-23
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -75,6 +75,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 0 P5 | 27 | 3 tasks | 11 files |
 | Phase 00-foundations-hard-gate P6 | 17min | 2 tasks | 5 files |
 | Phase 00-foundations-hard-gate P07 | 8min | 4 tasks | 17 files |
+| Phase Phase 00-foundations-hard-gate P08 P8 | 20min | 3 tasks tasks | 6 files files |
 
 ## Accumulated Context
 
@@ -194,6 +195,11 @@ Recent decisions affecting current work:
 - 00-07-D4: @polka/compression custom-server wiring deferred — dep installed, activation requires adapter-node server.js wrapper; Plan 08 flags as follow-up only if cache-control misses 200ms target
 - 00-07-D5: Gate 3 verdict = PASS (fi-worker:smoke = 74.6 MB via docker inspect {{.Size}}, 15% of 500 MB target, 425 MB headroom); docker image ls DISK USAGE (243 MB) includes shared-layer accounting and is NOT the Gate 3 quantity
 - 00-07-D6: Gate 4 DEFERRED to verify session (hyperfine not on Plan 07 host); D-11 full-1M DEFERRED pending .owl fixture + 1-2 day measurement window (D-12 open-ended timebox permits)
+- 00-08-D1: Verdict = keep=pyoxigraph — all ship-critical gates (1/2/3/5 Mode 1) PASS with margin; Gates 4 and D-11 deferred but harness-ready and NOT pivot-triggers per OQ4 numeric policy
+- 00-08-D2: OQ4 resolved — pivot requires ONE of (a) Gate 1 STRICT fail, (b) Gate 2 warm P95 > 800ms post-tune, (c) Gate 5 Mode 1 determinism fail; Gates 3/4/D-11 trigger escape-hatches, NOT pivot
+- 00-08-D3: DID signature DEFERRED to Phase 6+ per D-17 chicken-and-egg; 4-step backfill procedure in DECISION.md Signature Deferral section with T-00-39 substitute-then-sign mitigation (verify body matches git-sha before signing)
+- 00-08-D4: Fuseki scaffold (config.ttl + README + .gitkeep) retained on keep verdict per T-00-40 mitigation + v2.1 re-evaluation capacity; README banner reads 'scaffold not required; retained for v2.1 re-evaluation'
+- 00-08-D5: BRANCH-GUIDANCE.md as separate @-ref doc at stable path; downstream PLAN.md files @-import instead of re-parsing DECISION.md; drift between them is a bug
 
 ### Roadmap Evolution
 
@@ -224,8 +230,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T03:45:23.497Z
-Stopped at: Completed 00-07-PLAN.md
+Last session: 2026-04-23T17:13:01.256Z
+Stopped at: Completed 00-08-PLAN.md — Phase 0 HARD GATE CLOSED (verdict=keep=pyoxigraph)
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
