@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 00-06-PLAN.md
-last_updated: "2026-04-23T03:32:30.969Z"
+stopped_at: Completed 00-07-PLAN.md
+last_updated: "2026-04-23T03:45:23.501Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 00 (foundations-hard-gate) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-04-23
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -74,6 +74,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 00-foundations-hard-gate P03 | 32min | 2 tasks | 24 files |
 | Phase 0 P5 | 27 | 3 tasks | 11 files |
 | Phase 00-foundations-hard-gate P6 | 17min | 2 tasks | 5 files |
+| Phase 00-foundations-hard-gate P07 | 8min | 4 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,12 @@ Recent decisions affecting current work:
 - 00-06: Gate 2 verdict = PASS — worst-case P95 = 116.95 ms on q13_confidence_histogram (>4x headroom over 500ms hard target); no tuning pass required, no pivot to Fuseki
 - 00-06: Plan template named-graph IRIs (urn:folio:*, tbox, governance) corrected to real bench.nq layout (corpus/advocacy, corpus/fre, corpus/restatement) — unknown IRIs in named_graphs= silently return zero rows
 - 00-06: pytest-benchmark 5.2.3 Stats has no percentile() method; P95 computed via nearest-rank into stats.sorted_data
+- 00-07-D1: HermitHarness catches OwlReadyInconsistentOntologyError and records consistent=False with sentinel class <ontology-inconsistent> (owlready2 raises on whole-ontology unsatisfiability; valid D-11 result not reasoner crash)
+- 00-07-D2: HermitHarness.__init__ writes owlready2.JAVA_MEMORY at construction (process-global) — subprocess spawn picks it up regardless of which harness instance .reason()s
+- 00-07-D3: FastAPI stubs return canned JSON so Gate 4 measures SSR stack overhead not pyoxigraph query cost (Phase 15 wires real queries behind same URL contract)
+- 00-07-D4: @polka/compression custom-server wiring deferred — dep installed, activation requires adapter-node server.js wrapper; Plan 08 flags as follow-up only if cache-control misses 200ms target
+- 00-07-D5: Gate 3 verdict = PASS (fi-worker:smoke = 74.6 MB via docker inspect {{.Size}}, 15% of 500 MB target, 425 MB headroom); docker image ls DISK USAGE (243 MB) includes shared-layer accounting and is NOT the Gate 3 quantity
+- 00-07-D6: Gate 4 DEFERRED to verify session (hyperfine not on Plan 07 host); D-11 full-1M DEFERRED pending .owl fixture + 1-2 day measurement window (D-12 open-ended timebox permits)
 
 ### Roadmap Evolution
 
@@ -217,8 +224,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T03:32:30.966Z
-Stopped at: Completed 00-06-PLAN.md
+Last session: 2026-04-23T03:45:23.497Z
+Stopped at: Completed 00-07-PLAN.md
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
