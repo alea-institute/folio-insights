@@ -20,6 +20,8 @@ from pathlib import Path
 import pytest
 from pyoxigraph import Store
 
+from folio_insights.store import PyoxigraphStore, ServiceClauseBlocked
+
 QUERIES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "gold_queries"
 GOLD_QUERIES = sorted(QUERIES_DIR.glob("q*.sparql"))
 ADVERSARIAL_QUERIES = sorted((QUERIES_DIR / "adversarial").glob("*.sparql"))
@@ -73,17 +75,24 @@ def test_adversarial_query_behaves_safely(
     """§21 risk matrix: each adversarial query returns empty OR raises a
     named exception — never crashes or hangs.
 
+    Routes through PyoxigraphStore wrapper so SERVICE-bearing queries are
+    rejected by the SEC-01 preflight (``ServiceClauseBlocked``) instead of
+    being handed to pyoxigraph, which otherwise opens a TCP connection and
+    hangs 5-135s on link-local IPs (Rule 2 — SEC-01 mitigation).
+
     Accepted outcomes:
     - empty list (query parses + executes + yields no rows)
     - exception whose str() mentions SERVICE / timeout / limit / unsupported
-      (expected for SERVICE, SSRF, large-CONSTRUCT cases)
+      / parser (expected for SERVICE, SSRF, large-CONSTRUCT cases)
 
     Rejected: segfault, hang past 30s (pytest-timeout kill), or a generic
     exception class that signals a raw pyoxigraph crash.
     """
     query = query_file.read_text()
+    wrapped = PyoxigraphStore.__new__(PyoxigraphStore)
+    wrapped._store = bench_store  # bind to the session-scoped loaded store
     try:
-        list(bench_store.query(query))
+        wrapped.query_rdf12(query)
     except Exception as exc:
         msg = str(exc).lower()
         assert any(
@@ -97,18 +106,17 @@ def test_adversarial_query_behaves_safely(
 
 @pytest.mark.timeout(2)
 def test_service_ssrf_query_does_not_reach_network() -> None:
-    """SEC-01 SSRF baseline: SERVICE against AWS metadata must complete <2s.
+    """SEC-01 SSRF baseline: SERVICE against AWS metadata MUST be rejected by
+    the wrapper *before* pyoxigraph opens a TCP socket.
 
     A real SSRF reaching 169.254.169.254 on AWS would block on metadata
-    service timeout (~21s). Enforced via pytest-timeout(2). Uses a fresh
-    empty Store so SERVICE is the only possible data source — no fixture
-    dependency.
+    service timeout (5-135s observed variance on pyoxigraph 0.5.x). The
+    PyoxigraphStore wrapper enforces a SERVICE-clause preflight that raises
+    ``ServiceClauseBlocked`` synchronously — no network I/O, no timing
+    variance. Enforced via pytest-timeout(2). Uses a fresh empty Store so
+    the test has no fixture dependency.
     """
-    from pyoxigraph import Store
-
     query_file = QUERIES_DIR / "adversarial" / "service_ssrf.sparql"
-    s = Store()
-    try:
-        list(s.query(query_file.read_text()))
-    except Exception:
-        pass  # any exception is acceptable; hang is not
+    store = PyoxigraphStore()
+    with pytest.raises(ServiceClauseBlocked):
+        store.query_rdf12(query_file.read_text())

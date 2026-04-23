@@ -9,23 +9,24 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 # Q11 — Cross-corpus traversal: concepts referenced across 2+ named graphs.
 # Fixture seeds 50 concept-IRIs per subtype; concepts are reused across
 # corpora so cross-corpus clustering is observable at 1M scale.
-# Annotation-pipe form documents the future confidence-carry on the link;
-# the OPTIONAL reified path unifies on the current fixture.
-SELECT ?concept (COUNT(DISTINCT ?g) AS ?ngraphs) WHERE {
-  GRAPH ?g {
-    ?s fi:subject ?concept .
-    OPTIONAL {
-      ?s fi:subject ?concept {| fi:confidence ?c1 |}
+#
+# Rule 1 (Q11 bug-fix): pyoxigraph 0.5.x HAVING filter against an xsd:integer
+# bound variable drops all rows even when the subquery returns typed ints
+# that satisfy the predicate. Rewrite as nested SELECT + outer FILTER so the
+# comparison happens on already-materialised bindings. Verified on 1M corpus.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?s fi:subject ?concept {| fi:confidence ?c |} .
+SELECT ?concept ?ngraphs WHERE {
+  {
+    SELECT ?concept (COUNT(DISTINCT ?g) AS ?ngraphs) WHERE {
+      GRAPH ?g {
+        ?s fi:subject ?concept .
+      }
     }
-    OPTIONAL {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?s ;
-            rdf:object ?concept ;
-            fi:confidence ?c2 .
-    }
+    GROUP BY ?concept
   }
+  FILTER (?ngraphs >= 2)
 }
-GROUP BY ?concept
-HAVING (?ngraphs >= 2)
 ORDER BY DESC(?ngraphs)
 LIMIT 50

@@ -1,0 +1,20 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Adversarial — SERVICE block probe (SEC-01 baseline).
+# Phase 0 Store MUST refuse to federate outbound SPARQL via SERVICE; this
+# exercises the pyoxigraph default (no federation) and the Phase 0 policy
+# that SERVICE clauses are rejected or silently return zero rows. Either
+# outcome is acceptable at Gate 1; the test asserts no outbound connection
+# is attempted. Phase 4 API layer will enforce explicit SERVICE denylists.
+SELECT ?s WHERE {
+  SERVICE <http://evil.example/sparql> {
+    ?s ?p ?o .
+  }
+}
+LIMIT 10

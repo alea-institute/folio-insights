@@ -1,0 +1,19 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Adversarial — Deep graph traversal (transitive property-path stress).
+# Phase 0 PHASE_0_GATE_PROFILE has adversarial_density=0.0 so fi:dependsOnAxiom
+# edges are absent; this query is designed to return zero rows (or terminate)
+# cheaply on the Phase 0 fixture, and to stress-test the path operator on
+# Phase 1+ corpora that re-enable adversarial density. Safety: LIMIT 100.
+SELECT ?s ?o WHERE {
+  GRAPH ?g {
+    ?s (fi:dependsOnAxiom|fi:dependsOnDefinition)+ ?o .
+  }
+}
+LIMIT 100

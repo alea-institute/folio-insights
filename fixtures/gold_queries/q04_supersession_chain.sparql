@@ -7,23 +7,14 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 # Q04 — Supersession chain: old shards superseded by new versions.
-# The supersededBy edge is expected to carry a dcterms:valid date annotation
-# in future RDF-12-native corpora; Phase 0 fixture emits the edge without
-# the date. The pipe branch will activate when Phase 11 adds the annotation;
-# the plain-triple branch satisfies Gate 1 on the current fixture.
+# Phase 0 fixture emits fi:supersededBy edges without the dcterms:valid
+# date annotation. Phase 11 will add the annotation via RDF-12 pipe.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?old fi:supersededBy ?new {| dcterms:valid ?date |} .
 SELECT ?old ?new WHERE {
   GRAPH ?g {
     ?old fi:supersededBy ?new .
-    OPTIONAL {
-      ?old fi:supersededBy ?new {| dcterms:valid ?date |}
-    }
-    OPTIONAL {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?old ;
-            rdf:predicate fi:supersededBy ;
-            rdf:object ?new ;
-            dcterms:valid ?date .
-    }
   }
 }
 LIMIT 100

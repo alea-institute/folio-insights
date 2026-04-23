@@ -7,19 +7,19 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 # Q13 — Confidence histogram: 5 buckets × count of annotated statements.
-# Annotation-pipe form is the Turtle-1.2-native intent; reified branch
-# returns the Phase 0 bench.nq distribution. Gate 2 P95 (Plan 00-06) will
-# measure this query's aggregation latency at 1M scale.
+# Phase 0 fixture emits confidence via rdf:Statement reification; Phase 13+
+# will emit RDF-12 annotation-pipe form and the query will be rewritten.
+# Gate 2 P95 (Plan 00-06) will measure this query's aggregation latency
+# at 1M scale.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?s fi:subject ?o {| fi:confidence ?c |} .
 SELECT ?bucket (COUNT(?s) AS ?n) WHERE {
   GRAPH ?g {
-    {
-      ?s fi:subject ?o {| fi:confidence ?c |}
-    } UNION {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?s ;
-            rdf:predicate fi:subject ;
-            fi:confidence ?c .
-    }
+    ?stmt a rdf:Statement ;
+          rdf:subject ?s ;
+          rdf:predicate fi:subject ;
+          fi:confidence ?c .
     BIND(
       IF(?c >= 0.9, "0.9-1.0",
       IF(?c >= 0.8, "0.8-0.9",
