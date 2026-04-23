@@ -522,6 +522,14 @@ def serve(port: int, host: str) -> None:
     _serve(host=host, port=port)
 
 
+# Register the Phase 0 bench subgroup on the root cli group (D-14).
+# Import at module-bottom is intentional: avoids pulling pyoxigraph at
+# `folio-insights --help` time for commands that don't need it.
+from folio_insights.bench.cli import bench as _bench_group
+
+cli.add_command(_bench_group)
+
+
 def main() -> None:
     """Entry point for the folio-insights CLI."""
     cli()
