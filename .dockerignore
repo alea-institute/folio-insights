@@ -1,51 +1,62 @@
-# Python
+# Gate 5 (D-08) build-context discipline — Pitfall 5.
+# Keep this file exclusion-only; never shadow a path needed by Dockerfile.web
+# / Dockerfile.worker. Explicit COPY statements pull in exactly what's needed.
+
+# ---- Python ----
 .venv
 venv
 __pycache__
+**/__pycache__
 *.pyc
 *.pyo
+**/*.pyc
 .pytest_cache
+**/.pytest_cache
 .mypy_cache
+**/.mypy_cache
 .ruff_cache
+**/.ruff_cache
 *.egg-info
 dist
 build
 
-# Generated runtime output (Pitfall 5: SQLite WAL digest drift)
+# ---- Generated runtime output (Pitfall 5: SQLite WAL digest drift) ----
 output
+output/.jobs
+output/.jobs/**
 
-# Node / frontend
+# ---- Benchmark fixtures (Plan 00-02 — 235MB; Dagger provides via volume) ----
+fixtures/bench.nq
+fixtures/bench-*.nq
+
+# ---- Node / frontend ----
 node_modules
 viewer/node_modules
 viewer/build
 viewer/.svelte-kit
 
-# Git / IDE
+# ---- Git / IDE ----
 .git
 .gitignore
 .github
 .vscode
 .idea
 
-# Planning / docs not needed in image
+# ---- Planning / docs not needed in image ----
 .planning
 .claude
 
-# OS
+# ---- OS ----
 .DS_Store
 Thumbs.db
 
-# Local data / secrets
+# ---- Local data / secrets ----
 .env
 .env.*
 !.env.example
 
-# Test artifacts
+# ---- Test artifacts ----
 tests/fixtures/large
 
-# Per-corpus job state (output/.jobs/) — excluded so Railway never ships
-# stale or failed-state job JSON. Bundled corpora with extraction.json
-# fall back to processing_status='completed' via api/routes/corpus.py
-# line ~74-76. Fixes UAT Issue I-5.
-output/.jobs
-output/.jobs/**
+# ---- Logs ----
+*.log
