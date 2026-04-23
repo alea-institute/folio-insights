@@ -1,0 +1,29 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q07 — Axiom closure: transitive dependency lookup along fi:supersededBy+
+# (stand-in for dependsOnAxiom — the Phase 0 gate profile has
+# adversarial_density=0.0, so no dependsOnAxiom edges exist in bench.nq;
+# the Phase 16 adversarial profile lights those up and this query switches
+# to fi:dependsOnAxiom+ transparently).
+# Annotation-pipe form documents the future carry of confidence on the
+# dependency edge; reified branch returns non-empty on the Phase 0 fixture.
+SELECT DISTINCT ?src ?dep WHERE {
+  GRAPH ?g {
+    ?src fi:supersededBy+ ?dep .
+    {
+      ?src fi:supersededBy ?imm {| fi:confidence ?c |}
+    } UNION {
+      ?stmt a rdf:Statement ;
+            rdf:subject ?src ;
+            rdf:predicate fi:subject ;
+            fi:confidence ?c .
+    }
+  }
+}
+LIMIT 100

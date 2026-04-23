@@ -1,0 +1,27 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q12 — Deprecated shards (with a successor). Phase 0 fixture models
+# deprecation as fi:supersededBy (owl:deprecated is a Phase 11 addition).
+# Annotation-pipe form documents the future successor-confidence carry;
+# reified branch returns non-empty on the Phase 0 supersededBy chain.
+SELECT DISTINCT ?old ?new WHERE {
+  GRAPH ?g {
+    ?old fi:supersededBy ?new .
+    {
+      ?old fi:supersededBy ?new {| fi:confidence ?c |}
+    } UNION {
+      ?stmt a rdf:Statement ;
+            rdf:subject ?old ;
+            rdf:predicate fi:subject ;
+            fi:confidence ?c .
+    }
+  }
+}
+LIMIT 100

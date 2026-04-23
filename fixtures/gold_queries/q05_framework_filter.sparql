@@ -1,0 +1,30 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q05 — Framework filter: shards whose framework ∈ {FRE, Restatement-Contracts}.
+# Future RDF-12 corpora will annotate the framework edge with fi:scope or
+# dcterms:valid; Phase 0 fixture carries the plain framework edge plus a
+# confidence annotation on the same shard's subject triple.
+SELECT DISTINCT ?shard ?framework WHERE {
+  GRAPH ?g {
+    ?shard fi:framework ?framework .
+    {
+      ?shard fi:subject ?concept {| fi:confidence ?conf |}
+    } UNION {
+      ?stmt a rdf:Statement ;
+            rdf:subject ?shard ;
+            rdf:predicate fi:subject ;
+            fi:confidence ?conf .
+    }
+    FILTER (?framework IN (
+      <https://folio-insights.aleainstitute.ai/framework/us.federal.fre>,
+      <https://folio-insights.aleainstitute.ai/framework/us.restatement.contracts>
+    ))
+  }
+}
+LIMIT 100

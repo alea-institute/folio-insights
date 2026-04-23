@@ -1,0 +1,27 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q01 — Shards whose subject-concept triple is annotated with confidence >= 0.8.
+# D-04 STRICT gold: both RDF-12 annotation-pipe form (Turtle-1.2 native) and
+# rdf:Statement reification (Plan 02 P2-D2 fixture encoding) MUST be tested.
+# When Phase 13 emits true RDF-12 triple-term N-Quads, the pipe branch will
+# unify; the Phase 0 reified fixture makes the reification branch unify.
+SELECT DISTINCT ?shard ?confidence WHERE {
+  GRAPH ?g {
+    {
+      ?shard fi:subject ?concept {| fi:confidence ?confidence |}
+    } UNION {
+      ?stmt a rdf:Statement ;
+            rdf:subject ?shard ;
+            rdf:predicate fi:subject ;
+            fi:confidence ?confidence .
+    }
+    FILTER (?confidence >= 0.8)
+  }
+}
+LIMIT 100
