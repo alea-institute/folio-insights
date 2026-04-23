@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 00-05-PLAN.md
-last_updated: "2026-04-23T03:22:39.377Z"
+stopped_at: Completed 00-06-PLAN.md
+last_updated: "2026-04-23T03:32:30.969Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 00 (foundations-hard-gate) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-04-23
 
-Progress: [██████░░░░] 63%
+Progress: [████████░░] 75%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -73,6 +73,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 0 P4 | 13 | 3 tasks | 7 files |
 | Phase 00-foundations-hard-gate P03 | 32min | 2 tasks | 24 files |
 | Phase 0 P5 | 27 | 3 tasks | 11 files |
+| Phase 00-foundations-hard-gate P6 | 17min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,9 @@ Recent decisions affecting current work:
 - 00-05-D2: worker reasoning-subset lockfile (requirements.worker.lock) — Gate 5 step 5 demands hash-pinning for both tiers
 - 00-05-D3: opentelemetry-exporter-otlp-proto-grpc required at runtime by dagger-io 0.20.x (not pulled transitively)
 - 00-05: Gate 5 Mode 1 VERDICT = PASS — local Dagger pipeline produces bit-identical digests across back-to-back runs (web + worker)
+- 00-06: Gate 2 verdict = PASS — worst-case P95 = 116.95 ms on q13_confidence_histogram (>4x headroom over 500ms hard target); no tuning pass required, no pivot to Fuseki
+- 00-06: Plan template named-graph IRIs (urn:folio:*, tbox, governance) corrected to real bench.nq layout (corpus/advocacy, corpus/fre, corpus/restatement) — unknown IRIs in named_graphs= silently return zero rows
+- 00-06: pytest-benchmark 5.2.3 Stats has no percentile() method; P95 computed via nearest-rank into stats.sorted_data
 
 ### Roadmap Evolution
 
@@ -213,8 +217,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T03:22:39.373Z
-Stopped at: Completed 00-05-PLAN.md
+Last session: 2026-04-23T03:32:30.966Z
+Stopped at: Completed 00-06-PLAN.md
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
