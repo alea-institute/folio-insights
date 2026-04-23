@@ -11,7 +11,11 @@ __pycache__
 dist
 build
 
+# Generated runtime output (Pitfall 5: SQLite WAL digest drift)
+output
+
 # Node / frontend
+node_modules
 viewer/node_modules
 viewer/build
 viewer/.svelte-kit
