@@ -51,4 +51,6 @@ timeout = 30
 testpaths = ["tests"]
 markers = [
     "integration: tests requiring folio-enrich on disk",
+    "gate5: Gate 5 bit-identical digest test (slow, requires docker + dagger)",
+    "slow: Tests taking >30s (skipped from quick suite via -m 'not slow')",
 ]
