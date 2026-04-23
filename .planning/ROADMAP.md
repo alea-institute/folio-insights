@@ -35,7 +35,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ## 2. Phases — Summary Checklist
 
-- [ ] **Phase 0: Foundations / HARD GATE** — Validate stack; decide `keep=pyoxigraph` vs `pivot=fuseki`
+- [x] **Phase 0: Foundations / HARD GATE** — Validate stack; decide `keep=pyoxigraph` vs `pivot=fuseki` — **CLOSED 2026-04-23 with verdict `keep=pyoxigraph`** (see `.planning/phases/00-foundations-hard-gate/00-DECISION.md`)
 - [ ] **Phase 1: Polysemy / distinguo Spike** (parallel) — Canonical *consideration* fixture validates §16 R2
 - [ ] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard`
 - [ ] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes
@@ -553,7 +553,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Foundations / HARD GATE | 0/? | Not started | - |
+| 0. Foundations / HARD GATE | 8/8 | **COMPLETE** (verdict: keep=pyoxigraph) | 2026-04-23 |
 | 1. Polysemy / distinguo Spike | 0/? | Not started | - |
 | 2. Shard Envelope | 0/? | Not started | - |
 | 3. Shard Subtypes | 0/? | Not started | - |
