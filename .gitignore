@@ -26,9 +26,9 @@ output/*
 !output/test1/
 !output/demo/
 
-# Dagger (Plan 00-05)
-dagger/.venv/
-dagger/__pycache__/
+# Dagger CI driver (Plan 00-05 — package renamed ci/ to avoid dagger-io shadow)
+ci/.venv/
+ci/__pycache__/
 .dagger-cache/
 
 # Local env vars (example is committed; actual .env.docker is NOT)
