@@ -13,7 +13,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from api.db.session import get_db
-from api.routes import corpus, discovery, export, processing, review, source, tree, upload
+from api.routes import (
+    corpus,
+    discovery,
+    export,
+    polysemy,
+    processing,
+    review,
+    shard,
+    source,
+    timeline,
+    tree,
+    upload,
+)
 
 # ---------------------------------------------------------------------------
 # Application
@@ -52,6 +64,12 @@ app.include_router(upload.router)
 app.include_router(processing.router)
 app.include_router(discovery.router)
 app.include_router(export.router)
+
+# Phase 0 D-09 SSR prototype surfaces — stub payloads feeding Gate 4 (Plan 07).
+# Real payloads wire to pyoxigraph in Phase 15.
+app.include_router(shard.router)
+app.include_router(polysemy.router)
+app.include_router(timeline.router)
 
 # ---------------------------------------------------------------------------
 # In-memory extraction data store
