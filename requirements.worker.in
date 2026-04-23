@@ -1,0 +1,10 @@
+# Worker tier reasoning subset — Plan 00-04-D2 scope.
+# Intentionally excludes sentence-transformers/torch/folio-python/instructor/
+# sse-starlette/pyshacl/lxml which belong to the web tier.
+# Regenerate requirements.worker.lock via:
+#   uv pip compile requirements.worker.in --generate-hashes --python-version 3.11 \
+#     -o requirements.worker.lock
+pyoxigraph==0.5.7
+owlready2==0.50
+rdflib>=7.6.0
+oxrdflib

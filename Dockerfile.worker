@@ -55,11 +55,22 @@ RUN apk add --no-cache \
 # / torch / folio-python / instructor / sse-starlette / pyshacl / lxml which
 # belong to the web tier. Worker does SPARQL + OWL reasoning + Turtle bridge
 # ONLY. If Phase 10 needs shape validation, Plan 10 adds pyshacl here.
-RUN pip install --no-cache-dir \
-        "pyoxigraph==0.5.7" \
-        "owlready2==0.50" \
-        "rdflib>=7.6.0" \
-        "oxrdflib" \
+#
+# Plan 00-05 (Gate 5 step 5): pip is driven by requirements.worker.lock with
+# --require-hashes when the lockfile is present; falls back to the explicit
+# reasoning-subset list when it isn't (makes the image buildable from a clean
+# clone without uv). Input manifest: requirements.worker.in.
+WORKDIR /deps
+COPY requirements.worker.lock* ./
+RUN if [ -f requirements.worker.lock ]; then \
+        pip install --no-cache-dir --require-hashes -r requirements.worker.lock; \
+    else \
+        pip install --no-cache-dir \
+            "pyoxigraph==0.5.7" \
+            "owlready2==0.50" \
+            "rdflib>=7.6.0" \
+            "oxrdflib"; \
+    fi \
     && find /usr/local/lib/python3.11/site-packages -type d -name __pycache__ -exec rm -rf {} + \
     && find /usr/local/lib/python3.11/site-packages -name "*.pyc" -delete
 
