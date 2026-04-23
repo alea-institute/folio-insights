@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 00-01-PLAN.md
-last_updated: "2026-04-23T01:43:21.423Z"
+stopped_at: Completed 00-02-PLAN.md
+last_updated: "2026-04-23T01:52:59.852Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
-  percent: 13
+  completed_plans: 2
+  percent: 25
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 00 (foundations-hard-gate) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-04-23
 
-Progress: [█░░░░░░░░░] 13%
+Progress: [███░░░░░░░] 25%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -69,6 +69,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 01 P01 | 9 min | 3 tasks | 3 files |
 | Phase 01-deploy-on-railway-as-dev-server P02 | 2 min | 3 tasks | 2 files |
 | Phase 0 P1 | 4 | 2 tasks | 8 files |
+| Phase 00 P02 | 5 | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,10 @@ Recent decisions affecting current work:
 - [00-01]: pyproject.toml requires-python tightened to >=3.11,<3.13 per Pitfall 8 (instructor 3.13 regression)
 - [00-01]: owlready2 ships no __version__; use importlib.metadata for version introspection
 - [00-01]: Session-scoped bench_store fixture (pyoxigraph Store + bulk_load + optimize) reused across Gate 2 assertions
+- [00-02]: rdf:Statement reification used instead of RDF 1.2 triple-term syntax for annotations — pyoxigraph N-Quads dump is Turtle-only for pipe syntax (Pitfall 1 compliant)
+- [00-02]: In-memory pyoxigraph Store (path=None) for generation — avoids RocksDB mtime variance in ancillary files
+- [00-02]: Module-bottom import of bench subgroup in cli.py keeps pyoxigraph off the hot path for non-bench CLI commands
+- [00-02]: fixtures/bench.nq committed directly (235MB, <300MB plan cap); git-lfs migrate deferred until first GitHub push
 
 ### Roadmap Evolution
 
@@ -194,8 +199,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T01:43:21.419Z
-Stopped at: Completed 00-01-PLAN.md
+Last session: 2026-04-23T01:52:59.848Z
+Stopped at: Completed 00-02-PLAN.md
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
