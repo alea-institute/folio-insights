@@ -6,21 +6,15 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-# Q09 — Per-framework shard counts with average annotated confidence.
-# Stand-in for "per-framework author-cluster sizes" pending Phase 6 DID
-# substrate (author attestation lives in Phase 6+). Annotation-pipe form
-# documents future author attestation carry.
-SELECT ?framework (COUNT(DISTINCT ?shard) AS ?n) (AVG(?conf) AS ?avgConf) WHERE {
+# Q09 — Per-framework shard counts (stand-in for "per-framework author-cluster
+# sizes" pending Phase 6 DID substrate — author attestation lives in Phase 6+).
+# Phase 11+ will annotate the framework edge with author-cluster cardinality.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?shard fi:subject ?concept {| fi:author ?author |} .
+SELECT ?framework (COUNT(DISTINCT ?shard) AS ?n) WHERE {
   GRAPH ?g {
     ?shard fi:framework ?framework .
-    {
-      ?shard fi:subject ?concept {| fi:confidence ?conf |}
-    } UNION {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?shard ;
-            rdf:predicate fi:subject ;
-            fi:confidence ?conf .
-    }
   }
 }
 GROUP BY ?framework

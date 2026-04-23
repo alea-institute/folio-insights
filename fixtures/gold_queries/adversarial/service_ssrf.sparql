@@ -1,0 +1,20 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Adversarial — SSRF probe via AWS EC2 metadata endpoint (SEC-01 baseline).
+# 169.254.169.254 is the link-local AWS metadata service; any store that
+# federates to it leaks cloud credentials. Phase 0 gate: must complete in
+# under 2 seconds (pytest-timeout enforces an outer bound) and must NOT
+# establish a TCP connection to the metadata IP. Phase 4 API will add an
+# explicit RFC 1918 / link-local denylist with logging on violation.
+SELECT ?s WHERE {
+  SERVICE <http://169.254.169.254/latest/meta-data/> {
+    ?s ?p ?o .
+  }
+}
+LIMIT 10

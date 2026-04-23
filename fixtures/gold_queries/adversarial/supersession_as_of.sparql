@@ -1,0 +1,24 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Adversarial — Historical "as-of" query over supersession chain.
+# Combines transitive path fi:supersedes+ (stresses path evaluator) with
+# a validFrom date filter (stresses typed-literal comparison). Phase 0
+# fixture models supersession as fi:supersededBy (inverse), so the path
+# is rewritten to walk the reverse edge; as-of temporal filtering is a
+# Phase 11 feature — Gate 1 accepts zero rows, Phase 11 re-asserts it.
+SELECT ?old ?new ?validFrom WHERE {
+  GRAPH ?g {
+    ?old (^fi:supersededBy)+ ?new .
+    OPTIONAL {
+      ?new dcterms:issued ?validFrom .
+      FILTER(?validFrom <= "2022-01-01"^^xsd:date)
+    }
+  }
+}
+LIMIT 100

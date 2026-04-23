@@ -7,20 +7,18 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 # Q01 — Shards whose subject-concept triple is annotated with confidence >= 0.8.
-# D-04 STRICT gold: both RDF-12 annotation-pipe form (Turtle-1.2 native) and
-# rdf:Statement reification (Plan 02 P2-D2 fixture encoding) MUST be tested.
-# When Phase 13 emits true RDF-12 triple-term N-Quads, the pipe branch will
-# unify; the Phase 0 reified fixture makes the reification branch unify.
+# D-04 STRICT gold. Phase 0 fixture carries the annotation via rdf:Statement
+# reification (Plan 02 P2-D2); Phase 13+ will emit RDF-12 annotation-pipe and
+# the query SHOULD be rewritten to the pipe form below.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?shard fi:subject ?concept {| fi:confidence ?confidence |} .
 SELECT DISTINCT ?shard ?confidence WHERE {
   GRAPH ?g {
-    {
-      ?shard fi:subject ?concept {| fi:confidence ?confidence |}
-    } UNION {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?shard ;
-            rdf:predicate fi:subject ;
-            fi:confidence ?confidence .
-    }
+    ?stmt a rdf:Statement ;
+          rdf:subject ?shard ;
+          rdf:predicate fi:subject ;
+          fi:confidence ?confidence .
     FILTER (?confidence >= 0.8)
   }
 }

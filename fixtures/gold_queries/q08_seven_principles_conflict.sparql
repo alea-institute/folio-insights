@@ -7,20 +7,16 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 # Q08 — Seven Principles P1 (non-contradiction): DisputedPropositionShards
-# flagged with epistemicStatus=aporetic. Annotation-pipe carries violation
-# severity in future RDF-12 corpora; reified branch carries Phase 0 confidence.
+# flagged with epistemicStatus=aporetic. Fixture generator attaches
+# fi:epistemicStatus "aporetic" to every DisputedPropositionShard.
+# Phase 11+ will annotate with violation severity via pipe.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?shard fi:subject ?concept {| fi:confidence ?c |} .
 SELECT DISTINCT ?shard ?status WHERE {
   GRAPH ?g {
     ?shard a fi:DisputedPropositionShard ;
            fi:epistemicStatus ?status .
-    {
-      ?shard fi:subject ?concept {| fi:confidence ?c |}
-    } UNION {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?shard ;
-            rdf:predicate fi:subject ;
-            fi:confidence ?c .
-    }
     FILTER (STR(?status) = "aporetic")
   }
 }

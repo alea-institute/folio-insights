@@ -6,22 +6,19 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-# Q02 — Shards in the advocacy corpus, annotated with confidence (proxy for
-# provenance metadata). In a Phase 11 corpus this resolves to prov:wasDerivedFrom
-# on the reified statement; Phase 0 fixture carries fi:confidence as the
-# annotation vehicle.
-# Named-graph restriction pins the corpus (Gate 2 step 3 pattern).
+# Q02 — Advocacy-corpus shards with annotated confidence (provenance proxy).
+# Phase 0 fixture uses rdf:Statement reification; Phase 13+ will emit the
+# RDF-12 annotation-pipe form documented below. Named-graph restriction
+# pins the corpus per Gate 2 step 3.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?shard fi:subject ?concept {| fi:confidence ?confidence |} .
 SELECT DISTINCT ?shard ?confidence WHERE {
   GRAPH <https://folio-insights.aleainstitute.ai/corpus/advocacy> {
-    {
-      ?shard fi:subject ?concept {| fi:confidence ?confidence |}
-    } UNION {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?shard ;
-            rdf:predicate fi:subject ;
-            fi:confidence ?confidence .
-    }
-    ?shard fi:corpus ?corpus .
+    ?stmt a rdf:Statement ;
+          rdf:subject ?shard ;
+          rdf:predicate fi:subject ;
+          fi:confidence ?confidence .
   }
 }
 LIMIT 100

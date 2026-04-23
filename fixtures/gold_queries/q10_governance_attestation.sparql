@@ -7,20 +7,18 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 # Q10 — Governance attestation proxy: shards whose annotated confidence is
-# above the minimum acceptability threshold (0.5). In Phase 6+ DID-land
-# the annotation-pipe form will carry prov:wasGeneratedBy and a signer IRI;
-# Phase 0 fixture carries fi:confidence via reification as the baseline.
+# above the minimum acceptability threshold (0.5). In Phase 6+ DID-land the
+# pipe form will carry prov:wasGeneratedBy and a signer IRI; Phase 0 fixture
+# carries fi:confidence via reification as the baseline.
+#
+# Future RDF-12 native form (for Pitfall 1 file-discipline reference):
+#   ?shard fi:subject ?concept {| fi:confidence ?confidence |} .
 SELECT DISTINCT ?shard ?confidence WHERE {
   GRAPH ?g {
-    ?shard a ?subtype .
-    {
-      ?shard fi:subject ?concept {| fi:confidence ?confidence |}
-    } UNION {
-      ?stmt a rdf:Statement ;
-            rdf:subject ?shard ;
-            rdf:predicate fi:subject ;
-            fi:confidence ?confidence .
-    }
+    ?stmt a rdf:Statement ;
+          rdf:subject ?shard ;
+          rdf:predicate fi:subject ;
+          fi:confidence ?confidence .
     FILTER (?confidence >= 0.5)
   }
 }
