@@ -1,0 +1,30 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q06 — As-of historical: shards valid at a bitemporal point-in-time.
+# RDF-12-native form annotates the subject-concept triple with dcterms:valid;
+# Phase 0 fixture does not seed a validFrom date, so the annotation-pipe
+# branch is documentation-only here and the fallback OPTIONAL path carries
+# the Gate 1 non-empty result via the base subject triple + confidence.
+# When Phase 11 backfills dcterms:valid the pipe branch activates.
+SELECT DISTINCT ?shard ?concept WHERE {
+  GRAPH ?g {
+    ?shard fi:subject ?concept .
+    OPTIONAL {
+      ?shard fi:subject ?concept {| dcterms:valid ?validFrom |}
+      FILTER (?validFrom <= "2022-01-01"^^xsd:date)
+    }
+    OPTIONAL {
+      ?stmt a rdf:Statement ;
+            rdf:subject ?shard ;
+            rdf:predicate fi:subject ;
+            fi:confidence ?conf .
+    }
+  }
+}
+LIMIT 100

@@ -1,0 +1,34 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q03 — Polysemy siblings: two distinct shards referencing the same concept
+# (shared subject cluster — the Phase 0 fixture seeds 50 concept-IRIs per
+# subtype, so concepts are intentionally reused across shards for clustering).
+# Each sibling's subject triple is annotated with disambiguation confidence.
+SELECT DISTINCT ?sibling1 ?sibling2 ?concept WHERE {
+  GRAPH ?g {
+    {
+      ?sibling1 fi:subject ?concept {| fi:confidence ?c1 |} .
+      ?sibling2 fi:subject ?concept {| fi:confidence ?c2 |} .
+    } UNION {
+      ?sibling1 fi:subject ?concept .
+      ?sibling2 fi:subject ?concept .
+      ?stmt1 a rdf:Statement ;
+             rdf:subject ?sibling1 ;
+             rdf:predicate fi:subject ;
+             fi:confidence ?c1 .
+      ?stmt2 a rdf:Statement ;
+             rdf:subject ?sibling2 ;
+             rdf:predicate fi:subject ;
+             fi:confidence ?c2 .
+    }
+    FILTER (?sibling1 != ?sibling2)
+    FILTER (STR(?sibling1) < STR(?sibling2))
+  }
+}
+LIMIT 50

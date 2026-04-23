@@ -1,0 +1,29 @@
+PREFIX folio: <https://folio-insights.aleainstitute.ai/>
+PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Q04 — Supersession chain: old shards superseded by new versions.
+# The supersededBy edge is expected to carry a dcterms:valid date annotation
+# in future RDF-12-native corpora; Phase 0 fixture emits the edge without
+# the date. The pipe branch will activate when Phase 11 adds the annotation;
+# the plain-triple branch satisfies Gate 1 on the current fixture.
+SELECT ?old ?new WHERE {
+  GRAPH ?g {
+    ?old fi:supersededBy ?new .
+    OPTIONAL {
+      ?old fi:supersededBy ?new {| dcterms:valid ?date |}
+    }
+    OPTIONAL {
+      ?stmt a rdf:Statement ;
+            rdf:subject ?old ;
+            rdf:predicate fi:supersededBy ;
+            rdf:object ?new ;
+            dcterms:valid ?date .
+    }
+  }
+}
+LIMIT 100
