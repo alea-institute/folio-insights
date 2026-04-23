@@ -1,0 +1,78 @@
+# syntax=docker/dockerfile:1.7
+
+# =========================================================================
+# Dockerfile.web — Web tier (FastAPI + SvelteKit adapter-node, JVM-free)
+# REQ-QUALITY-03 two-stage split (no JVM on web); REQ-OBS-04 reproducible (Gate 5)
+#
+# Base-image digests captured via `docker buildx imagetools inspect` on
+# 2026-04-22. Regenerate quarterly or when upstream security advisory lands.
+#   node:22-slim      -> sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c
+#   python:3.11-slim  -> sha256:92c262cbb2e99cdc16218338d74fbe518055c13d224d942708f70f8042ff6d18
+# =========================================================================
+
+ARG NODE_IMAGE=node:22-slim@sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c
+ARG PYTHON_IMAGE=python:3.11-slim@sha256:92c262cbb2e99cdc16218338d74fbe518055c13d224d942708f70f8042ff6d18
+ARG SOURCE_DATE_EPOCH
+
+# -------------------------------------------------------------------------
+# Stage 1: Frontend builder — SvelteKit adapter-node build
+# -------------------------------------------------------------------------
+FROM ${NODE_IMAGE} AS frontend-builder
+ARG SOURCE_DATE_EPOCH
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
+
+WORKDIR /app/viewer
+COPY viewer/package.json viewer/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY viewer/ ./
+RUN npm run build
+
+# -------------------------------------------------------------------------
+# Stage 2: Python runtime — FastAPI + adapter-node server output
+# -------------------------------------------------------------------------
+FROM ${PYTHON_IMAGE}
+ARG SOURCE_DATE_EPOCH
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Plan 05 will author requirements.lock (with hashes). Until then, the
+# installer reads the lockfile if present and falls back to uv pip install.
+# Ordered explicit COPY (Gate 5 step 8) — NEVER `COPY . .`.
+COPY pyproject.toml README.md ./
+COPY requirements.lock* ./
+RUN if [ -f requirements.lock ]; then \
+      pip install --no-cache-dir --require-hashes -r requirements.lock; \
+    else \
+      uv pip install --system --no-cache-dir . \
+        && uv pip install --system --no-cache-dir fastapi "uvicorn[standard]" python-multipart; \
+    fi \
+    && rm -rf /root/.cache
+
+COPY src/ ./src/
+COPY api/ ./api/
+COPY --from=frontend-builder /app/viewer/build/ ./viewer/build/
+
+# Gate 5 step 4: fixed UID/GID (numeric, deterministic)
+RUN groupadd -g 1001 appuser \
+    && useradd -u 1001 -g 1001 -m -s /bin/bash appuser \
+    && mkdir -p /home/appuser/.folio-insights \
+    && chown -R appuser:appuser /app /home/appuser
+USER 1001
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\", \"8000\")}/health')"
+
+# Serve adapter-node (SSR) in background, FastAPI in foreground.
+# Plan 07 will wire a supervisor if needed; Phase 0 accepts the `&` pattern.
+CMD ["sh", "-c", "node viewer/build/index.js & uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
