@@ -27,7 +27,12 @@ dev = [
     "pytest-asyncio>=0.25.0",
     "pytest-timeout>=2.3",
     "pytest-benchmark>=5.1",
-    "dagger-io",
+    "dagger-io>=0.14.0",
+    # Dagger SDK 0.20.x requires an OTel gRPC exporter at runtime (otlp_proto_grpc
+    # entry point) — not pulled transitively. Without this, dagger.Connection()
+    # fails with: Requested component 'otlp_proto_grpc' not found in entry point.
+    "opentelemetry-exporter-otlp-proto-grpc>=1.41.0",
+    "ruff>=0.6.0",
 ]
 
 [project.scripts]
