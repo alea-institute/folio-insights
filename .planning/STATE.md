@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: Milestone initialized — ROADMAP finalized with 23 phases; ready for Phase 0
-stopped_at: "PreCompact (auto) at 2026-04-22T20:42:35Z"
-last_updated: "2026-04-22T20:58:05.529Z"
-last_activity: 2026-04-22 — /gsd-new-milestone v2.0 complete (8/8); ROADMAP approved as-is (all 5 roadmapper deviations); /gsd-next routes to /gsd-discuss-phase 0
+status: executing
+stopped_at: Completed 00-01-PLAN.md
+last_updated: "2026-04-23T01:43:21.423Z"
+last_activity: 2026-04-23
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 13
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Planning v2.0 — brief at `.planning/v2.0-MILESTONE-BRIEF.md`
+**Current focus:** Phase 00 — foundations-hard-gate
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 0 of 20 (+ 3 decimal phases: 13.5, 18.5; + sub-phases within 6/9/15/16) — Foundations / HARD GATE (not started)
-Plan: —
-Status: Milestone initialized — ROADMAP finalized with 23 phases; ready for Phase 0
-Last activity: 2026-04-22 — /gsd-new-milestone v2.0 complete (8/8); ROADMAP approved as-is (all 5 roadmapper deviations); /gsd-next routes to /gsd-discuss-phase 0
+Phase: 00 (foundations-hard-gate) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-04-23
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 13%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -68,6 +68,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 03.1 P02 | 5 min | 2 tasks | 7 files |
 | Phase 01 P01 | 9 min | 3 tasks | 3 files |
 | Phase 01-deploy-on-railway-as-dev-server P02 | 2 min | 3 tasks | 2 files |
+| Phase 0 P1 | 4 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,10 @@ Recent decisions affecting current work:
 - [Phase 01-02]: Replaced stale 'localhost:8700' port reference in client.ts docstring with neutral vite.config.ts reference — audit grep flags literal port numbers even in comments
 - [Phase 01-02]: railway.toml omits startCommand — Dockerfile CMD expands ${PORT:-8000} and adding one here would bypass that substitution
 - [Phase 01-02]: healthcheckTimeout = 120s to accommodate heavy image boot (torch + sentence-transformers); restartPolicyMaxRetries = 3 to surface crash loops as deploy failures
+- [00-01]: git mv preserves blame for PHILOSOPHY.md (D-18 resolved; file was at repo root, not docs/)
+- [00-01]: pyproject.toml requires-python tightened to >=3.11,<3.13 per Pitfall 8 (instructor 3.13 regression)
+- [00-01]: owlready2 ships no __version__; use importlib.metadata for version introspection
+- [00-01]: Session-scoped bench_store fixture (pyoxigraph Store + bulk_load + optimize) reused across Gate 2 assertions
 
 ### Roadmap Evolution
 
@@ -189,8 +194,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-22T20:42:35.801Z
-Stopped at: PreCompact (auto) at 2026-04-22T20:42:35Z
+Last session: 2026-04-23T01:43:21.419Z
+Stopped at: Completed 00-01-PLAN.md
 Resume file: None
 Resume action: `/gsd-research-phase 0` (MEDIUM-confidence: RDF-12 migration, HermiT JVM, SSR streaming, Dagger reproducibility) → then `/gsd-plan-phase 0`
 
