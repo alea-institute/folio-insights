@@ -1,0 +1,111 @@
+# syntax=docker/dockerfile:1.7
+
+# =========================================================================
+# Dockerfile.worker — Worker tier (jlink custom JRE + owlready2 + HermiT)
+# REQ-QUALITY-03 (image <500MB target, <=700MB accept per D-06)
+# REQ-OBS-04 (Gate 5 reproducible); jlink = biggest single win per RESEARCH.md §Gate 3
+#
+# A1 SPIKE RESULT (2026-04-22): pyoxigraph 0.5.7 musllinux_1_2_x86_64 wheel
+# confirmed available on PyPI. Alpine base approved (saves ~75MB vs slim).
+#
+# Base-image digests captured via `docker buildx imagetools inspect`:
+#   eclipse-temurin:17-jdk-alpine -> sha256:cf02686befe8e1fc3b00da25458bf92d53013b4c358d4a2245ff50e0d81b753a
+#   python:3.11-alpine             -> sha256:8b5bfdb1fd2d78aa94e21c4d61be52487693f54be7f1021647751ff365795703
+# =========================================================================
+
+ARG TEMURIN_IMAGE=eclipse-temurin:17-jdk-alpine@sha256:cf02686befe8e1fc3b00da25458bf92d53013b4c358d4a2245ff50e0d81b753a
+ARG RUNTIME_IMAGE=python:3.11-alpine@sha256:8b5bfdb1fd2d78aa94e21c4d61be52487693f54be7f1021647751ff365795703
+ARG SOURCE_DATE_EPOCH
+
+# -------------------------------------------------------------------------
+# Stage 1: jlink JRE builder — strips Java runtime from ~180MB to ~60-80MB
+# RESEARCH.md Pattern 5; D-06 tuning step 1 (biggest single win).
+# Module set per RESEARCH.md line 443; expand iteratively if HermiT raises
+# ClassNotFoundException at reasoning time (Assumption A4 — Plan 07 follow-up).
+# -------------------------------------------------------------------------
+FROM ${TEMURIN_IMAGE} AS jre-builder
+RUN "$JAVA_HOME/bin/jlink" \
+        --add-modules java.base,java.logging,java.xml,java.naming,java.sql,jdk.crypto.ec \
+        --strip-debug \
+        --no-man-pages \
+        --no-header-files \
+        --compress=2 \
+        --output /opt/java-custom
+
+# -------------------------------------------------------------------------
+# Stage 2: Python dependency builder — installs with toolchain, staged for copy.
+# Keeps gcc/musl-dev out of the final runtime image; owlready2 ships only as
+# sdist (no wheels), so it must compile its C optimizer module at install time.
+# -------------------------------------------------------------------------
+FROM ${RUNTIME_IMAGE} AS deps-builder
+ARG SOURCE_DATE_EPOCH
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+RUN apk add --no-cache \
+        gcc \
+        g++ \
+        musl-dev \
+        python3-dev \
+        libffi-dev
+
+# Install only the reasoning subset — intentionally excludes sentence-transformers
+# / torch / folio-python / instructor / sse-starlette / pyshacl / lxml which
+# belong to the web tier. Worker does SPARQL + OWL reasoning + Turtle bridge
+# ONLY. If Phase 10 needs shape validation, Plan 10 adds pyshacl here.
+RUN pip install --no-cache-dir \
+        "pyoxigraph==0.5.7" \
+        "owlready2==0.50" \
+        "rdflib>=7.6.0" \
+        "oxrdflib" \
+    && find /usr/local/lib/python3.11/site-packages -type d -name __pycache__ -exec rm -rf {} + \
+    && find /usr/local/lib/python3.11/site-packages -name "*.pyc" -delete
+
+# -------------------------------------------------------------------------
+# Stage 3: Worker runtime — Alpine + custom JRE + pre-installed site-packages.
+# Gate 5: fixed UID/GID; PYTHONDONTWRITEBYTECODE; explicit ordered COPY.
+# -------------------------------------------------------------------------
+FROM ${RUNTIME_IMAGE}
+ARG SOURCE_DATE_EPOCH
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Custom JRE (biggest Gate 3 win — ~120MB saved vs full temurin-jre)
+COPY --from=jre-builder /opt/java-custom /opt/java-custom
+ENV JAVA_HOME=/opt/java-custom \
+    PATH="/opt/java-custom/bin:${PATH}"
+
+# Minimal native runtime deps for pyoxigraph wheel (RocksDB C++ lib) + owlready2 SQLite
+RUN apk add --no-cache \
+        libgcc \
+        libstdc++ \
+        sqlite-libs \
+    && rm -rf /var/cache/apk/*
+
+# Gate 5 step 4: fixed UID/GID (Alpine syntax — numeric, deterministic)
+RUN addgroup -g 1001 appuser \
+    && adduser -D -u 1001 -G appuser -s /bin/sh appuser
+
+# Copy pre-installed Python packages from the deps-builder stage.
+# This keeps gcc/g++/musl-dev/python3-dev/libffi-dev out of the runtime image
+# (they were only needed to compile owlready2's C optimizer).
+COPY --from=deps-builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=deps-builder /usr/local/bin /usr/local/bin
+
+WORKDIR /app
+
+# Ordered explicit COPY — never `COPY . .` (Gate 5 step 8)
+COPY --chown=appuser:appuser pyproject.toml README.md ./
+COPY --chown=appuser:appuser src/ ./src/
+
+# Make the local package importable without re-installing deps
+ENV PYTHONPATH=/app/src
+
+USER 1001
+
+# Worker has no HTTP surface (polls Redis via Arq — Phase 10 cutover).
+# Phase 0 scaffold: entrypoint module stub in src/folio_insights/worker.py.
+CMD ["python", "-m", "folio_insights.worker"]
