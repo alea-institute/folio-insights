@@ -25,3 +25,12 @@ output/*
 !output/default/
 !output/test1/
 !output/demo/
+
+# Dagger (Plan 00-05)
+dagger/.venv/
+dagger/__pycache__/
+.dagger-cache/
+
+# Local env vars (example is committed; actual .env.docker is NOT)
+.env.docker
+
