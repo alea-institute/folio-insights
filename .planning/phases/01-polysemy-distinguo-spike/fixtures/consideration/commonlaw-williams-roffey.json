@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_f6c5cf31",
+  "framework": "CommonLaw",
+  "source_doc": "Williams v. Roffey Bros & Nicholls (Contractors) Ltd, [1991] 1 QB 1",
+  "extracted_text": "Where a party to an existing contract later agrees to pay an extra bonus in order to ensure that the other party performs his obligations under the contract, then that agreement is binding if the promisor obtains in practice a benefit, or obviates a disbenefit, by the promise.",
+  "axiom_summary": "Consideration may be found in a 'practical benefit' to the promisor even where the promisee does no more than perform a pre-existing contractual duty (modifies Stilk v Myrick).",
+  "prime_analogate_hint": null,
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

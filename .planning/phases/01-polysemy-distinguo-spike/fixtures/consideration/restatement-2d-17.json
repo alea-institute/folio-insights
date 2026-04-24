@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_ee70c180",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 17 (Am. Law Inst. 1981)",
+  "extracted_text": "Except as stated in Subsection (2), the formation of a contract requires a bargain in which there is a manifestation of mutual assent to the exchange and a consideration.",
+  "axiom_summary": "Consideration is a constitutive element of contract formation in US law, paired with mutual assent; both elements must exist for a bargained contract.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}
