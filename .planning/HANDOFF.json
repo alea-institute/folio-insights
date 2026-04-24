@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-24T13:46:24Z",
+  "timestamp": "2026-04-24T14:09:15Z",
   "trigger": "precompact-auto",
   "phase": "01-polysemy-distinguo-spike",
   "phase_dir": ".planning/phases/01-polysemy-distinguo-spike",
   "git": {
     "branch": "master",
-    "head": "b751827",
-    "modified_files": 4
+    "head": "8ec5996",
+    "modified_files": 3
   },
   "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session."
 }
