@@ -267,6 +267,11 @@ def review_cmd(
 
 
 # --------------------------- audit ---------------------------
+_AUDIT_REPORT_PATH = pathlib.Path(
+    ".planning/phases/01-polysemy-distinguo-spike/fp-labeling-audit.md"
+)
+
+
 @polysemy.command("audit")
 @click.option(
     "--dispositions-path",
@@ -274,8 +279,43 @@ def review_cmd(
     default=_DISPOSITIONS_PATH,
     show_default=True,
 )
-def audit_cmd(dispositions_path: pathlib.Path) -> None:
-    """Print a summary table of recorded dispositions."""
+@click.option(
+    "--emit-disagreements",
+    is_flag=True,
+    help=(
+        "Invoke the LLM audit pass and emit a disagreements-only report "
+        "(D-4 lock) to --report-path."
+    ),
+)
+@click.option(
+    "--report-path",
+    type=click.Path(path_type=pathlib.Path),
+    default=_AUDIT_REPORT_PATH,
+    show_default=True,
+    help="Destination for the disagreements-only audit report.",
+)
+@click.option(
+    "--llm-provider",
+    default="claude-haiku-4-5",
+    show_default=True,
+    help=(
+        "Model string for the LLM audit pass (OQ-5 RESOLVED: family "
+        "resolved via prefix — claude-*, gpt-*, gemini-*, ollama/*)."
+    ),
+)
+def audit_cmd(
+    dispositions_path: pathlib.Path,
+    emit_disagreements: bool,
+    report_path: pathlib.Path,
+    llm_provider: str,
+) -> None:
+    """Print a summary table of recorded dispositions.
+
+    With ``--emit-disagreements`` the audit additionally computes the Wilson
+    CI-bounded FP rate and runs a second-reader LLM pass, writing only the
+    disagreement rows to ``--report-path`` (D-4 lock; agreements are silently
+    counted).
+    """
     counts: dict[str, int] = {"accept": 0, "reject": 0, "modify": 0}
     total = 0
     with dispositions_path.open("r", encoding="utf-8") as fh:
@@ -292,6 +332,30 @@ def audit_cmd(dispositions_path: pathlib.Path) -> None:
     for k, v in counts.items():
         table.add_row(k, str(v))
     console.print(table)
+
+    if emit_disagreements:
+        # Lazy import — keeps `folio-insights polysemy audit --help` snappy
+        # and avoids paying the LLMBridge/instructor import cost for the
+        # default count-summary path.
+        from folio_insights.polysemy.fp_audit import (
+            compute_fp_rate,
+            run_llm_audit_pass,
+        )
+        fp = compute_fp_rate(dispositions_path)
+        console.print(
+            f"FP rate: {fp['fp_rate']:.1%} "
+            f"(Wilson 95% CI: {fp['ci_lower']:.1%} - {fp['ci_upper']:.1%}); "
+            f"kappa={fp['kappa']:.3f} (signal-only; {fp['kappa_caveat']})"
+        )
+        result = run_llm_audit_pass(
+            dispositions_path,
+            report_path,
+            llm_provider=llm_provider,
+        )
+        console.print(
+            f"Audit wrote {result['disagreements']} disagreements "
+            f"(of {result['total']}) to {report_path}"
+        )
 
 
 __all__ = ["polysemy"]
