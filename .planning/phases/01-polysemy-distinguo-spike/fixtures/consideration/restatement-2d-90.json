@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_d7ce6a65",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 90 (Am. Law Inst. 1981)",
+  "extracted_text": "A promise which the promisor should reasonably expect to induce action or forbearance on the part of the promisee or a third person and which does induce such action or forbearance is binding if injustice can be avoided only by enforcement of the promise.",
+  "axiom_summary": "Promissory estoppel substitutes for consideration when detrimental reliance was foreseeable and injustice-avoidance requires enforcement (bargain-substitute doctrine).",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}
