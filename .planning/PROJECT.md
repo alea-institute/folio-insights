@@ -109,6 +109,13 @@ See `.planning/REQUIREMENTS.md` for v2.0 scoped requirements (populated during m
 | Standalone IRI generation (reimplemented from folio-python) | Avoids 10s ontology download on every export | ✓ Good — fast, compatible |
 | Standalone sentence-transformers for deduplication | FAISS index in folio_bridge sized for FOLIO concepts, not pairwise similarity | ✓ Good — documented design choice |
 | SvelteKit adapter-static served by FastAPI | SPA mode for review viewer; FastAPI handles API + static files | ✓ Good — simple deployment |
+| [Phase 01] Wilson 95% CI lower-bound as FP gate (not point estimate) | At N=22 point estimates overstate precision (pilot ECE 0.108–0.427) — CI lower bound is the only defensible gate | ✓ Good — 2.53% lower bound well below 10% gate; policy carries forward to Phase 9.P6 |
+| [Phase 01] Cohen's kappa labeled "signal, not verdict" | Small-N kappa volatility documented in RESEARCH.md; prevents misread as a gate | ✓ Good — KAPPA_CAVEAT constant emitted from compute_fp_rate + in SUMMARY template |
+| [Phase 01] Detector verdict stored as dict (not float confidence) | Pitfall A6: float-confidence regression reintroduces PRINCIPLE-06 auto-apply risk | ✓ Good — grep-guard regression tests enforce absence of `detector_confidence` in fp_audit.py |
+| [Phase 01] Disagreements-only LLM audit report (D-4 lock) | Agreements add noise; only LLM-vs-reviewer disagreements need reviewer attention | ✓ Good — 2/22 disagreements surfaced; 20 agreements silently counted |
+| [Phase 01] rich.prompt keystroke gate with no `default=` (PRINCIPLE-06) | Any default value lets review bypass the gate on empty input; re-prompt on invalid enforces human decision | ✓ Good — CliRunner test suite enumerates forbidden bypass flags; build fails if any are added |
+| [Phase 01] Deterministic mock-LLM harness for offline phase close | Live Anthropic-API audit is reviewer sign-off work, not a phase gate; harness lets phase close without external cost | ✓ Good — `scripts/run_llm_audit_harness.py` produces committed fp-labeling-audit.md; same report shape as live run |
+| [Phase 01] ed25519 reviewer DID stored at $HOME/.folio-insights/ (0600/0700) | Private key outside repo; Unix file perms match scope of single-maintainer spike; .gitignore belt-and-suspenders | ✓ Good — `reviewer.py:64/75/77` enforces perms; `.gitignore:43` excludes folder |
 
 ## Constraints
 
@@ -135,4 +142,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-20 — v2.0 shards-as-axioms milestone started*
+*Last updated: 2026-04-24 — Phase 01 (polysemy-distinguo spike) complete; VOCAB-02 first-use validated, PRINCIPLE-06 human-gate design validated at spike scope; Phase 02 (Shard Envelope) next*
