@@ -136,7 +136,10 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   1. `Shard(**shard.model_dump()) == shard` round-trips for every subtype placeholder.
   2. Discriminated-union test rejects invalid subtype tag with a useful error.
   3. Bitemporal fields (`valid_time_start`, `valid_time_end`, `transaction_time`) round-trip and serialize deterministically.
-**Plans**: TBD
+**Plans**: 3 plans across 3 waves (see `.planning/phases/02-shard-envelope/`)
+  - Wave 1: `02-01-PLAN.md` — envelope + subtypes + minting (ShardEnvelope 15 fields, 6 frozen identity fields per D-07, 5 subtype stubs + Shard discriminated-union alias per D-05, deterministic mint_shard_iri per D-01/D-02)
+  - Wave 2: `02-02-PLAN.md` — audit + pyproject (ContentEdit frozen sub-model + add_edit helper per D-08, ShardEnvelope.model_rebuild() forward-ref resolution, pyproject.toml hypothesis>=6.100 dev dep + shards pytest marker)
+  - Wave 3: `02-03-PLAN.md` — test suite (round-trip × 5 subtypes + discriminated-union dispatch + bitemporal + 6 frozen-field regression + 1000-example hypothesis minting determinism + audit-log + Phase-13 dep-leak grep-guard; ≥40 tests)
 
 ---
 
