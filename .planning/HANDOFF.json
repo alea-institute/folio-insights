@@ -1,69 +1,42 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-23T22:43:18Z",
+  "timestamp": "2026-04-23T22:50:00Z",
   "trigger": "pause-work",
   "phase": "01-polysemy-distinguo-spike",
   "phase_dir": ".planning/phases/01-polysemy-distinguo-spike",
-  "status": "discuss-in-progress",
-  "stage": "gray-areas-identified-not-asked",
-  "prior_phase_status": {
+  "status": "discuss-complete",
+  "stage": "ready-for-plan",
+  "artifacts": {
+    "context": ".planning/phases/01-polysemy-distinguo-spike/01-CONTEXT.md",
+    "discussion_log": ".planning/phases/01-polysemy-distinguo-spike/01-DISCUSSION-LOG.md",
+    "commit": "644809c"
+  },
+  "decisions_locked": [
+    "D-1 Fixture: curated tri-source (v1 advocacy + Restatement + FRE), \u226520 shards, 3+ frameworks",
+    "D-2 Detector: hybrid rule-then-LLM (axiom-conflict + N\u22653 + terms-of-art whitelist + instructor fallback)",
+    "D-3 Gate: CLI-only 'folio-insights polysemy review'; JSONL disposition schema",
+    "D-4 FP labeling: self-labeled + instructor audit with reconciliation"
+  ],
+  "prior_phase": {
     "phase": "00-foundations-hard-gate",
     "status": "complete",
-    "uat_commit": "7bf4196",
-    "security_commit": "f69c9ca",
-    "pause_commit": "3926637"
+    "verdict": "keep=pyoxigraph"
   },
-  "this_session_work": [
-    "Resolved gsd-sdk phase-1 mismatch (archived v1.1 path vs v2.0 Polysemy spike)",
-    "Created .planning/phases/01-polysemy-distinguo-spike/ (was missing)",
-    "Gathered prior context from ROADMAP, PROJECT, REQUIREMENTS, PHILOSOPHY, PRD §8.P6, PRD §16 R2, PITFALLS #8, v2.0-MILESTONE-BRIEF",
-    "Scouted codebase for reusable assets (task_clustering, boundary/semantic, folio_tagger, discovery/orchestrator)",
-    "Identified 4 gray areas for Phase 1 discussion",
-    "Paused at 80% context before presenting gray areas"
-  ],
-  "pending_gray_areas": [
-    {
-      "id": "GA-1",
-      "label": "Fixture sourcing",
-      "question": "Where do the \u226520 *consideration* shards come from? v1 advocacy re-extract + FRE + Restatement? Hand-curated seed? LLM-synthesized adversarials too?"
-    },
-    {
-      "id": "GA-2",
-      "label": "Detector architecture",
-      "question": "Pure-rule (framework tags + axiom-conflict check) / pure-LLM (instructor classification) / hybrid with fallback ordering?"
-    },
-    {
-      "id": "GA-3",
-      "label": "Human-gate UX shape",
-      "question": "CLI-only for the spike (accept/reject/modify), or stub Svelte surface wired to Phase 14 design tokens?"
-    },
-    {
-      "id": "GA-4",
-      "label": "FP gold-set labeling",
-      "question": "Self-labeled (user), advisory LLM with manual spot-check, or deferred to Phase 15 practitioner sessions?"
-    }
-  ],
-  "canonical_refs_to_load": [
-    "ROADMAP.md §Phase 1 (L103-116)",
-    "PRD-v2.0-draft-2.md §8.P6 (L1090-1114)",
-    "PRD-v2.0-draft-2.md §16 Risk 2 (L1465-1467)",
-    "PHILOSOPHY.md L108-141, L395, L1247-1252",
-    ".planning/research/PITFALLS.md L643-656 (Pitfall 8)",
-    ".planning/REQUIREMENTS.md PRINCIPLE-06 (L104), VOCAB-02 (L90)",
-    ".planning/v2.0-MILESTONE-BRIEF.md L45"
-  ],
-  "reusable_assets": [
-    "src/folio_insights/services/task_clustering.py",
-    "src/folio_insights/services/boundary/semantic.py",
-    "src/folio_insights/pipeline/stages/folio_tagger.py",
-    "src/folio_insights/pipeline/discovery/orchestrator.py"
-  ],
-  "next_action": "Run /gsd-discuss-phase 1 in a fresh session. Workflow finds .continue-here.md + empty phase dir, skips init mismatch, presents 4 gray areas via AskUserQuestion.",
+  "next_action": "/gsd-plan-phase 1 in a fresh session",
+  "planner_hints": {
+    "suggested_waves": [
+      "1. Fixture build (curate \u226520 consideration shards + hand-label)",
+      "2. Detector prototype (src/folio_insights/polysemy/)",
+      "3. CLI subgroup + JSONL disposition emitter",
+      "4. FP audit pass (instructor audit + reconciliation)",
+      "5. Threshold recommendation doc for 9.P6"
+    ]
+  },
   "git": {
     "branch": "master",
-    "head": "3926637",
-    "ahead_of_origin": 43,
+    "head": "644809c",
+    "ahead_of_origin": 45,
     "working_tree": "M .planning/STATE.md + new .continue-here.md"
   },
-  "note": "Resume with /gsd-discuss-phase 1 (same command as start — the .continue-here.md replaces init context)."
+  "note": "Resume with /gsd-plan-phase 1. CONTEXT.md is locked; planner reads it as source of truth."
 }
