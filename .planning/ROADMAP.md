@@ -113,7 +113,13 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   1. *Consideration* fixture set (≥20 shards across 3+ frameworks) classified by the prototype detector with ≤10% FP rate.
   2. Human-gate interaction pattern (accept / reject / modify) documented in spike SUMMARY.md — **no auto-apply path** (§16 R2).
   3. Per-framework threshold strategy proposed and open-sourced for 9.P6 planning.
-**Plans**: TBD
+**Plans**: 6 plans across 5 waves (see `.planning/phases/01-polysemy-distinguo-spike/`)
+  - Wave 0: `01-01-PLAN.md` — test scaffolding (tests/polysemy/ package, conftest.py, 8 RED test files, polysemy_spike marker)
+  - Wave 1: `01-02-PLAN.md` — data layer (whitelists, DispositionRecord + ProposedFork + append_disposition, ed25519 reviewer DID, ≥20 curated consideration fixtures, fixture_loader)
+  - Wave 2: `01-03-PLAN.md` — detector core (prototype_cluster, similarity_query SPARQL owl:disjointWith, detector.py 4-rule gate + provider-agnostic instructor LLM fallback) [parallel with 01-04]
+  - Wave 2: `01-04-PLAN.md` — distinguo TTL emission (ForkProposal pydantic, VOCAB-02 atomic-triad invariant, emit_fork_ttl + pyoxigraph round-trip) [parallel with 01-03]
+  - Wave 3: `01-05-PLAN.md` — Click CLI TUI (polysemy detect/review/audit subgroup, rich.prompt gates, no-auto-apply guard, CliRunner tests)
+  - Wave 4: `01-06-PLAN.md` — FP audit + phase synthesis (Wilson CI hand-coded, LLM audit disagreements-only, fp-labeling-audit.md + 01-SUMMARY.md with Phase 9.P6 threshold recommendation)
 
 ---
 
@@ -554,7 +560,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 0. Foundations / HARD GATE | 8/8 | **COMPLETE** (verdict: keep=pyoxigraph) | 2026-04-23 |
-| 1. Polysemy / distinguo Spike | 0/? | Not started | - |
+| 1. Polysemy / distinguo Spike | 0/6 | Planned | - |
 | 2. Shard Envelope | 0/? | Not started | - |
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 4. IRI Scheme | 0/? | Not started | - |
