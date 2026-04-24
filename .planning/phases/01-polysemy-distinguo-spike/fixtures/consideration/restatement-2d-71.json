@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_98477cf6",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 71 (Am. Law Inst. 1981)",
+  "extracted_text": "To constitute consideration, a performance or a return promise must be bargained for. A performance or return promise is bargained for if it is sought by the promisor in exchange for his promise and is given by the promisee in exchange for that promise.",
+  "axiom_summary": "Consideration is a bargained-for exchange: the promisor's promise must induce the promisee's performance or return promise, and vice versa.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

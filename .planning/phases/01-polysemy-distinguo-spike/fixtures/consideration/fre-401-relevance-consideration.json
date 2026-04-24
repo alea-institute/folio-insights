@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_e18bd574",
+  "framework": "FRE",
+  "source_doc": "Federal Rules of Evidence 401 (Advisory Committee Note, 2011 restyling)",
+  "extracted_text": "Evidence is relevant if it has any tendency to make a fact more or less probable than it would be without the evidence, and the fact is of consequence in determining the action. The court's consideration is directed to whether the evidence has any probative value at all for the fact in issue.",
+  "axiom_summary": "In evidentiary context, consideration denotes the court's judicial weighing of whether proffered evidence has any probative tendency toward a fact of consequence; the inquiry is about relevance determination, not about contract formation.",
+  "prime_analogate_hint": null,
+  "proportional_relation_hint": "contract-consideration (bargained-for exchange) : evidence-consideration (judicial weighing of relevance to fact-of-consequence)",
+  "term": "consideration"
+}
