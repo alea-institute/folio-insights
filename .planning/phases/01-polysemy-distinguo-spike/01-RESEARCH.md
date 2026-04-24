@@ -825,32 +825,39 @@ def test_review_accept_path(tmp_path):
 | A8 | `services/boundary/semantic.py::_get_model` is safe to reuse from Phase 1 polysemy code (no circular import) | Reusable Assets | Import cycle. **Mitigation:** Import inside function body, not module-top (lazy pattern matches existing code). |
 | A9 | FRE (Federal Rules of Evidence) uses "consideration" in a semantically distinct way from Restatement of Contracts' "consideration" | D-1 fixture composition | Only 2 frameworks are actually distinct; Restatement + FRE merge into a single CommonLaw sense. **Mitigation:** Maintainer curation must verify framework distinctness on hand-pick; if FRE overlaps Restatement, swap in UCC §2-209 (which explicitly dispenses with consideration for contract modifications) or civil-law source. |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All open questions below were resolved during `/gsd-plan-phase` clarifying Q&A on 2026-04-23. Resolutions are authoritative for Phase 1 planning and execution; any deviation requires CONTEXT.md revision.
 
 1. **What counts as a "framework-conflicting axiom" at Phase 1 without Phase 9.P1 (HermiT cluster validator) or Phase 6 (DID-signed axioms)?**
    - What we know: PITFALLS #8 requires the detector to flag on framework-conflicting *axioms*, not *contexts*. Phase 1 fixture shards are JSON/TTL stubs with no cryptographic signing and no ELK/HermiT reasoning at detector time.
    - What's unclear: The mechanical definition of "axiom" for a Phase 1 shard. Is it the `extracted_text`? The hand-authored `axiom_summary` field? A SPARQL CONSTRUCT extracting predicate-object pairs from a TTL shard?
    - Recommendation: **Planner should surface this to the user during plan phase.** Suggested concrete answer: treat a shard's `axiom_summary: str` field (hand-authored during fixture curation) as the axiom proxy; detector computes per-framework centroid of `axiom_summary` embeddings; "framework-conflicting axiom" = cosine distance between centroids > 0.4 (starter threshold, calibrated empirically). Document this as a Phase 1 simplification of Phase 9.P6's eventual ELK-reasoner-based axiom check.
+   - **RESOLVED:** Rule 1 is operationalized as a SPARQL `ASK` query over `owl:disjointWith` assertions between framework-scoped term classes in the named graph `urn:folio:corpus/consideration-spike`. At Phase 1 (where the TBox is sparse by design), the ASK returns False in the default case — and the detector treats that as `R1-no-conflict` / `coincidence`, NOT as fall-through to embedding-distance heuristics. Embedding centroid cosine distance IS computed, but surfaced only as an `evidence_score` field in the verdict (reporting-only). Phase 9.P6 may layer embeddings atop this SPARQL signal; Phase 1 does not. This keeps the Pitfall-1 discipline mechanical: the authoritative axiom-conflict signal is a TBox query, not an embedding threshold.
 
 2. **Is `base58` already a transitive dep via `cryptography` or any other declared dep?**
    - What we know: `cryptography` itself does not depend on `base58`. did:key z-encoding spec mandates base58btc.
    - What's unclear: Whether any of instructor's transitive chain pulls `base58`.
    - Recommendation: `pip show base58` at plan time; add explicit if absent. Alternatively hand-code base58btc encoding (~30 LOC) to avoid new dep — reference implementation in `py-multibase` or `py-ipld-dag-cbor`.
+   - **RESOLVED:** The uncertainty-band calibration landed as: start-band cosine distance 0.4–0.7 AND framework count N ∈ {2} (i.e. exactly two framework centroids available) AND no match in the terms-of-art whitelist. The planner records the calibration loop in the 01-03 detector tests (parametrized across the start band) and the 01-06 FP audit reports the empirical rule-firing distribution so Phase 9.P6 can widen or tighten the band. `base58` is added as an explicit dep in 01-01 Task 1 (no hand-coded fallback).
 
 3. **Which LLM provider for the instructor audit pass — same as LLMBridge default, or a different provider?**
    - What we know: CONTEXT.md D-4 says "secondary instructor audit" without specifying provider. Using a different provider reduces (doesn't eliminate) shared-bias risk with the fallback LLM.
    - What's unclear: Whether the project has credentials for two providers at Phase 1 execution time.
    - Recommendation: Default to same provider as LLMBridge (simpler, fewer deps on secret availability); document in SUMMARY.md as a known limitation; flag "use different provider for audit" as a Phase 9.P6 plan upgrade.
+   - **RESOLVED:** FRE-vs-Restatement cross-framework distinctness is VALIDATED AT FIXTURE-BUILD TIME in Plan 01-02 Task 2 acceptance criteria — the axiom_summary field for each FRE shard must encode "judicial weighing of relevance/probative-vs-prejudicial factors" semantics, explicitly distinct from Restatement's "bargained-for exchange" semantics. If the maintainer's curation cannot hand-author distinct FRE axioms, Assumption A9's UCC §2-209 backup corpus replaces FRE. The distinctness check is manual (maintainer judgment) but codified as a 01-02 acceptance gate.
 
 4. **Should `fixtures/consideration/` be JSON or TTL?**
    - What we know: CONTEXT.md D-1 says "hand-edited JSON or TTL." JSON is easier to hand-edit; TTL is closer to final storage format.
    - What's unclear: Which form Phase 9.P6 and Phase 15 prefer to consume.
    - Recommendation: **JSON at Phase 1.** Each shard = one JSON file with fields `{iri, framework, source_doc, extracted_text, axiom_summary, prime_analogate_hint, proportional_relation_hint}`. A `fixture_loader.py` converts to pyoxigraph triples at detector invocation. Advantages: (a) trivial to validate with jsonschema; (b) grep-friendly; (c) maintainer can hand-edit without Turtle syntax overhead. Ship a TTL export for Phase 15 consumers via `polysemy export-fixture --format ttl`.
+   - **RESOLVED:** Generate-once, never-rotate. On first `folio-insights polysemy review` invocation, `reviewer.py::ensure_reviewer_did()` creates `~/.folio-insights/reviewer.jwk` (canonical ed25519 private key, JWK-serialized) and writes the derived did:key to `~/.folio-insights/reviewer.did`. Subsequent invocations read the persisted values — no rotation in Phase 1. Phase 6 (DID substrate) will introduce rotation + signature verification. This lands in Plan 01-02 Task 1. (The original Open-Question-4 "JSON vs TTL" recommendation stands independently — shards are JSON.)
 
 5. **N=20 lower bound — is this fixed by CONTEXT.md, or a soft floor?**
    - What we know: CONTEXT.md L12 says "≥20 shards across 3+ frameworks." Math: 3 frameworks × N≥3 per framework rule = minimum 9 shards. 20 is meaningfully larger.
    - What's unclear: If curation stalls at 15 shards, does Phase 1 proceed or block?
    - Recommendation: Treat 20 as target; 9 as hard floor (below which N≥3 rule fails for any framework); document in SUMMARY.md if final count < 20 and justify per-framework distribution.
+   - **RESOLVED:** Provider-agnostic single-string LLM spec. The detector and FP-audit surfaces accept one `--llm-provider <MODEL_STRING>` CLI flag (default `claude-haiku-4-5`). Accepted values follow the `instructor.from_provider()` convention: `"claude-haiku-4-5"` → anthropic family, `"gpt-4o-mini"` → openai, `"gemini-2.0-flash"` → google, `"ollama/llama3.2"` → ollama local. The detector's `_resolve_provider_family()` maps the string prefix to the instructor family. There is NO separate `--llm-model` flag — the model string IS the spec. (The original Open-Question-5 "N=20 floor" recommendation stands independently — 20 target, 9 hard floor.)
 
 ## Environment Availability
 
