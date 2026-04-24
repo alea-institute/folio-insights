@@ -1,37 +1,37 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: milestone
-status: executing
-stopped_at: Phase 02 context gathered
-last_updated: "2026-04-24T20:48:06.104Z"
-last_activity: 2026-04-24 -- Phase 02 execution started
+milestone_name: shards-as-axioms
+status: ready_to_plan
+stopped_at: "Phase 02 complete — ready to plan Phase 03 (Shard Subtypes §6.2)"
+last_updated: "2026-04-24T21:55:00.000Z"
+last_activity: 2026-04-24 -- Phase 02 verify-work (12/12 pass) + secure-phase (25/25 threats closed) complete; Phase 03 next
 progress:
-  total_phases: 3
-  completed_phases: 2
+  total_phases: 23
+  completed_phases: 3
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 17
+  percent: 13
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-24 after Phase 01)
+See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 02 — shard-envelope
+**Current focus:** Phase 03 — Shard Subtypes (§6.2)
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 02 (shard-envelope) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 02
-Last activity: 2026-04-24 -- Phase 02 execution started
+Phase: 03 (Shard Subtypes)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-04-24
 
-Progress: [█░░░░░░░░░] 9% (2/23 phases complete)
+Progress: [█░░░░░░░░░] 13% (3/23 phases complete)
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -39,7 +39,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 
 **Velocity:**
 
-- Total plans completed: 21
+- Total plans completed: 24
 - Average duration: 9.4 min
 - Total execution time: 2.3 hours
 
@@ -52,6 +52,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | 02-task-hierarchy-discovery | 5/5 | 37 min | 7.4 min |
 | 03-ontology-output-and-delivery | 1/2 | 8 min | 8.0 min |
 | 01 | 7 | - | - |
+| 02 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -231,12 +232,12 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 02 context gathered
-Resume file: --resume-file
-Resume action: /gsd-plan-phase 2 (Shard Envelope, §6.1) — or /gsd-discuss-phase 2 first if CONTEXT.md needed
+Last session: 2026-04-24T21:55:00.000Z
+Stopped at: Phase 02 complete (execute + UAT 12/12 + SECURITY 25/25 closed + ROADMAP/STATE transitioned); ready to plan Phase 03
+Resume file: None
+Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
 
 **Planned Phase:** 02 (shard-envelope) — 3 plans — 2026-04-24T20:38:35.638Z
-**Executed Phase:** 01 (polysemy-distinguo-spike) — 6/6 plans complete; 49/49 tests pass; Wilson FP lower bound 2.53% (gate ≤10%); verifier: human_needed — 2026-04-24T19:00:00.000Z
-**Verified Phase:** 01 — UAT 7/7 pass (2026-04-24); /gsd-secure-phase 01 SECURED 35/35 threats (24 mitigated + 11 accepted); 3 human_needed gates acknowledged as debt carried forward
-**Next Phase:** 02 (Shard Envelope) — depends on Phase 0 (validated); P1 critical path; REQ-IDs SHARD-01, SHARD-10
+**Executed Phase:** 02 (shard-envelope) — 3/3 plans complete; 47 shard tests + 96 combined with polysemy pass; hypothesis 1000/0/0 minting determinism — 2026-04-24T21:45:00.000Z
+**Verified Phase:** 02 — UAT 12/12 pass (2026-04-24); /gsd-secure-phase 02 SECURED 25/25 threats (15 mitigated + 10 accepted across Phase 4/5/6/10/13 downstream dependencies)
+**Next Phase:** 03 (Shard Subtypes) — depends on Phase 2; P1 critical path; REQ-IDs SHARD-02..SHARD-06 (5 subtypes: SimpleAssertion / DisputedProposition / ConflictingAuthorities / Gloss / Hypothesis)
