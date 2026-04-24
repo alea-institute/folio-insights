@@ -1,4 +1,5 @@
 """Phase 1 polysemy-distinguo spike (PRINCIPLE-06 scoping + VOCAB-02 first-use)."""
+from folio_insights.polysemy.cli import polysemy as polysemy_cli_group
 from folio_insights.polysemy.dispositions import (
     DispositionRecord,
     ProposedFork,
@@ -23,4 +24,5 @@ __all__ = [
     "HOMONYMS",
     "DEFAULT_DISTINGUO_THRESHOLD",
     "TERMS_OF_ART_THRESHOLD",
+    "polysemy_cli_group",
 ]
