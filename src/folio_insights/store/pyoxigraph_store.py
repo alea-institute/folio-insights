@@ -109,7 +109,7 @@ class PyoxigraphStore:
         self,
         sparql: str,
         named_graphs: list[NamedNode] | None = None,
-    ) -> list:
+    ):
         """Gate 2 step 3 — prune scan by ``named_graphs`` when only one corpus
         matters.
 
@@ -120,14 +120,29 @@ class PyoxigraphStore:
         When ``named_graphs`` is supplied, pyoxigraph restricts the dataset
         such that the SPARQL variable bound to the graph name only iterates
         over the supplied list (skipping any other named graphs in the store).
+
+        Return types:
+          - SELECT / CONSTRUCT / DESCRIBE → ``list`` of solution rows /
+            triples (pyoxigraph iterator materialized).
+          - ASK → pyoxigraph ``QueryBoolean`` (truthy wrapper; callers should
+            use ``bool(result)``). Not materialized via ``list()`` because
+            ``QueryBoolean`` is not iterable; the Phase 01-03 polysemy detector
+            ships the first ASK caller in the codebase.
         """
         if _SERVICE_RE.search(_strip_sparql_comments(sparql)):
             raise ServiceClauseBlocked(
                 "SPARQL SERVICE clause rejected at Phase 0 wrapper (SEC-01)"
             )
         if named_graphs:
-            return list(self._store.query(sparql, named_graphs=named_graphs))
-        return list(self._store.query(sparql))
+            raw = self._store.query(sparql, named_graphs=named_graphs)
+        else:
+            raw = self._store.query(sparql)
+        # QueryBoolean (ASK result) is not iterable — return as-is so callers
+        # can use bool(result). Iterable results are materialized to list() so
+        # downstream code can re-iterate + index without re-running the query.
+        if hasattr(raw, "__iter__"):
+            return list(raw)
+        return raw
 
     def dump_turtle(self, construct_query: str | None = None) -> bytes:
         """Serialize graph (or CONSTRUCT subset) to Turtle bytes.

@@ -29,6 +29,8 @@ INSIGHTS_TASKS: tuple[str, ...] = (
     "task_ordering",
     "contradiction",
     "orphan_assignment",
+    # Phase 1 polysemy spike: detector R4 LLM fallback (OQ-5 provider-agnostic)
+    "polysemy_fallback",
 )
 
 
