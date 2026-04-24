@@ -1,42 +1,13 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-23T22:50:00Z",
-  "trigger": "pause-work",
+  "timestamp": "2026-04-24T02:28:21Z",
+  "trigger": "precompact-auto",
   "phase": "01-polysemy-distinguo-spike",
   "phase_dir": ".planning/phases/01-polysemy-distinguo-spike",
-  "status": "discuss-complete",
-  "stage": "ready-for-plan",
-  "artifacts": {
-    "context": ".planning/phases/01-polysemy-distinguo-spike/01-CONTEXT.md",
-    "discussion_log": ".planning/phases/01-polysemy-distinguo-spike/01-DISCUSSION-LOG.md",
-    "commit": "644809c"
-  },
-  "decisions_locked": [
-    "D-1 Fixture: curated tri-source (v1 advocacy + Restatement + FRE), \u226520 shards, 3+ frameworks",
-    "D-2 Detector: hybrid rule-then-LLM (axiom-conflict + N\u22653 + terms-of-art whitelist + instructor fallback)",
-    "D-3 Gate: CLI-only 'folio-insights polysemy review'; JSONL disposition schema",
-    "D-4 FP labeling: self-labeled + instructor audit with reconciliation"
-  ],
-  "prior_phase": {
-    "phase": "00-foundations-hard-gate",
-    "status": "complete",
-    "verdict": "keep=pyoxigraph"
-  },
-  "next_action": "/gsd-plan-phase 1 in a fresh session",
-  "planner_hints": {
-    "suggested_waves": [
-      "1. Fixture build (curate \u226520 consideration shards + hand-label)",
-      "2. Detector prototype (src/folio_insights/polysemy/)",
-      "3. CLI subgroup + JSONL disposition emitter",
-      "4. FP audit pass (instructor audit + reconciliation)",
-      "5. Threshold recommendation doc for 9.P6"
-    ]
-  },
   "git": {
     "branch": "master",
-    "head": "644809c",
-    "ahead_of_origin": 45,
-    "working_tree": "M .planning/STATE.md + new .continue-here.md"
+    "head": "c03b409",
+    "modified_files": 2
   },
-  "note": "Resume with /gsd-plan-phase 1. CONTEXT.md is locked; planner reads it as source of truth."
+  "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session."
 }
