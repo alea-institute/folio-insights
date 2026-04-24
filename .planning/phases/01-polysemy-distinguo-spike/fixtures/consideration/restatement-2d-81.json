@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_bc39f056",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 81 (Am. Law Inst. 1981)",
+  "extracted_text": "The fact that what is bargained for does not of itself induce the making of a promise does not prevent it from being consideration for the promise. The fact that a promise does not of itself induce a performance or return promise does not prevent the performance or return promise from being consideration for the promise.",
+  "axiom_summary": "Consideration's bargained-for test does not require that the exchange be the sole or dominant motivation; mixed motives do not defeat consideration.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

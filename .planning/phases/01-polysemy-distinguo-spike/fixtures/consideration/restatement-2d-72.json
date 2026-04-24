@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_6c3d7ea6",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 72 (Am. Law Inst. 1981)",
+  "extracted_text": "Except as stated in §§ 73-78, any performance which is bargained for is consideration.",
+  "axiom_summary": "Any bargained-for performance counts as consideration; the Restatement frames the inquiry around the bargain rather than benefit or detriment.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

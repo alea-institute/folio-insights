@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_f246f302",
+  "framework": "CommonLaw",
+  "source_doc": "Stilk v. Myrick, (1809) 2 Camp 317",
+  "extracted_text": "The agreement is void for want of consideration. There was no consideration for the ulterior pay promised to the mariners who remained with the ship; before they sailed from London, they had undertaken to do all that they could under all the emergencies of the voyage.",
+  "axiom_summary": "Performance of a pre-existing contractual duty to the same promisor is not valid consideration for a further promise (pre-existing duty rule).",
+  "prime_analogate_hint": null,
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}
