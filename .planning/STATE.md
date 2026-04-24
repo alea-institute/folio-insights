@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: shards-as-axioms
-status: phase-00-closed
-stopped_at: "/gsd-resume-work at 2026-04-23T22:22:00Z"
-last_updated: "2026-04-23T22:22:00Z"
+milestone_name: milestone
+status: verifying
+stopped_at: "PreCompact (auto) at 2026-04-24T02:28:21Z"
+last_updated: "2026-04-24T02:28:21.585Z"
 last_activity: 2026-04-23
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
   total_plans: 8
   completed_plans: 8
@@ -230,9 +230,9 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-04-23T22:43:18Z
-Stopped at: /gsd-pause-work mid-/gsd-discuss-phase 1 at 80% context; 4 gray areas identified for Phase 1 Polysemy spike, not yet asked
-Resume file: .planning/HANDOFF.json + .planning/phases/01-polysemy-distinguo-spike/.continue-here.md
+Last session: 2026-04-24T02:28:21.583Z
+Stopped at: PreCompact (auto) at 2026-04-24T02:28:21Z
+Resume file: None
 Resume action: /gsd-discuss-phase 1 — fresh session picks up handoff, presents 4 gray areas (fixture sourcing / detector architecture / human-gate UX / FP gold-set labeling)
 
 **Planned Phase:** 01-polysemy-distinguo-spike — discuss in progress, CONTEXT.md not yet written
