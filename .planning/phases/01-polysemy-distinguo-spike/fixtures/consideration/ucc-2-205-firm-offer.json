@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_91f05898",
+  "framework": "UCC",
+  "source_doc": "Uniform Commercial Code § 2-205 (Firm Offers)",
+  "extracted_text": "An offer by a merchant to buy or sell goods in a signed writing which by its terms gives assurance that it will be held open is not revocable, for lack of consideration, during the time stated.",
+  "axiom_summary": "UCC §2-205 dispenses with the common-law consideration requirement for merchant firm offers: a signed written assurance of irrevocability is binding even without any bargained exchange for the option.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

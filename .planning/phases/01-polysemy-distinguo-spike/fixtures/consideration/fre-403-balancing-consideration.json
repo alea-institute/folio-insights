@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_129d571e",
+  "framework": "FRE",
+  "source_doc": "Federal Rules of Evidence 403",
+  "extracted_text": "The court may exclude relevant evidence if its probative value is substantially outweighed by a danger of one or more of the following: unfair prejudice, confusing the issues, misleading the jury, undue delay, wasting time, or needlessly presenting cumulative evidence.",
+  "axiom_summary": "Rule 403 frames consideration as a judicial balancing act: the court weighs probative value against prejudicial danger; this weighing is the evidentiary sense of consideration, orthogonal to contract bargain.",
+  "prime_analogate_hint": null,
+  "proportional_relation_hint": "contract-consideration (exchange inducing promise) : evidence-consideration (probative-vs-prejudicial balancing by judicial officer)",
+  "term": "consideration"
+}
