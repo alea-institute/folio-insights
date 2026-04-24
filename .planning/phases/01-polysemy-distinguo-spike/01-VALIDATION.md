@@ -1,9 +1,9 @@
 ---
 phase: 01
 slug: polysemy-distinguo-spike
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: planned
+nyquist_compliant: true
+wave_0_complete: false  # flipped true by executor after 01-01-PLAN ships
 created: 2026-04-23
 ---
 
@@ -40,23 +40,23 @@ created: 2026-04-23
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | 0 | Wave-0 test scaffolding | — | N/A | infrastructure | `pytest tests/polysemy/ --collect-only` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | FP rate ≤ 10% on curated ≥20-shard fixture | integration | `pytest tests/polysemy/test_fp_rate.py::test_fp_rate_within_target -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | Auto-apply impossible by design (CLI-only) | unit | `pytest tests/polysemy/test_cli_review.py::test_no_auto_apply_path -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | Rule 1: framework-conflicting axioms (not contexts) | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule1_axioms_not_contexts -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | Rule 2: N ≥ 3 per framework gate | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule2_n_ge_3 -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | Rule 3: terms-of-art whitelist raises threshold to 0.8 | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule3_whitelist_threshold -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | Rule 4: homonym whitelist triggers LLM fallback | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule4_homonym_flag -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | PRINCIPLE-06 | — | Instructor LLM fallback returns discriminated-union verdict | unit (mocked) | `pytest tests/polysemy/test_detector_llm_fallback.py -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | VOCAB-02 | — | `fi:analogousTo` requires `fi:primeAnalogate` + `fi:proportionalRelation` | unit | `pytest tests/polysemy/test_distinguo_emission.py::test_analogousTo_requires_sub_properties -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | VOCAB-02 | — | `fi:distinctionKind` in 4-enum set | unit | `pytest tests/polysemy/test_distinguo_emission.py::test_distinctionKind_enum -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 2 | VOCAB-02 | — | Emitted TTL parses via pyoxigraph + round-trips | integration | `pytest tests/polysemy/test_distinguo_emission.py::test_ttl_roundtrip_pyoxigraph -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 3 | D-3 lock | — | JSONL disposition matches Phase 15 consumer schema | unit | `pytest tests/polysemy/test_dispositions_jsonl.py -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 3 | D-3 lock | — | Append-only semantics (no rewrite, no truncation) | unit | `pytest tests/polysemy/test_dispositions_jsonl.py::test_append_only -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 4 | D-4 lock | — | FP-rate report includes Wilson 95% CI | unit | `pytest tests/polysemy/test_fp_rate.py::test_reports_wilson_ci -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 4 | D-4 lock | — | LLM audit pass reports disagreements only | integration (mocked) | `pytest tests/polysemy/test_fp_rate.py::test_audit_disagreements_only -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 3 | CLI ergonomics | — | `folio-insights polysemy review` accept/reject/modify paths | integration | `pytest tests/polysemy/test_cli_review.py -x` | ❌ W0 | ⬜ pending |
-| TBD | TBD | 3 | Reviewer DID | — | First-invocation generates real did:key; persisted | unit | `pytest tests/polysemy/test_reviewer_did.py -x` | ❌ W0 | ⬜ pending |
+| 01-01-02 | 01-01 | 0 | Wave-0 test scaffolding | — | N/A | infrastructure | `pytest tests/polysemy/ --collect-only` | ❌ W0 | ⬜ pending |
+| 01-06-01 | 01-06 | 4 | PRINCIPLE-06 | — | FP rate ≤ 10% on curated ≥20-shard fixture | integration | `pytest tests/polysemy/test_fp_rate.py::test_fp_rate_within_target -x` | ❌ W0 | ⬜ pending |
+| 01-05-02 | 01-05 | 3 | PRINCIPLE-06 | — | Auto-apply impossible by design (CLI-only) | unit | `pytest tests/polysemy/test_cli_review.py::test_no_auto_apply_path -x` | ❌ W0 | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | PRINCIPLE-06 | — | Rule 1: framework-conflicting axioms (not contexts) | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule1_axioms_not_contexts -x` | ❌ W0 | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | PRINCIPLE-06 | — | Rule 2: N ≥ 3 per framework gate | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule2_n_ge_3 -x` | ❌ W0 | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | PRINCIPLE-06 | — | Rule 3: terms-of-art whitelist raises threshold to 0.8 | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule3_whitelist_threshold -x` | ❌ W0 | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | PRINCIPLE-06 | — | Rule 4: homonym whitelist triggers LLM fallback | unit | `pytest tests/polysemy/test_detector_rules.py::test_rule4_homonym_flag -x` | ❌ W0 | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | PRINCIPLE-06 | — | Instructor LLM fallback returns discriminated-union verdict | unit (mocked) | `pytest tests/polysemy/test_detector_llm_fallback.py -x` | ❌ W0 | ⬜ pending |
+| 01-04-01 | 01-04 | 2 | VOCAB-02 | — | `fi:analogousTo` requires `fi:primeAnalogate` + `fi:proportionalRelation` | unit | `pytest tests/polysemy/test_distinguo_emission.py::test_analogousTo_requires_sub_properties -x` | ❌ W0 | ⬜ pending |
+| 01-04-01 | 01-04 | 2 | VOCAB-02 | — | `fi:distinctionKind` in 4-enum set | unit | `pytest tests/polysemy/test_distinguo_emission.py::test_distinctionKind_enum -x` | ❌ W0 | ⬜ pending |
+| 01-04-02 | 01-04 | 2 | VOCAB-02 | — | Emitted TTL parses via pyoxigraph + round-trips | integration | `pytest tests/polysemy/test_distinguo_emission.py::test_ttl_roundtrip_pyoxigraph -x` | ❌ W0 | ⬜ pending |
+| 01-02-01 | 01-02 | 1 | D-3 lock | — | JSONL disposition matches Phase 15 consumer schema | unit | `pytest tests/polysemy/test_dispositions_jsonl.py -x` | ❌ W0 | ⬜ pending |
+| 01-02-01 | 01-02 | 1 | D-3 lock | — | Append-only semantics (no rewrite, no truncation) | unit | `pytest tests/polysemy/test_dispositions_jsonl.py::test_append_only -x` | ❌ W0 | ⬜ pending |
+| 01-06-01 | 01-06 | 4 | D-4 lock | — | FP-rate report includes Wilson 95% CI | unit | `pytest tests/polysemy/test_fp_rate.py::test_reports_wilson_ci -x` | ❌ W0 | ⬜ pending |
+| 01-06-01 | 01-06 | 4 | D-4 lock | — | LLM audit pass reports disagreements only | integration (mocked) | `pytest tests/polysemy/test_fp_rate.py::test_audit_disagreements_only -x` | ❌ W0 | ⬜ pending |
+| 01-05-02 | 01-05 | 3 | CLI ergonomics | — | `folio-insights polysemy review` accept/reject/modify paths | integration | `pytest tests/polysemy/test_cli_review.py -x` | ❌ W0 | ⬜ pending |
+| 01-02-01 | 01-02 | 1 | Reviewer DID | — | First-invocation generates real did:key; persisted | unit | `pytest tests/polysemy/test_reviewer_did.py -x` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -92,11 +92,11 @@ created: 2026-04-23
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 45s (unit), < 120s (full)
-- [ ] `nyquist_compliant: true` set in frontmatter (after planner populates task-ID map)
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 45s (unit), < 120s (full)
+- [x] `nyquist_compliant: true` set in frontmatter (after planner populates task-ID map)
 
-**Approval:** pending
+**Approval:** granted by planner 2026-04-23 (executor re-confirms after Wave 0 scaffold lands)
