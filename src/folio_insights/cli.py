@@ -529,6 +529,12 @@ from folio_insights.bench.cli import bench as _bench_group
 
 cli.add_command(_bench_group)
 
+# Register the Phase 1 polysemy subgroup (PRINCIPLE-06 CLI surface).
+# Same module-bottom pattern as bench above.
+from folio_insights.polysemy.cli import polysemy as _polysemy_group
+
+cli.add_command(_polysemy_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
