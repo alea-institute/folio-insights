@@ -180,3 +180,17 @@ The three human verification items are not gaps — they are intentional `/gsd-v
 
 _Verified: 2026-04-24_
 _Verifier: Claude (gsd-verifier)_
+
+---
+
+## Acknowledged Gaps
+
+On 2026-04-24 during `/gsd-verify-work 01` transition, the user acknowledged the 3 `human_needed` items above as **debt carried forward** rather than transition blockers. Rationale: these are intentional `/gsd-verify-work` reviewer checkpoints (per Gaps Summary §1–3), not code correctness gaps.
+
+| Gap | Owner | Resolution path |
+|-----|-------|-----------------|
+| Live TTY keystroke-gate UX acceptance | Reviewer | Ad-hoc interactive `folio-insights polysemy review` run; record outcome in a follow-up note or 01-VERIFICATION.md amendment |
+| FP labeling reconciliation (FRE-403, FRE-702 rationales + 2 draft Final Labels) | Reviewer | Retrofit rationales in `dispositions.jsonl`; confirm/revise Final Labels in `fp-labeling-audit.md` |
+| §4 per-framework threshold policy decision (Option A/B/C) | Reviewer | Record selected option as input to Phase 9.P6 configuration |
+
+Track via `/gsd-audit-uat`. All three can be resolved post-phase without re-running Phase 01 execution.
