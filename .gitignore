@@ -39,3 +39,6 @@ ci/__pycache__/
 # .benchmarks/ is per-run autosave history and should stay local.
 .benchmarks/
 
+# Phase 1 reviewer DID stub (OQ-4; never commit private keys)
+.folio-insights/
+
