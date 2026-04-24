@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_f80c6349",
+  "framework": "FRE",
+  "source_doc": "Federal Rules of Evidence 702 (post-Daubert, 2023 amendment)",
+  "extracted_text": "A witness who is qualified as an expert by knowledge, skill, experience, training, or education may testify in the form of an opinion or otherwise if the proponent demonstrates to the court that it is more likely than not that the testimony reflects a reliable application of the principles and methods to the facts of the case; the court's consideration of reliability includes the Daubert factors.",
+  "axiom_summary": "Under FRE 702, consideration refers to the court's judicial weighing of an expert's methodology reliability (Daubert factors); the inquiry concerns admissibility of testimony, not contractual formation.",
+  "prime_analogate_hint": null,
+  "proportional_relation_hint": "contract-consideration (inducement in exchange) : evidence-consideration (judicial weighing of expert-methodology reliability for admissibility)",
+  "term": "consideration"
+}

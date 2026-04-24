@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_2f2ed94a",
+  "framework": "UCC",
+  "source_doc": "Uniform Commercial Code § 1-304 (Obligation of Good Faith)",
+  "extracted_text": "Every contract or duty within the Uniform Commercial Code imposes an obligation of good faith in its performance and enforcement.",
+  "axiom_summary": "UCC §1-304 imposes a good-faith obligation on performance that functions in commercial contexts where the common-law bargain-consideration doctrine is relaxed (§2-209 modification, §2-205 firm offer); good faith substitutes for the policing role that consideration plays at common law.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}
