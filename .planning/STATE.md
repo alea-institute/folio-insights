@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: "PreCompact (auto) at 2026-04-24T14:32:52Z"
-last_updated: "2026-04-24T14:34:36.505Z"
-last_activity: 2026-04-23
+last_updated: "2026-04-24T16:19:34.548Z"
+last_activity: 2026-04-24 -- Phase 01 execution started
 progress:
   total_phases: 2
   completed_phases: 1
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20 after v1.1)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 00 — foundations-hard-gate
+**Current focus:** Phase 01 — polysemy-distinguo-spike
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 00 (foundations-hard-gate) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-04-23
+Phase: 01 (polysemy-distinguo-spike) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 01
+Last activity: 2026-04-24 -- Phase 01 execution started
 
 Progress: [██████████] 100%
 
