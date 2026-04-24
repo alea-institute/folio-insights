@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: milestone
 status: verifying
 stopped_at: "PreCompact (auto) at 2026-04-24T14:32:52Z"
-last_updated: "2026-04-24T14:32:52.562Z"
+last_updated: "2026-04-24T14:34:36.505Z"
 last_activity: 2026-04-23
 progress:
   total_phases: 2
@@ -235,4 +235,4 @@ Stopped at: PreCompact (auto) at 2026-04-24T14:32:52Z
 Resume file: None
 Resume action: /gsd-discuss-phase 1 — fresh session picks up handoff, presents 4 gray areas (fixture sourcing / detector architecture / human-gate UX / FP gold-set labeling)
 
-**Planned Phase:** 01-polysemy-distinguo-spike — discuss in progress, CONTEXT.md not yet written
+**Planned Phase:** 01 (polysemy-distinguo-spike) — 6 plans — 2026-04-24T14:34:36.502Z
