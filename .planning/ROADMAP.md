@@ -37,7 +37,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 - [x] **Phase 0: Foundations / HARD GATE** — Validate stack; decide `keep=pyoxigraph` vs `pivot=fuseki` — **CLOSED 2026-04-23 with verdict `keep=pyoxigraph`** (see `.planning/phases/00-foundations-hard-gate/00-DECISION.md`)
 - [x] **Phase 1: Polysemy / distinguo Spike** (parallel) — Canonical *consideration* fixture validates §16 R2 — **COMPLETE 2026-04-24** (6/6 plans; 49/49 tests; Wilson FP lower-bound 2.53% vs 10% gate; security: 35/35 threats closed)
-- [ ] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard`
+- [x] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard` — **COMPLETE 2026-04-24** (3/3 plans; 47 shard tests + 96 combined pass; 1000-example hypothesis determinism; security: 25/25 threats closed)
 - [ ] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes
 - [ ] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector
 - [ ] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping
@@ -564,7 +564,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 |-------|----------------|--------|-----------|
 | 0. Foundations / HARD GATE | 8/8 | **COMPLETE** (verdict: keep=pyoxigraph) | 2026-04-23 |
 | 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 |
-| 2. Shard Envelope | 0/? | Not started | - |
+| 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 4. IRI Scheme | 0/? | Not started | - |
 | 5. Content Versioning | 0/? | Not started | - |
