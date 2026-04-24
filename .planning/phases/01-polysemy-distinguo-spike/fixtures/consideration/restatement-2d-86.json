@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_88447e22",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 86 (Am. Law Inst. 1981)",
+  "extracted_text": "A promise made in recognition of a benefit previously received by the promisor from the promisee is binding to the extent necessary to prevent injustice.",
+  "axiom_summary": "Moral-obligation exception (material benefit rule): a promise acknowledging a past benefit is binding without fresh bargain, bounded by injustice-avoidance.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

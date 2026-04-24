@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_2e4bf2f1",
+  "framework": "UCC",
+  "source_doc": "Uniform Commercial Code § 2-209(1) (Modification, Rescission and Waiver)",
+  "extracted_text": "An agreement modifying a contract within this Article needs no consideration to be binding.",
+  "axiom_summary": "Under UCC Article 2, modifications to contracts for the sale of goods are binding without fresh consideration (good-faith requirement substitutes for bargain), directly overriding the common-law pre-existing-duty rule.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}

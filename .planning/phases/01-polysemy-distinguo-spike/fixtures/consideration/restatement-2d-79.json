@@ -1,0 +1,10 @@
+{
+  "iri": "fi:Shard_ae873997",
+  "framework": "Restatement",
+  "source_doc": "Restatement (Second) of Contracts § 79 (Am. Law Inst. 1981)",
+  "extracted_text": "If the requirement of consideration is met, there is no additional requirement of (a) a gain, advantage, or benefit to the promisor or a loss, disadvantage, or detriment to the promisee; or (b) equivalence in the values exchanged; or (c) mutuality of obligation.",
+  "axiom_summary": "Once the bargained-for exchange element is satisfied, adequacy/equivalence of value is irrelevant and benefit-detriment is not an independent test.",
+  "prime_analogate_hint": "CommonLaw",
+  "proportional_relation_hint": null,
+  "term": "consideration"
+}
