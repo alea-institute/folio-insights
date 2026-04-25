@@ -13,7 +13,7 @@ test_minting_determinism.py:26 (deadline=None for CI flake protection).
 from __future__ import annotations
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from folio_insights.shards import (
@@ -146,9 +146,10 @@ def test_gloss_constructs_round_trips(kind: str, hex_body: str, gloss_text: str)
     """Gloss: round-trip across 200 random shards covering 5 GlossKind values."""
     iri = f"urn:folio:shard/{hex_body}"
     shard = _sample_shard(GlossShard, glosses=iri, gloss_kind=kind, gloss_text=gloss_text)
-    # Skip self-gloss collisions (extremely rare — hypothesis may shrink to it).
-    if iri == shard.shard_iri:
-        return
+    # REVIEW WR-02: Discard self-gloss collisions via assume() so Hypothesis
+    # generates a replacement (rather than counting the example as a silent
+    # pass via bare return, which can mask shrink-driven failures).
+    assume(iri != shard.shard_iri)
     rehydrated = GlossShard.model_validate(shard.model_dump())
     assert rehydrated == shard
     assert rehydrated.gloss_kind == kind
