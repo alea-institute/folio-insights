@@ -52,6 +52,9 @@ def test_valid_glosses_iri_accepted(iri: str) -> None:
     "ftp://example.com/shard/1",             # wrong scheme
     "urn:other:shard/0123456789abcdef",      # wrong urn namespace
     "shard/0123456789abcdef",                # missing scheme
+    # REVIEW IN-02 (Phase 03): boundary case — http(s) regex requires ≥1 non-ws char
+    # AFTER the scheme. "https://" alone must reject; this locks the [^\s]+ guard.
+    "https://",
 ])
 def test_invalid_glosses_iri_rejected(iri: str) -> None:
     """D-05: malformed IRI shapes raise ValidationError."""
