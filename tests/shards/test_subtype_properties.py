@@ -68,18 +68,30 @@ _IN_SUBSET = sorted(DISPUTED_EPISTEMIC_STATUS_SUBSET)
     n_objections=st.integers(min_value=1, max_value=5),
     respondeo=st.text(min_size=1, max_size=500),
     epistemic_status=st.sampled_from(_IN_SUBSET),
-    objection_strength=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+    # REVIEW IN-04 (Phase 03): draw a list of strengths with size matching
+    # n_objections so each Objection gets an INDEPENDENT strength rather than a
+    # single homogeneous value. Future invariants depending on cross-objection
+    # strength variation (e.g., "≥1 strength > 0.5") will now be exercisable.
+    data=st.data(),
 )
 def test_disputed_proposition_constructs_round_trips(
     utrum: str,
     n_objections: int,
     respondeo: str,
     epistemic_status: str,
-    objection_strength: float,
+    data: st.DataObject,
 ) -> None:
     """DisputedProposition: round-trip across 300 random shards within D-03 subset."""
+    strengths = data.draw(
+        st.lists(
+            st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+            min_size=n_objections,
+            max_size=n_objections,
+        ),
+        label="objection_strengths",
+    )
     objections = [
-        Objection(cites=f"urn:x:{i}", argues=f"objection {i}", strength=objection_strength)
+        Objection(cites=f"urn:x:{i}", argues=f"objection {i}", strength=strengths[i])
         for i in range(n_objections)
     ]
     sed_contra = Objection(cites="urn:x:sed", argues="sed contra", strength=0.8)
