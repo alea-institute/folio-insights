@@ -31,6 +31,14 @@ from folio_insights.shards import (
 )
 
 
+# REVIEW IN-01 (Phase 03): mint_shard_iri is deterministic (Phase 02 D-02), so
+# minting once at module scope avoids ~1000 redundant mint calls across the
+# Hypothesis property-test budget. The (iri, hash) pair is reused as the default
+# for every _sample_shard() invocation; tests that override shard_iri remain
+# unaffected.
+_FIXTURE_IRI, _FIXTURE_HASH = mint_shard_iri("urn:x:fixture", "sample span")
+
+
 # Phase 3 D-02..D-06: required subtype-specific defaults so _sample_shard(cls)
 # constructs without callers passing every required field. Callers can still
 # override any value via **overrides.
@@ -108,12 +116,13 @@ def _sample_shard(
 
     ``shard_iri`` + ``provenance_hash`` are derived from a real
     ``mint_shard_iri`` call so the fixture mirrors the D-02 recipe —
-    downstream tests that re-mint will get matching values.
+    downstream tests that re-mint will get matching values. Per REVIEW IN-01
+    (Phase 03), the (iri, hash) pair is minted once at module scope (see
+    ``_FIXTURE_IRI`` / ``_FIXTURE_HASH`` above) rather than on every call.
     """
-    iri, h = mint_shard_iri("urn:x:fixture", "sample span")
     defaults: dict[str, Any] = {
-        "shard_iri": iri,
-        "provenance_hash": h,
+        "shard_iri": _FIXTURE_IRI,
+        "provenance_hash": _FIXTURE_HASH,
         "source_uri": "urn:x:fixture",
         "source_span": "sample span",
         "extracted_at": datetime(2026, 4, 24, 12, 0, 0, tzinfo=UTC),
