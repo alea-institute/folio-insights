@@ -1,0 +1,68 @@
+{
+  "shard_iri": "urn:folio:shard/5209ecb1ed57f37c",
+  "provenance_hash": "5209ecb1ed57f37ca852f690315e3f4732afb9c7a8d470a0c5dccf2410bf3bda",
+  "source_uri": "urn:x:fixture-a2",
+  "source_span": "conflicting authorities span",
+  "extracted_at": "2026-04-25T12:00:00Z",
+  "first_extractor_did": "did:key:zFixtureA2Extractor",
+  "shard_type": "conflicting_authorities",
+  "triple": {
+    "subject": "urn:folio:concept/duty",
+    "predicate": "fi:scope",
+    "object": "urn:folio:concept/jurisdiction",
+    "object_datatype": null
+  },
+  "elaborates": [],
+  "sense": "Jurisdictions split on whether the duty extends to third parties.",
+  "reference": "urn:folio:concept/third-party-duty",
+  "logical_form_imputed": "DISPUTED_SCOPE(duty, third_party)",
+  "layer": "L3_jurisdictional",
+  "predication_mode": "per_se",
+  "fork": "synthetic_a_posteriori",
+  "epistemic_status": "contested",
+  "verification_method": "textual_citation",
+  "depends_on_axioms": [],
+  "depends_on_definitions": [],
+  "depends_on_precedents": [],
+  "depends_on_shards": [],
+  "framework_id": "us.state-split.tort",
+  "speech_act": "treatise_statement",
+  "extractor_version": "0.3.0",
+  "extraction_prompt_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "extractor_model": "claude-opus-4-7",
+  "signatures": [],
+  "content_edits": [],
+  "confidence": 0.85,
+  "bfo_category": "continuant_dependent",
+  "valid_time_start": null,
+  "valid_time_end": null,
+  "transaction_time": "2026-04-25T12:00:00Z",
+  "supersedes": null,
+  "superseded_by": null,
+  "contested": true,
+  "contest_votes": {},
+  "sic": [
+    {
+      "authority_iri": "urn:x:authority/state-A",
+      "position": "Duty extends to third parties.",
+      "jurisdiction": "us.state.A",
+      "weight": "binding"
+    },
+    {
+      "authority_iri": "urn:x:authority/state-B",
+      "position": "Duty extends to all foreseeable plaintiffs.",
+      "jurisdiction": "us.state.B",
+      "weight": "majority"
+    }
+  ],
+  "non": [
+    {
+      "authority_iri": "urn:x:authority/state-C",
+      "position": "Duty limited to privity.",
+      "jurisdiction": "us.state.C",
+      "weight": "binding"
+    }
+  ],
+  "reconciliation_strategy": "jurisdictional_scoping",
+  "reconciliation_note": "The split reflects distinct state policy commitments; reconciled by jurisdictional scoping."
+}
