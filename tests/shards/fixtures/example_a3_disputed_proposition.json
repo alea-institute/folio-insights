@@ -1,0 +1,76 @@
+{
+  "shard_iri": "urn:folio:shard/b6747d6d8771a48d",
+  "provenance_hash": "b6747d6d8771a48d661d9ff22e4c7ea0aeaa62ae50c82099c7f34165ca03e5ad",
+  "source_uri": "urn:x:fixture-a3",
+  "source_span": "disputed proposition span",
+  "extracted_at": "2026-04-25T12:00:00Z",
+  "first_extractor_did": "did:key:zFixtureA3Extractor",
+  "shard_type": "disputed_proposition",
+  "triple": {
+    "subject": "urn:folio:concept/promise",
+    "predicate": "fi:enforceable",
+    "object": "urn:folio:concept/court",
+    "object_datatype": null
+  },
+  "elaborates": [],
+  "sense": "Whether a moral promise is enforceable in equity absent consideration.",
+  "reference": "urn:folio:concept/promissory-estoppel",
+  "logical_form_imputed": "ENFORCEABLE(moral_promise, equity)",
+  "layer": "L3_jurisdictional",
+  "predication_mode": "per_se",
+  "fork": "synthetic_a_posteriori",
+  "epistemic_status": "contested",
+  "verification_method": "inferential_chain",
+  "depends_on_axioms": [],
+  "depends_on_definitions": [],
+  "depends_on_precedents": [],
+  "depends_on_shards": [],
+  "framework_id": "us.federal.contracts",
+  "speech_act": "treatise_statement",
+  "extractor_version": "0.3.0",
+  "extraction_prompt_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "extractor_model": "claude-opus-4-7",
+  "signatures": [],
+  "content_edits": [],
+  "confidence": 0.8,
+  "bfo_category": "continuant_dependent",
+  "valid_time_start": null,
+  "valid_time_end": null,
+  "transaction_time": "2026-04-25T12:00:00Z",
+  "supersedes": null,
+  "superseded_by": null,
+  "contested": true,
+  "contest_votes": {},
+  "utrum": "Whether a moral promise is enforceable in equity absent consideration?",
+  "objections": [
+    {
+      "cites": "urn:x:authority/restatement-71",
+      "argues": "It seems not, because consideration is required for enforceability.",
+      "strength": 0.7
+    },
+    {
+      "cites": "urn:x:authority/holmes-1881",
+      "argues": "It seems not, because the bargain theory excludes moral promises.",
+      "strength": 0.6
+    }
+  ],
+  "sed_contra": {
+    "cites": "urn:x:authority/restatement-90",
+    "argues": "On the contrary, promissory estoppel renders certain moral promises enforceable.",
+    "strength": 0.85
+  },
+  "respondeo": "I respond that a moral promise inducing detrimental reliance is enforceable in equity under §90.",
+  "uses_distinctions": [],
+  "replies": [
+    {
+      "objection_index": 0,
+      "replies_via": "scope_limitation",
+      "argument": "The consideration requirement applies only to bargained-for exchange, not detrimental reliance."
+    },
+    {
+      "objection_index": 1,
+      "replies_via": "distinguo",
+      "argument": "The bargain theory governs contract formation, not equitable enforcement."
+    }
+  ]
+}
