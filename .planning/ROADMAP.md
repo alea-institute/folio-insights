@@ -155,8 +155,12 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Exit criteria**:
   1. PRD examples A.1 (SimpleAssertion), A.2 (ConflictingAuthorities with 8 reconciliation strategies), A.3 (DisputedProposition) all round-trip.
   2. Gloss + Hypothesis subtypes parse and validate.
-  3. `HypothesisShard` promotion path enforces `citation_required=True` — unsigned/un-cited promotion rejected.
-**Plans**: TBD
+  3. `HypothesisShard` ships `citation_required: bool = True` field (Phase 7 governance enforces the promotion-time gate end-to-end).
+**Plans**: 2 plans
+  - Wave 1: `03-01-PLAN.md` — schema expansion (subtypes.py: 5 subtype field bodies + 3 nested models Objection/Reply/AuthorityPosition + 3 Literal aliases ReconciliationStrategy/GlossKind/GenerationMethod + 4 @model_validators per D-02..D-06; `__init__.py` re-exports + `tests/shards/conftest.py` _SUBTYPE_DEFAULTS extension); D-03 4-subset = {hypothesis, authority_only, contested, aporetic} (no "attested")
+  - Wave 2: `03-02-PLAN.md` — test suite (3 verbatim PRD §6.2 fixtures A.1/A.2/A.3 + 5 per-subtype unit test files + 1 hypothesis property-test file with D-09 100/300/200/200/200 example budget)
+- [ ] 03-01-PLAN.md — schema expansion (subtypes.py + __init__.py + conftest.py)
+- [ ] 03-02-PLAN.md — test suite (3 PRD fixtures + 5 unit test modules + 1 property-test module)
 
 ---
 
