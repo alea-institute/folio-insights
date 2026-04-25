@@ -1,8 +1,11 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "Create Corpus button in the UI dialog does nothing. User enters a name, clicks Create Corpus, dialog closes but no corpus appears in the sidebar."
 created: 2026-03-22T00:00:00Z
-updated: 2026-03-23T00:15:00Z
+updated: 2026-04-25T16:55:00Z
+resolved: 2026-04-25T16:55:00Z
+verified_by: code_inspection
+verification_evidence: "viewer/src/lib/components/CorpusSidebar.svelte:21-32 — handleCreate is async, awaits createCorpus(value), only closes dialog on success (`if (result) { showCreateDialog = false; }`). v1.1 shipped 2026-04-20 with this fix in production — implicit verification via successful Railway deploy."
 ---
 
 ## Current Focus
