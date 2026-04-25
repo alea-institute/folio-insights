@@ -43,16 +43,26 @@ class SimpleAssertionShard(ShardEnvelope):
 
 
 class Objection(BaseModel):
-    """PRD §6.2.2 — single objection in a Summa-article dispute."""
+    """PRD §6.2.2 — single objection in a Summa-article dispute.
+
+    REVIEW WR-01 (Phase 03): ``cites`` and ``argues`` enforce ``min_length=1``
+    so empty-string IRIs/text cannot construct. Pydantic ``min_length`` does
+    NOT strip whitespace, but downstream consumers that parse IRIs will reject
+    blanks; this guard catches the obvious case where extraction yields ``""``.
+    """
     model_config = ConfigDict(extra="forbid")
 
-    cites: str           # IRI of cited authority
-    argues: str          # the objection proposition
+    cites: str = Field(min_length=1)           # IRI of cited authority (non-empty)
+    argues: str = Field(min_length=1)          # the objection proposition (non-empty)
     strength: float = Field(ge=0.0, le=1.0)
 
 
 class Reply(BaseModel):
-    """PRD §6.2.2 — reply to a specific objection (by index)."""
+    """PRD §6.2.2 — reply to a specific objection (by index).
+
+    REVIEW WR-01 (Phase 03): ``argument`` enforces ``min_length=1`` so
+    empty-string replies cannot construct.
+    """
     model_config = ConfigDict(extra="forbid")
 
     objection_index: int
@@ -62,7 +72,7 @@ class Reply(BaseModel):
         "scope_limitation",
         "factual_distinction",
     ]
-    argument: str
+    argument: str = Field(min_length=1)
 
 
 # CONTEXT D-03: 4-subset narrowing of envelope.epistemic_status for DisputedProp.
@@ -113,12 +123,18 @@ class DisputedPropositionShard(ShardEnvelope):
 
 
 class AuthorityPosition(BaseModel):
-    """PRD §6.2.3 — one side of a sic-et-non conflict."""
+    """PRD §6.2.3 — one side of a sic-et-non conflict.
+
+    REVIEW WR-01 (Phase 03): ``authority_iri``, ``position``, and
+    ``jurisdiction`` enforce ``min_length=1`` so empty-string identifiers
+    cannot construct. Consistent with GlossShard.gloss_text and
+    ConflictingAuthoritiesShard.reconciliation_note non-blank treatment.
+    """
     model_config = ConfigDict(extra="forbid")
 
-    authority_iri: str
-    position: str
-    jurisdiction: str
+    authority_iri: str = Field(min_length=1)
+    position: str = Field(min_length=1)
+    jurisdiction: str = Field(min_length=1)
     weight: Literal["binding", "persuasive", "minority", "majority"]
 
 
