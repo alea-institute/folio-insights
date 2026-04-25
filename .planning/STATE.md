@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: milestone
 status: planning
 stopped_at: Phase 03 context gathered
-last_updated: "2026-04-25T14:47:29.281Z"
+last_updated: "2026-04-25T15:19:49.185Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 17
+  total_plans: 19
   completed_plans: 18
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -237,7 +237,7 @@ Stopped at: Phase 03 context gathered
 Resume file: --resume-file
 Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
 
-**Planned Phase:** 02 (shard-envelope) — 3 plans — 2026-04-24T20:38:35.638Z
+**Planned Phase:** 03 (Shard Subtypes (§6.2)) — 2 plans — 2026-04-25T15:19:49.181Z
 **Executed Phase:** 02 (shard-envelope) — 3/3 plans complete; 47 shard tests + 96 combined with polysemy pass; hypothesis 1000/0/0 minting determinism — 2026-04-24T21:45:00.000Z
 **Verified Phase:** 02 — UAT 12/12 pass (2026-04-24); /gsd-secure-phase 02 SECURED 25/25 threats (15 mitigated + 10 accepted across Phase 4/5/6/10/13 downstream dependencies)
 **Next Phase:** 03 (Shard Subtypes) — depends on Phase 2; P1 critical path; REQ-IDs SHARD-02..SHARD-06 (5 subtypes: SimpleAssertion / DisputedProposition / ConflictingAuthorities / Gloss / Hypothesis)
