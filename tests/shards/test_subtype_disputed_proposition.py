@@ -16,6 +16,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from folio_insights.shards import (
+    DISPUTED_EPISTEMIC_STATUS_SUBSET,
     DisputedPropositionShard,
     Objection,
     Reply,
@@ -28,8 +29,11 @@ pytestmark = pytest.mark.shards
 
 _FIXTURE = Path(__file__).parent / "fixtures" / "example_a3_disputed_proposition.json"
 
-# D-03 4-subset (must match _DISPUTED_EPISTEMIC_STATUS_SUBSET in subtypes.py).
-_DISPUTED_EPISTEMIC_STATUS = ["hypothesis", "authority_only", "contested", "aporetic"]
+# REVIEW IN-03 (Phase 03): derived from the public source-of-truth constant
+# DISPUTED_EPISTEMIC_STATUS_SUBSET in subtypes.py rather than hand-typed, so
+# any future change to the 4-subset stays in lockstep automatically. ``sorted``
+# pins parametrize ordering for stable test-id output.
+_DISPUTED_EPISTEMIC_STATUS = sorted(DISPUTED_EPISTEMIC_STATUS_SUBSET)
 # The 4 envelope values OUTSIDE the disputed subset (must trigger validator).
 _OUTSIDE_SUBSET = [
     "per_se_nota_quoad_se",

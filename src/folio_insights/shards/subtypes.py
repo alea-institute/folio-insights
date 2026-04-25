@@ -78,9 +78,17 @@ class Reply(BaseModel):
 # CONTEXT D-03: 4-subset narrowing of envelope.epistemic_status for DisputedProp.
 # NOTE: "authority_only" substitutes for PRD's "attested" — envelope.py:139-148
 # ships no "attested" Literal (planner-resolved 2026-04-25).
-_DISPUTED_EPISTEMIC_STATUS_SUBSET = frozenset(
+#
+# REVIEW IN-03 (Phase 03): exposed as a public module-level constant
+# (DISPUTED_EPISTEMIC_STATUS_SUBSET, re-exported via shards/__init__.py) so
+# tests can import the single source of truth instead of hand-typing the
+# 4-tuple in multiple test modules. Kept as a frozenset to preserve the
+# O(1) "in" check in _disputed_invariants.
+DISPUTED_EPISTEMIC_STATUS_SUBSET: frozenset[str] = frozenset(
     {"hypothesis", "authority_only", "contested", "aporetic"}
 )
+# Backwards-compatible private alias (in case any external import slipped in).
+_DISPUTED_EPISTEMIC_STATUS_SUBSET = DISPUTED_EPISTEMIC_STATUS_SUBSET
 
 
 class DisputedPropositionShard(ShardEnvelope):
@@ -282,6 +290,7 @@ Shard = Annotated[
 __all__ = [
     "AuthorityPosition",
     "ConflictingAuthoritiesShard",
+    "DISPUTED_EPISTEMIC_STATUS_SUBSET",
     "DisputedPropositionShard",
     "GenerationMethod",
     "GlossKind",

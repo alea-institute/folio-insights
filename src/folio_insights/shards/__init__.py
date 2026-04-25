@@ -8,6 +8,7 @@ from folio_insights.shards.envelope import (
 )
 from folio_insights.shards.minting import mint_shard_iri
 from folio_insights.shards.subtypes import (
+    DISPUTED_EPISTEMIC_STATUS_SUBSET,
     AuthorityPosition,
     ConflictingAuthoritiesShard,
     DisputedPropositionShard,
@@ -28,6 +29,7 @@ __all__ = [
     "AuthorityPosition",
     "ConflictingAuthoritiesShard",
     "ContentEdit",
+    "DISPUTED_EPISTEMIC_STATUS_SUBSET",
     "DisputedPropositionShard",
     "GenerationMethod",
     "GlossKind",

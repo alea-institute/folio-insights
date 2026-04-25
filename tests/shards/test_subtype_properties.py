@@ -12,17 +12,23 @@ test_minting_determinism.py:26 (deadline=None for CI flake protection).
 """
 from __future__ import annotations
 
+from typing import get_args
+
 import pytest
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from folio_insights.shards import (
+    DISPUTED_EPISTEMIC_STATUS_SUBSET,
     AuthorityPosition,
     ConflictingAuthoritiesShard,
     DisputedPropositionShard,
+    GenerationMethod,
+    GlossKind,
     GlossShard,
     HypothesisShard,
     Objection,
+    ReconciliationStrategy,
     Reply,
     SimpleAssertionShard,
 )
@@ -50,7 +56,10 @@ def test_simple_assertion_constructs_round_trips(sense: str, confidence: float) 
 # ── DisputedProposition: 300 examples (highest — most fields + invariants) ──
 
 
-_IN_SUBSET = ["hypothesis", "authority_only", "contested", "aporetic"]
+# REVIEW IN-03 (Phase 03): derive from the public source-of-truth constant
+# rather than hand-typing the 4-tuple. ``sorted`` pins shrink ordering for
+# Hypothesis to a deterministic value sequence.
+_IN_SUBSET = sorted(DISPUTED_EPISTEMIC_STATUS_SUBSET)
 
 
 @settings(max_examples=300, deadline=None)
@@ -95,11 +104,10 @@ def test_disputed_proposition_constructs_round_trips(
 # ── ConflictingAuthorities: 200 examples (8-strategy + AuthorityPosition) ──
 
 
-_RECONCILIATION_STRATEGIES = [
-    "sense_distinction", "contextual_limitation", "voice_attribution",
-    "textual_correction", "retraction_later", "subsequent_overruling",
-    "jurisdictional_scoping", "unreconciled",
-]
+# REVIEW IN-03 (Phase 03): derive from the public Literal alias.
+_RECONCILIATION_STRATEGIES = list(get_args(ReconciliationStrategy))
+# AuthorityPosition.weight is an inline Literal[4] on the nested model (no public
+# alias). Hand-typed mirror is acceptable per IN-03 scope.
 _AUTHORITY_WEIGHTS = ["binding", "persuasive", "minority", "majority"]
 
 
@@ -131,7 +139,8 @@ def test_conflicting_authorities_constructs_round_trips(
 # ── Gloss: 200 examples (5-value + IRI format edge cases) ──
 
 
-_GLOSS_KINDS = ["clarificatoria", "extensiva", "restrictiva", "dissentiens", "historica"]
+# REVIEW IN-03 (Phase 03): derive from the public Literal alias.
+_GLOSS_KINDS = list(get_args(GlossKind))
 
 
 @settings(max_examples=200, deadline=None)
@@ -158,7 +167,8 @@ def test_gloss_constructs_round_trips(kind: str, hex_body: str, gloss_text: str)
 # ── Hypothesis: 200 examples (3-value + ttl_days boundaries) ──
 
 
-_GENERATION_METHODS = ["combinatorial", "inductive", "analogical"]
+# REVIEW IN-03 (Phase 03): derive from the public Literal alias.
+_GENERATION_METHODS = list(get_args(GenerationMethod))
 
 
 @settings(max_examples=200, deadline=None)
