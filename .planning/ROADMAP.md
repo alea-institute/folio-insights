@@ -159,7 +159,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Plans**: 2 plans
   - Wave 1: `03-01-PLAN.md` — schema expansion (subtypes.py: 5 subtype field bodies + 3 nested models Objection/Reply/AuthorityPosition + 3 Literal aliases ReconciliationStrategy/GlossKind/GenerationMethod + 4 @model_validators per D-02..D-06; `__init__.py` re-exports + `tests/shards/conftest.py` _SUBTYPE_DEFAULTS extension); D-03 4-subset = {hypothesis, authority_only, contested, aporetic} (no "attested")
   - Wave 2: `03-02-PLAN.md` — test suite (3 verbatim PRD §6.2 fixtures A.1/A.2/A.3 + 5 per-subtype unit test files + 1 hypothesis property-test file with D-09 100/300/200/200/200 example budget)
-- [ ] 03-01-PLAN.md — schema expansion (subtypes.py + __init__.py + conftest.py)
+- [x] 03-01-PLAN.md — schema expansion (subtypes.py + __init__.py + conftest.py)
 - [ ] 03-02-PLAN.md — test suite (3 PRD fixtures + 5 unit test modules + 1 property-test module)
 
 ---
