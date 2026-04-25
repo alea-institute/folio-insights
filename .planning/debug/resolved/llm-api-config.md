@@ -1,8 +1,11 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "LLM-dependent pipeline stages (distiller, classifier, folio_tagger) fail silently during corpus processing"
 created: 2026-03-22T00:00:00Z
-updated: 2026-03-22T00:00:00Z
+updated: 2026-04-25T16:55:00Z
+resolved: 2026-04-25T16:55:00Z
+verified_by: code_inspection
+verification_evidence: "src/folio_insights/config.py:31 sets `llm_provider: str = \"google\"` (default changed from anthropic to google). v1.1 milestone shipped 2026-04-20 with this fix in production at https://folio-insights-production.up.railway.app — implicit verification via successful Railway deploy."
 ---
 
 ## Current Focus
