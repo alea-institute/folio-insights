@@ -193,6 +193,17 @@ GlossKind = Literal[
 
 # D-05 IRI format: urn:folio:shard/<16-hex> (Phase 02 D-02 prefix) OR http(s)://...
 # Format-only check; referential integrity is Phase 5 SHACL or Phase 13 storage scope.
+#
+# REVIEW IN-02 (Phase 03): _GLOSS_HTTP_RE is INTENTIONALLY permissive — it accepts
+# any string starting with http(s):// and followed by ≥1 non-whitespace character.
+# This is by design at this layer:
+#   ACCEPTED (intentional):  "http://x", "https://!@#", "https://a.b/c?d=e#f"
+#   REJECTED (boundary):     "https://" (no trailing chars), "http:// space" (whitespace),
+#                            "ftp://...", "shard/..." (wrong/missing scheme)
+# Stricter RFC 3986 parsing, host validation, and referential integrity are NOT
+# this regex's job — they belong to Phase 5 SHACL constraints or Phase 13 storage.
+# Boundary case "https://" is exercised in test_subtype_gloss.py rejection table
+# coverage to lock the [^\s]+ ≥1-char requirement.
 _GLOSS_URN_RE = re.compile(r"^urn:folio:shard/[a-f0-9]{16}$")
 _GLOSS_HTTP_RE = re.compile(r"^https?://[^\s]+$")
 
