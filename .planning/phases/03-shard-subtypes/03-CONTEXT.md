@@ -78,10 +78,10 @@ class DisputedPropositionShard(ShardEnvelope):
 #### D-03: DisputedPropositionShard reuses envelope `epistemic_status` (no separate `dispute_state` field)
 
 Add `@model_validator(mode='after')` on DisputedPropositionShard:
-- Constrains `epistemic_status ∈ {"hypothesis", "attested", "contested", "aporetic"}` (subset of envelope's 8 values)
+- Constrains `epistemic_status ∈ {"hypothesis", "authority_only", "contested", "aporetic"}` (subset of envelope's 8 values)
 - Raises `ValidationError` with type `value_error` if `epistemic_status` is outside this 4-value subset for this subtype
 
-DRY: no duplicate state field. `SHARD-03`'s `dispute_state ∈ {hypothesis, attested, contested, aporetic}` requirement is satisfied by the validator-constrained subset of `epistemic_status`. Update REQUIREMENTS.md commentary if needed (record as locked decision).
+DRY: no duplicate state field. `SHARD-03`'s `dispute_state ∈ {hypothesis, attested, contested, aporetic}` requirement maps onto the validator-constrained subset of envelope `epistemic_status`. Note: envelope ships no `"attested"` value — `"authority_only"` (the closest semantic match: "sed contra cites authority") substitutes per the planning-phase resolution recorded 2026-04-25. REQUIREMENTS.md commentary updated accordingly.
 
 Additional invariant in the validator:
 - `objections` must have at least one element (no empty objections list)
