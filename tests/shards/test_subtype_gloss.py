@@ -69,14 +69,26 @@ def test_invalid_glosses_iri_rejected(iri: str) -> None:
 
 
 def test_self_glossing_rejected() -> None:
-    """D-05: glosses == self.shard_iri raises (no self-glossing)."""
-    # Construct a fixture shard, then attempt to mutate glosses to its own shard_iri.
+    """D-05: glosses == self.shard_iri raises (no self-glossing).
+
+    REVIEW IN-05 (Phase 03): force the second sample to share shard_iri with
+    the candidate gloss IRI explicitly (rather than relying on deterministic
+    mint coincidence between the two _sample_shard() calls). This locks the
+    test to the no-self-glossing branch even if a future conftest change
+    randomizes the fixture seed; without the explicit shard_iri pin, an IRI
+    divergence would silently route through the format-regex branch and
+    pass for the wrong reason. The "self" assertion narrows the captured
+    error to the intended branch.
+    """
     shard = _sample_shard(GlossShard)
     iri = shard.shard_iri
     with pytest.raises(ValidationError) as exc_info:
-        _sample_shard(GlossShard, glosses=iri)
-    msg = str(exc_info.value)
-    assert "self" in msg.lower() or "glosses" in msg
+        # Pin shard_iri = iri so the no-self-glossing invariant fires (NOT the
+        # IRI-format regex). The candidate iri is already a valid urn:folio:shard
+        # form (it came from mint_shard_iri), so the format check would pass.
+        _sample_shard(GlossShard, shard_iri=iri, glosses=iri)
+    msg = str(exc_info.value).lower()
+    assert "self" in msg  # narrow assertion: locks the no-self-gloss branch
 
 
 @pytest.mark.parametrize("text", ["", "   ", "\t\n"])
