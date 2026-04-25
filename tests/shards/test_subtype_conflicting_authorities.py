@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
@@ -15,6 +16,7 @@ from pydantic import TypeAdapter, ValidationError
 from folio_insights.shards import (
     AuthorityPosition,
     ConflictingAuthoritiesShard,
+    ReconciliationStrategy,
     Shard,
 )
 
@@ -24,16 +26,12 @@ pytestmark = pytest.mark.shards
 
 _FIXTURE = Path(__file__).parent / "fixtures" / "example_a2_conflicting_authorities.json"
 
-_RECONCILIATION_STRATEGIES = [
-    "sense_distinction",
-    "contextual_limitation",
-    "voice_attribution",
-    "textual_correction",
-    "retraction_later",
-    "subsequent_overruling",
-    "jurisdictional_scoping",
-    "unreconciled",
-]
+# REVIEW IN-03 (Phase 03): derive from the public Literal alias rather than
+# hand-typing the 8-tuple, so the 8-value lock in subtypes.py stays the single
+# source of truth. ``get_args`` returns a tuple in declaration order.
+_RECONCILIATION_STRATEGIES = list(get_args(ReconciliationStrategy))
+# AuthorityPosition.weight is an inline Literal[4] on the nested model (no
+# public alias). Hand-typed mirror is acceptable per IN-03 scope.
 _AUTHORITY_WEIGHTS = ["binding", "persuasive", "minority", "majority"]
 
 

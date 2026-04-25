@@ -6,16 +6,20 @@ non-empty gloss_text, 5-value GlossKind enumeration.
 """
 from __future__ import annotations
 
+from typing import get_args
+
 import pytest
 from pydantic import ValidationError
 
-from folio_insights.shards import GlossShard
+from folio_insights.shards import GlossKind, GlossShard
 
 from tests.shards.conftest import _sample_shard
 
 pytestmark = pytest.mark.shards
 
-_GLOSS_KINDS = ["clarificatoria", "extensiva", "restrictiva", "dissentiens", "historica"]
+# REVIEW IN-03 (Phase 03): derive from the public Literal alias rather than
+# hand-typing the 5-value list, so subtypes.py is the single source of truth.
+_GLOSS_KINDS = list(get_args(GlossKind))
 
 
 @pytest.mark.parametrize("kind", _GLOSS_KINDS)

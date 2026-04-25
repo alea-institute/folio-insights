@@ -6,16 +6,20 @@ gate to Phase 7 governance — Phase 3 ships the field, NOT the workflow.
 """
 from __future__ import annotations
 
+from typing import get_args
+
 import pytest
 from pydantic import ValidationError
 
-from folio_insights.shards import HypothesisShard
+from folio_insights.shards import GenerationMethod, HypothesisShard
 
 from tests.shards.conftest import _sample_shard
 
 pytestmark = pytest.mark.shards
 
-_GENERATION_METHODS = ["combinatorial", "inductive", "analogical"]
+# REVIEW IN-03 (Phase 03): derive from the public Literal alias rather than
+# hand-typing the 3-value list, so subtypes.py is the single source of truth.
+_GENERATION_METHODS = list(get_args(GenerationMethod))
 
 
 @pytest.mark.parametrize("method", _GENERATION_METHODS)
