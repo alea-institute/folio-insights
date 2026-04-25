@@ -8,10 +8,16 @@ from folio_insights.shards.envelope import (
 )
 from folio_insights.shards.minting import mint_shard_iri
 from folio_insights.shards.subtypes import (
+    AuthorityPosition,
     ConflictingAuthoritiesShard,
     DisputedPropositionShard,
+    GenerationMethod,
+    GlossKind,
     GlossShard,
     HypothesisShard,
+    Objection,
+    ReconciliationStrategy,
+    Reply,
     Shard,
     SimpleAssertionShard,
 )
@@ -19,12 +25,18 @@ from folio_insights.shards.subtypes import (
 __all__ = [
     "add_edit",
     "AttestedSignature",
+    "AuthorityPosition",
     "ConflictingAuthoritiesShard",
     "ContentEdit",
     "DisputedPropositionShard",
+    "GenerationMethod",
+    "GlossKind",
     "GlossShard",
     "HypothesisShard",
     "mint_shard_iri",
+    "Objection",
+    "ReconciliationStrategy",
+    "Reply",
     "Shard",
     "ShardEnvelope",
     "ShardType",
