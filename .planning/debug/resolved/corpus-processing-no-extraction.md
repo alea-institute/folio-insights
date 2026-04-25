@@ -1,8 +1,11 @@
 ---
-status: awaiting_human_verify
+status: resolved
 trigger: "After uploading MD files and clicking Process Corpus, the pipeline starts but the Tasks page shows No tasks discovered and Review shows No extraction data with 0/0 units reviewed."
 created: 2026-03-22T19:30:00Z
-updated: 2026-03-22T19:41:00Z
+updated: 2026-04-25T16:55:00Z
+resolved: 2026-04-25T16:55:00Z
+verified_by: code_inspection
+verification_evidence: "Three layers verified: (1) Vite proxy in viewer/vite.config.ts targets http://localhost:9925 (UAT I-3 in v1.1 ROADMAP — 8700→9925 redirect), (2) api/services/pipeline_runner.py:117-119 calls load_extraction(corpus_name) after pipeline completes (cache invalidation), (3) api/routes/corpus.py:45-82 _read_corpus_info reads job files + extraction.json to populate processing_status. v1.1 shipped 2026-04-20 — implicit verification via successful Railway deploy."
 ---
 
 ## Current Focus
