@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # =========================================================================
-# Dockerfile.web — Web tier (FastAPI + SvelteKit adapter-node, JVM-free)
+# Dockerfile.web — Web tier (FastAPI + SvelteKit adapter-static SPA, JVM-free)
 # REQ-QUALITY-03 two-stage split (no JVM on web); REQ-OBS-04 reproducible (Gate 5)
 #
 # Base-image digests captured via `docker buildx imagetools inspect` on
@@ -12,13 +12,13 @@
 
 ARG NODE_IMAGE=node:22-slim@sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c
 ARG PYTHON_IMAGE=python:3.11-slim@sha256:92c262cbb2e99cdc16218338d74fbe518055c13d224d942708f70f8042ff6d18
-ARG SOURCE_DATE_EPOCH
+ARG SOURCE_DATE_EPOCH=0  # Phase 03.5: default 0 so Railway (no build-arg) gets a valid int; hatchling int(SOURCE_DATE_EPOCH) crashed on "". Dagger/CI still overrides with the real commit epoch.
 
 # -------------------------------------------------------------------------
-# Stage 1: Frontend builder — SvelteKit adapter-node build
+# Stage 1: Frontend builder — SvelteKit adapter-static (SPA) build
 # -------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS frontend-builder
-ARG SOURCE_DATE_EPOCH
+ARG SOURCE_DATE_EPOCH=0  # Phase 03.5: default 0 so Railway (no build-arg) gets a valid int; hatchling int(SOURCE_DATE_EPOCH) crashed on "". Dagger/CI still overrides with the real commit epoch.
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
 WORKDIR /app/viewer
@@ -28,10 +28,10 @@ COPY viewer/ ./
 RUN npm run build
 
 # -------------------------------------------------------------------------
-# Stage 2: Python runtime — FastAPI + adapter-node server output
+# Stage 2: Python runtime — FastAPI serving the static SPA build + /api
 # -------------------------------------------------------------------------
 FROM ${PYTHON_IMAGE}
-ARG SOURCE_DATE_EPOCH
+ARG SOURCE_DATE_EPOCH=0  # Phase 03.5: default 0 so Railway (no build-arg) gets a valid int; hatchling int(SOURCE_DATE_EPOCH) crashed on "". Dagger/CI still overrides with the real commit epoch.
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
