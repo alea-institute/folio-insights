@@ -39,7 +39,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 1: Polysemy / distinguo Spike** (parallel) — Canonical *consideration* fixture validates §16 R2 — **COMPLETE 2026-04-24** (6/6 plans; 49/49 tests; Wilson FP lower-bound 2.53% vs 10% gate; security: 35/35 threats closed)
 - [x] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard` — **COMPLETE 2026-04-24** (3/3 plans; 47 shard tests + 96 combined pass; 1000-example hypothesis determinism; security: 25/25 threats closed)
 - [ ] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes
-- [ ] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22)
+- [x] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22) (completed 2026-05-22)
 - [ ] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector
 - [ ] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping
 - [ ] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2)
@@ -597,7 +597,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 |
 | 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
-| 3.5. Railway Dev/Testing Server (parallel) | 1/3 | In Progress|  |
+| 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
 | 4. IRI Scheme | 0/? | Not started | - |
 | 5. Content Versioning | 0/? | Not started | - |
 | 6. DID Substrate | 0/? | Not started | - |
