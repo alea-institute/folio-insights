@@ -21,7 +21,17 @@ dist
 build
 
 # ---- Generated runtime output (Pitfall 5: SQLite WAL digest drift) ----
+# Exclude generated output by default, but RE-INCLUDE the three demo corpora the
+# web dev viewer bundles (Phase 03.5, mirrors .gitignore !output/{default,demo,test1}).
+# Dockerfile.web `COPY output/` relies on these being in the build context.
 output
+!output/default
+!output/demo
+!output/test1
+# Never ship SQLite WAL/SHM sidecars (digest drift) or the jobs scratch dir,
+# even within the re-included corpora dirs — re-exclude AFTER the !includes.
+output/**/*.db-wal
+output/**/*.db-shm
 output/.jobs
 output/.jobs/**
 
