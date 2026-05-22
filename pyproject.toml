@@ -18,12 +18,21 @@ dependencies = [
     "pyshacl>=0.31.0",
     "pyoxigraph==0.5.7",
     "oxrdflib",
-    "owlready2==0.50",
+    # owlready2 (JVM/OWL reasoner) lives in the `reasoning` optional extra, not
+    # core deps (Phase 03.5): the JVM-free web tier (Dockerfile.web) never imports
+    # it, and its sdist wheel build fails on Railway's builder. The worker installs
+    # it explicitly (Dockerfile.worker / requirements.worker.lock); reasoning
+    # consumers (CLI/tests) get it via `.[reasoning]` (folded into `.[dev]`).
     "cryptography>=41",  # A1: ed25519 reviewer did:key generation (Phase 1 spike)
     "base58>=2.1",  # A2: did:key z-encoding multibase (W3C did:key ed25519 spec)
 ]
 
 [project.optional-dependencies]
+# OWL reasoning stack (HermiT via owlready2 — requires a JVM). Only the worker /
+# CLI reasoning paths and their tests need this; the web tier deliberately omits it.
+reasoning = [
+    "owlready2==0.50",
+]
 dev = [
     "pytest>=9.0",
     "pytest-asyncio>=0.25.0",
@@ -36,6 +45,8 @@ dev = [
     # fails with: Requested component 'otlp_proto_grpc' not found in entry point.
     "opentelemetry-exporter-otlp-proto-grpc>=1.41.0",
     "ruff>=0.6.0",
+    # Reasoning stack so local dev/test keeps HermiT (reason/ + polysemy/fp_audit).
+    "owlready2==0.50",
 ]
 
 [project.scripts]
