@@ -3,9 +3,9 @@ milestone: v2.0
 milestone_name: shards-as-axioms
 generated_at: 2026-04-22
 phase_numbering: reset (Phase 0/1+)
-total_phases: 23
+total_phases: 24
 critical_path_phases: 16
-parallel_track_phases: 4
+parallel_track_phases: 5
 sources:
   - .planning/REQUIREMENTS.md
   - .planning/research/SUMMARY.md
@@ -39,6 +39,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 1: Polysemy / distinguo Spike** (parallel) — Canonical *consideration* fixture validates §16 R2 — **COMPLETE 2026-04-24** (6/6 plans; 49/49 tests; Wilson FP lower-bound 2.53% vs 10% gate; security: 35/35 threats closed)
 - [x] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard` — **COMPLETE 2026-04-24** (3/3 plans; 47 shard tests + 96 combined pass; 1000-example hypothesis determinism; security: 25/25 threats closed)
 - [ ] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes
+- [ ] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22)
 - [ ] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector
 - [ ] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping
 - [ ] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2)
@@ -161,6 +162,29 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   - Wave 2: `03-02-PLAN.md` — test suite (3 verbatim PRD §6.2 fixtures A.1/A.2/A.3 + 5 per-subtype unit test files + 1 hypothesis property-test file with D-09 100/300/200/200/200 example budget)
 - [x] 03-01-PLAN.md — schema expansion (subtypes.py + __init__.py + conftest.py)
 - [x] 03-02-PLAN.md — test suite (3 PRD fixtures + 5 unit test modules + 1 property-test module)
+
+---
+
+### Phase 3.5 — Railway Dev/Testing Server (INSERTED 2026-05-22)
+
+**Goal**: Restore a working Railway dev/testing deployment of `master` — diagnose the current HTTP 502 at https://folio-insights-production.up.railway.app, redeploy the current v2.0 web tier, and wire auto-deploy on push to `master`, reusing the existing service/domain.
+**Depends on**: Nothing (infrastructure; deploys whatever is on `master`). Not a dependency for any downstream phase.
+**REQ-IDs covered**: QUALITY-03 (deploy topology), OBS-04 (local↔Railway build parity) — supporting, not primary owner.
+**Critical path**: no.
+**Parallel-track?**: yes — runs in parallel from Phase 3; non-blocking for Phases 4+.
+**Research flag**: no.
+**Ship-critical?**: no — dev/testing convenience. Phase 20 owns the GA production cut and will promote/rename this service.
+**Decisions locked** (from /gsd discussion 2026-05-22):
+  - Diagnose-first: log into Railway and find the real 502 cause before choosing web-only vs web+worker scope.
+  - Auto-deploy on push to `master`.
+  - Reuse the existing service/domain (`folio-insights-production`); Phase 20 promotes for GA.
+**Exit criteria**:
+  1. `/health` returns 200 (`{"status":"ok"}`) on the live URL.
+  2. `/` returns 200 and the SvelteKit viewer renders (SSR) the bundled corpora.
+  3. `/api/v1/corpora` returns the bundled corpora as JSON.
+  4. A push to `master` triggers an automatic Railway redeploy that reaches healthy state.
+  5. README "Deploying to Railway" updated to match the restored dev-server reality (currently describes the stale single-Dockerfile flow).
+**Plans**: TBD — run `/gsd-plan-phase 3.5` to break down. Diagnose→restore→auto-deploy→verify→docs stages are pre-drafted in `RAILWAY-DEV-SERVER-PLAN.md`. First task is blocked on an interactive `railway login`.
 
 ---
 
@@ -570,6 +594,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 |
 | 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
+| 3.5. Railway Dev/Testing Server (parallel) | 0/? | Not started | - |
 | 4. IRI Scheme | 0/? | Not started | - |
 | 5. Content Versioning | 0/? | Not started | - |
 | 6. DID Substrate | 0/? | Not started | - |
@@ -729,8 +754,9 @@ All P1 REQ-IDs mapped to at least one phase. P2 REQ-IDs marked with `(P2)`.
 - **Phase numbering reset**: v1.0 and v1.1 phases are archived under `.planning/milestones/v1.0-phases/` and `.planning/milestones/v1.1-phases/`. v2.0 begins at Phase 0.
 - **Integer phases**: 0–20 are planned milestone work.
 - **Decimal phases** (13.5, 18.5): Pre-planned inserts for aggressive-GA scope promotions — **NOT** `/gsd-insert-phase` urgent inserts. Numbered decimal to signal they sit between integers in dependency order.
+- **Phase 3.5** (INSERTED 2026-05-22): Mid-milestone insert for restoring the Railway dev/testing server. Parallel infra track — off the critical path, non-blocking. Decimal-numbered to sit beside current work without renumbering 4–20.
 - **Critical-path chain (16 phases)**: 0 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 13 → 13.5 → 14 (gate for 15) → 15 → 16 → 17 → 19 → 20. Phase 14 may execute in parallel with 8/9/10/11 but **must finish before 15 opens**.
-- **Parallel tracks (4 phases)**: Phase 1 (parallel with 2), Phase 12 (parallel from 6), Phase 14 (parallel from 8 but gates 15), Phase 18 (parallel from 7). Phase 18.5 is P2-stretch and non-blocking.
+- **Parallel tracks (5 phases)**: Phase 1 (parallel with 2), Phase 3.5 (Railway dev server, parallel from 3, non-blocking infra), Phase 12 (parallel from 6), Phase 14 (parallel from 8 but gates 15), Phase 18 (parallel from 7). Phase 18.5 is P2-stretch and non-blocking.
 - **Research-flag phases** (per research §Research Flags): 0, 6, 9 (9.P6), 11, 14, 15 (15.polysemy-fork, 15.contest-wizard), 16, 19. Each should trigger `/gsd-research-phase` before `/gsd-plan-phase`.
 
 ---

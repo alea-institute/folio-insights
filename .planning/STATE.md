@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: milestone_complete
+status: completed
 stopped_at: Phase 03 context gathered
-last_updated: "2026-04-25T16:11:49.870Z"
-last_activity: 2026-04-25 -- Phase 03 execution started
+last_updated: "2026-05-22T19:29:29.202Z"
+last_activity: 2026-04-25
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 19
-  completed_plans: 18
-  percent: 100
+  completed_plans: 20
+  percent: 80
 ---
 
 # Project State
@@ -207,6 +207,7 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 1 added: Deploy on Railway as Dev server (2026-04-12) — first phase of post-v1.0 work; numbering restarted after v1.0 archive
+- Phase 3.5 inserted after Phase 3: Railway dev server restore and auto-deploy (2026-05-22) — parallel infra track, off critical path, non-blocking; not urgent (decimal-numbered insert, no renumber of 4–20)
 
 ### Pending Todos
 
