@@ -597,7 +597,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 |
 | 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
-| 3.5. Railway Dev/Testing Server (parallel) | 0/3 | Planned | - |
+| 3.5. Railway Dev/Testing Server (parallel) | 1/3 | In Progress|  |
 | 4. IRI Scheme | 0/? | Not started | - |
 | 5. Content Versioning | 0/? | Not started | - |
 | 6. DID Substrate | 0/? | Not started | - |
