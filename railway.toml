@@ -1,35 +1,27 @@
-# Railway configuration for folio-insights — two-service split.
-# See https://docs.railway.com/reference/config-as-code
+# Railway configuration for folio-insights — flat single-service web config.
+# See https://docs.railway.com/config-as-code/reference
 #
-# Split rationale per REQ-QUALITY-03:
-#   - `web` tier is JVM-free (FastAPI + SvelteKit adapter-node build).
-#   - `worker` tier ships jlink custom JRE + owlready2 + HermiT for OWL reasoning.
-# Redis is a Railway plugin OR Dagger-provisioned sidecar (Plan 00-05 finalizes).
+# Phase 03.5: collapsed from the previous nested per-service tables, which
+# Railway's config-as-code SILENTLY IGNORES (unsupported schema). That made
+# Railway fall back to building the stale /Dockerfile (whose `COPY output/`
+# fails against the output-excluding .dockerignore) → build failure → HTTP 502.
+# A flat top-level [build]/[deploy] IS honored, pinning Dockerfile.web + the
+# /health healthcheck.
+#
+# Web-only (locked): the worker is an idle stub until Phase 10. Multi-service for
+# the Phase 20 GA cut will use Railway's monorepo per-directory pattern (a root
+# directory per service), NOT nested per-service tables.
 
-[services.web]
-
-[services.web.build]
+[build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.web"
 
-[services.web.deploy]
+[deploy]
 # Railway polls this path after the container boots. If it does not return
 # HTTP 2xx within healthcheckTimeout, the deploy is rolled back.
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[services.worker]
-
-[services.worker.build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.worker"
-
-[services.worker.deploy]
-# Worker polls Redis via Arq — no HTTP surface, so no healthcheckPath.
-# Intentional omission (not missing config). Phase 10 cutover wires the
-# real Arq consumer; until then the worker runs the Phase 0 idle-loop stub
-# in src/folio_insights/worker.py.
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+# No startCommand: Dockerfile.web CMD expands ${PORT:-8000}; setting one here
+# would bypass that substitution (prior decision 01-02).

@@ -36,13 +36,14 @@ def deploy_service(service_name: str, *, image: str | None = None) -> None:
     if not token:
         raise RuntimeError("RAILWAY_TOKEN not set — cannot deploy")
 
-    cmd = ["railway", "up", "--service", service_name, "--ci"]
     if image:
-        # Railway's image-deploy path — syntax per railway-cli >= 3.x.
-        # If this invocation fails on the actual Railway CLI version in use,
-        # the fallback per Plan 05 Open Questions is `railway deploy` with
-        # the image ref. Plan 07 exercises this path end-to-end.
-        cmd.extend(["--image", image])
+        # Railway CLI v4.x: image deploys moved to `railway add -i <image> -s
+        # <service>`. The v3-era `railway up --image` flag does NOT exist on
+        # v4.x (verified against CLI v4.31.0, Phase 03.5). Build-from-source
+        # stays `railway up --service <name> --ci`.
+        cmd = ["railway", "add", "-i", image, "-s", service_name]
+    else:
+        cmd = ["railway", "up", "--service", service_name, "--ci"]
 
     logger.info("Deploying %s -> %s", service_name, image or "<Railway-rebuild>")
 
@@ -60,7 +61,7 @@ def deploy_service(service_name: str, *, image: str | None = None) -> None:
         # in subprocess output because it is in env, not cmdline.
         logger.error("Railway deploy failed: %s", result.stderr)
         raise RuntimeError(
-            f"railway up failed for {service_name}: {result.stderr.strip()}"
+            f"railway {cmd[1]} failed for {service_name}: {result.stderr.strip()}"
         )
     logger.info("Deployed %s", service_name)
 
