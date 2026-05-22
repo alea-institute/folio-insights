@@ -59,6 +59,12 @@ RUN if [ -f requirements.lock ]; then \
 
 COPY src/ ./src/
 COPY api/ ./api/
+# Phase 03.5: bundle the demo corpora so the dev viewer renders data, not an
+# empty list. .dockerignore re-includes output/{default,demo,test1} (mirrors the
+# .gitignore whitelist). Default _output_dir is ./output (api/main.py), and
+# WORKDIR is /app, so this lands at /app/output with no env var needed.
+# Web dev tier only — worker/GA reproducibility (Gate 5) is unaffected.
+COPY output/ ./output/
 COPY --from=frontend-builder /app/viewer/build/ ./viewer/build/
 
 # Gate 5 step 4: fixed UID/GID (numeric, deterministic)
