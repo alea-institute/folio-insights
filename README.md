@@ -300,46 +300,79 @@ By design, FOLIO Insights does **not**:
 ## Deploying to Railway
 
 A dev environment is deployed on Railway at **https://folio-insights-production.up.railway.app**
-from a single multi-stage [Dockerfile](Dockerfile) that bundles the built SvelteKit viewer
-and the FastAPI backend into one service. [`railway.toml`](railway.toml) pins the builder
-and healthcheck. The pattern mirrors the sibling projects `folio-enrich` and `folio-mapper`.
+as a **single web service** built from [`Dockerfile.web`](Dockerfile.web): a FastAPI backend
+that also serves the built SvelteKit viewer (a static SPA) at `/`, on one port. The flat
+[`railway.toml`](railway.toml) pins the builder and healthcheck as config-as-code:
+
+```toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.web"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+```
+
+> **Web-only by design.** The `worker` tier (OWL reasoning) is an idle stub until Phase 10 and
+> is **not** deployed in this dev environment — there is no worker service, no Redis, no Oxigraph.
+> The full multi-service GA cut (web + worker + Redis + Oxigraph, full SSR) is owned by Phase 20.
+> Use a **flat** `railway.toml`, never nested `[services.*]` tables — Railway silently ignores the
+> nested schema (which caused a prior HTTP 502: it fell back to building the stale `/Dockerfile`).
 
 ### One-time setup
+
+The project already exists on Railway — **link** to it, do not create a new one:
 
 ```bash
 npm i -g @railway/cli
 railway login
-railway init --name folio-insights   # or: railway link  (if the project already exists)
-railway service folio-insights
+railway link -p folio-insights -e production -s folio-insights   # link to the EXISTING project
 ```
 
-### Deploy
+Runtime variables are set as **masked** Railway variables. Non-secrets inline; secrets via stdin
+(never on argv / shell history):
 
 ```bash
-railway up                # uploads the build context, builds the Dockerfile, deploys
-railway domain            # prints (or generates) the *.up.railway.app URL
+railway variable set LLM_PROVIDER=anthropic LLM_MODEL=claude-sonnet-4-6 -s folio-insights --skip-deploys
+# Secrets (if/when needed) — paste the value at the prompt, then Ctrl-D:
+# railway variable set SOME_SECRET --stdin -s folio-insights --skip-deploys
 ```
 
-Connect the service to GitHub in the Railway dashboard (Service → Settings → Source →
-`master`) to get auto-redeploy on push.
+> **No shared LLM key is baked into the server.** LLM-backed features use Bring-Your-Own-Key
+> (each user supplies their own key); the dev server intentionally has no `ANTHROPIC_API_KEY`.
+
+### Auto-deploy on push to `master`
+
+In the Railway dashboard: **Service → Settings → Source** → connect `alea-institute/folio-insights`
+and set the trigger branch to `master`. Every push to `master` then triggers an automatic rebuild
+and redeploy. To deploy manually instead: `railway up -s folio-insights`.
 
 ### Verify
 
 ```bash
 URL="https://folio-insights-production.up.railway.app"
 curl -sf "$URL/health"                  # {"status":"ok"}
-curl -sI "$URL/" | head -1              # HTTP/2 200
+curl -sI "$URL/" | head -1              # HTTP/2 200 (SPA shell; no x-railway-fallback header)
 curl -sf "$URL/api/v1/corpora"          # JSON list of bundled corpora
 ```
 
 ### Notes
 
-- Data: the two baseline corpora `output/default/` and `output/test1/` are whitelisted
-  in `.gitignore` and bundled into the image so the viewer has data to render. Other
-  generated output stays git-ignored.
-- Image size is large (~8.7 GB) because `sentence-transformers` pulls torch + CUDA libs.
-  If you need a slimmer image, pin CPU-only torch in the Dockerfile.
-- First build on Railway takes 10-15 minutes; subsequent builds reuse cached layers.
+- **Data:** the baseline corpora `output/default/`, `output/demo/`, and `output/test1/` are
+  whitelisted in `.gitignore` **and** re-included in `.dockerignore`, so `Dockerfile.web`'s
+  `COPY output/` bundles them into the image and the viewer renders real data. Other generated
+  output stays git-ignored. (SQLite `*.db-wal`/`*.db-shm` sidecars are excluded for build determinism.)
+- **SPA viewer:** the viewer is built with `@sveltejs/adapter-static` and served by FastAPI
+  (`StaticFiles` with an `index.html` fallback for client-side routes, so deep links / refreshes
+  work). Full server-side rendering returns with the Phase 20 GA cut.
+- **Image size** is large (~8.7 GB) because `sentence-transformers` pulls torch + CUDA libs.
+  If you need a slimmer image, pin CPU-only torch in `Dockerfile.web`.
+- **Reproducible builds:** `Dockerfile.web` defaults `SOURCE_DATE_EPOCH=0` so plain Railway builds
+  (which pass no build-arg) succeed; the Dagger/CI path overrides it with the real commit epoch.
+- First build on Railway takes ~8-15 minutes; subsequent builds reuse cached layers.
 
 ---
 

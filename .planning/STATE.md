@@ -163,6 +163,13 @@ Recent decisions affecting current work:
 - [Phase 03.1]: CLI serve uses lazy import of api.main.serve matching existing CLI pattern
 - [Phase 03.1]: heading_analysis imports _PROXIMITY_WEIGHTS from heading_context eliminating duplicated constant
 - [Phase 03.1]: Deduplicator standalone model documented as intentional design choice
+- [Phase 03.5]: Railway dev server RESTORED — live at https://folio-insights-production.up.railway.app (502 → healthy). Root cause: nested `[services.*]` railway.toml silently ignored → Railway built the stale v1.1 `/Dockerfile`, whose `COPY output/` failed against the output-excluding `.dockerignore`.
+- [Phase 03.5]: railway.toml collapsed to a FLAT web-only config ([build] Dockerfile.web + [deploy] /health) so config-as-code engages; worker left uncreated (web-only locked; Phase 10/20 own worker+GA)
+- [Phase 03.5]: ci/railway.py corrected for CLI v4.x — image deploy `railway add -i` (not the removed `up --image`); env=-only token preserved
+- [Phase 03.5]: owlready2 (JVM reasoner) moved from core deps to a `reasoning` extra — the JVM-free web image never imports it and its sdist wheel build failed on Railway's builder; worker installs it explicitly so unaffected
+- [Phase 03.5]: viewer reverted from adapter-node (SSR, never deployable on one port) to adapter-static SPA served by FastAPI StaticFiles + SPAStaticFiles index.html fallback; 3 SSR routes (shards/timeline/polysemy [id]) converted to client loads; full SSR + Gate 4 (QUALITY-04) deferred to Phase 20
+- [Phase 03.5]: Dockerfile.web fixes — COPY src/ before `uv pip install .` (empty-package bug), default SOURCE_DATE_EPOCH=0 (hatchling int('') crash on Railway), bundle output/{default,demo,test1} via .dockerignore re-include
+- [Phase 03.5]: LLM keys are Bring-Your-Own-Key — no shared ANTHROPIC_API_KEY baked into the dev server (per operator decision); LLM_PROVIDER/LLM_MODEL set as non-secret defaults
 - [Phase 01-01]: Used npm (not pnpm) for viewer build — lockfile is package-lock.json
 - [Phase 01-01]: Belt-and-suspenders uv pip install of fastapi + uvicorn[standard] + python-multipart on top of project install — pyproject.toml does not declare them as direct deps
 - [Phase 01-01]: Bundled output/ (3.8 MB) into image rather than Railway volume — simplest dev path per CONTEXT.md
