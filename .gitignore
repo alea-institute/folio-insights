@@ -42,3 +42,11 @@ ci/__pycache__/
 # Phase 1 reviewer DID stub (OQ-4; never commit private keys)
 .folio-insights/
 
+# Benchmark corpus fixture — REVERSES decision D-15 (Plan 00-02 had committed it).
+# The 235MB fixtures/bench.nq exceeds GitHub's 100MB hard limit and blocked all
+# pushes. It is deterministic and regenerable (SHA256 ffb2c130...), so we keep it
+# local-only and regenerate on demand instead of committing it:
+#   uv run folio-insights bench gen --seed 42 --target 1000000 \
+#     --profile phase-0-gate --out fixtures/bench.nq
+fixtures/bench.nq
+

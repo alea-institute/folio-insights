@@ -155,6 +155,15 @@ folio-insights --version
 pytest                       # 197 tests should pass
 ```
 
+**Benchmark fixture (not committed).** The 1M-triple corpus `fixtures/bench.nq`
+(~235 MB) is git-ignored — it exceeds GitHub's 100 MB limit. It's deterministic,
+so regenerate it locally before running the benchmark suite (`tests/bench/`):
+
+```bash
+uv run folio-insights bench gen --seed 42 --target 1000000 \
+  --profile phase-0-gate --out fixtures/bench.nq   # SHA256 ffb2c130...
+```
+
 ---
 
 ## CLI Quickstart
