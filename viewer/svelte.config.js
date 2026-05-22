@@ -1,16 +1,14 @@
-import adapter from '@sveltejs/adapter-node';
+// Phase 03.5: reverted to adapter-static (SPA) — the v1.1 deploy model. FastAPI
+// serves the static build/ at / via StaticFiles(html=True); /api is FastAPI too,
+// single-origin, single Railway port. The v2.0 adapter-node SSR swap (commit
+// f36f40c) was never deployed and required a node+proxy topology that didn't
+// compose on Railway's single port. Full SSR returns for the Phase 20 GA cut.
+import adapter from '@sveltejs/adapter-static';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter({
-			out: 'build',
-			// Use @polka/compression at runtime (Plan 00-07 wires hooks.server.ts).
-			// Standard `compression` package breaks SvelteKit streaming per
-			// svelte.dev/docs/kit/adapter-node — see RESEARCH.md Anti-pattern line 464.
-			precompress: false,
-			envPrefix: 'FOLIO_'
-		}),
+		adapter: adapter({ fallback: 'index.html' }),
 		paths: { base: '' }
 	},
 	vitePlugin: {

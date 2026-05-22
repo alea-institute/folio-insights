@@ -11,6 +11,7 @@ import aiosqlite
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.db.session import get_db
 from api.routes import (
@@ -129,9 +130,29 @@ async def get_db_for_corpus(corpus: str | None = None) -> aiosqlite.Connection:
 # Mount SvelteKit build (if available)
 # ---------------------------------------------------------------------------
 
+
+class SPAStaticFiles(StaticFiles):
+    """StaticFiles with SPA fallback: serve index.html for unmatched client
+    routes (e.g. /tasks, /shards/<id>) so deep links and refreshes work.
+
+    Starlette's StaticFiles raises HTTPException(404) for a missing path, so the
+    fallback is implemented by catching that. The /api/* routers are registered
+    before this mount, so they match first; a 404 under api/ stays a JSON 404
+    (no HTML served to API clients).
+    """
+
+    async def get_response(self, path, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and not path.startswith("api"):
+                return await super().get_response("index.html", scope)
+            raise
+
+
 _viewer_build = Path(__file__).resolve().parent.parent / "viewer" / "build"
 if _viewer_build.is_dir():
-    app.mount("/", StaticFiles(directory=str(_viewer_build), html=True), name="viewer")
+    app.mount("/", SPAStaticFiles(directory=str(_viewer_build), html=True), name="viewer")
 
 
 # ---------------------------------------------------------------------------

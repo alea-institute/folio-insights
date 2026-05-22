@@ -44,20 +44,22 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Plan 05 will author requirements.lock (with hashes). Until then, the
-# installer reads the lockfile if present and falls back to uv pip install.
+# Phase 03.5: install the web tier via uv from pyproject. The committed
+# requirements.lock is an INCOMPLETE Plan 05 draft — it omits fastapi/uvicorn/
+# python-multipart and does not install the folio_insights project package, so
+# the lock-branch could not boot the app (api/ imports folio_insights 20×). Plan
+# 05 will author a COMPLETE hash-pinned web lock and restore the lockfile branch.
+# `uv pip install .` builds the folio_insights package from src/, so src/ MUST be
+# present BEFORE the install (a prior ordering bug installed an empty package →
+# ModuleNotFoundError at boot; never caught because Dockerfile.web was never
+# deployed). Trade-off: src/ changes invalidate the dep layer until Plan 05's lock.
 # Ordered explicit COPY (Gate 5 step 8) — NEVER `COPY . .`.
 COPY pyproject.toml README.md ./
-COPY requirements.lock* ./
-RUN if [ -f requirements.lock ]; then \
-      pip install --no-cache-dir --require-hashes -r requirements.lock; \
-    else \
-      uv pip install --system --no-cache-dir . \
-        && uv pip install --system --no-cache-dir fastapi "uvicorn[standard]" python-multipart; \
-    fi \
+COPY src/ ./src/
+RUN uv pip install --system --no-cache-dir . \
+    && uv pip install --system --no-cache-dir fastapi "uvicorn[standard]" python-multipart \
     && rm -rf /root/.cache
 
-COPY src/ ./src/
 COPY api/ ./api/
 # Phase 03.5: bundle the demo corpora so the dev viewer renders data, not an
 # empty list. .dockerignore re-includes output/{default,demo,test1} (mirrors the
@@ -79,6 +81,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\", \"8000\")}/health')"
 
-# Serve adapter-node (SSR) in background, FastAPI in foreground.
-# Plan 07 will wire a supervisor if needed; Phase 0 accepts the `&` pattern.
-CMD ["sh", "-c", "node viewer/build/index.js & uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Phase 03.5: SPA mode — a single uvicorn process serves the static SvelteKit
+# build at / (FastAPI StaticFiles, html=True) AND the /api routes, on one port.
+# No node process: the prior `node viewer/build/index.js & uvicorn ...` ran the
+# adapter-node SSR server and uvicorn on the SAME $PORT (conflict) and was never
+# deployed. Full SSR (separate node + proxy) is deferred to the Phase 20 GA cut.
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
