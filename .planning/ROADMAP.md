@@ -184,7 +184,10 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   3. `/api/v1/corpora` returns the bundled corpora as JSON.
   4. A push to `master` triggers an automatic Railway redeploy that reaches healthy state.
   5. README "Deploying to Railway" updated to match the restored dev-server reality (currently describes the stale single-Dockerfile flow).
-**Plans**: TBD — run `/gsd-plan-phase 3.5` to break down. Diagnose→restore→auto-deploy→verify→docs stages are pre-drafted in `RAILWAY-DEV-SERVER-PLAN.md`. First task is blocked on an interactive `railway login`.
+**Plans**: 3 plans across 3 sequential waves (planned 2026-05-22). First task is blocked on an interactive `railway login`.
+  - Wave 1: `03.5-01-PLAN.md` — Human-gated `railway login` + link the existing project + diagnose the 502; snapshot topology/vars; decide web-only vs web+worker scope (autonomous:false)
+  - Wave 2: `03.5-02-PLAN.md` — Collapse `railway.toml` to a flat web-only config + fix `ci/railway.py` for CLI v4.x; set masked vars, wire `master` trigger branch (dashboard), clean redeploy (autonomous:false)
+  - Wave 3: `03.5-03-PLAN.md` — Live smoke trio + Chrome DevTools MCP screenshot + prove auto-deploy on `master`; rewrite README "Deploying to Railway" + update STATE (autonomous:true)
 
 ---
 
@@ -594,7 +597,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 |
 | 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
-| 3.5. Railway Dev/Testing Server (parallel) | 0/? | Not started | - |
+| 3.5. Railway Dev/Testing Server (parallel) | 0/3 | Planned | - |
 | 4. IRI Scheme | 0/? | Not started | - |
 | 5. Content Versioning | 0/? | Not started | - |
 | 6. DID Substrate | 0/? | Not started | - |
