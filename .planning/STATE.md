@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Phase 03.5 (Railway dev server) complete + verified; Phase 04 (IRI Scheme §6.3) is next
-last_updated: 2026-05-24T00:00:00.000Z
-last_activity: 2026-04-25
+status: executing
+stopped_at: Phase 4 context gathered
+last_updated: "2026-05-24T16:41:48.506Z"
+last_activity: 2026-05-24
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 19
+  total_phases: 24
+  completed_phases: 5
+  total_plans: 22
   completed_plans: 23
-  percent: 80
+  percent: 21
 ---
 
 # Project State
@@ -242,9 +242,9 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 03 context gathered
-Resume file: --resume-file
+Last session: 2026-05-24T16:41:48.498Z
+Stopped at: Phase 4 context gathered
+Resume file: .planning/phases/04-iri-scheme-6-3/04-CONTEXT.md
 Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
 
 **Planned Phase:** 03 (Shard Subtypes (§6.2)) — 2 plans — 2026-04-25T15:19:49.181Z
