@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: milestone_complete
-stopped_at: Milestone complete (Phase 03.5 was final phase)
-last_updated: 2026-05-22T22:38:32.450Z
+status: in_progress
+stopped_at: Phase 03.5 (Railway dev server) complete + verified; Phase 04 (IRI Scheme §6.3) is next
+last_updated: 2026-05-24T00:00:00.000Z
 last_activity: 2026-04-25
 progress:
   total_phases: 5
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Milestone complete
+**Current focus:** Phase 04 — IRI Scheme (§6.3) — next on the v2.0 critical path (Phases 0/1/2/3 + inserted 3.5 done)
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 03.5
+Phase: 04 — IRI Scheme (§6.3) — NEXT (not yet started)
 Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-22
+Status: In progress — Phases 0/1/2/3 complete + inserted 3.5 (Railway dev server) complete; Phase 04 next
+Last activity: 2026-05-24
 
-Progress: [█░░░░░░░░░] 13% (3/23 phases complete)
+Progress: [██░░░░░░░░] ~21% (5 of ~24 phases complete: 0, 1, 2, 3, 3.5)
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
