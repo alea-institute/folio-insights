@@ -4,12 +4,12 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 context gathered
-last_updated: "2026-05-24T16:41:48.506Z"
-last_activity: 2026-05-24
+last_updated: "2026-05-24T17:05:23.141Z"
+last_activity: 2026-05-24 -- Phase 04 planning complete
 progress:
   total_phases: 24
   completed_phases: 5
-  total_plans: 22
+  total_plans: 24
   completed_plans: 23
   percent: 21
 ---
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 04 — IRI Scheme (§6.3) — NEXT (not yet started)
 Plan: Not started
-Status: In progress — Phases 0/1/2/3 complete + inserted 3.5 (Railway dev server) complete; Phase 04 next
-Last activity: 2026-05-24
+Status: Ready to execute
+Last activity: 2026-05-24 -- Phase 04 planning complete
 
 Progress: [██░░░░░░░░] ~21% (5 of ~24 phases complete: 0, 1, 2, 3, 3.5)
 
