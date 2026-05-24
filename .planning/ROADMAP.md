@@ -204,7 +204,9 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   1. Property test: same source + same span → same IRI across 1000 random runs (NFC + LF + trim + RFC 3986 applied).
   2. Nightly re-hash verification job passes on benchmark corpus.
   3. Collision detector exercised at 100K shards; fallback behavior documented.
-**Plans**: TBD
+**Plans**: 2 plans across 2 waves
+  - Wave 1: `04-01-PLAN.md` — hex32 width (D-01/D-02) + internal CRLF/CR→LF canonicalization (D-08) + GlossShard regex {16}→{32} + 1000-run determinism property test (D-09); SHARD-07
+  - Wave 2: `04-02-PLAN.md` — global content-addressed `shard_iri_registry` with fail-closed halt+flag collision detection (D-03/D-04), 100K no-collision exercise (D-05), and the `verify-iris` nightly re-hash CLI (D-06/D-07); SHARD-07, SHARD-08
 
 ---
 
