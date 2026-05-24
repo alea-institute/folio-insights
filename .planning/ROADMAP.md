@@ -64,7 +64,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ## 3. Phase Details
 
-### Phase 0 — Foundations / HARD GATE
+### Phase 0: Foundations / HARD GATE
 
 **Goal**: Validate the locked v2.0 stack against reality and produce a binding keep-vs-pivot decision on the RDF substrate.
 **Depends on**: Nothing (foundation).
@@ -101,7 +101,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 1 — Polysemy / distinguo Spike
+### Phase 1: Polysemy / distinguo Spike
 
 **Goal**: Validate §16 Risk 2 (polysemy detector FP rate, human-gate design) via canonical legal *consideration* fixture before committing Phase 9.P6 architecture.
 **Depends on**: Phase 0 (stack validated).
@@ -124,7 +124,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 2 — Shard Envelope (§6.1)
+### Phase 2: Shard Envelope (§6.1)
 
 **Goal**: Ship the 15-field Pydantic `Shard` envelope as the v2.0 core data model with round-trip and discriminated-union guarantees.
 **Depends on**: Phase 0.
@@ -144,7 +144,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 3 — Shard Subtypes (§6.2)
+### Phase 3: Shard Subtypes (§6.2)
 
 **Goal**: Ship the 5 subtypes as discriminated-union variants of the envelope with schema + example round-trip coverage.
 **Depends on**: Phase 2.
@@ -165,7 +165,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 3.5 — Railway Dev/Testing Server (INSERTED 2026-05-22)
+### Phase 3.5: Railway Dev/Testing Server (INSERTED 2026-05-22)
 
 **Goal**: Restore a working Railway dev/testing deployment of `master` — diagnose the current HTTP 502 at https://folio-insights-production.up.railway.app, redeploy the current v2.0 web tier, and wire auto-deploy on push to `master`, reusing the existing service/domain.
 **Depends on**: Nothing (infrastructure; deploys whatever is on `master`). Not a dependency for any downstream phase.
@@ -191,7 +191,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 4 — IRI Scheme (§6.3)
+### Phase 4: IRI Scheme (§6.3)
 
 **Goal**: Ship provenance-hash IRI minting with deterministic canonicalization and collision detection.
 **Depends on**: Phase 3.
@@ -208,7 +208,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 5 — Content Versioning (§6.4)
+### Phase 5: Content Versioning (§6.4)
 
 **Goal**: Ship the append-only `ContentEdit` chain and `get_shard_at(iri, t)` historical retrieval under immutable shard IRIs.
 **Depends on**: Phase 4.
@@ -225,7 +225,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 6 — DID Substrate (§6.5)
+### Phase 6: DID Substrate (§6.5)
 
 **Goal**: Ship DID-signed attestations as the security substrate for every v2.0 write action, including hardware-key and multi-sig paths.
 **Depends on**: Phase 5 (envelope + versioning must exist before we can sign them).
@@ -249,7 +249,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 7 — Governance Model (§3.1)
+### Phase 7: Governance Model (§3.1)
 
 **Goal**: Ship the 4-tier role model, PROV-O governance log, and three-way disambiguation machinery that makes v2.0 governed-by-design.
 **Depends on**: Phase 6.
@@ -269,7 +269,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 8 — FOLIO v2 Vocab + Mini-BFO Spine (§7)
+### Phase 8: FOLIO v2 Vocab + Mini-BFO Spine (§7)
 
 **Goal**: Ship the FOLIO v2 TTL vocabulary (`fi:*` predicates) and mini-BFO spine with version-pinning enforcement.
 **Depends on**: Phase 7 (governance predicates anchored; supersession predicates used by §21.9 cascade preview).
@@ -288,7 +288,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 9 — Seven Design Principles (§8)
+### Phase 9: Seven Design Principles (§8)
 
 **Goal**: Ship all 7 §8 design principles as sub-phased, independently-verifiable capabilities.
 **Depends on**: Phase 8 (vocab predicates), Phase 1 (polysemy spike feeds 9.P6).
@@ -317,7 +317,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 10 — Pipeline + LLM-Agnostic Refactor (§9)
+### Phase 10: Pipeline + LLM-Agnostic Refactor (§9)
 
 **Goal**: Ship Stage 8 Shard Minter appended to the v1 7-stage pipeline, with provider-agnostic LLM access and Arq-backed async orchestration.
 **Depends on**: Phase 9 (principles feed framework detector + BFO classifier + polysemy hooks).
@@ -337,7 +337,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 11 — SHACL Hybrid (§10)
+### Phase 11: SHACL Hybrid (§10)
 
 **Goal**: Ship the 6 hand-written SHACL shapes plus the ~150 LOC Pydantic-to-SHACL generator with build-time TTL emission.
 **Depends on**: Phase 10 (Stage 8 emits shards that the shapes validate).
@@ -356,7 +356,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 12 — Observability
+### Phase 12: Observability
 
 **Goal**: Ship structlog + OpenTelemetry + Prometheus across app + worker, with prompt-attribute truncation and per-corpus cost tracking.
 **Depends on**: Phase 6 (DID substrate exists to scope cost/trace attributes by DID).
@@ -374,7 +374,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 13 — Storage Layer (§11)
+### Phase 13: Storage Layer (§11)
 
 **Goal**: Ship pyoxigraph as canonical RDF 1.2 store with named-graph organization, rdflib bridge for pyshacl/JSON-LD, nightly TTL dumps, and export formats.
 **Depends on**: Phase 0 (keep-vs-pivot decision), Phase 11 (SHACL hooks into store writes).
@@ -395,7 +395,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 13.5 — Private Corpora
+### Phase 13.5: Private Corpora
 
 **Goal**: Ship opt-in private corpora with envelope encryption and DID-based access control (promoted from Should-Have to P1 at scope session 2026-04-22).
 **Depends on**: Phase 13 (storage + named graphs), Phase 6 (admin DID pubkey wraps corpus key).
@@ -413,7 +413,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 14 — UI Design Contract
+### Phase 14: UI Design Contract
 
 **Goal**: Swap SvelteKit adapter-static → adapter-node, establish component library skeleton, and land the "shards-as-axioms" bold aesthetic before any Phase 15 UI plan opens.
 **Depends on**: Phase 0 (SSR prototype), Phase 8 (vocab gives component taxonomy).
@@ -432,7 +432,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 15 — Review UI (§12)
+### Phase 15: Review UI (§12)
 
 **Goal**: Ship all 7 review UI surfaces with per-surface sub-phases, mandatory UX discussion artifacts for novel surfaces, and a WCAG 2.1 AA quality gate.
 **Depends on**: Phase 14 (design contract), Phase 13 (storage), Phase 10 (Stage 8 output), Phase 7 (governance events).
@@ -467,7 +467,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 16 — Public SPARQL Endpoint + Write API
+### Phase 16: Public SPARQL Endpoint + Write API
 
 **Goal**: Ship the read-only public `/sparql` endpoint with full security hardening, the DID-gated REST write API, the SHACL validation endpoint, and the SPARQL Explorer UI with all pre-shipped templates.
 **Depends on**: Phase 13 (storage), Phase 13.5 (private-corpus access control), Phase 6 (DID gate for writes), Phase 11 (SHACL `/validate`), Phase 14 (Explorer UI design contract).
@@ -498,7 +498,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 17 — Testing Consolidation (§13)
+### Phase 17: Testing Consolidation (§13)
 
 **Goal**: Preserve 203 v1 tests + ship ~425 new tests + golden-set Tier 3 shard-extraction harness + DID rotation + SHACL-at-scale scenarios.
 **Depends on**: Phase 16 (all surfaces must exist to test them).
@@ -517,7 +517,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 18 — Community Artifacts + Docs
+### Phase 18: Community Artifacts + Docs
 
 **Goal**: Ship CONTRIBUTING, Code of Conduct (Contributor Covenant 2.1), GOVERNANCE, RFC template, mkdocs-material site, JupyterLite, and SPARQL cookbook.
 **Depends on**: Phase 7 (governance model + RFC process must exist before we document them).
@@ -534,7 +534,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 18.5 — Corpus Fork + Genealogy (P2)
+### Phase 18.5: Corpus Fork + Genealogy (P2)
 
 **Goal**: Ship corpus fork capability with genealogy visualizer (promoted from Defer at scope session 2026-04-22).
 **Depends on**: Phase 13 (named graphs), Phase 7 (corpus_admin role + signed events), Phase 15.dependency-graph (Cytoscape.js viz primitive).
@@ -551,7 +551,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 19 — Pre-Release Security Audit
+### Phase 19: Pre-Release Security Audit
 
 **Goal**: Execute the pre-release security audit covering crypto primitives, OAuth, DID rotation, SPARQL SERVICE/SSRF, rate limiting, write API input validation, and the GitHub-username-takeover → DID impersonation path (F7). BLOCKS RELEASE.
 **Depends on**: Phases 6, 11, 13, 13.5, 16, 17 (everything auditable must exist).
@@ -571,7 +571,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 
 ---
 
-### Phase 20 — Release Cut
+### Phase 20: Release Cut
 
 **Goal**: Cut v2.0.0 CalVer, deploy Railway multi-service, announce the public SPARQL endpoint, and confirm benchmark corpora are live.
 **Depends on**: Phase 19.
