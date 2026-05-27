@@ -253,7 +253,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Enrich ContentEdit (field_path/rationale/signature) + forward-only @model_validator + migrate audit tests + exit-criterion-1 test (Wave 1)
+- [x] 05-01-PLAN.md — Enrich ContentEdit (field_path/rationale/signature) + forward-only @model_validator + migrate audit tests + exit-criterion-1 test (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -678,7 +678,7 @@ Plans:
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
-| 5. Content Versioning | 0/? | Not started | - |
+| 5. Content Versioning | 1/3 | In Progress|  |
 | 6. DID Substrate | 0/? | Not started | - |
 | 7. Governance Model | 0/? | Not started | - |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
