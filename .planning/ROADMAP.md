@@ -40,7 +40,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard` — **COMPLETE 2026-04-24** (3/3 plans; 47 shard tests + 96 combined pass; 1000-example hypothesis determinism; security: 25/25 threats closed)
 - [x] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes — **COMPLETE** (2/2 plans; 03-VERIFICATION.md status: passed; REVIEW + REVIEW-FIX done)
 - [x] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22) (completed 2026-05-22)
-- [ ] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector
+- [x] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector (completed 2026-05-27)
 - [ ] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping
 - [ ] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2)
 - [ ] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process
@@ -600,7 +600,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
-| 4. IRI Scheme | 1/2 | In Progress|  |
+| 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 0/? | Not started | - |
 | 6. DID Substrate | 0/? | Not started | - |
 | 7. Governance Model | 0/? | Not started | - |
