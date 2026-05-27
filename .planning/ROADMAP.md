@@ -257,7 +257,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-02-PLAN.md — revision/ package: async edit_shard_content + in-memory ShardStore + dotted-path gate + canonical hash + get_shard_at reverse-replay (exit criterion 3) (Wave 2)
+- [x] 05-02-PLAN.md — revision/ package: async edit_shard_content + in-memory ShardStore + dotted-path gate + canonical hash + get_shard_at reverse-replay (exit criterion 3) (Wave 2)
 - [ ] 05-03-PLAN.md — SHACL guard: forward-only sh:sparql shape + validate_content_edit_shape() + both-polarity test (exit criterion 2) (Wave 2)
 
 ---
@@ -678,7 +678,7 @@ Plans:
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
-| 5. Content Versioning | 1/3 | In Progress|  |
+| 5. Content Versioning | 2/3 | In Progress|  |
 | 6. DID Substrate | 0/? | Not started | - |
 | 7. Governance Model | 0/? | Not started | - |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |

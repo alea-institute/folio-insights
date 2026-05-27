@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-05-27T16:48:48.015Z"
+last_updated: "2026-05-27T16:58:15.856Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 24
   completed_phases: 6
   total_plans: 27
-  completed_plans: 26
+  completed_plans: 27
   percent: 25
 ---
 
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 05 (content-versioning-6-4) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-27
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -82,6 +82,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 00-foundations-hard-gate P07 | 8min | 4 tasks | 17 files |
 | Phase Phase 00-foundations-hard-gate P08 P8 | 20min | 3 tasks tasks | 6 files files |
 | Phase 05 P05-01 | 4 min | 3 tasks | 5 files |
+| Phase 05 P05-02 | 6 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,9 @@ Recent decisions affecting current work:
 - [Phase 05-01]: ContentEdit enriched to PRD §6.4 shape (dotted field_path, required rationale, AttestedSignature stub slot); signature is unsigned placeholder — real ed25519/JCS deferred to Phase 6 (D-04, D-05)
 - [Phase 05-01]: Forward-only @model_validator on ShardEnvelope uses strict < (equal edited_at allowed, ties by append order); only D-08b monotonicity lives here, D-08a immutability is structural (frozen + IMMUTABLE_FIELD_PATHS)
 - [Phase 05-01]: add_edit kept as thin SYNC wrapper for flat top-level fields; dotted nested paths (triple.object) are the Plan 02 set_field/edit_shard_content path (RESEARCH OQ2)
+- [Phase 05-02]: ShardStore is a runtime_checkable typing.Protocol over an in-memory dict (D-02 seam); stdlib + Pydantic only, no aiosqlite/pyoxigraph — Phase 13 fills the persistent backend behind the identical async get/put interface
+- [Phase 05-02]: IMMUTABLE_FIELD_PATHS is a 10-member frozenset gate raising BEFORE any mutation (6 frozen identity + triple.subject/.predicate + content_edits/signatures); triple.object stays editable for re-parenting (D-04, D-06)
+- [Phase 05-02]: get_shard_at reverse-replays on model_copy(deep=True) with strict > undo (exact-t ties kept); returns None for unknown IRI and t<extracted_at (D-09); validate_shard re-runs full validation post-edit since validate_assignment is OFF (V5)
 
 ### Roadmap Evolution
 
@@ -247,7 +251,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-05-27T16:48:48.008Z
+Last session: 2026-05-27T16:58:01.212Z
 Stopped at: Completed 05-01-PLAN.md
 Resume file: None
 Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
