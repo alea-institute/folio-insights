@@ -405,15 +405,24 @@ signing are exhaustively parametrized (the population is finite = 8).
 
 ---
 
-## Open Questions for the Planner (decide in plan, not execution)
+## Open Questions for the Planner (RESOLVED)
 
-1. **`action` Literal reconciliation** (§9) — option (A) 9th value, (B) map edits to one
-   of 8, or (C) separate lane. **Recommend A or B.**
-2. **Required vs Optional** for `signing_key_id`/`did_doc_snapshot_at` (§9) —
-   **recommend Optional+defaults** so the unsigned `add_edit` path stays honest.
-3. **None policy in JCS** (§2 step 4) — keep vs strip. **Recommend keep**; lock + test.
-4. **did:plc op-log access** — `atproto` client method vs direct `httpx` GET to
-   `plc.directory/<did>/log/audit` + `dag-cbor` decode. Validate which `atproto==0.0.65`
-   exposes; fall back to httpx+dag-cbor if the client lacks a historical accessor.
-5. **SHACL shape** (§10) — **recommend defer to Phase 11**; confirm with operator.
-6. **`cryptography` bump** to `>=46` — confirm no consumer regression.
+All six were resolved in the plans (06-01..06-03):
+
+1. **`action` Literal reconciliation** (§9) — RESOLVED in 06-01 Task 2: option **(A)** —
+   `content_edit` is included in the `SignedAction` Literal alongside the governance
+   actions (PRD §3.1 makes content editing a real reviewer action), keeping every
+   construction site green; the DID-07 preview iterates the 8 governance-action subset.
+2. **Required vs Optional** for `signing_key_id`/`did_doc_snapshot_at` (§9) — RESOLVED in
+   06-01 Task 2: **Optional + defaults** (`signing_key_id: str = ""`,
+   `did_doc_snapshot_at: datetime | None = None`) so the unsigned `add_edit` path stays
+   honest.
+3. **None policy in JCS** (§2 step 4) — RESOLVED in 06-01 Task 3: **keep** explicit None
+   (documented + locked; jcs serializes null deterministically).
+4. **did:plc op-log access** — RESOLVED in 06-02 Task 2: injectable `atproto.IdResolver`
+   for current resolution, with a fallback to `httpx` GET `plc.directory/<did>/log/audit`
+   + `dag-cbor` decode for historical pinning; network injected so tests use fixtures.
+5. **SHACL shape** (§10) — RESOLVED: **deferred to Phase 11** (no SHACL attestation shape
+   in any Phase-6 plan); Phase-6's honest gate is cryptographic verify + Pydantic.
+6. **`cryptography` bump** to `>=46` — RESOLVED in 06-01 Task 1 (bump with a
+   no-regression confirmation step).
