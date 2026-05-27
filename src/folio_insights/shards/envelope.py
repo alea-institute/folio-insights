@@ -34,7 +34,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # D-05: canonical discriminator alias (5 values, ordered per CONTEXT D-05).
 ShardType = Literal[
@@ -208,6 +208,41 @@ class ShardEnvelope(BaseModel):
     # ── CONTEST STATE (first-class per PRD §6.1 field 9 extension) ──
     contested: bool = False
     contest_votes: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _content_edits_forward_only(self) -> "ShardEnvelope":
+        """AUTHORITATIVE forward-only gate over ``content_edits`` (D-07.1, D-08b).
+
+        The ``content_edits`` chain must be monotonic in ``edited_at``: no edit
+        may be back-dated before its predecessor (a back-dated insert is an
+        "edit to a past version"). Equal adjacent timestamps are ALLOWED — a tie
+        is broken by append order (D-09), so only a *strictly* decreasing
+        ``edited_at`` is a violation.
+
+        This is the authoritative, always-on monotonicity gate (mirrors the
+        ``shards/subtypes.py`` ``@model_validator(mode="after")`` idiom). The
+        pyshacl forward-only shape (Plan 03, ``revision/``) is *defense-in-depth*
+        over the same invariant — it cannot live here because ``shards/`` is kept
+        RDF-free (``tests/shards/test_dep_leak_guard.py``).
+
+        The OTHER half of D-08 — immutability of past entries (D-08a: no mutation
+        or deletion of an existing ``ContentEdit``) — is NOT carried by this
+        validator. A SHACL shape / Pydantic validator sees only a single snapshot
+        and cannot detect a deletion (RESEARCH L115-124). That half is carried
+        structurally by ``ContentEdit`` ``frozen=True`` (an entry can't be mutated
+        in place) plus the Plan 02 ``IMMUTABLE_FIELD_PATHS`` gate listing
+        ``content_edits`` as a whole (append-only — reorder/remove/replace
+        forbidden).
+        """
+        edits = self.content_edits
+        for prev, curr in zip(edits, edits[1:]):
+            if curr.edited_at < prev.edited_at:
+                raise ValueError(
+                    "content_edits must be monotonic in edited_at "
+                    "(no back-dated insert — forward-only, D-08b); "
+                    f"got edit at {curr.edited_at!r} after {prev.edited_at!r}."
+                )
+        return self
 
 
 __all__ = [
