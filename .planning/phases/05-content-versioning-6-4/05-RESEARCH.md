@@ -468,7 +468,9 @@ def _forward_only_append_only(self) -> "ShardEnvelope":
 
 **Note:** No `[ASSUMED]`-tagged *technical* claims remain — the five flagged unknowns were all verified by live spikes against the installed toolchain. The assumptions above are scoping/discretion choices the planner finalizes, not unverified facts.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Both questions are answered by the inline **Recommendation** blocks below, and Phase 5 plans implement those recommendations (Plan 02 Task 1 uses the targeted `validate_shard()` hook; Plan 01 Task 1 keeps `add_edit()` as a thin sync wrapper).
 
 1. **Should `validate_assignment` be turned on for `ShardEnvelope`, or should `validate_shard()` re-validate after every edit?**
    - What we know: `validate_assignment` is currently off; `setattr` accepts wrong types silently (verified).
