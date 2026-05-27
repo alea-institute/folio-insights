@@ -67,6 +67,19 @@ def test_crlf_trimmed_from_span() -> None:
     assert iri_a == iri_b
 
 
+def test_internal_crlf_normalized_to_lf() -> None:
+    """D-08: internal CRLF / lone CR fold to LF -> same IRI as the LF form.
+
+    Unlike test_crlf_trimmed_from_span (trailing CRLF caught by .strip()),
+    this locks the *internal* line-ending fold so the same text with
+    CRLF / CR / LF line endings hashes identically (SHARD-07).
+    """
+    iri_crlf, _ = mint_shard_iri("urn:x:1", "line one\r\nline two")
+    iri_cr, _ = mint_shard_iri("urn:x:1", "line one\rline two")
+    iri_lf, _ = mint_shard_iri("urn:x:1", "line one\nline two")
+    assert iri_crlf == iri_lf == iri_cr
+
+
 def test_rfc3986_case_fold_and_trailing_slash() -> None:
     """D-02: RFC 3986 — lowercase scheme+host, strip trailing slash."""
     iri_a, _ = mint_shard_iri("HTTPS://Example.COM/doc/", "span")
