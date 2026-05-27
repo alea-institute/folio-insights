@@ -7,10 +7,12 @@ total_phases: 24
 critical_path_phases: 16
 parallel_track_phases: 5
 sources:
+
   - .planning/REQUIREMENTS.md
   - .planning/research/SUMMARY.md
   - .planning/v2.0-MILESTONE-BRIEF.md
   - PRD-v2.0-draft-2.md
+
 ---
 
 # FOLIO Insights v2.0 — Roadmap (shards-as-axioms)
@@ -74,13 +76,16 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: **yes** — RDF-12 migration, HermiT JVM tuning, SSR streaming, Dagger CI are all in MEDIUM-confidence research territory.
 **Ship-critical?**: P1 (non-negotiable gate).
 **Exit criteria (5 HARD GATES — all must pass OR pivot)**:
+
   1. **RDF 1.2 annotation pattern works** — every PRD §20 example query rewritten in RDF-12 syntax executes against pyoxigraph 0.5.7 on the 1M-triple benchmark corpus (STORAGE-04).
   2. **P95 SPARQL query latency < 500ms @ 1M triples** on the benchmark corpus (QUALITY-01).
   3. **Worker Docker image < 500 MB** with JVM 17 + HermiT + deps (QUALITY-03).
   4. **SSR page latency < 200ms** for a cold shard page via SvelteKit 5 adapter-node (QUALITY-04).
   5. **Dagger CI reproducible** — identical image digests local vs Railway (OBS-04).
+
 **Pivot branch (if gate 1 fails)**: Pre-specified pivot to Apache Jena Fuseki recorded in `.planning/phases/0-foundations/DECISION.md`. All downstream phases tagged "depends on Phase 0 keep/pivot decision" must branch on `keep=pyoxigraph` vs `pivot=fuseki`.
 **Deliverables**:
+
   - PHILOSOPHY.md rename from v1 docs
   - Oxigraph + rdflib spike with §20 query audit
   - HermiT-in-Docker perf baseline
@@ -89,7 +94,9 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   - SSR streaming prototype (adapter-node)
   - Two-stage Dockerfile prototype (web JVM-free / worker JVM)
   - Decision artifact: `keep=pyoxigraph` OR `pivot=fuseki`
+
 **Plans**: 8 plans across 5 waves (see `.planning/phases/00-foundations-hard-gate/`)
+
   - Wave 1: `00-01-PLAN.md` — prep-deps-rename-wave0-scaffold (deps pin, PHILOSOPHY.md rename, tests/bench/ scaffold)
   - Wave 2: `00-02-PLAN.md` — bench-generator-1m-triple-corpus (deterministic 1M N-Quads generator; D-14/D-15/D-16)
   - Wave 2: `00-04-PLAN.md` — two-stage-dockerfiles-and-railway-split (Dockerfile.web JVM-free + Dockerfile.worker JVM + adapter-node swap)
@@ -111,10 +118,13 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: **yes** — polysemy FP curation + LLM-vs-rule hybrid is a core novel service with no ecosystem precedent.
 **Ship-critical?**: P1 (de-risks 9.P6; spike output feeds that phase's plan).
 **Exit criteria**:
+
   1. *Consideration* fixture set (≥20 shards across 3+ frameworks) classified by the prototype detector with ≤10% FP rate.
   2. Human-gate interaction pattern (accept / reject / modify) documented in spike SUMMARY.md — **no auto-apply path** (§16 R2).
   3. Per-framework threshold strategy proposed and open-sourced for 9.P6 planning.
+
 **Plans**: 6 plans across 5 waves (see `.planning/phases/01-polysemy-distinguo-spike/`)
+
   - Wave 0: `01-01-PLAN.md` — test scaffolding (tests/polysemy/ package, conftest.py, 8 RED test files, polysemy_spike marker)
   - Wave 1: `01-02-PLAN.md` — data layer (whitelists, DispositionRecord + ProposedFork + append_disposition, ed25519 reviewer DID, ≥20 curated consideration fixtures, fixture_loader)
   - Wave 2: `01-03-PLAN.md` — detector core (prototype_cluster, similarity_query SPARQL owl:disjointWith, detector.py 4-rule gate + provider-agnostic instructor LLM fallback) [parallel with 01-04]
@@ -134,10 +144,13 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: no (standard Pydantic 2.13 patterns).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. `Shard(**shard.model_dump()) == shard` round-trips for every subtype placeholder.
   2. Discriminated-union test rejects invalid subtype tag with a useful error.
   3. Bitemporal fields (`valid_time_start`, `valid_time_end`, `transaction_time`) round-trip and serialize deterministically.
+
 **Plans**: 3 plans across 3 waves (see `.planning/phases/02-shard-envelope/`)
+
   - Wave 1: `02-01-PLAN.md` — envelope + subtypes + minting (ShardEnvelope 15 fields, 6 frozen identity fields per D-07, 5 subtype stubs + Shard discriminated-union alias per D-05, deterministic mint_shard_iri per D-01/D-02)
   - Wave 2: `02-02-PLAN.md` — audit + pyproject (ContentEdit frozen sub-model + add_edit helper per D-08, ShardEnvelope.model_rebuild() forward-ref resolution, pyproject.toml hypothesis>=6.100 dev dep + shards pytest marker)
   - Wave 3: `02-03-PLAN.md` — test suite (round-trip × 5 subtypes + discriminated-union dispatch + bitemporal + 6 frozen-field regression + 1000-example hypothesis minting determinism + audit-log + Phase-13 dep-leak grep-guard; ≥40 tests)
@@ -154,10 +167,13 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: no.
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. PRD examples A.1 (SimpleAssertion), A.2 (ConflictingAuthorities with 8 reconciliation strategies), A.3 (DisputedProposition) all round-trip.
   2. Gloss + Hypothesis subtypes parse and validate.
   3. `HypothesisShard` ships `citation_required: bool = True` field (Phase 7 governance enforces the promotion-time gate end-to-end).
+
 **Plans**: 2 plans
+
   - Wave 1: `03-01-PLAN.md` — schema expansion (subtypes.py: 5 subtype field bodies + 3 nested models Objection/Reply/AuthorityPosition + 3 Literal aliases ReconciliationStrategy/GlossKind/GenerationMethod + 4 @model_validators per D-02..D-06; `__init__.py` re-exports + `tests/shards/conftest.py` _SUBTYPE_DEFAULTS extension); D-03 4-subset = {hypothesis, authority_only, contested, aporetic} (no "attested")
   - Wave 2: `03-02-PLAN.md` — test suite (3 verbatim PRD §6.2 fixtures A.1/A.2/A.3 + 5 per-subtype unit test files + 1 hypothesis property-test file with D-09 100/300/200/200/200 example budget)
 - [x] 03-01-PLAN.md — schema expansion (subtypes.py + __init__.py + conftest.py)
@@ -175,16 +191,21 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: no.
 **Ship-critical?**: no — dev/testing convenience. Phase 20 owns the GA production cut and will promote/rename this service.
 **Decisions locked** (from /gsd discussion 2026-05-22):
+
   - Diagnose-first: log into Railway and find the real 502 cause before choosing web-only vs web+worker scope.
   - Auto-deploy on push to `master`.
   - Reuse the existing service/domain (`folio-insights-production`); Phase 20 promotes for GA.
+
 **Exit criteria**:
+
   1. `/health` returns 200 (`{"status":"ok"}`) on the live URL.
   2. `/` returns 200 and the SvelteKit viewer renders (SSR) the bundled corpora.
   3. `/api/v1/corpora` returns the bundled corpora as JSON.
   4. A push to `master` triggers an automatic Railway redeploy that reaches healthy state.
   5. README "Deploying to Railway" updated to match the restored dev-server reality (currently describes the stale single-Dockerfile flow).
+
 **Plans**: 3 plans across 3 sequential waves (planned 2026-05-22). First task is blocked on an interactive `railway login`.
+
   - Wave 1: `03.5-01-PLAN.md` — Human-gated `railway login` + link the existing project + diagnose the 502; snapshot topology/vars; decide web-only vs web+worker scope (autonomous:false)
   - Wave 2: `03.5-02-PLAN.md` — Collapse `railway.toml` to a flat web-only config + fix `ci/railway.py` for CLI v4.x; set masked vars, wire `master` trigger branch (dashboard), clean redeploy (autonomous:false)
   - Wave 3: `03.5-03-PLAN.md` — Live smoke trio + Chrome DevTools MCP screenshot + prove auto-deploy on `master`; rewrite README "Deploying to Railway" + update STATE (autonomous:true)
@@ -201,10 +222,13 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: no (documented pitfall, well-specified mitigation).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. Property test: same source + same span → same IRI across 1000 random runs (NFC + LF + trim + RFC 3986 applied).
   2. Nightly re-hash verification job passes on benchmark corpus.
   3. Collision detector exercised at 100K shards; fallback behavior documented.
+
 **Plans**: 2 plans across 2 waves
+
   - Wave 1: `04-01-PLAN.md` — hex32 width (D-01/D-02) + internal CRLF/CR→LF canonicalization (D-08) + GlossShard regex {16}→{32} + 1000-run determinism property test (D-09); SHARD-07
   - Wave 2: `04-02-PLAN.md` — global content-addressed `shard_iri_registry` with fail-closed halt+flag collision detection (D-03/D-04), 100K no-collision exercise (D-05), and the `verify-iris` nightly re-hash CLI (D-06/D-07); SHARD-07, SHARD-08
 
@@ -220,12 +244,19 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 **Research flag**: no.
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. `test_content_edit_audit_append_only.py` green.
   2. SHACL guard rejects edits to past versions (forward-only semantics).
   3. `get_shard_at(iri, t)` returns correct historical state across a 10-edit fixture.
+
 **Plans**: 3 plans (2 waves)
 Plans:
+**Wave 1**
+
 - [ ] 05-01-PLAN.md — Enrich ContentEdit (field_path/rationale/signature) + forward-only @model_validator + migrate audit tests + exit-criterion-1 test (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-02-PLAN.md — revision/ package: async edit_shard_content + in-memory ShardStore + dotted-path gate + canonical hash + get_shard_at reverse-replay (exit criterion 3) (Wave 2)
 - [ ] 05-03-PLAN.md — SHACL guard: forward-only sh:sparql shape + validate_content_edit_shape() + both-polarity test (exit criterion 2) (Wave 2)
 
@@ -241,15 +272,19 @@ Plans:
 **Research flag**: **yes** — DID key rotation, JCS edge cases, atproto signing paths need validation beyond base research.
 **Ship-critical?**: P1 (core); DID-08, DID-09 are P2 stretch.
 **Exit criteria**:
+
   1. `pytest tests/identity/` green across did:key / did:web / did:plc; Playwright OAuth→DID binding covers all 3 paths.
   2. `verify(sign(x))` property test passes across shuffled field orders for 1000 random shards (JCS canonicalization is stable).
   3. `test_signature_survives_key_rotation.py` green — historical `signing_key_id` + `did_doc_snapshot_at` replay works.
   4. Security review confirms **no server-side signing keys** for any DID (DID-06).
   5. "What will I be signing?" preview renders for all 8 signed-action types (DID-07).
+
 **Sub-phases**:
+
   - **6.1 core (P1)**: did:key + did:web + did:plc; JCS `canonical_content_hash`; signing-time key capture; OAuth→DID binding; preview UI; GitHub-takeover defense (SEC-06).
   - **6.2 hardware-key signing (P2)**: Ledger / YubiKey / WebAuthn for did:key; E2E test against WebAuthn virtual authenticator (DID-08).
   - **6.3 multi-sig attestations (P2)**: N-of-M co-sign schema + SHACL shape + UI flow; 2-of-3 promotion succeeds / 1-of-3 fails (DID-09).
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -265,12 +300,14 @@ Plans:
 **Research flag**: no (PROV-O + Covenant 2.1 are standard patterns).
 **Ship-critical?**: P1 core; GOV-09, GOV-10 are P2 stretch (timeline viewer + warrant trace-back UI).
 **Exit criteria**:
+
   1. Role assertions round-trip; per-corpus role queries return the correct set.
   2. Append-only governance log: `DELETE`/`UPDATE` on past rows rejected by both SHACL and SQLite trigger.
   3. Promotion `hypothesis → attested` requires reviewer role + citation + DID-signed `fi:Promotion` — unsigned promotion rejected end-to-end (CLI + API).
   4. Three-way disambiguation: contest / supersede / retract have **distinct codepaths** and **distinct CLI commands** (no shared code — code-review gate).
   5. Retraction cascade preview groups dependents `{auto_rederive, aporetic, review_needed}` with rollback-before-commit affordance.
   6. RFC process: `.planning/rfcs/NNNN-title.md` lifecycle linter green in CI; no auto-merge.
+
 **Plans**: TBD
 
 ---
@@ -285,11 +322,13 @@ Plans:
 **Research flag**: no (standard TTL + OWL 2 EL).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. FOLIO v2 TTL parses with both rdflib and pyoxigraph; `owl:versionIRI` stable.
   2. `fi:vocabVersion` SHACL shape enforces pin on every shard — unpinned shards rejected.
   3. All 4 analogia predicates + 4 distinction kinds queryable; Tractarian / Spinozan / Russellian / Carnap / Aristotelian predicates round-trip.
   4. Mini-BFO classes (Continuant, Occurrent, IndependentContinuant, SDC, GDC, Process, Quality, Role, Disposition) present with `owl:equivalentClass` mappings to BFO 2020 in companion `bfo_mapping.ttl`.
   5. Supersession predicates (`fi:supersedes`, `fi:supersededBy`) distinct from retraction; as-of query returns superseded shard.
+
 **Plans**: TBD
 
 ---
@@ -304,6 +343,7 @@ Plans:
 **Research flag**: **yes** for 9.P6 (polysemy FP curation — carries forward from Phase 1 spike).
 **Ship-critical?**: P1 (all 7 principles).
 **Exit criteria (roll-up across sub-phases)**:
+
   1. Cluster validator runs in worker tier only (no JVM in web); async warn-only in CI (9.P1).
   2. Framework assignment deterministic across re-extractions; `extraction_prompt_hash` stable (9.P2).
   3. DAG construction < 5s for 10K shards; cycle detection present (9.P3).
@@ -311,7 +351,9 @@ Plans:
   5. CWA islands produce different results vs. open-world default for negation-as-failure cases (9.P5).
   6. Polysemy detector ≤10% FP on curated fixtures; auto-apply **impossible by design** (9.P6).
   7. BFO classifier coverage ≥95% at ingest; unknown → permissive defaults documented (9.P7).
+
 **Sub-phases**:
+
   - **9.P1 cluster validator** — owlready2 + HermiT subprocess; worker-tier only; async warn-only (PRINCIPLE-01).
   - **9.P2 framework detector** — source metadata + corpus config + LLM inference; records `fi:framework` + `extraction_prompt_hash` (PRINCIPLE-02).
   - **9.P3 dependency graph** — `fi:dependsOnAxiom` / `fi:dependsOnDefinition` first-class edges; cascade preview enabler (PRINCIPLE-03).
@@ -319,6 +361,7 @@ Plans:
   - **9.P5 closed-world islands** — `fi:closureMarker`; default open-world (PRINCIPLE-05).
   - **9.P6 polysemy detector** — framework-conflicting axiom flagging; human-gated always (PRINCIPLE-06).
   - **9.P7 BFO classifier** — permissive mode; ingest-time assignment (PRINCIPLE-07).
+
 **Plans**: TBD
 
 ---
@@ -333,12 +376,14 @@ Plans:
 **Research flag**: no (instructor + Arq are standard patterns).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. CI matrix green across Anthropic (Claude default) + OpenAI + Ollama; `--llm-provider` CLI flag works.
   2. Per-shard `extractor_model` + `extraction_prompt_hash` fields populated and queryable.
   3. Stage 8 is an **isolated module**; v1 stages 1-7 are unmodified (code review gate); E2E: raw doc → signed shard.
   4. Lazy-fill: fields `{1,2,3,4,12,14,15}` at extraction; `{5-11, 13}` via Arq follow-up; shard marked `extraction_phase=partial|complete`.
   5. Arq 0.28 + Redis 7.4 cutover: side-by-side feature flag cleans up; no orphan jobs after reconciliation.
   6. Cost meter accurate within ±5%; single-layer (instructor-level) retry; no nested retries.
+
 **Plans**: TBD
 
 ---
@@ -353,11 +398,13 @@ Plans:
 **Research flag**: **yes** — Pydantic-to-SHACL generator has no ecosystem prior art (RISK-2).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. All 6 shapes (envelope, subtypes, governance, supersession, distinguo, signatures) parse; pyshacl validates fixtures.
   2. Generator round-trips: `Pydantic → SHACL → validate(pydantic_instance)` as a property test across all 15-field variants.
   3. Dagger build emits generated TTL deterministically; CI verifies regenerated TTL matches committed TTL.
   4. Per-shard incremental validation P95 < 50ms at 1M-triple corpus (shapes pre-compiled at startup).
   5. `POST /validate` returns pyshacl report for valid + invalid fixtures; documented in OpenAPI (SHACL-05).
+
 **Plans**: TBD
 
 ---
@@ -372,10 +419,12 @@ Plans:
 **Research flag**: no (standard observability).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. Traces visible in OTel backend; Prometheus scrape returns expected metrics.
   2. Prompt-attribute truncation enforced (hash prompts > 2KB; no raw leakage).
   3. Per-corpus LLM cost report accurate within ±5% (tokens × provider price).
   4. Dagger-based CI reproducible across local + Railway (identical image digests).
+
 **Plans**: TBD
 
 ---
@@ -390,6 +439,7 @@ Plans:
 **Research flag**: no (Phase 0 already resolved RDF-12).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. Bulk load ≥ 200K triples/sec at 1M-triple benchmark; query semantics match RDF 1.2.
   2. Named-graph partitioning: one ABox graph per corpus + shared TBox + per-corpus governance; `GRAPH ?g { }` returns correct set.
   3. Code review confirms no write paths through rdflib — rdflib is adapter-only (STORAGE-02).
@@ -397,6 +447,7 @@ Plans:
   5. All 8 export formats (`combined.ttl`, `abox/*.ttl`, `tbox.ttl`, `governance.ttl`, JSON-LD, SPARQL CONSTRUCT, N-Quads, Neo4j CSV) round-trip for benchmark corpus.
   6. PII redaction on ingest rejects SSN/ABA/phone defaults; no PII in default-exported corpus.
   7. Benchmark corpora (v1 advocacy + FRE + Restatement of Contracts) all load + pass SHACL + pass cluster validation (CORPUS-04).
+
 **Plans**: TBD
 
 ---
@@ -411,10 +462,12 @@ Plans:
 **Research flag**: no (envelope encryption with `cryptography.hazmat` is well-specified).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. Private corpus round-trips: write-encrypt-persist-read-decrypt produces the original shard.
   2. P95 decrypt latency < 5ms per shard on benchmark load.
   3. AuthZ test: 3 DIDs (admin / reviewer / outside) see correct views — outside DID gets 404 on SPARQL, 403 on write API.
   4. Governance log entries for private corpora redacted from public feed.
+
 **Plans**: TBD
 
 ---
@@ -429,10 +482,12 @@ Plans:
 **Research flag**: **yes** — `/gsd-ui-phase` heavy design iteration; no ecosystem precedent for shards-as-axioms aesthetic.
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. App boots with adapter-node; SSR renders initial HTML for shard pages.
   2. axe-core 4.11 CI gate **blocking**; waivers require RFC.
   3. Design system + component library skeleton committed; `/gsd-ui-phase` artifact lives in `.planning/phases/14-ui-design/`.
   4. `/gsd-plan-phase` for any 15.* sub-phase refuses to start without this phase's design contract.
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -448,6 +503,7 @@ Plans:
 **Research flag**: **yes** for 15.polysemy-fork and 15.contest-wizard — no direct UX precedent; `/gsd-discuss-phase` CONTEXT.md mandatory before `/gsd-plan-phase`.
 **Ship-critical?**: P1 for all listed sub-phases; P2 surfaces (UI-15/16/17) as stretch.
 **Exit criteria (roll-up)**:
+
   1. All 15 fields visible on shard page; content-negotiated dereference works (HTML vs TTL/JSON-LD via `Accept:`) (UI-02).
   2. Signature-verification badge reflects runtime state (valid/expired/unreachable) (UI-03).
   3. Subtype + status chips visually-regression-tested (UI-04).
@@ -460,7 +516,9 @@ Plans:
   10. Novel UX gate: 15.polysemy-fork and 15.contest-wizard pass 3-5 legal-practitioner think-aloud sessions with ≥80% task completion; transcripts + completion rates in each sub-phase's SUMMARY.md (QUALITY-05).
   11. Rollback/escape-hatch affordances: 15-min undo on just-committed distinguo reverts cleanly; arbiter-override produces signed override event (UI-14).
   12. CI blocking axe-core 4.11 WCAG 2.1 AA (QUALITY-02).
+
 **Sub-phases**:
+
   - **15.shard-page** — deep-link `/shard/<hex16>` with 15-field inspector, content negotiation, signature badge, subtype/status chips, copy-as-citation (UI-02, UI-03, UI-04, UI-05). P2 stretch surfaces UI-15/16/17 may ride here.
   - **15.polysemy-fork** — distinguo workflow with prime-analogate picker, proportional-relation editor, distinction-kind selector, "What would this fork affect?" preview, 15-min undo (UI-06, UI-07, UI-14 distinguo-side). **MANDATE: `/gsd-discuss-phase` CONTEXT.md before `/gsd-plan-phase`**. **Novel UX gate applies** (QUALITY-05).
   - **15.supersession-timeline** — horizontal ribbon + as-of picker + chain nav + supersession-vs-retraction indicator + bitemporal toggle (UI-08, UI-09).
@@ -468,6 +526,7 @@ Plans:
   - **15.retract-supersede-disambiguation** — three-way prompt + distinct copy + retraction cascade preview; code-review gate on "no shared codepath" (UI-10 retract/supersede-side).
   - **15.dependency-graph** — Cytoscape.js DAG with 3-hop default, expand affordance, kernel-chain highlight (UI-11); Tractarian tree breadcrumb (UI-12).
   - **15.sparql-explorer** — navigation + shard-page integration only; Explorer impl owned by Phase 16.
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -483,6 +542,7 @@ Plans:
 **Research flag**: **yes** — SPARQL security hardening (SERVICE SSRF, `initBindings`, rate-limiting) + RDF-12 template authoring.
 **Ship-critical?**: P1 core. P2 stretch (SPARQL-09, SPARQL-10, SPARQL-11, SPARQL-12) tracked as separate sub-plans within Phase 16.
 **Exit criteria**:
+
   1. `POST UPDATE` on `/sparql` returns 403; `SELECT` / `CONSTRUCT` return 200 (SPARQL-01).
   2. Security test: `SERVICE` payload rejected at AST; DoS load test passes with 30s timeout + 10K row cap + IP+DID rate limits (SPARQL-02, SEC-04).
   3. Injection test suite passes via `initBindings` on every parameterized query (SPARQL-03).
@@ -494,11 +554,14 @@ Plans:
   9. Permalink encode→share→decode→execute round-trips (SPARQL-13).
   10. DID-gated REST write API: unsigned write returns 401; signed write → governance log entry + oxigraph update (SPARQL-14).
   11. (P2 stretch) "Explain this query" LLM helper generates description for 10 template queries (SPARQL-09); SSE streaming first row < 200ms (SPARQL-10); RDF-12 annotation helper produces valid queries (SPARQL-11); Cytoscape CONSTRUCT → graph → click → navigate (SPARQL-12).
+
 **P2 sub-plans (tracked within Phase 16)**:
+
   - **16.explain-query (P2)** — instructor-powered "Explain this query" helper (SPARQL-09).
   - **16.sse-streaming (P2)** — SvelteKit adapter-node SSE streaming (SPARQL-10).
   - **16.rdf12-helper (P2)** — RDF-12 annotation query helper (SPARQL-11).
   - **16.graph-result (P2)** — Cytoscape.js CONSTRUCT viz (SPARQL-12).
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -514,11 +577,13 @@ Plans:
 **Research flag**: no.
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. All 203 v1 tests green on `main`.
   2. New tests green; coverage ≥ 85% on new code.
   3. Tier 3 golden-set harness produces signed shards deterministically for benchmark fixtures.
   4. DID key-rotation scenario tests green (co-ship with SEC-05).
   5. SHACL-at-scale test verifies P95 < 50ms at 1M triples (co-verifies Phase 11 SLO).
+
 **Plans**: TBD
 
 ---
@@ -533,9 +598,11 @@ Plans:
 **Research flag**: no (standard mkdocs + cookbook).
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (CC 2.1), `GOVERNANCE.md`, `RFC-TEMPLATE.md` all exist and link from README.
   2. Spell-check CI pass.
   3. mkdocs-material site builds; JupyterLite notebook runs the SPARQL cookbook end-to-end against the public endpoint.
+
 **Plans**: TBD
 
 ---
@@ -550,8 +617,10 @@ Plans:
 **Research flag**: no.
 **Ship-critical?**: **P2 stretch**.
 **Exit criteria**:
+
   1. Fork operation creates new named graph + fork metadata; origin remains intact; event is DID-signed and corpus_admin-scoped.
   2. Fork-tree visualizer renders 5-corpus + 3-fork-event fixture; click-node → open-corpus navigation works.
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -567,12 +636,14 @@ Plans:
 **Research flag**: **yes** — security audit vendors + DID threat models.
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. Audit report addresses all 7 areas with sign-off.
   2. No server-held signing keys confirmed (DID-06).
   3. Historical signatures verify after key rotation (SEC-05).
   4. SERVICE SSRF defense verified by security test suite (SEC-04).
   5. GitHub-username-takeover squatter scenario rejects (SEC-06).
   6. Rate limiting + write API input validation verified under adversarial load.
+
 **Plans**: TBD
 
 ---
@@ -587,10 +658,12 @@ Plans:
 **Research flag**: no.
 **Ship-critical?**: P1.
 **Exit criteria**:
+
   1. v2.0.0 tag created (CalVer).
   2. Railway multi-service (web + worker + Redis + Oxigraph) deploy green.
   3. Public SPARQL endpoint announced + smoke-tested from external client.
   4. Benchmark corpora (v1 advocacy + FRE + Restatement of Contracts) live + queryable.
+
 **Plans**: TBD
 
 ---
