@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-27T16:14:10.875Z"
-last_activity: 2026-05-27 -- Phase 5 planning complete
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-05-27T16:48:48.015Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 24
   completed_phases: 6
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 25
 ---
 
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 5 — content versioning (§6.4)
+**Current focus:** Phase 05 — content-versioning-6-4
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 5
-Plan: Not started
+Phase: 05 (content-versioning-6-4) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-27 -- Phase 5 planning complete
+Last activity: 2026-05-27
 
-Progress: [██░░░░░░░░] ~21% (5 of ~24 phases complete: 0, 1, 2, 3, 3.5)
+Progress: [██████████] 96%
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
 
@@ -81,6 +81,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase 00-foundations-hard-gate P6 | 17min | 2 tasks | 5 files |
 | Phase 00-foundations-hard-gate P07 | 8min | 4 tasks | 17 files |
 | Phase Phase 00-foundations-hard-gate P08 P8 | 20min | 3 tasks tasks | 6 files files |
+| Phase 05 P05-01 | 4 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,9 @@ Recent decisions affecting current work:
 - 00-08-D3: DID signature DEFERRED to Phase 6+ per D-17 chicken-and-egg; 4-step backfill procedure in DECISION.md Signature Deferral section with T-00-39 substitute-then-sign mitigation (verify body matches git-sha before signing)
 - 00-08-D4: Fuseki scaffold (config.ttl + README + .gitkeep) retained on keep verdict per T-00-40 mitigation + v2.1 re-evaluation capacity; README banner reads 'scaffold not required; retained for v2.1 re-evaluation'
 - 00-08-D5: BRANCH-GUIDANCE.md as separate @-ref doc at stable path; downstream PLAN.md files @-import instead of re-parsing DECISION.md; drift between them is a bug
+- [Phase 05-01]: ContentEdit enriched to PRD §6.4 shape (dotted field_path, required rationale, AttestedSignature stub slot); signature is unsigned placeholder — real ed25519/JCS deferred to Phase 6 (D-04, D-05)
+- [Phase 05-01]: Forward-only @model_validator on ShardEnvelope uses strict < (equal edited_at allowed, ties by append order); only D-08b monotonicity lives here, D-08a immutability is structural (frozen + IMMUTABLE_FIELD_PATHS)
+- [Phase 05-01]: add_edit kept as thin SYNC wrapper for flat top-level fields; dotted nested paths (triple.object) are the Plan 02 set_field/edit_shard_content path (RESEARCH OQ2)
 
 ### Roadmap Evolution
 
@@ -243,9 +247,9 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-05-27T14:45:23.927Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-content-versioning-6-4/05-CONTEXT.md
+Last session: 2026-05-27T16:48:48.008Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
 Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
 
 **Planned Phase:** 03 (Shard Subtypes (§6.2)) — 2 plans — 2026-04-25T15:19:49.181Z
