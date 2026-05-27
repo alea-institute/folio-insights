@@ -17,8 +17,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 from folio_insights.shards import (
+    AttestedSignature,
     AuthorityPosition,
     ConflictingAuthoritiesShard,
+    ContentEdit,
     DisputedPropositionShard,
     GlossShard,
     HypothesisShard,
@@ -158,6 +160,37 @@ def _sample_shard(
     defaults.update(overrides)
     # shard_type is pinned by each subtype's Literal default; cls() takes it.
     return cls(**defaults)
+
+
+def _content_edit(
+    field_path: str,
+    old_value: Any,
+    new_value: Any,
+    edited_at: datetime,
+    editor_did: str = "did:key:zEditor",
+    rationale: str = "test rationale",
+) -> ContentEdit:
+    """Build a valid enriched ContentEdit (D-04/D-05) for test chains.
+
+    Saves downstream test modules the signature/rationale ceremony: supplies a
+    stub (unsigned) ``AttestedSignature`` and a default ``rationale`` so callers
+    only specify the path/values/timestamp that matter to the assertion.
+    """
+    return ContentEdit(
+        field_path=field_path,
+        old_value=old_value,
+        new_value=new_value,
+        edited_at=edited_at,
+        editor_did=editor_did,
+        rationale=rationale,
+        signature=AttestedSignature(
+            did=editor_did,
+            action="content_edit",
+            over_content_hash="",
+            signature="",
+            signed_at=edited_at,
+        ),
+    )
 
 
 _SUBTYPE_TABLE: list[tuple[str, type[ShardEnvelope]]] = [
