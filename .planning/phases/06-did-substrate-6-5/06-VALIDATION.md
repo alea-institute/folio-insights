@@ -38,19 +38,19 @@ created: 2026-05-27
 
 ## Per-Task Verification Map
 
-> Filled during planning. The acceptance signals below come from RESEARCH §
-> Validation Architecture; map each to its task once plan task IDs exist.
+> Task IDs map to the test-authoring task of each plan (06-01 Task 4, 06-02 Task 4,
+> 06-03 Task 4). `nyquist_compliant` flips to true at execution sign-off once these run green.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| {06-XX-YY} | {XX} | {W} | DID-03 | F4 | JCS canonical hash is order-independent + NFC-stable | property | `pytest tests/identity/test_canonical_jcs_properties.py -q` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-03 | F4 | canonical bytes match cyberphone reference vectors | golden | `pytest tests/identity/test_jcs_golden.py -q` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-04/SEC-05 | F2 | historical signature verifies after key rotation | unit | `pytest tests/identity/test_signature_survives_key_rotation.py -q` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-06 | — | no code path persists a private key server-side | contract | `pytest tests/identity/test_no_server_keys_contract.py -q` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-01 | — | sign/verify did:key + did:web; did:plc resolve/verify | unit | `pytest tests/identity/ -q -k "didkey or didweb or didplc"` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-07 | — | preview renders hash + diff for all 8 action types | param | `pytest tests/identity/test_signing_preview.py -q` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-05/SEC-06 | F3/F7 | replayed/stale binding proof rejected; bind to `sub` | unit | `pytest tests/identity/test_binding_proof.py -q` | ❌ W0 | ⬜ pending |
-| {06-XX-YY} | {XX} | {W} | DID-02 | — | each of 8 write actions yields a populated AttestedSignature | param | `pytest tests/identity/test_attested_signature_shape.py -q` | ❌ W0 | ⬜ pending |
+| 06-01-04 | 01 | 1 | DID-03 | T-06-02/F4 | JCS canonical hash is order-independent + NFC-stable | property | `uv run pytest tests/identity/test_canonical_jcs_properties.py -q` | ❌ W0 | ⬜ pending |
+| 06-01-04 | 01 | 1 | DID-03 | T-06-02/F4 | canonical bytes match cyberphone reference vectors | golden | `uv run pytest tests/identity/test_jcs_golden.py -q` | ❌ W0 | ⬜ pending |
+| 06-02-04 | 02 | 2 | DID-04/SEC-05 | T-06-06/F2 | historical signature verifies after key rotation | unit | `uv run pytest tests/identity/test_signature_survives_key_rotation.py -q` | ❌ W0 | ⬜ pending |
+| 06-02-04 | 02 | 2 | DID-06 | T-06-05 | no code path persists a private key server-side | contract | `uv run pytest tests/identity/test_no_server_keys_contract.py -q` | ❌ W0 | ⬜ pending |
+| 06-02-04 | 02 | 2 | DID-01 | T-06-08 | sign/verify did:key + did:web; did:plc resolve/verify | unit | `uv run pytest tests/identity/test_sign_verify_methods.py -q` | ❌ W0 | ⬜ pending |
+| 06-03-04 | 03 | 3 | DID-07 | — | preview renders hash + diff for all 8 action types | param | `uv run pytest tests/identity/test_signing_preview.py -q` | ❌ W0 | ⬜ pending |
+| 06-03-04 | 03 | 3 | DID-05/SEC-06 | T-06-10/T-06-11/F3/F7 | replayed/stale binding proof rejected; bind to `sub` | unit | `uv run pytest tests/identity/test_binding_proof.py -q` | ❌ W0 | ⬜ pending |
+| 06-03-04 | 03 | 3 | DID-02 | — | each of 8 write actions yields a populated AttestedSignature | param | `uv run pytest tests/identity/test_attested_signature_shape.py -q` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
