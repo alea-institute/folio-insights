@@ -136,6 +136,36 @@ def test_add_edit_on_frozen_field_raises() -> None:
         )
 
 
+def test_add_edit_failed_assignment_leaves_no_phantom_entry() -> None:
+    """WR-01 regression: when setattr raises (frozen identity field), add_edit
+    must roll back the just-appended ContentEdit so the chain carries NO entry
+    for an assignment that never happened.
+
+    The sequence is getattr → content_edits.append → setattr; before the fix the
+    append survived the setattr ValidationError, leaving a phantom audit entry
+    whose old_value/new_value describe the failed edit.
+    """
+    shard = _sample_shard(SimpleAssertionShard)
+    # Start with one legitimate edit so we can prove only the failed one is gone.
+    add_edit(shard, "sense", "revised", "did:key:zX", "legit edit")
+    assert len(shard.content_edits) == 1
+    chain_before = list(shard.content_edits)
+
+    with pytest.raises(ValidationError, match="frozen"):
+        add_edit(
+            shard,
+            "provenance_hash",  # frozen identity field — setattr raises
+            "deadbeef" * 8,
+            "did:key:zX",
+            "attempt to mutate identity",
+        )
+
+    # The failed edit left NO phantom entry; the prior legit edit is untouched.
+    assert shard.content_edits == chain_before
+    assert len(shard.content_edits) == 1
+    assert shard.provenance_hash != "deadbeef" * 8  # value never changed
+
+
 def test_content_edits_survive_json_round_trip() -> None:
     """ShardEnvelope.content_edits list of ContentEdit parses back correctly.
 

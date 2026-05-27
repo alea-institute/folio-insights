@@ -133,7 +133,15 @@ def add_edit(
             ),
         )
     )
-    setattr(shard, field_path, new_value)
+    # WR-01: roll the append back if assignment fails, so a failed edit (e.g.
+    # ``field_path`` is one of the 6 frozen identity fields → ValidationError)
+    # leaves NO phantom ContentEdit in the chain. Without this, the audit log
+    # would carry an entry describing an assignment that never happened.
+    try:
+        setattr(shard, field_path, new_value)
+    except Exception:
+        shard.content_edits.pop()
+        raise
 
 
 __all__ = ["ContentEdit", "add_edit"]
