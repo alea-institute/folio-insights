@@ -6,6 +6,10 @@ from folio_insights.shards.envelope import (
     ShardType,
     Triple,
 )
+from folio_insights.shards.iri_registry import (
+    ShardIRICollision,
+    ShardIRIRegistry,
+)
 from folio_insights.shards.minting import mint_shard_iri
 from folio_insights.shards.subtypes import (
     DISPUTED_EPISTEMIC_STATUS_SUBSET,
@@ -41,6 +45,8 @@ __all__ = [
     "Reply",
     "Shard",
     "ShardEnvelope",
+    "ShardIRICollision",
+    "ShardIRIRegistry",
     "ShardType",
     "SimpleAssertionShard",
     "Triple",
