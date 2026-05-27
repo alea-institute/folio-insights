@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: ready_to_plan
-stopped_at: Phase 05 complete (3/3) — ready to discuss Phase 6
-last_updated: 2026-05-27T17:26:50.199Z
+status: planning
+stopped_at: Phase 6 context gathered
+last_updated: "2026-05-27T19:02:13.097Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 24
@@ -255,9 +255,9 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-05-27T17:03:23.384Z
-Stopped at: Completed 05-03-PLAN.md
-Resume file: None
+Last session: 2026-05-27T19:02:13.090Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-did-substrate-6-5/06-CONTEXT.md
 Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
 
 **Planned Phase:** 03 (Shard Subtypes (§6.2)) — 2 plans — 2026-04-25T15:19:49.181Z
