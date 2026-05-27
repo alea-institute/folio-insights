@@ -252,23 +252,33 @@ async def edit_shard_content(
 ) -> ContentEdit:
     """Apply an audited content edit to the shard at ``shard_iri`` (PRD §6.4, D-01).
 
-    Sequence (RESEARCH L246-291):
+    Sequence (RESEARCH L246-291; CR-01 / WR-03 transactional-write fix):
 
     1. ``await store.get(shard_iri)`` — raise ``ValueError`` if unknown (D-02).
     2. ``IMMUTABLE_FIELD_PATHS`` gate (D-06) — raise BEFORE any mutation.
-    3. Capture ``old_value`` + the REAL pre-edit ``canonical_content_hash`` (D-05).
-    4. Build the ``ContentEdit`` (signed with the unsigned Phase-6 stub).
-    5. Transactionally append the edit + assign the new value; roll the append
-       back if ``set_field`` raises (e.g. assigning a frozen leaf), so the chain
-       never carries an edit whose assignment failed.
-    6. ``validate_shard`` post-edit re-validation (V5 — rejects silent wrong types
-       AND back-dated chains via the authoritative forward-only validator).
-    7. ``await store.put(...)`` and return the recorded ``ContentEdit``.
+    3. Take a DEEP WORKING COPY of the stored shard. ALL mutation happens on the
+       copy, so the stored object is byte-for-byte unchanged if ANY later step
+       raises (CR-01: ``InMemoryShardStore.get`` returns the same object reference
+       held in the dict, so mutating it in place corrupts stored state even when
+       this function later raises and never calls ``put``). This mirrors the
+       reverse-replay D-09 rule: never mutate the stored shard.
+    4. Capture ``old_value`` + the REAL pre-edit ``canonical_content_hash`` (D-05)
+       off the working copy.
+    5. Build the ``ContentEdit`` (signed with the unsigned Phase-6 stub), append
+       it to the working copy, and assign the new value on the working copy. No
+       rollback bookkeeping is needed — if anything raises, the working copy is
+       simply discarded and the stored shard was never touched.
+    6. ``validate_shard`` post-edit re-validation (V5) on the working copy —
+       rejects silent wrong types AND back-dated chains via the authoritative
+       forward-only validator. CAPTURE its return (WR-03): it is the re-validated
+       / coerced ``ShardEnvelope`` that becomes the authoritative stored object.
+    7. ``await store.put(...)`` the VALIDATED copy (reached only on full success)
+       and return the recorded ``ContentEdit`` from that validated copy.
 
     ``signing_key`` is accepted and unused (Phase 6 stub — named for the seam).
     """
-    shard = await store.get(shard_iri)
-    if shard is None:
+    stored = await store.get(shard_iri)
+    if stored is None:
         raise ValueError(
             f"Unknown shard IRI {shard_iri!r}: no shard registered in the store "
             "(D-02 by-IRI lookup returned None). Refusing to edit."
@@ -284,8 +294,12 @@ async def edit_shard_content(
             "(triple.object is editable — re-parenting, D-04.)"
         )
 
-    old_value = get_field(shard, field_path)
-    pre_edit_hash = canonical_content_hash(shard)
+    # CR-01: deep working copy — the stored shard is NEVER mutated. Any exception
+    # below discards `working` and leaves the stored object byte-for-byte intact.
+    working = stored.model_copy(deep=True)
+
+    old_value = get_field(working, field_path)
+    pre_edit_hash = canonical_content_hash(working)
 
     edit = ContentEdit(
         field_path=field_path,
@@ -297,21 +311,22 @@ async def edit_shard_content(
         signature=sign_attestation(editor_did, pre_edit_hash),
     )
 
-    # Transactional append+assign: roll the append back if assignment fails so the
-    # audit chain never carries an edit whose set_field raised.
-    shard.content_edits.append(edit)
-    try:
-        set_field(shard, field_path, new_value)
-    except Exception:
-        shard.content_edits.pop()
-        raise
+    # Append + assign on the working copy only. No try/except rollback is needed:
+    # `working` is thrown away on any exception and the store still holds the
+    # untouched original (CR-01 supersedes the old append/pop bookkeeping).
+    working.content_edits.append(edit)
+    set_field(working, field_path, new_value)
 
     # Post-edit re-validation (V5 / Pitfall 2): silent wrong-type or back-dated
-    # chain is rejected HERE, before the store sees the corrupted shard.
-    validate_shard(shard)
+    # chain is rejected HERE, on the working copy, before the store sees anything.
+    # WR-03: capture the re-validated/coerced copy and make IT the stored object —
+    # the pre-fix code discarded this return and stored the un-coerced object.
+    validated = validate_shard(working)
 
-    await store.put(shard_iri, shard)
-    return edit
+    await store.put(shard_iri, validated)
+    # Return the edit as it lives in the stored (validated) object, so the
+    # returned record and the stored chain entry are the SAME instance.
+    return validated.content_edits[-1]
 
 
 # ── get_shard_at (D-09) — reverse-replay historical reconstruction ───────────

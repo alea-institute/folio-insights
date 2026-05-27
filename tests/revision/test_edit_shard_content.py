@@ -250,6 +250,58 @@ async def test_two_sequential_edits_chain(stored_shard, store) -> None:
     assert after.content_edits[0].edited_at <= after.content_edits[1].edited_at
 
 
+# ── CR-01: validate_shard failure after set_field must NOT corrupt the store ──
+
+
+async def test_validate_failure_leaves_stored_shard_unmutated(stored_shard, store) -> None:
+    """CR-01 regression: if set_field succeeds but validate_shard RAISES, the
+    stored shard must be byte-for-byte unchanged with ZERO new content_edits.
+
+    ``InMemoryShardStore.get`` returns the same object reference held in the dict,
+    so the pre-fix in-place mutation corrupted stored state the moment set_field
+    ran — even though store.put was never reached. ``layer`` is a Literal; the
+    silent setter (validate_assignment OFF) accepts the bad value, then
+    validate_shard's model_validate rejects it — exactly the gap the old
+    append/pop rollback (which only guarded set_field) missed.
+    """
+    shard_iri, original = stored_shard
+    # Snapshot the stored state BEFORE the failed edit (deep, JSON-stable).
+    before_dump = original.model_dump(mode="json")
+    edits_before = len(original.content_edits)
+    original_layer = original.layer
+
+    # "INVALID_LAYER" is not in the layer Literal: set_field assigns it silently
+    # (validate_assignment OFF), then validate_shard must raise.
+    with pytest.raises(Exception):
+        await edit_shard_content(
+            shard_iri, "layer", "INVALID_LAYER", "did:key:zX", "bad edit", None, store
+        )
+
+    after = await store.get(shard_iri)
+    # The store still holds the ORIGINAL object reference, fully unmutated.
+    assert after is original
+    assert after.layer == original_layer  # the bad value never landed
+    assert len(after.content_edits) == edits_before  # no phantom audit record
+    assert after.model_dump(mode="json") == before_dump  # byte-for-byte intact
+
+
+async def test_stored_shard_is_not_the_working_copy(stored_shard, store) -> None:
+    """CR-01: a SUCCESSFUL edit stores a fresh validated copy, not the original
+    stored reference (mutation never touched the original in place)."""
+    shard_iri, original = stored_shard
+    await edit_shard_content(
+        shard_iri, "sense", "edited", "did:key:zX", "ok", None, store
+    )
+    after = await store.get(shard_iri)
+    # The originally-stored object was never mutated: it keeps its empty chain
+    # and its old sense; the store now holds a different (validated) object.
+    assert after is not original
+    assert original.sense == "default sense"
+    assert original.content_edits == []
+    assert after.sense == "edited"
+    assert len(after.content_edits) == 1
+
+
 # ── validate_shard post-edit hook (V5 / Pitfall 2) ───────────────────────────
 
 
@@ -267,3 +319,27 @@ def test_validate_shard_rejects_silent_wrong_type(stored_shard) -> None:
     set_field(shard, "confidence", "not-a-float")
     with pytest.raises(Exception):
         validate_shard(shard)
+
+
+async def test_edit_stores_revalidated_copy_and_returns_its_entry(
+    stored_shard, store
+) -> None:
+    """WR-03 regression: edit_shard_content stores the object RETURNED by
+    validate_shard (the re-validated/coerced ShardEnvelope), and the returned
+    ContentEdit is the SAME instance that lives in the stored chain.
+
+    The pre-fix code discarded validate_shard's return and stored the un-coerced
+    working object; the returned edit could then drift from the stored chain
+    entry. Asserting identity between the returned edit and the stored chain's
+    entry pins the contract that "what you get back is what was stored".
+    """
+    shard_iri, _ = stored_shard
+    edit = await edit_shard_content(
+        shard_iri, "sense", "coerced-sense", "did:key:zX", "r", None, store
+    )
+    after = await store.get(shard_iri)
+    # The returned edit IS the stored chain's entry (validated copy, WR-03).
+    assert after.content_edits[-1] is edit
+    # And the stored object passed full model re-validation (well-formed type).
+    assert isinstance(after, SimpleAssertionShard)
+    assert after.sense == "coerced-sense"
