@@ -20,7 +20,13 @@ findings:
   warning: 3
   info: 3
   total: 7
-status: issues_found
+status: resolved
+resolved: 2026-05-26T00:00:00Z
+resolution_note: >
+  CR-01 (blocker), WR-01, and WR-02 fixed in commits following the review, each
+  with a directed regression test (NFC/NFD URI vector, lost-race idempotency,
+  empty-registry guard). Shards suite green at 142 + 1 slow. WR-03 (dead-code
+  stderr ternary) and the 3 Info findings left as-is (cosmetic/test-only).
 ---
 
 # Phase 04: Code Review Report
@@ -28,7 +34,7 @@ status: issues_found
 **Reviewed:** 2026-05-26
 **Depth:** standard
 **Files Reviewed:** 11
-**Status:** issues_found
+**Status:** resolved (CR-01, WR-01, WR-02 fixed with regression tests)
 
 ## Summary
 
