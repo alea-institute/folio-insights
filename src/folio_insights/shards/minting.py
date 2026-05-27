@@ -1,9 +1,12 @@
 """Phase 2 provenance-hash IRI minting (PRD §6.3; CONTEXT D-01/D-02).
 
-Recipe (locked by D-02):
-  input = NFC(rfc3986_normalize(source_uri)) + "\\n" + NFC(source_span).strip()
+Recipe (locked by D-02, width amended by D-01; CRLF fold by D-08):
+  input = NFC(rfc3986_normalize(source_uri)) + "\\n" + _normalize_span(source_span)
   hash  = sha256(input.encode("utf-8")).hexdigest()   # 64 hex chars
-  iri   = f"urn:folio:shard/{hash[:16]}"              # 16-hex body
+  iri   = f"urn:folio:shard/{hash[:32]}"              # 32-hex body
+
+``_normalize_span`` folds internal CR/CRLF to LF before NFC + trim (D-08), so
+text differing only in line endings hashes identically (SHARD-07).
 
 Note: PRD §6.3 L547-551 originally specified an ``https://`` (aleainstitute
 domain) prefix for the shard IRI body. CONTEXT D-02 supersedes that with
@@ -22,7 +25,7 @@ import unicodedata
 from urllib.parse import quote, urlsplit, urlunsplit
 
 _IRI_PREFIX = "urn:folio:shard/"
-_IRI_HEX_LEN = 16  # first 16 of sha256's 64 hex chars (D-02)
+_IRI_HEX_LEN = 32  # first 32 of sha256's 64 hex chars (D-01 — 128-bit body)
 
 
 def _normalize_uri(uri: str) -> str:
@@ -38,12 +41,16 @@ def _normalize_uri(uri: str) -> str:
 
 
 def _normalize_span(span: str) -> str:
-    """NFC normalize + strip trailing whitespace (incl. CRLF).
+    """Fold internal CR/CRLF to LF, NFC normalize, then strip outer whitespace.
 
-    The LF-only inter-field separator lives in ``mint_shard_iri``; this
-    helper only normalizes the span content itself.
+    D-08: internal "\\r\\n" and lone "\\r" become "\\n" BEFORE the NFC call so
+    text differing only in line endings hashes identically (SHARD-07). The LF
+    fold must precede NFC so combining-char sequences spanning a fold normalize
+    consistently. The LF-only inter-field separator lives in ``mint_shard_iri``;
+    this helper only normalizes the span content itself.
     """
-    return unicodedata.normalize("NFC", span).strip()
+    lf = span.replace("\r\n", "\n").replace("\r", "\n")
+    return unicodedata.normalize("NFC", lf).strip()
 
 
 def mint_shard_iri(source_uri: str, source_span: str) -> tuple[str, str]:
@@ -51,11 +58,13 @@ def mint_shard_iri(source_uri: str, source_span: str) -> tuple[str, str]:
 
     Returns:
         (iri, provenance_hash) where:
-          provenance_hash = 64-char lowercase hex SHA-256
-          iri             = f"urn:folio:shard/{provenance_hash[:16]}"
+          provenance_hash = 64-char lowercase hex SHA-256 (full hash UNCHANGED —
+                            the registry compares full hashes for collisions, D-02)
+          iri             = f"urn:folio:shard/{provenance_hash[:32]}"  (D-01 128-bit body)
 
     The hash input is:
-        NFC(rfc3986(source_uri)) + "\\n" + NFC(source_span).strip()
+        NFC(rfc3986(source_uri)) + "\\n" + _normalize_span(source_span)
+    where ``_normalize_span`` folds internal CR/CRLF to LF before NFC + trim (D-08).
     """
     uri_n = unicodedata.normalize("NFC", _normalize_uri(source_uri))
     span_n = _normalize_span(source_span)

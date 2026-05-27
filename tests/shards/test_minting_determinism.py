@@ -1,6 +1,7 @@
 """Minting determinism — hypothesis 1000-example property test + directed vectors.
 
-Covers CONTEXT D-02 (provenance-hash recipe: NFC + LF + trim + RFC 3986 + first-16-hex).
+Covers CONTEXT D-02 (provenance-hash recipe: NFC + LF + trim + RFC 3986), the
+Phase 04 D-01 hex32 width amendment, and the D-08 internal-CRLF fold.
 
 Phase 2 is the first hypothesis adopter in the repo (per 02-PATTERNS.md). The
 ``@settings(max_examples=1000, deadline=None)`` matches the D-02 "1000 random
@@ -42,7 +43,7 @@ def test_mint_is_deterministic(scheme: str, host: str, path: str, span: str) -> 
     assert iri_a == iri_b
     assert hash_a == hash_b
     assert iri_a.startswith("urn:folio:shard/")
-    assert len(iri_a) == len("urn:folio:shard/") + 16
+    assert len(iri_a) == len("urn:folio:shard/") + 32
     assert len(hash_a) == 64
     assert all(c in "0123456789abcdef" for c in hash_a)
 
@@ -67,6 +68,19 @@ def test_crlf_trimmed_from_span() -> None:
     assert iri_a == iri_b
 
 
+def test_internal_crlf_normalized_to_lf() -> None:
+    """D-08: internal CRLF / lone CR fold to LF -> same IRI as the LF form.
+
+    Unlike test_crlf_trimmed_from_span (trailing CRLF caught by .strip()),
+    this locks the *internal* line-ending fold so the same text with
+    CRLF / CR / LF line endings hashes identically (SHARD-07).
+    """
+    iri_crlf, _ = mint_shard_iri("urn:x:1", "line one\r\nline two")
+    iri_cr, _ = mint_shard_iri("urn:x:1", "line one\rline two")
+    iri_lf, _ = mint_shard_iri("urn:x:1", "line one\nline two")
+    assert iri_crlf == iri_lf == iri_cr
+
+
 def test_rfc3986_case_fold_and_trailing_slash() -> None:
     """D-02: RFC 3986 — lowercase scheme+host, strip trailing slash."""
     iri_a, _ = mint_shard_iri("HTTPS://Example.COM/doc/", "span")
@@ -83,11 +97,11 @@ def test_rfc3986_fragment_preserved() -> None:
 
 
 def test_iri_prefix_and_length() -> None:
-    """D-02: IRI prefix is urn:folio:shard/ and body is 16 hex chars."""
+    """D-01/D-02: IRI prefix is urn:folio:shard/ and body is 32 hex chars."""
     iri, h = mint_shard_iri("urn:x:1", "hello")
     assert iri.startswith("urn:folio:shard/")
-    assert len(iri) == len("urn:folio:shard/") + 16
-    assert iri.removeprefix("urn:folio:shard/") == h[:16]
+    assert len(iri) == len("urn:folio:shard/") + 32
+    assert iri.removeprefix("urn:folio:shard/") == h[:32]
     assert len(h) == 64
 
 

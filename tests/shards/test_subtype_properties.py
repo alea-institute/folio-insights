@@ -158,9 +158,9 @@ _GLOSS_KINDS = list(get_args(GlossKind))
 @settings(max_examples=200, deadline=None)
 @given(
     kind=st.sampled_from(_GLOSS_KINDS),
-    # Generate 16-hex IRI bodies that DO NOT collide with the fixture's own
-    # shard_iri (which uses a different deterministic hash).
-    hex_body=st.text(alphabet="0123456789abcdef", min_size=16, max_size=16),
+    # Generate 32-hex IRI bodies (Phase 04 D-01 hex32 width) that DO NOT collide
+    # with the fixture's own shard_iri (which uses a different deterministic hash).
+    hex_body=st.text(alphabet="0123456789abcdef", min_size=32, max_size=32),
     gloss_text=st.text(min_size=1, max_size=300).filter(lambda s: s.strip() != ""),
 )
 def test_gloss_constructs_round_trips(kind: str, hex_body: str, gloss_text: str) -> None:
