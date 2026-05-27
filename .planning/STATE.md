@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 4 context gathered
-last_updated: "2026-05-24T17:05:23.141Z"
-last_activity: 2026-05-24 -- Phase 04 planning complete
+last_updated: "2026-05-27T02:13:34.657Z"
+last_activity: 2026-05-27 -- Phase 04 execution started
 progress:
   total_phases: 24
   completed_phases: 5
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 04 — IRI Scheme (§6.3) — next on the v2.0 critical path (Phases 0/1/2/3 + inserted 3.5 done)
+**Current focus:** Phase 04 — iri-scheme-6-3
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 04 — IRI Scheme (§6.3) — NEXT (not yet started)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-24 -- Phase 04 planning complete
+Phase: 04 (iri-scheme-6-3) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 04
+Last activity: 2026-05-27 -- Phase 04 execution started
 
 Progress: [██░░░░░░░░] ~21% (5 of ~24 phases complete: 0, 1, 2, 3, 3.5)
 

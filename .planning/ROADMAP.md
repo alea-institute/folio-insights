@@ -600,7 +600,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 | 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
-| 4. IRI Scheme | 0/? | Not started | - |
+| 4. IRI Scheme | 1/2 | In Progress|  |
 | 5. Content Versioning | 0/? | Not started | - |
 | 6. DID Substrate | 0/? | Not started | - |
 | 7. Governance Model | 0/? | Not started | - |
