@@ -92,19 +92,65 @@ def set_field(shard: ShardEnvelope, path: str, value: Any) -> None:
 
 # ── canonical_content_hash (D-05) — REAL deterministic JSON SHA-256 ──────────
 
+# Fields excluded from the *content* hash (CR-02 / D-05). A content hash must
+# bind the shard's CONTENT (triple, sense, reference, provenance fields, layer,
+# etc.) so it is reproducible from the stored record — NOT volatile storage
+# metadata or the mutable audit/signature logs:
+#
+#   * ``transaction_time`` — re-generated on every construction
+#     (``default_factory=lambda: datetime.now(UTC)``), so identical content
+#     would hash differently across instances / process restarts / nodes. This
+#     is THE bug CR-02 fixed: the hash was non-deterministic across instances.
+#   * ``valid_time_start`` / ``valid_time_end`` — bitemporal STORAGE metadata
+#     (Phase 13 ``--as-of`` window markers), not the content itself.
+#   * ``content_edits`` — the append-only AUDIT LOG, not content. Including it
+#     would make the hash change on every edit, defeating its purpose as a
+#     stable, reproducible pre-edit content binding (the value the signature's
+#     ``over_content_hash`` slot records).
+#   * ``signatures`` — attestations OVER the content, not the content itself
+#     (including them would be circular once Phase 6 signs the content hash).
+#
+# Phase 6 (DID substrate) swaps RFC 8785 JCS canonicalization into the single
+# ``json.dumps`` line below without changing this exclusion set or the signature.
+_HASH_EXCLUDED_FIELDS: frozenset[str] = frozenset(
+    {
+        "transaction_time",
+        "valid_time_start",
+        "valid_time_end",
+        "content_edits",
+        "signatures",
+    }
+)
+
 
 def canonical_content_hash(shard: ShardEnvelope) -> str:
-    """Deterministic SHA-256 over the (pre-edit) shard snapshot (D-05).
+    """Deterministic SHA-256 over the shard's CONTENT (D-05; CR-02 fix).
 
-    ``model_dump(mode="json")`` renders datetimes → ISO-8601 and enums/Literals →
-    plain strings (JSON-safe primitives, no custom encoder), then sorted-key
-    ``json.dumps`` gives a stable canonical form. Mirrors the ``shards/minting.py``
-    L89-93 sha256-over-normalized-payload precedent.
+    Hashes the shard's content fields ONLY — everything EXCEPT the
+    ``_HASH_EXCLUDED_FIELDS`` set (``transaction_time``, ``valid_time_start``,
+    ``valid_time_end``, ``content_edits``, ``signatures``). The included content
+    therefore covers the Fregean ``triple``, ``sense``/``reference``, the 6
+    identity-and-origin fields, ``layer``/``fork``/``epistemic_status`` and the
+    rest of the §6.1 envelope content — the values that DEFINE the shard's
+    meaning and are reproducible from the stored record.
+
+    ``transaction_time`` is excluded because its ``default_factory`` re-stamps
+    ``datetime.now(UTC)`` on every construction, which made the hash
+    non-deterministic across independently-built instances (CR-02). The
+    bitemporal window markers and the append-only audit/signature logs are
+    excluded because they are storage metadata / attestations, not content — a
+    content binding must be recomputable from the content alone.
+
+    ``model_dump(mode="json", exclude=...)`` renders datetimes → ISO-8601 and
+    enums/Literals → plain strings (JSON-safe primitives, no custom encoder),
+    then sorted-key ``json.dumps`` gives a stable canonical form. Mirrors the
+    ``shards/minting.py`` L89-93 sha256-over-normalized-payload precedent.
 
     Phase 6 swaps RFC 8785 JCS canonicalization into the ``json.dumps`` line ONLY
-    — the function signature and every call site stay identical (D-05 seam).
+    — the function signature, the exclusion set, and every call site stay
+    identical (D-05 seam).
     """
-    payload = shard.model_dump(mode="json")
+    payload = shard.model_dump(mode="json", exclude=_HASH_EXCLUDED_FIELDS)
     canon = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canon.encode("utf-8")).hexdigest()
 
