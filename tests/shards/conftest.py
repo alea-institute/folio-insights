@@ -91,9 +91,9 @@ _SUBTYPE_DEFAULTS: dict[type[ShardEnvelope], dict[str, Any]] = {
         "reconciliation_note": "The two authorities use the term in distinct senses.",
     },
     GlossShard: {
-        # Use a urn:folio:shard/<16-hex> different from the fixture's own shard_iri
-        # so the no-self-glossing check passes (D-05).
-        "glosses": "urn:folio:shard/0123456789abcdef",
+        # Use a urn:folio:shard/<32-hex> different from the fixture's own shard_iri
+        # so the no-self-glossing check passes (D-05; hex32 per Phase 04 D-01).
+        "glosses": "urn:folio:shard/0123456789abcdef0123456789abcdef",
         "gloss_kind": "clarificatoria",
         "gloss_text": "This gloss clarifies the prior shard's intended scope.",
     },
