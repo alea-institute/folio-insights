@@ -65,6 +65,55 @@ def test_set_field_nested(sample_shard) -> None:
     assert sample_shard.triple.object == "new-object"
 
 
+# ── WR-02: field_path bounded to declared model fields (no path injection) ────
+
+# Non-declared / dunder / descriptor paths that used to resolve via bare getattr
+# but are NOT schema-declared content. Each must be rejected with a clear error
+# BEFORE any attribute access (so no internal state leaks into old_value).
+_NON_DECLARED_PATHS = [
+    "__class__",
+    "model_fields",
+    "model_config",
+    "triple.__class__",
+    "triple.__class__.__bases__",
+    "sense.__len__",
+    "not_a_real_field",
+    "",
+]
+
+
+@pytest.mark.parametrize("path", _NON_DECLARED_PATHS)
+def test_get_field_rejects_non_declared_path(sample_shard, path: str) -> None:
+    """get_field rejects dunders/descriptors/non-declared paths (WR-02): the
+    metaclass / field-descriptor / class hierarchy must never leak through the
+    reader (which would otherwise land in a ContentEdit's old_value slot)."""
+    with pytest.raises(ValueError, match=r"declared model field|Empty field_path"):
+        get_field(sample_shard, path)
+
+
+@pytest.mark.parametrize("path", _NON_DECLARED_PATHS)
+def test_set_field_rejects_non_declared_path(sample_shard, path: str) -> None:
+    """set_field rejects non-declared paths BEFORE any attribute access (WR-02)."""
+    with pytest.raises(ValueError, match=r"declared model field|Empty field_path"):
+        set_field(sample_shard, path, "attacker-value")
+
+
+@pytest.mark.parametrize("path", ["__class__", "model_fields", "triple.__class__"])
+async def test_edit_shard_content_rejects_non_declared_path(
+    stored_shard, store, path: str
+) -> None:
+    """edit_shard_content rejects a non-declared field_path and records NO audit
+    entry — the WR-02 whitelist hardens the write path end to end."""
+    shard_iri, shard = stored_shard
+    edits_before = len(shard.content_edits)
+    with pytest.raises(ValueError):
+        await edit_shard_content(
+            shard_iri, path, "attacker-value", "did:key:zX", "r", None, store
+        )
+    after = await store.get(shard_iri)
+    assert len(after.content_edits) == edits_before  # no phantom audit record
+
+
 # ── canonical_content_hash (D-05) ────────────────────────────────────────────
 
 
