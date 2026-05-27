@@ -495,6 +495,90 @@ def export(
     click.echo(f"Output: {corpus_dir}/")
 
 
+@cli.command("verify-iris")
+@click.option(
+    "--db",
+    "db_path",
+    default=None,
+    type=click.Path(),
+    help="Path to the global shard IRI registry DB "
+    "(defaults to the registry's standing path).",
+)
+@click.option(
+    "--verbose", "-v",
+    is_flag=True,
+    default=False,
+    help="Enable verbose (DEBUG) logging.",
+)
+def verify_iris(db_path: str | None, verbose: bool) -> None:
+    """Re-hash every stored shard IRI and report any drift (D-06/D-07).
+
+    The standing nightly guard against source drift or a hash-logic regression:
+    re-mint each stored shard's IRI from its stored source_uri + source_span and
+    compare to the stored body. Any mismatch is surfaced for human review with a
+    non-zero exit -- this command NEVER auto-quarantines or mutates the registry.
+    """
+    _setup_logging(verbose)
+
+    # Lazy imports: keep the registry + minting off `folio-insights --help`.
+    import asyncio as _asyncio
+
+    from folio_insights.shards.iri_registry import (
+        DEFAULT_REGISTRY_PATH,
+        ShardIRIRegistry,
+    )
+    from folio_insights.shards.minting import mint_shard_iri
+
+    registry_path = Path(db_path) if db_path else DEFAULT_REGISTRY_PATH
+
+    if not registry_path.exists():
+        click.echo(
+            f"Error: No shard IRI registry found at {registry_path}.",
+            err=True,
+        )
+        sys.exit(1)
+
+    registry = ShardIRIRegistry(registry_path)
+    records = _asyncio.run(registry.all_records())
+
+    mismatches: list[tuple[str, str, str]] = []  # (stored_iri, reminted_iri, source_uri)
+    for rec in records:
+        reminted_iri, _ = mint_shard_iri(rec["source_uri"], rec["source_span"])
+        reminted_body = reminted_iri.removeprefix("urn:folio:shard/")
+        if reminted_body != rec["iri_body"]:
+            stored_iri = f"urn:folio:shard/{rec['iri_body']}"
+            mismatches.append((stored_iri, reminted_iri, rec["source_uri"]))
+            logger.error(
+                "verify-iris MISMATCH: stored IRI %s re-mints to %s "
+                "from source_uri=%r (source drift or hash-logic regression).",
+                stored_iri,
+                reminted_iri,
+                rec["source_uri"],
+            )
+
+    if mismatches:
+        click.echo(
+            f"verify-iris: {len(mismatches)} of {len(records)} stored IRIs "
+            "FAILED re-hash verification:",
+            err=True,
+        )
+        for stored_iri, reminted_iri, source_uri in mismatches:
+            click.echo(
+                f"  MISMATCH stored={stored_iri} reminted={reminted_iri} "
+                f"source_uri={source_uri}",
+                err=True,
+            )
+        click.echo(
+            "Surfaced for human review (no auto-quarantine).",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(
+        f"verify-iris: all {len(records)} stored shard IRIs re-mint identically."
+    )
+
+
 @cli.command("serve")
 @click.option(
     "--port", "-p",
