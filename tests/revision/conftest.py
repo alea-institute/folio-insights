@@ -155,16 +155,16 @@ async def ten_edit_history(store: InMemoryShardStore) -> TenEditHistory:
     checkpoints = [
         Checkpoint(t=edit_times[-1], expected=state_after[10], note="latest == current"),
         Checkpoint(t=extracted_at, expected=state_after[0], note="extracted_at == as-extracted"),
-        # Exactly on the 5th edit's timestamp: that edit IS included (strict >),
-        # so the state equals state_after[5].
+        # Exactly on the 5th edit's timestamp (edit_times[4] == June 1): that edit
+        # IS included (strict >), so the state equals state_after[5].
         Checkpoint(t=edit_times[4], expected=state_after[5], note="exact-t tie keeps the edit"),
-        # Just before the 6th edit (but after the 5th): state_after[5].
+        # Between edit 5 (June 1) and edit 6 (July 1): edits 1..5 applied -> state_after[5].
         Checkpoint(
-            t=edit_times[5].replace(day=15) if edit_times[5].day == 1 else edit_times[5],
+            t=datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC),
             expected=state_after[5],
             note="between edit 5 and 6",
         ),
-        # Between edit 7 and edit 8.
+        # Between edit 7 (Aug 1) and edit 8 (Sep 1): edits 1..7 applied -> state_after[7].
         Checkpoint(
             t=datetime(2026, 8, 15, 12, 0, 0, tzinfo=UTC),
             expected=state_after[7],
