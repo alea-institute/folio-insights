@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-05-27T16:58:15.856Z"
+status: verifying
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-05-27T17:03:34.438Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 24
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 27
-  completed_plans: 27
-  percent: 25
+  completed_plans: 28
+  percent: 29
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 05 (content-versioning-6-4) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-27
 
 Progress: [██████████] 100%
@@ -83,6 +83,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | Phase Phase 00-foundations-hard-gate P08 P8 | 20min | 3 tasks tasks | 6 files files |
 | Phase 05 P05-01 | 4 min | 3 tasks | 5 files |
 | Phase 05 P05-02 | 6 min | 2 tasks | 9 files |
+| Phase 05 P05-03 | 2 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -220,6 +221,8 @@ Recent decisions affecting current work:
 - [Phase 05-02]: ShardStore is a runtime_checkable typing.Protocol over an in-memory dict (D-02 seam); stdlib + Pydantic only, no aiosqlite/pyoxigraph — Phase 13 fills the persistent backend behind the identical async get/put interface
 - [Phase 05-02]: IMMUTABLE_FIELD_PATHS is a 10-member frozenset gate raising BEFORE any mutation (6 frozen identity + triple.subject/.predicate + content_edits/signatures); triple.object stays editable for re-parenting (D-04, D-06)
 - [Phase 05-02]: get_shard_at reverse-replays on model_copy(deep=True) with strict > undo (exact-t ties kept); returns None for unknown IRI and t<extracted_at (D-09); validate_shard re-runs full validation post-edit since validate_assignment is OFF (V5)
+- [Phase 05]: [05-03] SHACL forward-only guard (content_edit_shape.ttl + validate_content_edit_shape) lives in revision/, not shards/, keeping the dep-leak guard green — rdflib/pyshacl imports are forbidden only under shards/; revision/ is outside that boundary (exit criterion 2 satisfied literally)
+- [Phase 05]: [05-03] SHACL enforces ONLY the forward-only half; immutability of past entries (D-08a) is carried by ContentEdit frozen + IMMUTABLE_FIELD_PATHS gate — SHACL is stateless over a single snapshot and cannot detect deletions (RESEARCH L115-124); documented division, not a gap
 
 ### Roadmap Evolution
 
@@ -251,8 +254,8 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 
 ## Session Continuity
 
-Last session: 2026-05-27T16:58:01.212Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-05-27T17:03:23.384Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
 Resume action: /gsd-discuss-phase 3 (Shard Subtypes §6.2) — or /gsd-plan-phase 3 --skip-research if you want to go direct
 

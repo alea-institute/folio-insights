@@ -43,7 +43,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes — **COMPLETE** (2/2 plans; 03-VERIFICATION.md status: passed; REVIEW + REVIEW-FIX done)
 - [x] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22) (completed 2026-05-22)
 - [x] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector (completed 2026-05-27)
-- [ ] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping
+- [x] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping (completed 2026-05-27)
 - [ ] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2)
 - [ ] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process
 - [ ] **Phase 8: FOLIO v2 Vocab + Mini-BFO (§7)** — `fi:*` TTL, `bfo_mapping.ttl`, version pinning
@@ -258,7 +258,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 05-02-PLAN.md — revision/ package: async edit_shard_content + in-memory ShardStore + dotted-path gate + canonical hash + get_shard_at reverse-replay (exit criterion 3) (Wave 2)
-- [ ] 05-03-PLAN.md — SHACL guard: forward-only sh:sparql shape + validate_content_edit_shape() + both-polarity test (exit criterion 2) (Wave 2)
+- [x] 05-03-PLAN.md — SHACL guard: forward-only sh:sparql shape + validate_content_edit_shape() + both-polarity test (exit criterion 2) (Wave 2)
 
 ---
 
@@ -678,7 +678,7 @@ Plans:
 | 3. Shard Subtypes | 0/? | Not started | - |
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
-| 5. Content Versioning | 2/3 | In Progress|  |
+| 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 0/? | Not started | - |
 | 7. Governance Model | 0/? | Not started | - |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
