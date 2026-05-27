@@ -36,26 +36,27 @@ def test_invalid_gloss_kind_rejected() -> None:
 
 
 @pytest.mark.parametrize("iri", [
-    "urn:folio:shard/0123456789abcdef",
-    "urn:folio:shard/fedcba9876543210",
+    "urn:folio:shard/0123456789abcdef0123456789abcdef",
+    "urn:folio:shard/fedcba9876543210fedcba9876543210",
     "https://example.com/shard/1",
     "http://example.com/shard/2",
     "https://folio.example.com/legacy/shard/abc",
 ])
 def test_valid_glosses_iri_accepted(iri: str) -> None:
-    """D-05: valid IRI shapes (urn:folio:shard/<16-hex> OR http(s)://...) accepted."""
+    """D-05: valid IRI shapes (urn:folio:shard/<32-hex> OR http(s)://...) accepted."""
     shard = _sample_shard(GlossShard, glosses=iri)
     assert shard.glosses == iri
 
 
 @pytest.mark.parametrize("iri", [
     "",
-    "urn:folio:shard/zzzzzzzzzzzzzzzz",     # non-hex
-    "urn:folio:shard/0123",                  # too short
-    "urn:folio:shard/0123456789abcdef0",     # too long (17 chars)
-    "ftp://example.com/shard/1",             # wrong scheme
-    "urn:other:shard/0123456789abcdef",      # wrong urn namespace
-    "shard/0123456789abcdef",                # missing scheme
+    "urn:folio:shard/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",     # non-hex (32 z's)
+    "urn:folio:shard/0123",                                 # too short
+    "urn:folio:shard/0123456789abcdef",                     # too short (old 16-hex form)
+    "urn:folio:shard/0123456789abcdef0123456789abcdef0",    # too long (33 chars)
+    "ftp://example.com/shard/1",                            # wrong scheme
+    "urn:other:shard/0123456789abcdef0123456789abcdef",     # wrong urn namespace
+    "shard/0123456789abcdef0123456789abcdef",               # missing scheme
     # REVIEW IN-02 (Phase 03): boundary case — http(s) regex requires ≥1 non-ws char
     # AFTER the scheme. "https://" alone must reject; this locks the [^\s]+ guard.
     "https://",

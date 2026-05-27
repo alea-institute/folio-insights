@@ -199,7 +199,7 @@ GlossKind = Literal[
 ]
 
 
-# D-05 IRI format: urn:folio:shard/<16-hex> (Phase 02 D-02 prefix) OR http(s)://...
+# D-05 IRI format: urn:folio:shard/<32-hex> (Phase 02 D-02 prefix, hex32 per Phase 04 D-01) OR http(s)://...
 # Format-only check; referential integrity is Phase 5 SHACL or Phase 13 storage scope.
 #
 # REVIEW IN-02 (Phase 03): _GLOSS_HTTP_RE is INTENTIONALLY permissive — it accepts
@@ -212,7 +212,7 @@ GlossKind = Literal[
 # this regex's job — they belong to Phase 5 SHACL constraints or Phase 13 storage.
 # Boundary case "https://" is exercised in test_subtype_gloss.py rejection table
 # coverage to lock the [^\s]+ ≥1-char requirement.
-_GLOSS_URN_RE = re.compile(r"^urn:folio:shard/[a-f0-9]{16}$")
+_GLOSS_URN_RE = re.compile(r"^urn:folio:shard/[a-f0-9]{32}$")
 _GLOSS_HTTP_RE = re.compile(r"^https?://[^\s]+$")
 
 
@@ -229,7 +229,7 @@ class GlossShard(ShardEnvelope):
         """D-05: glosses IRI format + no self-glossing + non-empty gloss_text."""
         if not (_GLOSS_URN_RE.match(self.glosses) or _GLOSS_HTTP_RE.match(self.glosses)):
             raise ValueError(
-                f"GlossShard.glosses must match urn:folio:shard/<16-hex> "
+                f"GlossShard.glosses must match urn:folio:shard/<32-hex> "
                 f"or http(s)://... ; got {self.glosses!r} (CONTEXT D-05)."
             )
         if self.glosses == self.shard_iri:
