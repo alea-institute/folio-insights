@@ -61,6 +61,35 @@ def test_nfc_equals_nfd_normalization() -> None:
     assert (iri_a, hash_a) == (iri_b, hash_b)
 
 
+def test_nfc_equals_nfd_in_uri_components() -> None:
+    """CR-01: NFC vs NFD inside the URI (path/host/query/fragment) yields the
+    same IRI.
+
+    Regression guard for the percent-encode-before-NFC bug: ``quote()`` turns
+    non-ASCII bytes into ``%XX`` ASCII, so NFC applied after encoding is a no-op
+    and an NFD URI minted a different IRI than its NFC equivalent — defeating
+    D-02 determinism and the registry's content-addressed idempotency. The
+    1000-run property test missed this (ASCII-only host alphabet, self-consistency
+    only). ``_normalize_uri`` now NFC-normalizes each component before encoding.
+    """
+    nfc = unicodedata.normalize("NFC", "café")
+    nfd = unicodedata.normalize("NFD", "café")
+    assert nfc != nfd, "Precondition: NFC and NFD byte-differ"
+
+    # path
+    assert mint_shard_iri(f"https://x.com/{nfc}", "s") == mint_shard_iri(
+        f"https://x.com/{nfd}", "s"
+    )
+    # host
+    assert mint_shard_iri(f"https://{nfc}.com/p", "s") == mint_shard_iri(
+        f"https://{nfd}.com/p", "s"
+    )
+    # query + fragment
+    assert mint_shard_iri(f"https://x.com/p?q={nfc}#{nfc}", "s") == mint_shard_iri(
+        f"https://x.com/p?q={nfd}#{nfd}", "s"
+    )
+
+
 def test_crlf_trimmed_from_span() -> None:
     """D-02: trailing CRLF in span is stripped via str.strip() before hashing."""
     iri_a, _ = mint_shard_iri("urn:x:1", "body text\r\n")
