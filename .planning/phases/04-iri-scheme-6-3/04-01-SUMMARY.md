@@ -134,6 +134,11 @@ None - no external service configuration required.
 - `mint_shard_iri` remains pure stdlib (no storage deps), so the registry can import it cleanly without leaking I/O into the determinism property test.
 - No blockers.
 
+## Self-Check: PASSED
+
+- `04-01-SUMMARY.md` exists at `.planning/phases/04-iri-scheme-6-3/`.
+- All task commits exist in git: `fccc9a5` (RED), `a084641` (GREEN), `17fcbf7` (Task 2), `83b297d` (SUMMARY).
+
 ---
 *Phase: 04-iri-scheme-6-3*
 *Completed: 2026-05-27*
