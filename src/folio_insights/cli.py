@@ -541,6 +541,19 @@ def verify_iris(db_path: str | None, verbose: bool) -> None:
     registry = ShardIRIRegistry(registry_path)
     records = _asyncio.run(registry.all_records())
 
+    if not records:
+        # all_records() self-bootstraps an empty table on any path, so a
+        # misdirected --db (or a genuinely empty registry) would otherwise report
+        # "all 0 ... re-mint identically" and exit 0 — a silent pass that verifies
+        # nothing. A drift guard with no records to check must fail loud, not green.
+        click.echo(
+            f"Error: shard IRI registry at {registry_path} contains no records "
+            "to verify. Refusing to report success on an empty registry "
+            "(check the --db path).",
+            err=True,
+        )
+        sys.exit(1)
+
     mismatches: list[tuple[str, str, str]] = []  # (stored_iri, reminted_iri, source_uri)
     for rec in records:
         reminted_iri, _ = mint_shard_iri(rec["source_uri"], rec["source_span"])
