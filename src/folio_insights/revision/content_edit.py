@@ -64,9 +64,51 @@ IMMUTABLE_FIELD_PATHS: frozenset[str] = frozenset(
 # ── dotted-path helpers (RESEARCH L171-184) ──────────────────────────────────
 
 
+def _validate_field_path(shard: ShardEnvelope, path: str) -> None:
+    """Bound a dotted ``field_path`` to DECLARED Pydantic model fields (WR-02).
+
+    Both ``get_field`` and ``set_field`` previously used bare ``getattr`` /
+    ``setattr`` traversal, so ANY path resolvable via Python attribute lookup was
+    accepted — including dunders and descriptors that are not content
+    (``"__class__"``, ``"model_fields"``, ``"triple.__class__.__bases__"``).
+    ``get_field`` would then leak that internal state into the ``old_value`` slot
+    of a ``ContentEdit`` (the audit record), and ``IMMUTABLE_FIELD_PATHS`` — a
+    deny-list — could not catch it.
+
+    This validator restricts the universe of accessible paths to schema-declared
+    fields: at EACH segment it verifies the segment is a key in the current
+    model's ``model_fields`` BEFORE any attribute access. It rejects empty paths,
+    dunders, descriptors, and any non-declared attribute with a clear error, and
+    raises BEFORE touching the object (no state leak, no audit record). It is the
+    front-line schema whitelist; ``IMMUTABLE_FIELD_PATHS`` remains the orthogonal
+    edit-permission deny-list layered on top.
+    """
+    if not path:
+        raise ValueError("Empty field_path is not a declared model field.")
+    obj: Any = shard
+    for part in path.split("."):
+        model_fields = getattr(type(obj), "model_fields", None)
+        if model_fields is None or part not in model_fields:
+            raise ValueError(
+                f"Field path segment {part!r} (in {path!r}) is not a declared "
+                f"model field on {type(obj).__name__}. Only schema-declared "
+                "paths are permitted (no dunders, descriptors, or arbitrary "
+                "attributes)."
+            )
+        # Safe to descend now that `part` is confirmed a declared field. The
+        # final segment is validated but not necessarily descended-into here.
+        obj = getattr(obj, part)
+
+
 def get_field(shard: ShardEnvelope, path: str) -> Any:
     """Read a (possibly nested) field by dotted path: ``"triple.object"`` walks
-    ``shard.triple.object``; ``"sense"`` reads the top-level field."""
+    ``shard.triple.object``; ``"sense"`` reads the top-level field.
+
+    ``path`` is bounded to DECLARED model fields (WR-02) — a non-declared or
+    dunder segment raises ``ValueError`` BEFORE any attribute access, so internal
+    state can never leak through this reader into an audit record.
+    """
+    _validate_field_path(shard, path)
     obj: Any = shard
     for part in path.split("."):
         obj = getattr(obj, part)
@@ -76,6 +118,9 @@ def get_field(shard: ShardEnvelope, path: str) -> Any:
 def set_field(shard: ShardEnvelope, path: str, value: Any) -> None:
     """Assign a (possibly nested) field by dotted path.
 
+    ``path`` is bounded to DECLARED model fields (WR-02) — a non-declared or
+    dunder segment raises ``ValueError`` BEFORE any attribute access.
+
     NOTE: ``validate_assignment`` is OFF on ``ShardEnvelope`` (verified — RESEARCH
     Pitfall 2), so this setter accepts wrong types SILENTLY. For reverse-replay
     that is safe (restoring a previously-valid value); for ``edit_shard_content``
@@ -83,6 +128,7 @@ def set_field(shard: ShardEnvelope, path: str, value: Any) -> None:
     ``validate_shard`` after applying it. The 6 frozen identity fields still raise
     on assignment; ``triple.subject``/``.predicate`` do NOT (the gate guards them).
     """
+    _validate_field_path(shard, path)
     parts = path.split(".")
     obj: Any = shard
     for part in parts[:-1]:
