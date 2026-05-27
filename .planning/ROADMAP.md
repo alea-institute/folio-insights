@@ -223,7 +223,11 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
   1. `test_content_edit_audit_append_only.py` green.
   2. SHACL guard rejects edits to past versions (forward-only semantics).
   3. `get_shard_at(iri, t)` returns correct historical state across a 10-edit fixture.
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
+Plans:
+- [ ] 05-01-PLAN.md — Enrich ContentEdit (field_path/rationale/signature) + forward-only @model_validator + migrate audit tests + exit-criterion-1 test (Wave 1)
+- [ ] 05-02-PLAN.md — revision/ package: async edit_shard_content + in-memory ShardStore + dotted-path gate + canonical hash + get_shard_at reverse-replay (exit criterion 3) (Wave 2)
+- [ ] 05-03-PLAN.md — SHACL guard: forward-only sh:sparql shape + validate_content_edit_shape() + both-polarity test (exit criterion 2) (Wave 2)
 
 ---
 
