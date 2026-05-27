@@ -33,6 +33,37 @@ async def test_register_is_idempotent(tmp_path) -> None:
     assert len(records) == 1
 
 
+async def test_register_idempotent_on_lost_race(tmp_path, monkeypatch) -> None:
+    """WR-01: a same-pair race that loses the UNIQUE(iri_body) insert returns the
+    existing IRI idempotently instead of crashing.
+
+    Simulate the race window by forcing the first ``_fetch_row`` to miss even
+    though the row already exists: register() then takes the INSERT path, hits
+    the UNIQUE constraint (IntegrityError), rolls back, re-reads the committed
+    row, and resolves to the same IRI.
+    """
+    registry = ShardIRIRegistry(tmp_path / "shard_iri_registry.db")
+    expected_iri = await registry.register("urn:race:1", "alpha")  # real row exists
+
+    real_fetch = registry._fetch_row
+    calls = {"n": 0}
+
+    async def fetch_miss_once(db, iri_body):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return None  # pretend the concurrent insert hasn't landed yet
+        return await real_fetch(db, iri_body)
+
+    monkeypatch.setattr(registry, "_fetch_row", fetch_miss_once)
+
+    iri = await registry.register("urn:race:1", "alpha")
+
+    assert iri == expected_iri
+    assert calls["n"] == 2, "expected an initial miss then a post-IntegrityError re-fetch"
+    records = await registry.all_records()
+    assert len(records) == 1  # the lost race did NOT create a duplicate row
+
+
 async def test_collision_raises_and_does_not_overwrite(tmp_path) -> None:
     """Same hex32 body + DIFFERENT full hash → ShardIRICollision (fail closed).
 
