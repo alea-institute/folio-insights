@@ -64,6 +64,25 @@ def test_verify_iris_all_match_exits_zero(runner, tmp_path) -> None:
     assert result.exit_code == 0, result.output
 
 
+def test_verify_iris_empty_registry_exits_nonzero(runner, tmp_path) -> None:
+    """WR-02: an existing-but-empty registry must fail loud, not report success.
+
+    ``all_records()`` self-bootstraps an empty table on any path, so a misdirected
+    ``--db`` (or a genuinely empty registry) would otherwise re-hash zero rows and
+    exit 0 — a silent pass that verifies nothing. A drift guard with no records to
+    check must exit non-zero.
+    """
+    db_path = tmp_path / "empty_registry.db"
+    # Materialize the file (and its empty table) without registering any IRI,
+    # so the CLI's path-exists check passes and we hit the no-records branch.
+    asyncio.run(ShardIRIRegistry(db_path).all_records())
+    assert db_path.exists()
+
+    result = runner.invoke(cli, ["verify-iris", "--db", str(db_path)])
+
+    assert result.exit_code != 0, result.output
+
+
 def test_help_exits_zero(runner) -> None:
     """Lazy-import discipline: heavy deps stay off `folio-insights --help`."""
     result = runner.invoke(cli, ["--help"])
