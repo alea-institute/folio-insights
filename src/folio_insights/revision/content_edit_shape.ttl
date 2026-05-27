@@ -1,0 +1,41 @@
+# Forward-only content-edit SHACL shape (CONTEXT D-07.2 / D-08b; exit criterion 2).
+#
+# DEFENSE-IN-DEPTH pyshacl shape over the content_edits chain. The AUTHORITATIVE
+# gate is the Pydantic @model_validator on ShardEnvelope (Plan 05-01); this shape
+# is the literal "SHACL guard" the operator reads from exit criterion 2 — a REAL
+# pyshacl run beside the always-on Pydantic validator.
+#
+# A `sh:sparql` self-join over the rdf:List edit chain matches the BAD (back-dated)
+# condition: an adjacent pair (fi:seq n, n+1) whose later edit's fi:editedAt
+# PRECEDES the earlier one's. SHACL flags a violation when the SELECT returns >=1
+# row, so the SELECT must match the bad case. The `FILTER(?ct < ?pt)` polarity is
+# LOAD-BEARING (RESEARCH spiked BOTH polarities live against pyshacl 0.31.0 —
+# RESEARCH L83-105; Pitfall 1).
+#
+# CANNOT enforce: immutability of past entries (D-08a). SHACL is stateless over a
+# single snapshot and cannot see a deletion/mutation (RESEARCH L115-124). That half
+# is carried by ContentEdit frozen=True + the IMMUTABLE_FIELD_PATHS gate (Plan 02).
+#
+# Source: spiked live against pyshacl 0.31.0 / rdflib 7.6.0 (RESEARCH L83-103)
+# [VERIFIED: uv run spike].
+
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi: <https://folio-insights.example/> .
+
+fi:ForwardOnlyShape a sh:NodeShape ;
+    sh:targetClass fi:Shard ;
+    sh:sparql [
+        sh:message "Back-dated edit: an edit's editedAt precedes its predecessor (forward-only violation)" ;
+        sh:select '''
+            SELECT $this ?prev ?curr WHERE {
+                $this <https://folio-insights.example/contentEdits>/(<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>*)/<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> ?prev .
+                $this <https://folio-insights.example/contentEdits>/(<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>*)/<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> ?curr .
+                ?prev <https://folio-insights.example/seq> ?ps . ?curr <https://folio-insights.example/seq> ?cs .
+                FILTER(?cs = ?ps + 1)
+                ?prev <https://folio-insights.example/editedAt> ?pt . ?curr <https://folio-insights.example/editedAt> ?ct .
+                FILTER(?ct < ?pt)
+            }
+        ''' ;
+    ] .
