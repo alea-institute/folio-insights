@@ -8,6 +8,7 @@ Covers the PRD §6.4 store-backed write path, the in-memory store round-trip
 from __future__ import annotations
 
 import re
+import time
 
 import pytest
 
@@ -80,6 +81,52 @@ def test_hash_changes_with_content(sample_shard) -> None:
     before = canonical_content_hash(sample_shard)
     set_field(sample_shard, "sense", "mutated")
     assert canonical_content_hash(sample_shard) != before
+
+
+def test_hash_deterministic_across_instances() -> None:
+    """CR-02 regression: identical content built at different wall-clock times
+    must hash IDENTICALLY.
+
+    ``transaction_time`` (``default_factory=datetime.now(UTC)``) is re-stamped on
+    every construction; before the fix that volatile timestamp leaked into the
+    ``model_dump`` payload and made two logically-identical shards hash
+    differently. The content hash must bind the CONTENT only, so it is
+    reproducible from the stored record (a hash that cannot be independently
+    recomputed is not a content binding).
+    """
+    from tests.shards.conftest import _sample_shard
+
+    first = _sample_shard(SimpleAssertionShard)
+    time.sleep(0.01)  # guarantee a distinct wall-clock transaction_time
+    second = _sample_shard(SimpleAssertionShard)
+
+    # Sanity: the volatile field really does differ between the two instances.
+    assert first.transaction_time != second.transaction_time
+    # ...yet the CONTENT hash is identical (transaction_time excluded, CR-02).
+    assert canonical_content_hash(first) == canonical_content_hash(second)
+
+
+def test_hash_ignores_audit_log_and_storage_metadata(sample_shard) -> None:
+    """CR-02: the content hash binds CONTENT, not the audit log, signatures, or
+    bitemporal storage-window markers.
+
+    Stamping the bitemporal window or appending a signature must NOT change the
+    content hash — those are storage/attestation metadata, not content. (Editing
+    actual content fields DOES change it — see ``test_hash_changes_with_content``.)
+    """
+    from datetime import UTC, datetime
+
+    from folio_insights.shards import AttestedSignature
+
+    before = canonical_content_hash(sample_shard)
+
+    # Bitemporal window markers are storage metadata, not content.
+    sample_shard.valid_time_start = datetime(2026, 1, 1, tzinfo=UTC)
+    sample_shard.valid_time_end = datetime(2027, 1, 1, tzinfo=UTC)
+    # Signatures are attestations OVER content, not content.
+    sample_shard.signatures.append(AttestedSignature(did="did:key:zX"))
+
+    assert canonical_content_hash(sample_shard) == before
 
 
 # ── sign_attestation stub (D-05) ─────────────────────────────────────────────
