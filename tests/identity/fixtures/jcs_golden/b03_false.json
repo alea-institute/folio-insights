@@ -1,0 +1,6 @@
+{
+  "id": "b03_false",
+  "description": "Boolean false",
+  "category": "nulls",
+  "input": false
+}

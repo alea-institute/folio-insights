@@ -1,0 +1,9 @@
+{
+  "id": "b08_null_only",
+  "description": "Object with only null values",
+  "category": "nulls",
+  "input": {
+    "a": null,
+    "b": null
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "id": "u15_backslash_quote_solidus",
+  "description": "Escaped backslash + quote + forward slash",
+  "category": "unicode",
+  "input": "a\\b\"c/d"
+}

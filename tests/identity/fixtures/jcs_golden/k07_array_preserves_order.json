@@ -1,0 +1,10 @@
+{
+  "id": "k07_array_preserves_order",
+  "description": "Array order is NOT sorted by jcs",
+  "category": "key_ordering",
+  "input": [
+    3,
+    1,
+    2
+  ]
+}

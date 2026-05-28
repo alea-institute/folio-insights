@@ -1,0 +1,9 @@
+{
+  "id": "s05_two_keys_reverse",
+  "description": "Two keys reverse-sorted (jcs must re-sort)",
+  "category": "structure",
+  "input": {
+    "b": 2,
+    "a": 1
+  }
+}

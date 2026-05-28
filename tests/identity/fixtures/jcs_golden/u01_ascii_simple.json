@@ -1,0 +1,6 @@
+{
+  "id": "u01_ascii_simple",
+  "description": "Plain ASCII string",
+  "category": "unicode",
+  "input": "hello world"
+}

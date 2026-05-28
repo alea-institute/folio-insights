@@ -1,0 +1,10 @@
+{
+  "id": "b04_array_with_null",
+  "description": "Array containing null",
+  "category": "nulls",
+  "input": [
+    1,
+    null,
+    3
+  ]
+}

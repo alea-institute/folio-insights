@@ -1,0 +1,6 @@
+{
+  "id": "u13_zero_width_joiner",
+  "description": "Zero-width joiner sequence",
+  "category": "unicode",
+  "input": "a‍b"
+}

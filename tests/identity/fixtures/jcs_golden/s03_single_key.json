@@ -1,0 +1,8 @@
+{
+  "id": "s03_single_key",
+  "description": "Single-key object",
+  "category": "structure",
+  "input": {
+    "a": 1
+  }
+}

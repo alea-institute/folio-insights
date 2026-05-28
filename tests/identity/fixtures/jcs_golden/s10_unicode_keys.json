@@ -1,0 +1,9 @@
+{
+  "id": "s10_unicode_keys",
+  "description": "Object with non-ASCII keys",
+  "category": "structure",
+  "input": {
+    "café": 1,
+    "naïve": 2
+  }
+}

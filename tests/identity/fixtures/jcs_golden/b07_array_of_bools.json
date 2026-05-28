@@ -1,0 +1,10 @@
+{
+  "id": "b07_array_of_bools",
+  "description": "Array of booleans",
+  "category": "nulls",
+  "input": [
+    true,
+    false,
+    true
+  ]
+}

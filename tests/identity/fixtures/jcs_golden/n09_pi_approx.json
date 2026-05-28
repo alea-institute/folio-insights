@@ -1,0 +1,6 @@
+{
+  "id": "n09_pi_approx",
+  "description": "Pi approximation (precision boundary)",
+  "category": "numbers",
+  "input": 3.141592653589793
+}

@@ -46,24 +46,120 @@ ShardType = Literal[
 ]
 
 
-class AttestedSignature(BaseModel):
-    """Permissive Phase 6 STUB — full DID-substrate shape lands in Phase 6.
+# ── Phase 6 SignedAction vocabulary (D-13, DID-02, PRD §3.1) ───────────────
+#
+# The canonical set of action strings an AttestedSignature may carry. Spellings
+# are RECONCILED against the PRD §3.1 source of truth (L220-230 of
+# PRD-v2.0-draft-2.md, in the §6.1 AttestedSignature definition block):
+#
+#   * PRD §3.1.2 L117 — ``action="promote"`` (HypothesisShard → attested)
+#   * PRD §3.1.3 L125 — ``action="resolve_contest"`` (arbiter resolution)
+#   * PRD §3.1   L103 — reviewer role: "edit content on any shard" (the
+#                       ``content_edit`` action is a real, audited reviewer act —
+#                       Phase 5's ``add_edit`` / ``sign_attestation`` paths
+#                       already construct ``AttestedSignature(action="content_edit",
+#                       …)`` and the unsigned stub records it honestly).
+#
+# Reconciliation with REQUIREMENTS DID-02 (the 8 governance actions: extract,
+# promote, demote, contest, supersede, retract, distinguo, role-assertion):
+#
+#   * Spellings the PRD/code already use (PRD §3.1 / §6.1 L220-230):
+#       extract, promote, demote, contest, resolve_contest, distinguo,
+#       supersede, content_edit, reparent, reconcile
+#   * DID-02 additions not yet present in PRD §3.1 vocabulary:
+#       retract            — "retraction cascade" verb (PRD §3.1.4 L131,
+#                            "retraction cascade fires") + REQUIREMENTS DID-02
+#       role_assertion     — "issue role assertions" (PRD §3.1 L105, corpus_admin
+#                            role); DID-02 spelling is "role-assertion" but
+#                            Python identifiers and PRD code style use snake_case
+#                            (e.g. test name ``test_role_assertion_signed.py``
+#                            at PRD L146). We pick the snake_case spelling.
+#
+# DID-07 acceptance criterion ("preview for all 8 signed-action types") is
+# satisfied by the **governance subset** of this Literal, not the full set —
+# Plan 03 iterates `{extract, promote, demote, contest, supersede, retract,
+# distinguo, role_assertion}` for the CLI preview. ``content_edit``,
+# ``reparent``, ``reconcile`` are present-but-not-subject-to-DID-07 — they
+# keep Phase-5 construction sites green without muddying EC5 (option A,
+# 06-RESEARCH §9 + Open Question 1 resolution).
+SignedAction = Literal[
+    # 8 governance actions (DID-02 / DID-07 preview subset):
+    "extract",            # first extraction (PRD §3.1 row "extractor")
+    "promote",            # hypothesis → attested (PRD §3.1.2 L117)
+    "demote",             # attested → hypothesis (PRD §3.1.3 L121)
+    "contest",            # marked contested (PRD §3.1.3 L123)
+    "supersede",          # asserted a superseding shard (PRD §3.1 / §6.4)
+    "retract",            # retraction cascade (PRD §3.1.4 L131; DID-02)
+    "distinguo",          # proposed/confirmed a sense-fork (PRD §6.1 L225)
+    "role_assertion",     # issued a role assertion (PRD §3.1 L105; DID-02)
+    # Reviewer/governance actions present in PRD §3.1 / §6.1 vocabulary
+    # but OUTSIDE the DID-07 8-action preview subset:
+    "content_edit",       # mutable content was edited (PRD §6.1 L223;
+                          #   Phase 5 ``add_edit`` / ``sign_attestation``)
+    "reparent",           # relationships changed (PRD §6.1 L224)
+    "reconcile",          # set reconciliation_strategy (PRD §6.1 L226)
+    "resolve_contest",    # governance-resolved a contested state
+                          #   (PRD §3.1.3 L125)
+]
 
-    Phase 2 ships an ``extra="allow"`` placeholder so ``ShardEnvelope.signatures``
-    can be typed + default-factoried without pulling forward the Phase 6 DID
-    substrate. The schema will be REPLACED (not extended) in Phase 6; the
-    permissive config is intentional so round-trip tests can tolerate the
-    richer Phase 6 shape slotting in. All fields carry defaults so empty-list
-    signatures (`default_factory=list` on the envelope) construct without
-    ceremony.
+
+class AttestedSignature(BaseModel):
+    """Phase 6.1 DID-signed reviewer attestation (D-13, PRD §6.5).
+
+    REPLACES the permissive Phase 2 stub (was ``extra="allow"``). Every
+    reviewer write action is cryptographically signed by the reviewer's DID;
+    downstream systems weigh signatures as they see fit (PRD §16 R5,
+    §21.10).
+
+    Phase 6.1 shape (D-13 — single breaking reshape; the ``cosigners[]`` slot
+    is reserved present-but-empty so the deferred 6.3 N-of-M multi-sig adds
+    behavior without re-breaking the schema):
+
+    * ``model_config = ConfigDict(extra="forbid")`` — unknown fields raise
+      (T-06-03 integrity gate).
+    * ``did`` — the signer DID (e.g., ``did:web:example.org``, ``did:key:z…``).
+    * ``action`` — a ``SignedAction`` Literal reconciled against PRD §3.1 (see
+      the ``SignedAction`` docstring above). Default is ``"content_edit"`` so
+      the Phase-5 unsigned audit-stub paths (``add_edit``, ``sign_attestation``)
+      continue to construct.
+    * ``signed_at`` — wall-clock at signing (UTC, tz-aware).
+    * ``signature`` — base58-encoded ed25519 signature over the JCS-canonical
+      ``over_content_hash`` (Plan 02 wires real signing). Empty string in the
+      Phase-5 unsigned stub path is HONESTLY unsigned (never reads as
+      "verified" — see ``verified`` below).
+    * ``over_content_hash`` — SHA-256 hex of the JCS-canonical content the
+      signature covers (the value returned by
+      ``revision.content_edit.canonical_content_hash``).
+    * ``signing_key_id`` — DID URL + ``#fragment`` of the verificationMethod
+      that produced ``signature`` (DID-04 / SEC-05). Defaults to ``""`` so the
+      Phase-5 unsigned stub still constructs; Plan 02 populates it.
+    * ``did_doc_snapshot_at`` — the wall-clock at which the signer's DID
+      document was resolved/snapshotted, so verification resolves the
+      **signing-time** key — not the DID's current key — surviving key
+      rotation (DID-04 / SEC-05 / Pitfall F2).
+    * ``verified`` — cache annotation; ``None`` until the verifier runs and
+      sets ``True``/``False``. Defaulting to ``None`` (NOT ``True``) is the
+      T-06-03 anti-spoofing guarantee: an unverified signature can never read
+      as verified.
+    * ``cosigners`` — RESERVED, present-but-empty list of co-signing
+      ``AttestedSignature``s for the deferred 6.3 N-of-M multi-sig (D-13).
+      Present here in 6.1 so 6.3 adds behavior without a second breaking
+      reshape. Self-referential — Pydantic 2 resolves the forward ref via
+      ``model_rebuild()`` at module bottom (mirrors ``ShardEnvelope`` /
+      ``ContentEdit``).
     """
-    model_config = ConfigDict(extra="allow")  # Phase 6 will tighten to forbid
+    model_config = ConfigDict(extra="forbid")
 
     did: str = ""
-    action: str = ""
+    action: SignedAction = "content_edit"
     signed_at: Optional[datetime] = None
     signature: str = ""
     over_content_hash: str = ""
+    # ── Phase 6.1 additions (D-13) ──
+    signing_key_id: str = ""
+    did_doc_snapshot_at: Optional[datetime] = None
+    verified: Optional[bool] = None
+    cosigners: list["AttestedSignature"] = Field(default_factory=list)
 
 
 class Triple(BaseModel):
@@ -245,9 +341,19 @@ class ShardEnvelope(BaseModel):
         return self
 
 
+# Resolve the AttestedSignature.cosigners self-reference (D-13). With
+# `from __future__ import annotations`, the `list["AttestedSignature"]`
+# annotation is a forward string-ref at class-body evaluation; calling
+# model_rebuild() now (after the class exists in module namespace) wires the
+# real type so list items validate as AttestedSignature instances rather than
+# bare dicts. Mirrors the audit.py ShardEnvelope.model_rebuild() pattern.
+AttestedSignature.model_rebuild()
+
+
 __all__ = [
     "AttestedSignature",
     "ShardEnvelope",
     "ShardType",
+    "SignedAction",
     "Triple",
 ]
