@@ -1,0 +1,6 @@
+{
+  "id": "u07_emoji_astral",
+  "description": "Astral-plane emoji (surrogate pair)",
+  "category": "unicode",
+  "input": "fire 🔥 hot"
+}

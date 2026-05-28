@@ -1,0 +1,10 @@
+{
+  "id": "s06_nested_object",
+  "description": "Nested object",
+  "category": "structure",
+  "input": {
+    "outer": {
+      "inner": "v"
+    }
+  }
+}

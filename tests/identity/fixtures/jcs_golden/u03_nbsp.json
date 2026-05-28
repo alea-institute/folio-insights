@@ -1,0 +1,6 @@
+{
+  "id": "u03_nbsp",
+  "description": "Non-breaking space U+00A0",
+  "category": "unicode",
+  "input": "space NBSP"
+}

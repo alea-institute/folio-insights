@@ -1,0 +1,10 @@
+{
+  "id": "k03_numeric_string_keys",
+  "description": "Numeric string keys (lexicographic sort)",
+  "category": "key_ordering",
+  "input": {
+    "10": "ten",
+    "2": "two",
+    "1": "one"
+  }
+}

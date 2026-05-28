@@ -23,8 +23,20 @@ dependencies = [
     # it, and its sdist wheel build fails on Railway's builder. The worker installs
     # it explicitly (Dockerfile.worker / requirements.worker.lock); reasoning
     # consumers (CLI/tests) get it via `.[reasoning]` (folded into `.[dev]`).
-    "cryptography>=41",  # A1: ed25519 reviewer did:key generation (Phase 1 spike)
+    "cryptography>=46",  # A1: ed25519 reviewer did:key generation (Phase 1 spike); Phase 6 bumped >=41 -> >=46 for did:web verify (STACK 46.0.7)
     "base58>=2.1",  # A2: did:key z-encoding multibase (W3C did:key ed25519 spec)
+    # ── Phase 6 DID substrate (§6.5) — locked stack per .planning/research/STACK.md ──
+    # RISK-4: we DELIBERATELY REJECT `didkit`, `pydid`, `python-jose`, and
+    # `fastapi-users` (see STACK.md L53-56, L279-283; DID-01 acceptance criterion).
+    # didkit is stale/non-3.12; pydid leaks deprecated pycryptodome APIs; python-jose
+    # is unmaintained; fastapi-users forces a password-first identity model that
+    # defeats our DID-first design.
+    "pynacl==1.6.2",     # libsodium ed25519 sign/verify hot path (~6× cryptography)
+    "jcs==0.2.1",        # RFC 8785 JSON canonicalization — canonical_content_hash (DID-03/D-12)
+    "atproto==0.0.65",   # did:plc resolver: IdResolver().did.resolve(did) (DID-01/D-08)
+    "dag-cbor==0.3.3",   # DAG-CBOR decode of did:plc operation log for historical-key pinning
+    "joserfc==1.6.4",    # JWS wrapping if attestations export as VCs (replaces python-jose)
+    "authlib==1.7.0",    # OAuth `sub`-claim semantics for the DID binding contract (DID-05/SEC-06)
 ]
 
 [project.optional-dependencies]
@@ -71,4 +83,5 @@ markers = [
     "slow: Tests taking >30s (skipped from quick suite via -m 'not slow')",
     "polysemy_spike: Phase 1 polysemy-distinguo spike tests",
     "shards: Phase 2 v2.0 Shard envelope tests",
+    "identity: Phase 6 DID substrate tests",
 ]

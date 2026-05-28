@@ -1,0 +1,6 @@
+{
+  "id": "n07_exp_negative",
+  "description": "Small exponential 1e-7",
+  "category": "numbers",
+  "input": 1e-07
+}

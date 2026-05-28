@@ -1,0 +1,6 @@
+{
+  "id": "b01_null",
+  "description": "Explicit null",
+  "category": "nulls",
+  "input": null
+}

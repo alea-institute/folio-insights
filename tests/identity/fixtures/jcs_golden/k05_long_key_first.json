@@ -1,0 +1,9 @@
+{
+  "id": "k05_long_key_first",
+  "description": "Long key sorted before short",
+  "category": "key_ordering",
+  "input": {
+    "aaa": 1,
+    "b": 2
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "id": "u08_combining_accent_nfc",
+  "description": "Precomposed accent (NFC) U+00E9",
+  "category": "unicode",
+  "input": "café"
+}
