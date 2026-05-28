@@ -632,6 +632,13 @@ from folio_insights.polysemy.cli import polysemy as _polysemy_group
 
 cli.add_command(_polysemy_group)
 
+# Register the Phase 6 did subgroup (DID-05 / DID-07 CLI surface).
+# Same module-bottom pattern — keeps the crypto/atproto deps off the root
+# `folio-insights --help` invocation for commands that don't need them.
+from folio_insights.identity.cli import did_group as _did_group
+
+cli.add_command(_did_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
