@@ -53,6 +53,11 @@ from folio_insights.identity.binding import (
     SubjectChanged,
     bind,
 )
+from folio_insights.identity.preview import (
+    GOVERNANCE_ACTIONS,
+    SigningPreview,
+    build_signing_preview,
+)
 
 __all__ = [
     # keys.py
@@ -87,4 +92,8 @@ __all__ = [
     "InvalidSubject",
     "InvalidProofSignature",
     "DomainControlFailed",
+    # preview.py — Plan 03 (DID-07 / EC5)
+    "GOVERNANCE_ACTIONS",
+    "SigningPreview",
+    "build_signing_preview",
 ]
