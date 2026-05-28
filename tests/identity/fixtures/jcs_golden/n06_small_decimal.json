@@ -1,0 +1,6 @@
+{
+  "id": "n06_small_decimal",
+  "description": "Small positive decimal",
+  "category": "numbers",
+  "input": 0.5
+}

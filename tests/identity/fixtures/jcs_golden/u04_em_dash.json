@@ -1,0 +1,6 @@
+{
+  "id": "u04_em_dash",
+  "description": "Em-dash U+2014",
+  "category": "unicode",
+  "input": "before—after"
+}

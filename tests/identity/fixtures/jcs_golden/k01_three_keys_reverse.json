@@ -1,0 +1,10 @@
+{
+  "id": "k01_three_keys_reverse",
+  "description": "Three keys reverse-sorted",
+  "category": "key_ordering",
+  "input": {
+    "c": 3,
+    "b": 2,
+    "a": 1
+  }
+}

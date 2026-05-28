@@ -1,0 +1,10 @@
+{
+  "id": "k04_empty_string_key",
+  "description": "Empty-string key + others",
+  "category": "key_ordering",
+  "input": {
+    "a": 1,
+    "": 2,
+    "b": 3
+  }
+}

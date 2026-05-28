@@ -1,0 +1,6 @@
+{
+  "id": "u09_combining_accent_nfd",
+  "description": "Decomposed accent (NFD) e + COMBINING ACUTE",
+  "category": "unicode",
+  "input": "café"
+}

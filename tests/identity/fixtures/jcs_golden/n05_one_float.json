@@ -1,0 +1,6 @@
+{
+  "id": "n05_one_float",
+  "description": "Float 1.0 — RFC 8785 emits as 1",
+  "category": "numbers",
+  "input": 1.0
+}

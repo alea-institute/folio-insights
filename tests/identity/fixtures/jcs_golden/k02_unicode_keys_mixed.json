@@ -1,0 +1,10 @@
+{
+  "id": "k02_unicode_keys_mixed",
+  "description": "Mixed ASCII + Unicode keys",
+  "category": "key_ordering",
+  "input": {
+    "z": 1,
+    "café": 2,
+    "a": 3
+  }
+}

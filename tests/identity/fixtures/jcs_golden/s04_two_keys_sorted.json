@@ -1,0 +1,9 @@
+{
+  "id": "s04_two_keys_sorted",
+  "description": "Two keys already sorted",
+  "category": "structure",
+  "input": {
+    "a": 1,
+    "b": 2
+  }
+}

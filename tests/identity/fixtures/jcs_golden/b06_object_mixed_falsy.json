@@ -1,0 +1,12 @@
+{
+  "id": "b06_object_mixed_falsy",
+  "description": "Object with all falsy values",
+  "category": "nulls",
+  "input": {
+    "a": 0,
+    "b": "",
+    "c": false,
+    "d": null,
+    "e": []
+  }
+}
