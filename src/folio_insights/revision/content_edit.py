@@ -325,20 +325,54 @@ def canonical_content_hash(shard: ShardEnvelope) -> str:
 # ── sign_attestation (D-05) — unsigned Phase 6 stub ──────────────────────────
 
 
-def sign_attestation(editor_did: str, over_content_hash: str) -> AttestedSignature:
-    """Return an UNSIGNED ``AttestedSignature`` placeholder (D-05).
+def sign_attestation(
+    editor_did: str,
+    over_content_hash: str,
+    *,
+    signing_key: Any = None,
+    signing_key_id: str = "",
+    did_doc_snapshot_at: datetime | None = None,
+) -> AttestedSignature:
+    """Return an ``AttestedSignature`` over ``over_content_hash`` (Plan 06-02 wires real ed25519).
 
-    ``signature=""`` is unmistakably unsigned — Phase 6 (DID substrate) fills real
-    ed25519 over the JCS-canonical content hash. ``over_content_hash`` is the REAL
-    pre-edit ``canonical_content_hash`` so the audit record's content binding is
-    meaningful from day one; only the cryptographic signature is deferred.
+    Two modes — chosen by whether ``signing_key`` is provided:
+
+    * ``signing_key=None`` (Phase-5 unsigned-stub mode) — returns an
+      honestly-unsigned ``AttestedSignature`` with ``signature=""`` so the
+      Phase-5 ``add_edit`` / unsigned-audit path still constructs. ``verified``
+      stays ``None`` (the anti-spoofing default — an unverified signature can
+      never read as verified).
+    * ``signing_key`` provided — delegates to
+      ``identity.signer.sign_attestation`` for real ed25519 over the
+      JCS-canonical content hash with signing-time key capture
+      (``signing_key_id`` + ``did_doc_snapshot_at``). The
+      ``identity`` import is LAZY inside the function so the static module
+      dependency direction stays ``identity/ → revision/`` (revision never
+      imports identity at module load time — no cycle).
+
+    Keeping the function name + the ``(editor_did, over_content_hash)``
+    positional contract intact preserves the Phase-5 ``D-05`` call-site seam
+    for every existing test and for ``edit_shard_content`` below.
     """
-    return AttestedSignature(
-        did=editor_did,
-        action="content_edit",
-        over_content_hash=over_content_hash,
-        signature="",
-        signed_at=datetime.now(UTC),
+    if signing_key is None:
+        return AttestedSignature(
+            did=editor_did,
+            action="content_edit",
+            over_content_hash=over_content_hash,
+            signature="",
+            signed_at=datetime.now(UTC),
+        )
+    # Lazy import: identity/ imports revision/ (this module), so importing
+    # identity at the top of revision/ would create a cycle at module load.
+    from folio_insights.identity.signer import sign_attestation as _signer
+
+    return _signer(
+        over_content_hash,
+        signing_key,
+        editor_did,
+        "content_edit",
+        signing_key_id=signing_key_id,
+        did_doc_snapshot_at=did_doc_snapshot_at,
     )
 
 
@@ -368,7 +402,7 @@ async def edit_shard_content(
     new_value: Any,
     editor_did: str,
     rationale: str,
-    signing_key: Any,  # UNUSED in Phase 5 — Phase 6 wires real signing through it
+    signing_key: Any,  # Phase-5 frozen seam (D-09); Phase 6 wires the real ed25519 signer through it
     store: ShardStore,
 ) -> ContentEdit:
     """Apply an audited content edit to the shard at ``shard_iri`` (PRD §6.4, D-01).
@@ -422,6 +456,32 @@ async def edit_shard_content(
     old_value = get_field(working, field_path)
     pre_edit_hash = canonical_content_hash(working)
 
+    # Plan 06-02 wired the real signer through the FROZEN signing_key seam (D-09).
+    # When the caller supplies a signing_key (the locally-loaded Ed25519PrivateKey
+    # from identity.keys.load_signing_key — DID-06: keys live ONLY on the
+    # operator's machine), real ed25519 signs over the JCS-canonical pre-edit
+    # hash with signing-time key capture (DID-04). When signing_key is None
+    # (the Phase-5 unsigned-stub path), the attestation stays honestly unsigned.
+    if signing_key is None:
+        edit_signature = sign_attestation(editor_did, pre_edit_hash)
+    else:
+        # Default signing_key_id convention: "<editor_did>#<key-fragment>" where
+        # the fragment is the did:key multibase suffix for did:key signers, or
+        # the verificationMethod id the caller has already resolved. For Phase-6
+        # CLI signers using did:key, the fragment IS the multibase, so the
+        # default does the right thing without a resolver round-trip.
+        if editor_did.startswith("did:key:") and "#" not in editor_did:
+            _key_id = f"{editor_did}#{editor_did.removeprefix('did:key:')}"
+        else:
+            _key_id = editor_did
+        edit_signature = sign_attestation(
+            editor_did,
+            pre_edit_hash,
+            signing_key=signing_key,
+            signing_key_id=_key_id,
+            did_doc_snapshot_at=None,
+        )
+
     edit = ContentEdit(
         field_path=field_path,
         old_value=old_value,
@@ -429,7 +489,7 @@ async def edit_shard_content(
         edited_at=datetime.now(UTC),
         editor_did=editor_did,
         rationale=rationale,
-        signature=sign_attestation(editor_did, pre_edit_hash),
+        signature=edit_signature,
     )
 
     # Append + assign on the working copy only. No try/except rollback is needed:
