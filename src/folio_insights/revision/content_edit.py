@@ -28,9 +28,11 @@ The pyshacl forward-only shape is the sibling Plan 03 (``revision/shape_validati
 from __future__ import annotations
 
 import hashlib
-import json
+import unicodedata
 from datetime import UTC, datetime
 from typing import Any
+
+import jcs
 
 from folio_insights.revision.store import ShardStore
 from folio_insights.shards import AttestedSignature, ContentEdit, ShardEnvelope
@@ -156,8 +158,8 @@ def set_field(shard: ShardEnvelope, path: str, value: Any) -> None:
 #   * ``signatures`` — attestations OVER the content, not the content itself
 #     (including them would be circular once Phase 6 signs the content hash).
 #
-# Phase 6 (DID substrate) swaps RFC 8785 JCS canonicalization into the single
-# ``json.dumps`` line below without changing this exclusion set or the signature.
+# Phase 6 (D-12 / DID-03) swapped RFC-8785 JCS into the canonical_content_hash
+# line. The exclusion set is unchanged — content remains the bound surface.
 _HASH_EXCLUDED_FIELDS: frozenset[str] = frozenset(
     {
         "transaction_time",
@@ -169,36 +171,155 @@ _HASH_EXCLUDED_FIELDS: frozenset[str] = frozenset(
 )
 
 
+# ── Phase 6 JCS canonicalization helper (D-12 / DID-03 / Pitfall F4) ────────
+#
+# The F4 pre-normalization recipe (06-RESEARCH §2) is the hard part — `jcs`
+# fixes key ordering + minimal number encoding per RFC 8785, but it does NOT
+# NFC-normalize strings or pin datetime/None formats. Both signer and verifier
+# go through this helper, so the same bytes flow into the same SHA-256.
+#
+# Recipe (lock these decisions; the property + golden tests prove them):
+#
+#   1. NFC-normalize every string KEY and VALUE recursively (Pitfall F4 #4 —
+#      NFD vs NFC accents, NBSP, smart quotes hash differently). jcs / RFC 8785
+#      does NOT do this; it MUST happen before jcs.canonicalize.
+#   2. Pin datetime → RFC-3339 UTC, fixed "Z" suffix, microsecond precision.
+#      Pydantic ``mode="json"`` emits one of `...+00:00` or `...Z`; we coerce
+#      to `...Z` and a fixed 6-digit microsecond representation so signer ==
+#      verifier across Pydantic minor versions and across model_validate/
+#      model_dump round-trips. Walked over the payload AFTER model_dump so we
+#      handle BOTH datetime objects and the ISO strings Pydantic emits.
+#   3. KEEP explicit None values (don't strip). jcs serializes null
+#      deterministically; stripping would lose the distinction between
+#      "absent" and "explicitly null" for Optional bitemporal-adjacent fields
+#      (e.g. supersedes, did_doc_snapshot_at). 06-RESEARCH §2 Open Question 3
+#      locked this as KEEP; the canonical None policy belongs in one place.
+#
+# Float canonicalization: jcs emits the shortest round-trip per RFC 8785 from
+# the native Python float — DON'T pre-stringify floats before passing them in.
+
+_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"  # canonical RFC-3339 UTC, 6-digit µs, Z suffix
+
+
+def _canonicalize_datetime(dt: datetime) -> str:
+    """Render a datetime as the canonical RFC-3339 UTC string used by JCS hashing.
+
+    Coerces to UTC if tz-aware (and required tz-aware — naive datetimes are a
+    project invariant); emits ``YYYY-MM-DDTHH:MM:SS.ffffffZ`` with a fixed
+    6-digit microsecond and a literal ``Z`` suffix. The same representation
+    survives ``model_dump → model_validate → model_dump`` round-trips, which
+    closes the remaining F4 datetime surface (signer/verifier agreement).
+    """
+    if dt.tzinfo is None:
+        # Project invariant: every datetime is tz-aware UTC (D-04).
+        raise ValueError(
+            f"Naive datetime {dt!r} cannot be canonicalized for JCS hashing — "
+            "all shard datetimes must be tz-aware UTC (D-04)."
+        )
+    # Coerce to UTC and strip the +00:00 offset, emit the canonical "Z" form
+    # with always-6-digit microseconds.
+    utc = dt.astimezone(UTC)
+    return utc.strftime(_DATETIME_FORMAT)
+
+
+def _normalize_for_jcs(obj: Any) -> Any:
+    """Recursively NFC-normalize strings and canonicalize datetime-shaped values.
+
+    Walks dict/list/scalar payloads emitted by ``model_dump(mode="json")``:
+
+    * ``str`` — NFC-normalize via ``unicodedata.normalize("NFC", s)``. Also
+      detects ISO-8601 datetime strings Pydantic emits (mode="json" renders
+      datetimes as ``...+00:00`` or ``...Z`` strings) and coerces them to the
+      canonical ``_DATETIME_FORMAT`` representation. This is the F4 datetime
+      pin: every datetime-shaped string flows into JCS in ONE form.
+    * ``dict`` — normalize every key (after NFC) and every value recursively.
+      jcs sorts keys per RFC 8785, so we don't sort here.
+    * ``list`` — normalize every element recursively; preserve order.
+    * ``datetime`` — canonicalize via ``_canonicalize_datetime`` (covers the
+      case where a caller hands a raw datetime through model_dump(mode="python")
+      or where the dump preserves a datetime; the explicit path through model_dump
+      mode="json" already pre-stringifies them but we handle both).
+    * Other scalars (int / float / bool / None) — pass through unchanged. jcs
+      handles them per RFC 8785 (minimal float encoding; explicit null).
+    """
+    if isinstance(obj, str):
+        nfc = unicodedata.normalize("NFC", obj)
+        # Detect ISO-8601 datetime strings Pydantic mode="json" emits. We
+        # accept both `...+00:00` and `...Z` forms (Pydantic version variance,
+        # see tests/shards/test_envelope_roundtrip.py L77) and coerce to the
+        # canonical _DATETIME_FORMAT. The shape gate is conservative: must
+        # start with `YYYY-MM-DDTHH:MM:SS` and end with `Z` or `+HH:MM`.
+        if (
+            len(nfc) >= 19
+            and nfc[4] == "-" and nfc[7] == "-" and nfc[10] == "T"
+            and nfc[13] == ":" and nfc[16] == ":"
+            and (nfc.endswith("Z") or "+" in nfc[19:] or "-" in nfc[19:])
+        ):
+            try:
+                # datetime.fromisoformat handles both `...Z` (Python 3.11+) and
+                # `...+00:00`; we then re-emit through our canonical formatter.
+                parsed = datetime.fromisoformat(nfc.replace("Z", "+00:00"))
+                if parsed.tzinfo is not None:
+                    return _canonicalize_datetime(parsed)
+            except ValueError:
+                # Not actually an ISO datetime — fall through to NFC string.
+                pass
+        return nfc
+    if isinstance(obj, dict):
+        return {
+            unicodedata.normalize("NFC", k) if isinstance(k, str) else k:
+            _normalize_for_jcs(v)
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [_normalize_for_jcs(item) for item in obj]
+    if isinstance(obj, datetime):
+        return _canonicalize_datetime(obj)
+    return obj
+
+
+def _jcs_canonical_bytes(payload: dict) -> bytes:
+    """Return RFC-8785 JCS canonical bytes for ``payload`` after F4 pre-normalization.
+
+    The single canonicalization core both signer and verifier flow through;
+    the cross-impl golden test (tests/identity/test_jcs_golden.py) asserts
+    that the bytes returned here match the cyberphone/json-canonicalization
+    reference vectors on a vendored input set.
+    """
+    normalized = _normalize_for_jcs(payload)
+    return jcs.canonicalize(normalized)
+
+
 def canonical_content_hash(shard: ShardEnvelope) -> str:
-    """Deterministic SHA-256 over the shard's CONTENT (D-05; CR-02 fix).
+    """RFC-8785 JCS SHA-256 over the shard's CONTENT (D-05, D-12 / DID-03).
 
     Hashes the shard's content fields ONLY — everything EXCEPT the
     ``_HASH_EXCLUDED_FIELDS`` set (``transaction_time``, ``valid_time_start``,
     ``valid_time_end``, ``content_edits``, ``signatures``). The included content
-    therefore covers the Fregean ``triple``, ``sense``/``reference``, the 6
-    identity-and-origin fields, ``layer``/``fork``/``epistemic_status`` and the
-    rest of the §6.1 envelope content — the values that DEFINE the shard's
-    meaning and are reproducible from the stored record.
+    covers the Fregean ``triple``, ``sense``/``reference``, the 6 identity-and-
+    origin fields, ``layer``/``fork``/``epistemic_status`` and the rest of the
+    §6.1 envelope content.
 
-    ``transaction_time`` is excluded because its ``default_factory`` re-stamps
-    ``datetime.now(UTC)`` on every construction, which made the hash
-    non-deterministic across independently-built instances (CR-02). The
-    bitemporal window markers and the append-only audit/signature logs are
-    excluded because they are storage metadata / attestations, not content — a
-    content binding must be recomputable from the content alone.
+    Phase 6 (DID-03) swapped raw ``json.dumps`` for the RFC-8785 JCS
+    canonicalization pipeline (``_jcs_canonical_bytes``) with the F4
+    pre-normalization recipe (06-RESEARCH §2):
 
-    ``model_dump(mode="json", exclude=...)`` renders datetimes → ISO-8601 and
-    enums/Literals → plain strings (JSON-safe primitives, no custom encoder),
-    then sorted-key ``json.dumps`` gives a stable canonical form. Mirrors the
-    ``shards/minting.py`` L89-93 sha256-over-normalized-payload precedent.
+    1. ``model_dump(mode="json", exclude=_HASH_EXCLUDED_FIELDS)`` — Pydantic
+       renders datetimes → ISO strings, Literals/enums → plain strings.
+    2. ``_normalize_for_jcs`` — recursive NFC normalize of every string key/value,
+       canonical-RFC-3339-UTC datetime pin (``...Z`` suffix, fixed µs),
+       explicit None KEEP (06-RESEARCH §2 Open Question 3 lock).
+    3. ``jcs.canonicalize`` — RFC-8785 key ordering + minimal float encoding.
+    4. ``sha256`` over the canonical bytes.
 
-    Phase 6 swaps RFC 8785 JCS canonicalization into the ``json.dumps`` line ONLY
-    — the function signature, the exclusion set, and every call site stay
-    identical (D-05 seam).
+    Function signature, ``_HASH_EXCLUDED_FIELDS``, and every call site are
+    UNCHANGED (the D-05 / D-12 seam). The 1000-shuffled-order property test
+    (tests/identity/test_canonical_jcs_properties.py) and the cyberphone
+    cross-impl golden test (tests/identity/test_jcs_golden.py) prove F4 is
+    closed.
     """
     payload = shard.model_dump(mode="json", exclude=_HASH_EXCLUDED_FIELDS)
-    canon = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+    return hashlib.sha256(_jcs_canonical_bytes(payload)).hexdigest()
 
 
 # ── sign_attestation (D-05) — unsigned Phase 6 stub ──────────────────────────
@@ -376,6 +497,7 @@ __all__ = [
     "get_field",
     "set_field",
     "canonical_content_hash",
+    "_jcs_canonical_bytes",  # exposed for the cross-impl golden test (DID-03 / F4)
     "sign_attestation",
     "validate_shard",
     "edit_shard_content",
