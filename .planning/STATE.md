@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-05-27T20:08:36.596Z"
-last_activity: 2026-05-27 -- Phase 06 planning complete
+last_updated: "2026-05-28T19:30:40.220Z"
+last_activity: 2026-05-28 -- Phase 6 execution started
 progress:
   total_phases: 24
   completed_phases: 7
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 6 — did substrate (§6.5)
+**Current focus:** Phase 6 — did-substrate-6-5
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 6
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-27 -- Phase 06 planning complete
+Phase: 6 (did-substrate-6-5) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 6
+Last activity: 2026-05-28 -- Phase 6 execution started
 
 Progress: [██████████] 100%
 
