@@ -106,6 +106,101 @@ def shard_payloads(draw) -> dict:
     }
 
 
+# ── Plan 06-02 fixtures: identity/ unit-test seams ────────────────────────────
+
+
+@pytest.fixture
+def doc_cache():
+    """A fresh ``InMemoryDidDocCache`` per test (D-11 seam; mirrors ``store``
+    fixture in tests/revision/conftest.py).
+    """
+    from folio_insights.identity import InMemoryDidDocCache
+
+    return InMemoryDidDocCache()
+
+
+@pytest.fixture
+def ed25519_keypair_a():
+    """An ed25519 keypair (``cryptography`` ``Ed25519PrivateKey``) for the
+    "signing-time" side of rotation-survival scenarios. Key A is the key in
+    use when the historical signature was produced.
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    return Ed25519PrivateKey.generate()
+
+
+@pytest.fixture
+def ed25519_keypair_b():
+    """A second ed25519 keypair for the "post-rotation current" side of
+    rotation-survival scenarios. Key B replaces Key A in the current did.json
+    (did:web rotation) — but the snapshot from signing time keeps Key A, so
+    historical verify still passes.
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    return Ed25519PrivateKey.generate()
+
+
+@pytest.fixture
+def did_web_doc_for():
+    """Builder: return a callable that constructs a did:web did.json carrying
+    a given ed25519 ``cryptography`` private key's public half in
+    ``publicKeyMultibase`` form.
+    """
+    from cryptography.hazmat.primitives import serialization
+    from folio_insights.identity.keys import did_key_from_public
+
+    def _build(did: str, sk) -> dict:
+        raw = sk.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        mb = did_key_from_public(raw).removeprefix("did:key:")
+        return {
+            "id": did,
+            "verificationMethod": [
+                {
+                    "id": f"{did}#key-1",
+                    "type": "Multikey",
+                    "controller": did,
+                    "publicKeyMultibase": mb,
+                }
+            ],
+        }
+
+    return _build
+
+
+@pytest.fixture
+def did_plc_doc_for():
+    """Builder for a synthetic did:plc DID document (recorded fixture — no
+    live atproto network).
+    """
+    from cryptography.hazmat.primitives import serialization
+    from folio_insights.identity.keys import did_key_from_public
+
+    def _build(did: str, sk) -> dict:
+        raw = sk.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        mb = did_key_from_public(raw).removeprefix("did:key:")
+        return {
+            "id": did,
+            "verificationMethod": [
+                {
+                    "id": f"{did}#atproto",
+                    "type": "Multikey",
+                    "controller": did,
+                    "publicKeyMultibase": mb,
+                }
+            ],
+        }
+
+    return _build
+
+
 def shuffle_dict_keys(d: dict, seed: int) -> dict:
     """Return a new dict whose keys are a randomized permutation of d's.
 
