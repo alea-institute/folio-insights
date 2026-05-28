@@ -679,7 +679,7 @@ Plans:
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
-| 6. DID Substrate | 1/3 | In Progress|  |
+| 6. DID Substrate | 2/3 | In Progress|  |
 | 7. Governance Model | 0/? | Not started | - |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
