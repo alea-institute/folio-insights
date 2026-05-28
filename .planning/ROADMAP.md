@@ -44,7 +44,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22) (completed 2026-05-22)
 - [x] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector (completed 2026-05-27)
 - [x] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping (completed 2026-05-27)
-- [ ] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2)
+- [x] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2) (completed 2026-05-28)
 - [ ] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process
 - [ ] **Phase 8: FOLIO v2 Vocab + Mini-BFO (§7)** — `fi:*` TTL, `bfo_mapping.ttl`, version pinning
 - [ ] **Phase 9: Seven Design Principles (§8)** — Sub-phased 9.P1–9.P7
@@ -679,7 +679,7 @@ Plans:
 | 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
-| 6. DID Substrate | 2/3 | In Progress|  |
+| 6. DID Substrate | 3/3 | Complete   | 2026-05-28 |
 | 7. Governance Model | 0/? | Not started | - |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
