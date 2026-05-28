@@ -4,6 +4,7 @@ from folio_insights.shards.envelope import (
     AttestedSignature,
     ShardEnvelope,
     ShardType,
+    SignedAction,
     Triple,
 )
 from folio_insights.shards.iri_registry import (
@@ -48,6 +49,7 @@ __all__ = [
     "ShardIRICollision",
     "ShardIRIRegistry",
     "ShardType",
+    "SignedAction",
     "SimpleAssertionShard",
     "Triple",
 ]
