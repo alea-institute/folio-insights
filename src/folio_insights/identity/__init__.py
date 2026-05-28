@@ -18,11 +18,21 @@ convenient. New submodules added during this plan are wired in here as they land
 """
 from __future__ import annotations
 
+from folio_insights.identity.cache import (
+    DidDocCache,
+    DidDocSnapshot,
+    InMemoryDidDocCache,
+)
 from folio_insights.identity.keys import (
     did_key_from_public,
     generate_keypair,
     load_signing_key,
     public_key_from_did_key,
+)
+from folio_insights.identity.resolver import (
+    UnknownDidMethodError,
+    UnresolvableDidError,
+    resolve_did,
 )
 
 __all__ = [
@@ -31,4 +41,12 @@ __all__ = [
     "load_signing_key",
     "did_key_from_public",
     "public_key_from_did_key",
+    # cache.py
+    "DidDocCache",
+    "DidDocSnapshot",
+    "InMemoryDidDocCache",
+    # resolver.py
+    "resolve_did",
+    "UnknownDidMethodError",
+    "UnresolvableDidError",
 ]
