@@ -1,0 +1,6 @@
+{
+  "id": "u05_curly_quotes",
+  "description": "Curly quotes U+2018..U+201D",
+  "category": "unicode",
+  "input": "“smart quote” and ‘single’"
+}

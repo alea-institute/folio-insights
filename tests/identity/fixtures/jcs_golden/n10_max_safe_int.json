@@ -1,0 +1,6 @@
+{
+  "id": "n10_max_safe_int",
+  "description": "Beyond 2^53 (large int)",
+  "category": "numbers",
+  "input": 9007199254740993
+}

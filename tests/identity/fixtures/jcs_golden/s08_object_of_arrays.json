@@ -1,0 +1,13 @@
+{
+  "id": "s08_object_of_arrays",
+  "description": "Object with array values",
+  "category": "structure",
+  "input": {
+    "x": [
+      1,
+      2,
+      3
+    ],
+    "y": []
+  }
+}

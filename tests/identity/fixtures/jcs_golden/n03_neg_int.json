@@ -1,0 +1,6 @@
+{
+  "id": "n03_neg_int",
+  "description": "Negative integer",
+  "category": "numbers",
+  "input": -42
+}

@@ -1,0 +1,16 @@
+{
+  "id": "s07_array_of_objects",
+  "description": "Array of objects",
+  "category": "structure",
+  "input": [
+    {
+      "a": 1
+    },
+    {
+      "b": 2
+    },
+    {
+      "c": 3
+    }
+  ]
+}

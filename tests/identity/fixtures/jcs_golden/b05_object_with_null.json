@@ -1,0 +1,9 @@
+{
+  "id": "b05_object_with_null",
+  "description": "Object with null value",
+  "category": "nulls",
+  "input": {
+    "present": true,
+    "absent": null
+  }
+}

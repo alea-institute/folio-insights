@@ -1,0 +1,6 @@
+{
+  "id": "u14_control_tab_newline",
+  "description": "Control characters tab + newline",
+  "category": "unicode",
+  "input": "tab\there\nnewline"
+}

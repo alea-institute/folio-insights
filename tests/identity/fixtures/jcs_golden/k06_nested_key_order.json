@@ -1,0 +1,12 @@
+{
+  "id": "k06_nested_key_order",
+  "description": "Nested object keys also sorted",
+  "category": "key_ordering",
+  "input": {
+    "outer": {
+      "z": 1,
+      "a": 2
+    },
+    "another": "v"
+  }
+}

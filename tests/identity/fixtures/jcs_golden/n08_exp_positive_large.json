@@ -1,0 +1,6 @@
+{
+  "id": "n08_exp_positive_large",
+  "description": "Large exponential 1e21",
+  "category": "numbers",
+  "input": 1e+21
+}
