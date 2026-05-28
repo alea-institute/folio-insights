@@ -36,6 +36,23 @@ from folio_insights.identity.resolver import (
 )
 from folio_insights.identity.signer import sign_attestation
 from folio_insights.identity.verifier import verify_attestation
+from folio_insights.identity.binding import (
+    BindingError,
+    BindingRecord,
+    DomainControlFailed,
+    EndpointMismatch,
+    InMemoryNonceStore,
+    InvalidProofSignature,
+    InvalidSubject,
+    NonceReused,
+    NonceStore,
+    NONCE_TTL,
+    PROOF_CLOCK_SKEW,
+    ProofPayload,
+    StaleProof,
+    SubjectChanged,
+    bind,
+)
 
 __all__ = [
     # keys.py
@@ -54,4 +71,20 @@ __all__ = [
     # signer.py / verifier.py
     "sign_attestation",
     "verify_attestation",
+    # binding.py — Plan 03
+    "bind",
+    "BindingRecord",
+    "ProofPayload",
+    "NonceStore",
+    "InMemoryNonceStore",
+    "NONCE_TTL",
+    "PROOF_CLOCK_SKEW",
+    "BindingError",
+    "NonceReused",
+    "StaleProof",
+    "EndpointMismatch",
+    "SubjectChanged",
+    "InvalidSubject",
+    "InvalidProofSignature",
+    "DomainControlFailed",
 ]
