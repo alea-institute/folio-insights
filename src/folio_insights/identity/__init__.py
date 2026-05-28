@@ -34,6 +34,8 @@ from folio_insights.identity.resolver import (
     UnresolvableDidError,
     resolve_did,
 )
+from folio_insights.identity.signer import sign_attestation
+from folio_insights.identity.verifier import verify_attestation
 
 __all__ = [
     # keys.py
@@ -49,4 +51,7 @@ __all__ = [
     "resolve_did",
     "UnknownDidMethodError",
     "UnresolvableDidError",
+    # signer.py / verifier.py
+    "sign_attestation",
+    "verify_attestation",
 ]
