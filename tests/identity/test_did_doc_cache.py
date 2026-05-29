@@ -269,3 +269,70 @@ async def test_resolve_did_web_missing_vm_raises() -> None:
             at=datetime(2026, 5, 1, tzinfo=UTC),
             http=fake_http,
         )
+
+
+# ── CR-02 — default did:plc resolver refuses historical ``at`` ──────────────
+
+
+@pytest.mark.asyncio
+async def test_default_plc_resolver_refuses_historical_at() -> None:
+    """CR-02: the default did:plc resolver MUST refuse a non-None ``at``.
+
+    The default impl only knows the current PLC head (``atproto.IdResolver``);
+    returning that against a historical signed_at would be the F2 silent-
+    wrong-key failure mode. The resolver fails closed with
+    ``UnresolvableDidError`` to force the caller to inject a custom
+    plc_resolver that walks the op log (D-08 / Pitfall F2).
+
+    NB: the resolve_did dispatcher wraps the default resolver's raise in a
+    generic UnresolvableDidError too, so either way the caller sees a
+    fail-closed error rather than a silently-wrong key.
+    """
+    when = datetime(2026, 5, 1, tzinfo=UTC)
+    with pytest.raises(UnresolvableDidError):
+        await resolve_did("did:plc:abc123", at=when)
+
+
+@pytest.mark.asyncio
+async def test_default_plc_resolver_used_when_at_is_none(monkeypatch) -> None:
+    """CR-02 boundary: the default plc resolver IS still used when ``at`` is None.
+
+    The fix only refuses historical ``at`` — current-head resolution
+    (``at=None``) still flows through the atproto.IdResolver fallback. We
+    monkeypatch the import inside ``_default_plc_resolve`` so the test
+    doesn't hit the real network.
+    """
+    from folio_insights.identity import resolver as _resolver
+
+    class _FakeIdResolver:
+        class _DidNs:
+            def resolve(self, did: str):
+                return {
+                    "id": did,
+                    "verificationMethod": [
+                        {
+                            "id": f"{did}#atproto",
+                            "type": "Multikey",
+                            "controller": did,
+                            # A deterministic multibase the resolver can parse —
+                            # generated from a known seed (this test cares about
+                            # the at=None path, not the key contents).
+                            "publicKeyMultibase": (
+                                "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
+                            ),
+                        }
+                    ],
+                }
+        did = _DidNs()
+
+    class _FakeAtprotoModule:
+        IdResolver = _FakeIdResolver
+
+    # Patch the import target so ``from atproto import IdResolver`` inside the
+    # default plc resolver picks up our fake.
+    import sys
+    monkeypatch.setitem(sys.modules, "atproto", _FakeAtprotoModule)
+
+    snap = await _resolver.resolve_did("did:plc:abc123", at=None)
+    assert snap.did == "did:plc:abc123"
+    assert snap.public_key_multibase.startswith("z")
