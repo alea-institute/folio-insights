@@ -282,7 +282,8 @@ async def bind(
     """Bind ``did`` to the OAuth ``sub`` after verifying the proof-of-control (SEC-06).
 
     Enforces, IN ORDER (the order matters — earlier gates are cheaper and
-    block more attacker paths):
+    block more attacker paths; irreversible state mutations run LAST among
+    the proof-payload gates so a bad proof cannot burn a good nonce — WR-01):
 
     1. **F7 subject check** — ``sub`` must look like an OAuth ``sub`` claim
        (``_assert_sub_is_oauth_sub`` rejects emails / empty). The
@@ -290,14 +291,18 @@ async def bind(
        to the bind attempt).
     2. **Proof signature verifies** — ``verify_attestation`` against the
        proof's DID + the canonical payload-derived hash. A forged proof
-       fails here (``InvalidProofSignature``).
-    3. **F3 single-use nonce** — ``nonce_store.consume(proof.nonce)`` must
-       succeed (atomic get-delete). A replayed nonce raises ``NonceReused``.
-    4. **F3 timestamp window** — ``|now - proof.issued_at| <= 2 min``.
-       Outside the window raises ``StaleProof``.
-    5. **F3 endpoint binding** — ``proof.binding_endpoint`` must match
+       fails here (``InvalidProofSignature``). Includes the CR-01 gates:
+       ``signature.did == did`` AND ``signature.over_content_hash ==
+       SHA-256(JCS(proof))``.
+    3. **F3 timestamp window** — ``|now - proof.issued_at| <= 2 min`` (pure
+       compare, no state mutation). Outside the window raises ``StaleProof``.
+    4. **F3 endpoint binding** — ``proof.binding_endpoint`` must match
        ``expected_binding_endpoint``. A captured-and-redirected proof raises
        ``EndpointMismatch``.
+    5. **F3 single-use nonce** — ``nonce_store.consume(proof.nonce)`` must
+       succeed (atomic get-delete). Runs LAST among proof-payload gates
+       (WR-01) so a stale-timestamp / wrong-endpoint proof cannot burn a
+       legitimate nonce. A replayed nonce raises ``NonceReused``.
     6. **Idempotency / subject-change (T-06-12 / F7)** — if
        ``binding_store[sub]`` already exists:
          * SAME ``did`` → return the existing record (no-op).
@@ -395,17 +400,15 @@ async def bind(
             f"Proof signature for sub={sub!r} did={did!r} failed verification."
         )
 
-    # 3. F3 single-use nonce — atomic get-delete via NonceStore.consume.
-    #    A second bind with the same nonce fails here (replay defense).
-    consumed = await nonce_store.consume(proof.nonce)
-    if not consumed:
-        raise NonceReused(
-            f"Proof nonce {proof.nonce!r} was already consumed (or never "
-            "issued / expired). Single-use replay defense (F3)."
-        )
+    # WR-01 fix — gate ordering: cheap, stateless checks (timestamp window,
+    # endpoint pin) run BEFORE the irreversible nonce consume. Before the fix
+    # the order was nonce-consume → timestamp → endpoint, which let a captured
+    # signed proof carrying a stale timestamp or wrong endpoint burn a valid
+    # nonce — the legitimate user would then hit ``NonceReused`` on a fresh
+    # bind. Timestamp + endpoint are pure compares; nonce consume mutates
+    # store state and must run LAST among the proof-payload gates.
 
-    # 4. F3 timestamp ±2 min — accept skew either way (proof issued slightly
-    #    before OR after server clock, both bounded by PROOF_CLOCK_SKEW).
+    # 3. F3 timestamp ±2 min — pure compare, no state mutation.
     skew = abs(current - proof.issued_at)
     if skew > PROOF_CLOCK_SKEW:
         raise StaleProof(
@@ -413,12 +416,24 @@ async def bind(
             f"{current!r}; max allowed skew is ±{PROOF_CLOCK_SKEW} (F3)."
         )
 
-    # 5. F3 endpoint binding — the signed payload pins the endpoint.
+    # 4. F3 endpoint binding — the signed payload pins the endpoint. Pure
+    #    compare; runs before the nonce consume so a captured proof issued
+    #    against a different endpoint cannot burn a good nonce.
     if proof.binding_endpoint != expected_binding_endpoint:
         raise EndpointMismatch(
             f"Proof binding_endpoint {proof.binding_endpoint!r} does not "
             f"match expected {expected_binding_endpoint!r} (F3 / cross-"
             "endpoint replay defense)."
+        )
+
+    # 5. F3 single-use nonce — atomic get-delete via NonceStore.consume.
+    #    IRREVERSIBLE; runs LAST among the proof-payload gates (WR-01) so a
+    #    bad proof doesn't burn a good nonce.
+    consumed = await nonce_store.consume(proof.nonce)
+    if not consumed:
+        raise NonceReused(
+            f"Proof nonce {proof.nonce!r} was already consumed (or never "
+            "issued / expired). Single-use replay defense (F3)."
         )
 
     # 6. Idempotency / subject-change.
