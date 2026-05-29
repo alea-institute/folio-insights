@@ -80,13 +80,38 @@ async def _default_http_get(url: str) -> dict:
 
 
 async def _default_plc_resolve(did: str, at: datetime | None) -> dict:
-    """Default did:plc resolver via ``atproto.IdResolver``.
+    """Default did:plc resolver via ``atproto.IdResolver`` (CURRENT state only).
 
-    NB: ``atproto`` is a third-party dependency (STACK.md pin 0.0.65). For
-    ``at`` historical lookups beyond the current head, callers SHOULD inject a
-    custom resolver that walks the PLC op log (this default only handles the
-    current state — it does NOT submit any PLC write operation, per D-08).
+    The module-level contract states "the resolver NEVER returns a wrong key
+    silently (T-06-09)". For did:plc, signing-time-key resolution requires
+    walking the ``plc.directory`` operation log to pin the doc valid at
+    ``at`` (Pitfall F2 / D-08). The default impl does NOT walk that log — it
+    only resolves the CURRENT head via ``atproto.IdResolver``. Returning the
+    current doc against a historical ``at`` is exactly the F2 silent-wrong-key
+    failure mode the design forbids.
+
+    **CR-02 fix:** Refuse a non-None ``at`` outright. The caller must inject a
+    custom ``plc_resolver`` that honors the op-log lookup. Phase 6 ships
+    resolve/verify only (D-08); Phase 13 will likely bundle an op-log walker.
+
+    NB: ``atproto`` is a third-party dependency (STACK.md pin 0.0.65). This
+    resolver NEVER submits a PLC write operation (D-08).
     """
+    if at is not None:
+        # CR-02: silent-wrong-key fail-closed. The contract says the resolver
+        # NEVER returns a wrong key silently; the default impl cannot honor
+        # historical ``at`` without an op-log walker, so it MUST refuse rather
+        # than fall through and return the current doc against a historical
+        # signed_at (Pitfall F2).
+        raise UnresolvableDidError(
+            f"Default did:plc resolver cannot pin historical at={at!r} for "
+            f"{did!r}; the atproto.IdResolver fallback only knows the current "
+            "head, and returning that against a historical signed_at would be "
+            "the F2 silent-wrong-key failure mode the resolver forbids. Inject "
+            "a custom plc_resolver that walks the plc.directory op log (D-08 / "
+            "Pitfall F2)."
+        )
+
     # Import inside the function so import-time of resolver.py does not bring
     # the entire atproto SDK into every consumer of identity/.
     from atproto import IdResolver  # type: ignore[import-untyped]
