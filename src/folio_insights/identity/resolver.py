@@ -199,21 +199,61 @@ async def _default_plc_resolve(did: str, at: datetime | None) -> dict:
 # ── did:web URL derivation (W3C did:web method spec) ────────────────────────
 
 
+# WR-05: SSRF defense for default resolver. did:web is operator-controlled in
+# legitimate use, but server-side resolution of an attacker-supplied DID could
+# pivot to internal services. The default resolver refuses these well-known
+# loopback / link-local hosts; operators in server contexts who NEED to
+# resolve such a host MUST supply a vetted custom ``http`` callable.
+_DID_WEB_UNSAFE_HOSTS: frozenset[str] = frozenset({
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    "0.0.0.0",
+})
+
+
 def _did_web_url(did: str) -> str:
-    """Derive the HTTPS did.json URL for a did:web.
+    """Derive the HTTPS did.json URL for a did:web (W3C method spec + WR-05).
 
     * ``did:web:example.org`` → ``https://example.org/.well-known/did.json``
     * ``did:web:example.org:user:alice`` → ``https://example.org/user/alice/did.json``
+    * ``did:web:example.org%3A8443`` → ``https://example.org:8443/.well-known/did.json``
+      (per W3C did:web: a port in the domain is percent-encoded as ``%3A``.)
 
     Per the W3C did:web method spec: colons after the method are path
     separators; if there is no path component, the doc lives at
-    ``.well-known/did.json``.
+    ``.well-known/did.json``. A port is encoded as ``%3A`` IN THE DOMAIN
+    SEGMENT (NOT as a bare ``:``), so we URL-decode the first segment only.
+
+    WR-05 also adds an SSRF host blocklist: ``localhost``, ``127.0.0.1``,
+    ``::1``, ``0.0.0.0``, and link-local (``169.254.x.x``) are refused. Server-
+    side callers that legitimately need these (e.g. integration tests) must
+    inject a custom ``http`` callable to bypass the default fetcher (and
+    accept the responsibility).
     """
+    from urllib.parse import unquote
+
     body = did.removeprefix("did:web:")
     if not body:
         raise UnresolvableDidError(f"empty did:web identifier in {did!r}")
     parts = body.split(":")
-    domain = parts[0]
+    # WR-05: decode percent-encoded port (``%3A``) inside the domain segment.
+    domain = unquote(parts[0])
+
+    # WR-05: SSRF host blocklist. ``localhost`` / loopback / link-local hosts
+    # are refused by the default resolver to prevent server-side did:web
+    # resolution from pivoting to internal services. Bare-host check (no
+    # port) — the post-decode value here is "example.org" or "example.org:8443"
+    # depending on whether the source DID had a percent-encoded port.
+    host_only = domain.split(":")[0].lower()
+    if host_only in _DID_WEB_UNSAFE_HOSTS or host_only.startswith("169.254."):
+        raise UnresolvableDidError(
+            f"refusing to resolve did:web for unsafe host {host_only!r} "
+            f"(in {did!r}) via the default resolver — SSRF defense (WR-05). "
+            "Server-side callers that need this host must inject a custom "
+            "http callable."
+        )
+
     if len(parts) == 1:
         return f"https://{domain}/.well-known/did.json"
     path = "/".join(parts[1:])

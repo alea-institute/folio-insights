@@ -462,3 +462,60 @@ async def test_did_web_response_within_cap_succeeds() -> None:
         assert doc["id"] == "did:web:example.org"
     finally:
         _resolver_mod.httpx.AsyncClient = orig_async_client
+
+
+# ── WR-05 — did:web URL derivation: percent-encoded port + SSRF block ──────
+
+
+def test_did_web_url_handles_percent_encoded_port() -> None:
+    """WR-05: ``did:web:example.org%3A8443`` → ``https://example.org:8443/.well-known/did.json``.
+
+    Per W3C did:web spec, a port is encoded as ``%3A`` after the domain (not
+    as a bare ``:``, which is a path separator). The derived URL must keep
+    the port on the host, not split it into a path segment.
+    """
+    from folio_insights.identity.resolver import _did_web_url
+
+    url = _did_web_url("did:web:example.org%3A8443")
+    assert url == "https://example.org:8443/.well-known/did.json"
+
+
+def test_did_web_url_root_form_no_port() -> None:
+    """WR-05 boundary: the existing ``did:web:example.org`` root form still works."""
+    from folio_insights.identity.resolver import _did_web_url
+
+    assert (
+        _did_web_url("did:web:example.org")
+        == "https://example.org/.well-known/did.json"
+    )
+
+
+def test_did_web_url_path_form_no_port() -> None:
+    """WR-05 boundary: ``did:web:example.org:user:alice`` derives the path form."""
+    from folio_insights.identity.resolver import _did_web_url
+
+    assert (
+        _did_web_url("did:web:example.org:user:alice")
+        == "https://example.org/user/alice/did.json"
+    )
+
+
+@pytest.mark.parametrize(
+    "did",
+    [
+        "did:web:localhost",
+        "did:web:127.0.0.1",
+        "did:web:0.0.0.0",
+        "did:web:169.254.169.254",  # AWS link-local metadata endpoint
+        "did:web:169.254.1.2",
+    ],
+)
+def test_did_web_localhost_and_linklocal_refused(did: str) -> None:
+    """WR-05: SSRF blocklist refuses loopback / link-local hosts at URL derivation."""
+    from folio_insights.identity.resolver import (
+        _did_web_url,
+        UnresolvableDidError as _Unresolvable,
+    )
+
+    with pytest.raises(_Unresolvable):
+        _did_web_url(did)
