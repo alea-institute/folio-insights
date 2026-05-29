@@ -97,19 +97,46 @@ async def verify_attestation(
             return False
         verify_hash = sig.over_content_hash
 
-    # Step 2: resolve the signing-time DID document snapshot via the cache +
-    # resolver. The resolver short-circuits to the cache hit on (did, at).
-    try:
-        snapshot = await resolver(
-            sig.did,
-            at=sig.did_doc_snapshot_at,
-            cache=cache,
-            http=http,
-            plc_resolver=plc_resolver,
-        )
-    except Exception:
-        # Unresolvable DID / network error / unknown method — fail closed.
-        return False
+    # WR-06 fix — snapshot-required path is strict: if the signature carries a
+    # ``did_doc_snapshot_at`` AND the DID is rotatable (did:web / did:plc), the
+    # signing-time key MUST come from the cache. Falling through to a live
+    # ``_default_http_get`` (or any ``http``/``plc_resolver`` callable) on a
+    # cache miss is a silent F2 failure mode: a malicious operator could
+    # rotate to a chosen-prefix key and have the verifier re-fetch the
+    # CURRENT (post-rotation) doc against a historical signed_at. The cache
+    # IS the snapshot mechanism — if it doesn't hold the snapshot, the
+    # signature isn't provable at this point in time. Fail closed.
+    #
+    # did:key signatures bypass the strict path (the key IS the DID, cannot
+    # rotate); their ``did_doc_snapshot_at`` is degenerate (typically ``None``
+    # by signer convention, but the verifier accepts either).
+    if (
+        sig.did_doc_snapshot_at is not None
+        and not sig.did.startswith("did:key:")
+    ):
+        cached = await cache.get((sig.did, sig.did_doc_snapshot_at))
+        if cached is None:
+            # WR-06: cold cache for a historical did:web/did:plc signature.
+            # Refuse rather than silently fetching the CURRENT (possibly
+            # rotated) doc — that path is the F2 silent-wrong-key hole.
+            return False
+        snapshot = cached
+    else:
+        # did:key OR ``did_doc_snapshot_at is None`` (current-head verify).
+        # The resolver handles both cleanly — did:key decodes locally; the
+        # None-at branch goes through the resolver's normal fetch path with
+        # the cache as a hot path.
+        try:
+            snapshot = await resolver(
+                sig.did,
+                at=sig.did_doc_snapshot_at,
+                cache=cache,
+                http=http,
+                plc_resolver=plc_resolver,
+            )
+        except Exception:
+            # Unresolvable DID / network error / unknown method — fail closed.
+            return False
 
     # Step 3: extract the ed25519 public key from the snapshot.
     try:
