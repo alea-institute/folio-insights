@@ -24,19 +24,16 @@ module with ``ast`` and confirms no private-key persistence).
 """
 from __future__ import annotations
 
-import base64
 from datetime import UTC, datetime
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.signing import SigningKey
 
+# WR-09 fix: shared base64url helper imported from identity/_b64.py so signer
+# and verifier cannot drift apart.
+from folio_insights.identity._b64 import _b64url_nopad_encode
 from folio_insights.shards.envelope import AttestedSignature, SignedAction
-
-
-def _b64url_nopad_encode(data: bytes) -> str:
-    """base64url-encode without padding (RFC 7515 §2). Verifier mirror in verifier.py."""
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
 def _ed25519_key_to_nacl(signing_key: Ed25519PrivateKey) -> SigningKey:

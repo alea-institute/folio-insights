@@ -22,7 +22,6 @@ NEVER raises. T-06-03: an unverified signature can never read as verified.
 """
 from __future__ import annotations
 
-import base64
 from typing import Any, Awaitable, Callable
 
 from cryptography.hazmat.primitives import serialization
@@ -30,15 +29,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 
+# WR-09 fix: shared base64url helper imported from identity/_b64.py.
+from folio_insights.identity._b64 import _b64url_nopad_decode
 from folio_insights.identity.cache import DidDocCache, DidDocSnapshot
 from folio_insights.identity.resolver import resolve_did
 from folio_insights.shards.envelope import AttestedSignature, ShardEnvelope
-
-
-def _b64url_nopad_decode(s: str) -> bytes:
-    """base64url-decode tolerating missing padding (RFC 7515 §2)."""
-    pad = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode(s + pad)
 
 
 def _public_key_from_snapshot(snap: DidDocSnapshot) -> Ed25519PublicKey:

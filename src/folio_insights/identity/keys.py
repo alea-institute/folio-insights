@@ -25,7 +25,6 @@ keystore module, the contract test is the gate that catches it.
 """
 from __future__ import annotations
 
-import base64
 import json
 import stat
 from pathlib import Path
@@ -35,6 +34,15 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
+)
+
+# WR-09 fix: import the centralized base64url helpers from identity/_b64.py
+# instead of redefining them here. The signer and verifier import from the same
+# module so a future change to the helper (e.g. a Pydantic-versioning bytes/str
+# fix) cannot desynchronize signer and verifier.
+from folio_insights.identity._b64 import (
+    _b64url_nopad_decode,
+    _b64url_nopad_encode,
 )
 
 # Default home-dir keystore location — mirrors polysemy/reviewer.py L20-21.
@@ -47,18 +55,7 @@ KEY_PATH = KEY_DIR / "signer.jwk"
 _ED25519_MULTICODEC_PREFIX = b"\xed\x01"
 
 
-# ── base64url-no-pad helpers (RFC 7515 / JWK spec) ──────────────────────────
-
-
-def _b64url_nopad_encode(data: bytes) -> str:
-    """base64url-encode without padding (RFC 7515 §2)."""
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
-
-
-def _b64url_nopad_decode(s: str) -> bytes:
-    """base64url-decode tolerating missing padding."""
-    pad = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode(s + pad)
+# ── base64url-no-pad helpers — now imported from identity/_b64.py (WR-09) ───
 
 
 # ── did:key <-> raw public key round-trip (W3C did:key ed25519) ─────────────
