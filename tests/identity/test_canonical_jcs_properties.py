@@ -172,3 +172,48 @@ def test_changing_content_does_change_hash() -> None:
         "canonical_content_hash unchanged after mutating `sense` — hash does "
         "not bind content; JCS pipeline is broken or sense is wrongly excluded."
     )
+
+
+# ── WR-08 — anchored ISO datetime regex rejects non-datetime shapes ────────
+
+
+def test_normalize_for_jcs_rejects_malformed_iso_lookalike() -> None:
+    """WR-08: a malformed ISO-looking string (e.g. inner ``Z``) stays a string.
+
+    Before the fix, ``_normalize_for_jcs`` ran ``nfc.replace("Z", "+00:00")``
+    BEFORE attempting ``fromisoformat``. A weird string like
+    ``"2020-Z1-01T00:Z0:00Z"`` had its inner ``Z`` chars replaced too,
+    producing ``"2020-+00:001-01T00:+00:000:00+00:00"`` — which is nonsense
+    but could in principle confuse the parser. After the WR-08 anchored
+    regex, the malformed shape fails the gate and falls through to NFC.
+    """
+    from folio_insights.revision.content_edit import _normalize_for_jcs
+
+    weird = "2020-Z1-01T00:Z0:00Z"
+    out = _normalize_for_jcs(weird)
+    # WR-08: the string is returned UNCHANGED (only NFC normalization
+    # applies; the weird string has no Unicode combining marks so NFC is a
+    # no-op). It is NOT coerced to the canonical _DATETIME_FORMAT.
+    assert out == weird
+
+
+def test_normalize_for_jcs_accepts_legitimate_iso() -> None:
+    """WR-08 boundary: a legitimate ISO-8601 string still canonicalizes."""
+    from folio_insights.revision.content_edit import _normalize_for_jcs
+
+    legit = "2026-05-01T12:00:00Z"
+    out = _normalize_for_jcs(legit)
+    # The fix re-emits via _canonicalize_datetime → "...ffffffZ" with 6-digit µs.
+    assert out.endswith("Z")
+    assert "T" in out
+    assert out.startswith("2026-05-01T12:00:00")
+
+
+def test_normalize_for_jcs_accepts_iso_with_offset() -> None:
+    """WR-08 boundary: ISO with explicit +/-HH:MM offset also canonicalizes."""
+    from folio_insights.revision.content_edit import _normalize_for_jcs
+
+    legit = "2026-05-01T12:00:00+00:00"
+    out = _normalize_for_jcs(legit)
+    assert out.endswith("Z")
+    assert out.startswith("2026-05-01T12:00:00")

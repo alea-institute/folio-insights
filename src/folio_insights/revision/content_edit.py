@@ -28,11 +28,24 @@ The pyshacl forward-only shape is the sibling Plan 03 (``revision/shape_validati
 from __future__ import annotations
 
 import hashlib
+import re
 import unicodedata
 from datetime import UTC, datetime
 from typing import Any
 
 import jcs
+
+# WR-08: anchored ISO-8601 datetime regex used by ``_normalize_for_jcs`` to
+# detect string-shaped datetimes Pydantic emits in ``mode="json"``. The
+# previous positional check (string of len ≥19 with ``-``/``-``/``T``/``:``/
+# ``:`` at fixed offsets) was loose — strings like ``"2020-Z1-01T00:Z0:00Z"``
+# would have inner ``Z``s replaced and pass shape gates. The anchored regex
+# enforces the canonical RFC-3339 shape ALL THE WAY through; only then do we
+# attempt ``datetime.fromisoformat``. The ``Z`` suffix is replaced ONCE at
+# the END (not via blanket ``replace``).
+_ISO_DT_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
+)
 
 from folio_insights.revision.store import ShardStore
 from folio_insights.shards import AttestedSignature, ContentEdit, ShardEnvelope
@@ -244,25 +257,23 @@ def _normalize_for_jcs(obj: Any) -> Any:
     """
     if isinstance(obj, str):
         nfc = unicodedata.normalize("NFC", obj)
-        # Detect ISO-8601 datetime strings Pydantic mode="json" emits. We
-        # accept both `...+00:00` and `...Z` forms (Pydantic version variance,
-        # see tests/shards/test_envelope_roundtrip.py L77) and coerce to the
-        # canonical _DATETIME_FORMAT. The shape gate is conservative: must
-        # start with `YYYY-MM-DDTHH:MM:SS` and end with `Z` or `+HH:MM`.
-        if (
-            len(nfc) >= 19
-            and nfc[4] == "-" and nfc[7] == "-" and nfc[10] == "T"
-            and nfc[13] == ":" and nfc[16] == ":"
-            and (nfc.endswith("Z") or "+" in nfc[19:] or "-" in nfc[19:])
-        ):
+        # WR-08: anchored ISO-8601 shape check. The regex enforces the canonical
+        # RFC-3339 form end-to-end (``YYYY-MM-DDTHH:MM:SS(.fraction)?(Z|±HH:MM)``)
+        # so a string like ``"2020-Z1-01T00:Z0:00Z"`` no longer slips through
+        # to a blanket ``replace("Z", "+00:00")``. We strip ``Z`` ONLY at the
+        # end and only when the anchored shape says it belongs there.
+        if _ISO_DT_RE.match(nfc):
             try:
-                # datetime.fromisoformat handles both `...Z` (Python 3.11+) and
-                # `...+00:00`; we then re-emit through our canonical formatter.
-                parsed = datetime.fromisoformat(nfc.replace("Z", "+00:00"))
+                if nfc.endswith("Z"):
+                    parsed = datetime.fromisoformat(nfc[:-1] + "+00:00")
+                else:
+                    parsed = datetime.fromisoformat(nfc)
                 if parsed.tzinfo is not None:
                     return _canonicalize_datetime(parsed)
             except ValueError:
-                # Not actually an ISO datetime — fall through to NFC string.
+                # Anchored shape matched but the calendar math is invalid
+                # (e.g. month 13). Fall through to NFC string — JCS will
+                # hash it as a string.
                 pass
         return nfc
     if isinstance(obj, dict):
