@@ -335,6 +335,48 @@ async def bind(
             f"attempt's `did` {did!r}; refusing to bind."
         )
 
+    # CR-01 fix — F7 takeover defense closes two gaps in the previous
+    # implementation. ``verify_attestation`` only proves "this signature is a
+    # valid ed25519 over the recorded ``over_content_hash`` using the key
+    # embedded in ``signature.did``". That alone does NOT prove the signature
+    # attests to THIS proof payload (an attacker could submit a signature over
+    # an unrelated hash), nor that the signer DID equals the bound DID (an
+    # attacker could sign with their own DID's key while claiming the victim's
+    # ``sub``). Both gaps are closed below BEFORE the verifier runs — fail
+    # fast, and don't waste CPU on a signature we already know cannot prove
+    # what we need.
+
+    # CR-01 (a) — Signer DID must equal the bound DID. ``proof.did`` is
+    # unauthenticated input (it's an unverified field of an unverified
+    # payload); only the ``AttestedSignature`` carries cryptographic provenance,
+    # so the signer-DID equality check has to live on the signature side.
+    if signature.did != did:
+        raise InvalidProofSignature(
+            f"Proof signature.did {signature.did!r} does not match bound did "
+            f"{did!r}; the signature does not attest to THIS DID. Refusing "
+            "to bind (CR-01 / F7 GitHub-username-takeover defense)."
+        )
+
+    # CR-01 (b) — The signature's ``over_content_hash`` must equal the SHA-256
+    # of the JCS-canonical proof payload presented to ``bind()``. Without this
+    # check, an attacker could submit a signature over an unrelated hash; the
+    # verifier would accept the ed25519 math, but the signature would not be
+    # attesting to the (sub, nonce, endpoint, did) tuple of THIS bind attempt.
+    import hashlib
+
+    from folio_insights.revision.content_edit import _jcs_canonical_bytes
+
+    expected_hash = hashlib.sha256(
+        _jcs_canonical_bytes(proof.model_dump(mode="json"))
+    ).hexdigest()
+    if signature.over_content_hash != expected_hash:
+        raise InvalidProofSignature(
+            f"Proof signature.over_content_hash "
+            f"{signature.over_content_hash!r} does not match SHA-256 of the "
+            f"JCS-canonical proof payload {expected_hash!r}; the signature "
+            "does not attest to THIS proof. Refusing to bind (CR-01 / F7)."
+        )
+
     # 2. Proof signature must verify against the DID's signing-time key.
     #    The verifier resolves the DID doc via the same cache/resolver/http
     #    seams the rest of identity/ uses (Plan 02).  A tampered/forged
