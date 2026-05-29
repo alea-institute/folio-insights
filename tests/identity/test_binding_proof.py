@@ -468,3 +468,138 @@ async def test_invalid_proof_signature_rejected(doc_cache) -> None:
             expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
             now=lambda: now,
         )
+
+
+# ── CR-01 — F7 takeover defense: signer DID + signed hash must match proof ──
+
+
+@pytest.mark.asyncio
+async def test_signature_did_mismatch_rejected(doc_cache) -> None:
+    """CR-01: ``signature.did`` must equal the bound ``did`` (F7 takeover defense).
+
+    A signature whose ``did`` is anything other than the DID being bound
+    cannot attest to the bind — even if the ed25519 math over the proof hash
+    is valid. ``bind()`` rejects the signature with ``InvalidProofSignature``
+    BEFORE running ``verify_attestation``.
+    """
+    sk_attacker, did_attacker = _make_didkey()
+    sk_victim, did_victim = _make_didkey()
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+
+    # The proof legitimately names did_victim — the attacker still wants to
+    # bind did_victim, just under their own signature.
+    proof = ProofPayload(
+        sub=_VALID_SUB, nonce=nonce, issued_at=now,
+        binding_endpoint=_BINDING_ENDPOINT, did=did_victim,
+    )
+    # The signature is over the right proof hash, with the right ed25519 key
+    # for the attacker's DID — but ``signature.did`` is the attacker's, not
+    # the bound did_victim.
+    sig = _sign_proof(proof, sk_attacker, did_attacker, signed_at=now)
+    with pytest.raises(InvalidProofSignature):
+        await bind(
+            _VALID_SUB, did_victim, proof, sig,
+            nonce_store=nonce_store, binding_store=binding_store,
+            expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+            now=lambda: now,
+        )
+
+
+@pytest.mark.asyncio
+async def test_signature_hash_does_not_cover_proof_rejected(doc_cache) -> None:
+    """CR-01: ``signature.over_content_hash`` must equal SHA-256(JCS(proof)).
+
+    A signature over an unrelated hash — even one that ed25519-verifies
+    against the bound DID's key — is not proof-of-control for THIS bind
+    attempt. ``bind()`` recomputes the expected hash and rejects mismatch.
+    """
+    import hashlib as _hl
+
+    sk, did = _make_didkey()
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+    proof = ProofPayload(
+        sub=_VALID_SUB, nonce=nonce, issued_at=now,
+        binding_endpoint=_BINDING_ENDPOINT, did=did,
+    )
+    # Sign an UNRELATED hash with the bound DID's real key. ed25519 will
+    # validate; the hash-mismatch gate must still reject.
+    unrelated_hash = _hl.sha256(b"unrelated").hexdigest()
+    key_id = f"{did}#{did.removeprefix('did:key:')}"
+    sig = sign_attestation(
+        unrelated_hash, sk, did, "role_assertion",
+        signing_key_id=key_id, did_doc_snapshot_at=None, now=now,
+    )
+    with pytest.raises(InvalidProofSignature):
+        await bind(
+            _VALID_SUB, did, proof, sig,
+            nonce_store=nonce_store, binding_store=binding_store,
+            expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+            now=lambda: now,
+        )
+
+
+@pytest.mark.asyncio
+async def test_attacker_cannot_bind_victim_sub_with_own_did(doc_cache) -> None:
+    """CR-01: full F7 takeover scenario — attacker tries to bind victim_sub to did_atk.
+
+    The attacker:
+      1. Knows the victim's OAuth ``sub`` (e.g., from an enumerable GitHub id).
+      2. Generates their own ed25519 keypair and derives ``did_atk``.
+      3. Obtains a valid nonce from the public ``nonce_store.issue()``.
+      4. Builds a proof claiming ``victim_sub`` for ``did_atk``.
+      5. Signs ANY hash with their own key (e.g., the SHA-256 of unrelated
+         bytes) and submits an ``AttestedSignature(did=did_atk, …)``.
+
+    Before the CR-01 fix, ``bind()`` accepted this: the verifier confirmed
+    "did_atk's key validly signed sig.over_content_hash", and bind's only
+    other checks (subject sanity, nonce, timestamp, endpoint, proof.did ==
+    did) all passed. The binding silently hijacked victim_sub → did_atk.
+
+    After the fix: the hash-mismatch check (CR-01 b) rejects the signature
+    BEFORE verify_attestation runs, because the attacker's signed hash is
+    not the SHA-256 of THIS proof payload. Even if the attacker had also
+    signed the correct proof hash, the CR-01 (a) DID-mismatch check would
+    reject ``signature.did=did_atk != did_atk`` only if they tried to bind
+    a *different* DID — which is the symmetric attack the (a) check closes.
+    """
+    import hashlib as _hl
+
+    sk_atk, did_atk = _make_didkey()
+    victim_sub = "github:99999"  # the victim's OAuth sub claim
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+
+    # Attacker builds a proof claiming victim_sub for THEIR did_atk.
+    proof = ProofPayload(
+        sub=victim_sub, nonce=nonce, issued_at=now,
+        binding_endpoint=_BINDING_ENDPOINT, did=did_atk,
+    )
+    # The attacker signs an UNRELATED hash with their own key. The ed25519
+    # math is fine (it's a valid signature by did_atk's key over that hash),
+    # but the hash isn't the hash of THIS proof.
+    unrelated_hash = _hl.sha256(b"attacker chosen prefix").hexdigest()
+    key_id = f"{did_atk}#{did_atk.removeprefix('did:key:')}"
+    sig = sign_attestation(
+        unrelated_hash, sk_atk, did_atk, "role_assertion",
+        signing_key_id=key_id, did_doc_snapshot_at=None, now=now,
+    )
+
+    # The bind MUST be rejected. Before CR-01, this scenario succeeded and the
+    # attacker hijacked victim_sub → did_atk in binding_store.
+    with pytest.raises(InvalidProofSignature):
+        await bind(
+            victim_sub, did_atk, proof, sig,
+            nonce_store=nonce_store, binding_store=binding_store,
+            expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+            now=lambda: now,
+        )
+    # And nothing was inserted into the binding store.
+    assert victim_sub not in binding_store
