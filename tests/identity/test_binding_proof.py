@@ -603,3 +603,65 @@ async def test_attacker_cannot_bind_victim_sub_with_own_did(doc_cache) -> None:
         )
     # And nothing was inserted into the binding store.
     assert victim_sub not in binding_store
+
+
+# ── WR-01 — stale/wrong-endpoint proof must NOT consume the nonce ──────────
+
+
+@pytest.mark.asyncio
+async def test_stale_proof_does_not_consume_nonce(doc_cache) -> None:
+    """WR-01: a StaleProof rejection must NOT burn the nonce.
+
+    Order of gates: timestamp + endpoint (pure compares) run BEFORE the
+    irreversible nonce consume. A captured proof with a stale timestamp must
+    fail at the StaleProof gate without touching the nonce store, so a
+    legitimate user can still consume the same nonce later.
+    """
+    sk, did = _make_didkey()
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    server_now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+
+    # Stale proof — 5 min before server time (outside the ±2 min window).
+    stale_issued = server_now - timedelta(minutes=5)
+    proof = ProofPayload(
+        sub=_VALID_SUB, nonce=nonce, issued_at=stale_issued,
+        binding_endpoint=_BINDING_ENDPOINT, did=did,
+    )
+    sig = _sign_proof(proof, sk, did, signed_at=stale_issued)
+    with pytest.raises(StaleProof):
+        await bind(
+            _VALID_SUB, did, proof, sig,
+            nonce_store=nonce_store, binding_store=binding_store,
+            expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+            now=lambda: server_now,
+        )
+
+    # Nonce must still be consumable — the stale-proof rejection didn't burn it.
+    assert await nonce_store.consume(nonce) is True
+
+
+@pytest.mark.asyncio
+async def test_endpoint_mismatch_does_not_consume_nonce(doc_cache) -> None:
+    """WR-01: an EndpointMismatch rejection must NOT burn the nonce."""
+    sk, did = _make_didkey()
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+    proof = ProofPayload(
+        sub=_VALID_SUB, nonce=nonce, issued_at=now,
+        binding_endpoint="https://attacker.example/binding", did=did,
+    )
+    sig = _sign_proof(proof, sk, did, signed_at=now)
+    with pytest.raises(EndpointMismatch):
+        await bind(
+            _VALID_SUB, did, proof, sig,
+            nonce_store=nonce_store, binding_store=binding_store,
+            expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+            now=lambda: now,
+        )
+
+    # Nonce still consumable.
+    assert await nonce_store.consume(nonce) is True
