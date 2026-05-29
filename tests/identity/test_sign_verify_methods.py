@@ -30,9 +30,37 @@ from folio_insights.identity import (
     sign_attestation,
     verify_attestation,
 )
-from folio_insights.identity.cache import InMemoryDidDocCache
+from folio_insights.identity.cache import DidDocSnapshot, InMemoryDidDocCache
 
 pytestmark = pytest.mark.identity
+
+
+# WR-06 fix support — pre-seed the DidDocCache with a snapshot built from the
+# given key + did so the strict snapshot-required verifier path finds it.
+# Before WR-06 the verifier fell through to ``http=fake_http`` on cache miss;
+# the snapshot mechanism is now load-bearing (no silent F2 re-fetch).
+async def _seed_snapshot(
+    cache: InMemoryDidDocCache,
+    *,
+    did: str,
+    sk: Ed25519PrivateKey,
+    when: datetime,
+    vm_fragment: str,
+) -> None:
+    """Insert a ``DidDocSnapshot`` for ``(did, when)`` carrying ``sk``'s public key."""
+    raw_pub = sk.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    mb = did_key_from_public(raw_pub).removeprefix("did:key:")
+    snap = DidDocSnapshot(
+        did=did,
+        fetched_at=when,
+        verification_method_id=f"{did}#{vm_fragment}",
+        public_key_multibase=mb,
+        raw_doc=None,
+    )
+    await cache.put((did, when), snap)
 
 
 _SIGNED_AT = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
@@ -124,14 +152,15 @@ async def test_did_key_wrong_key_fails() -> None:
 
 @pytest.mark.asyncio
 async def test_did_web_sign_verify_round_trip(did_web_doc_for) -> None:
-    """did:web: sign with key A, verifier fetches did.json via fake http, round-trips OK."""
+    """did:web: sign with key A, verifier uses pre-seeded snapshot, round-trips OK.
+
+    WR-06: a historical did:web signature requires its snapshot to be in the
+    cache; the verifier no longer silently fetches the CURRENT doc on cache
+    miss. Seeding the cache with key A's snapshot at ``_SIGNED_AT`` is what
+    a Phase-5/Phase-13 persistence layer would do at sign time.
+    """
     sk = Ed25519PrivateKey.generate()
     did = "did:web:example.org"
-    doc = did_web_doc_for(did, sk)
-
-    async def fake_http(url: str) -> dict:
-        assert url == "https://example.org/.well-known/did.json"
-        return doc
 
     sig = sign_attestation(
         _hash_a(), sk, did, "promote",
@@ -142,7 +171,8 @@ async def test_did_web_sign_verify_round_trip(did_web_doc_for) -> None:
     assert sig.signing_key_id == f"{did}#key-1"
     assert sig.did_doc_snapshot_at == _SIGNED_AT
     cache = InMemoryDidDocCache()
-    ok = await verify_attestation(_hash_a(), sig, cache=cache, http=fake_http)
+    await _seed_snapshot(cache, did=did, sk=sk, when=_SIGNED_AT, vm_fragment="key-1")
+    ok = await verify_attestation(_hash_a(), sig, cache=cache)
     assert ok is True
 
 
@@ -172,13 +202,14 @@ async def test_did_web_tampered_hash_fails(did_web_doc_for) -> None:
 
 @pytest.mark.asyncio
 async def test_did_plc_sign_verify_round_trip(did_plc_doc_for) -> None:
-    """did:plc: sign with the key the recorded plc fixture publishes, verify round-trips."""
+    """did:plc: sign with the recorded fixture's key, verify resolves via pre-seeded snapshot.
+
+    WR-06: did:plc shares the strict snapshot-required path with did:web —
+    the cache must hold the snapshot at ``_SIGNED_AT`` or the verifier fails
+    closed without consulting ``plc_resolver``.
+    """
     sk = Ed25519PrivateKey.generate()
     did = "did:plc:abc123"
-    doc = did_plc_doc_for(did, sk)
-
-    async def fake_plc(did_arg: str, at) -> dict:
-        return doc
 
     sig = sign_attestation(
         _hash_a(), sk, did, "supersede",
@@ -187,9 +218,8 @@ async def test_did_plc_sign_verify_round_trip(did_plc_doc_for) -> None:
         now=_SIGNED_AT,
     )
     cache = InMemoryDidDocCache()
-    ok = await verify_attestation(
-        _hash_a(), sig, cache=cache, plc_resolver=fake_plc
-    )
+    await _seed_snapshot(cache, did=did, sk=sk, when=_SIGNED_AT, vm_fragment="atproto")
+    ok = await verify_attestation(_hash_a(), sig, cache=cache)
     assert ok is True
 
 
@@ -247,22 +277,20 @@ async def test_sign_verify_methods_parametrized(
         snapshot_at = None
     elif method == "did:web":
         did = "did:web:example.org"
-        doc = did_web_doc_for(did, sk)
-
-        async def http(_url: str) -> dict:  # type: ignore[no-redef]
-            return doc
-
         key_id = f"{did}#key-1"
         snapshot_at = _SIGNED_AT
+        # WR-06: pre-seed the cache with the signing-time snapshot. http
+        # remains None — the strict path doesn't consult it.
+        await _seed_snapshot(
+            cache, did=did, sk=sk, when=_SIGNED_AT, vm_fragment="key-1"
+        )
     else:  # did:plc
         did = "did:plc:abc123"
-        doc = did_plc_doc_for(did, sk)
-
-        async def plc_resolver(_did, _at) -> dict:  # type: ignore[no-redef]
-            return doc
-
         key_id = f"{did}#atproto"
         snapshot_at = _SIGNED_AT
+        await _seed_snapshot(
+            cache, did=did, sk=sk, when=_SIGNED_AT, vm_fragment="atproto"
+        )
 
     sig = sign_attestation(
         _hash_a(), sk, did, "extract",
@@ -283,3 +311,85 @@ async def test_sign_verify_methods_parametrized(
         _hash_b(), tampered, cache=cache, http=http, plc_resolver=plc_resolver
     )
     assert bad is False, f"tampered hash should fail verify for {method}"
+
+
+# ── WR-06 — cold-cache historical did:web/did:plc fails CLOSED ─────────────
+
+
+@pytest.mark.asyncio
+async def test_verify_cold_cache_for_historical_didweb_fails_closed(
+    did_web_doc_for,
+) -> None:
+    """WR-06: a cold cache + historical did:web signature must fail closed.
+
+    Before the fix, the verifier would silently fetch the CURRENT did.json
+    via the default ``_default_http_get`` (or the injected ``http``) on a
+    cache miss — which after a rotation publishes a different key. The fix
+    refuses to fetch when ``sig.did_doc_snapshot_at`` is non-None and the
+    cache misses; verification returns False without ever touching the
+    network.
+
+    We assert two things:
+    * verify returns False.
+    * No ``http`` call was made.
+    """
+    sk = Ed25519PrivateKey.generate()
+    did = "did:web:example.org"
+
+    sig = sign_attestation(
+        _hash_a(), sk, did, "promote",
+        signing_key_id=f"{did}#key-1",
+        did_doc_snapshot_at=_SIGNED_AT,
+        now=_SIGNED_AT,
+    )
+
+    fetch_calls: list[str] = []
+
+    async def tracking_http(url: str) -> dict:
+        fetch_calls.append(url)
+        # If WR-06 were absent, we'd return the doc here and verify would
+        # succeed against the live key — exactly the silent F2 hole.
+        return did_web_doc_for(did, sk)
+
+    cache = InMemoryDidDocCache()  # COLD
+    ok = await verify_attestation(_hash_a(), sig, cache=cache, http=tracking_http)
+    assert ok is False, (
+        "WR-06: cold cache for a historical did:web signature must fail "
+        "closed without re-fetching the current doc"
+    )
+    assert fetch_calls == [], (
+        f"WR-06: verifier must NOT touch the http seam on a cold-cache "
+        f"historical verify; got fetches: {fetch_calls!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_verify_cold_cache_for_historical_didplc_fails_closed(
+    did_plc_doc_for,
+) -> None:
+    """WR-06: cold cache + historical did:plc must fail closed (no plc_resolver call)."""
+    sk = Ed25519PrivateKey.generate()
+    did = "did:plc:abc123"
+
+    sig = sign_attestation(
+        _hash_a(), sk, did, "supersede",
+        signing_key_id=f"{did}#atproto",
+        did_doc_snapshot_at=_SIGNED_AT,
+        now=_SIGNED_AT,
+    )
+
+    plc_calls: list[tuple] = []
+
+    async def tracking_plc(did_arg: str, at) -> dict:
+        plc_calls.append((did_arg, at))
+        return did_plc_doc_for(did, sk)
+
+    cache = InMemoryDidDocCache()  # COLD
+    ok = await verify_attestation(
+        _hash_a(), sig, cache=cache, plc_resolver=tracking_plc
+    )
+    assert ok is False
+    assert plc_calls == [], (
+        f"WR-06: verifier must NOT touch the plc_resolver seam on a cold-"
+        f"cache historical verify; got calls: {plc_calls!r}"
+    )
