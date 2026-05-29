@@ -33,7 +33,13 @@ findings:
   warning: 9
   info: 5
   total: 18
-status: issues_found
+status: partial
+fix_iteration: 1
+fixed:
+  critical: 4
+  warning: 9
+  skipped:
+  - "IN-01..IN-05 (info findings — out of scope per --fix scope)"
 ---
 
 # Phase 6: Code Review Report
@@ -622,3 +628,30 @@ The current `Any` was justified as "Phase-5 frozen seam (D-09)" but Phase 6 wire
 _Reviewed: 2026-05-28T20:19:34Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+## Resolution
+
+All 4 Critical + 9 Warning findings fixed in iteration 1 (2026-05-29). Info
+findings (IN-01..IN-05) were not in scope for this `--fix` run.
+
+| ID    | Status | Commit  | Notes |
+|-------|--------|---------|-------|
+| CR-01 | fixed  | 7541cd0 | F7 takeover defense: bind() now enforces signature.did == bound did AND signature.over_content_hash == SHA-256(JCS(proof)). 3 regression tests (signature_did_mismatch, signature_hash_does_not_cover_proof, attacker_cannot_bind_victim_sub_with_own_did). |
+| CR-02 | fixed  | 5e3b7b2 | Default did:plc resolver raises UnresolvableDidError when a non-None historical `at` is passed. 2 regression tests (refuses historical at; current-head path still works via monkeypatched atproto). |
+| CR-03 | fixed  | 36a5bc7 | Default did:web fetcher enforces https://, follow_redirects=False, and a 1 MiB streaming response cap via httpx AsyncClient.stream(). 3 regression tests (non-HTTPS refused, oversize rejected, in-cap succeeds). |
+| CR-04 | fixed  | 8043969 | Removed `from folio_insights.identity.cli import did_group` and the `did_group` export from `identity/__init__.py`. Root cli.py already registers the subgroup directly, so the public CLI surface is unchanged. |
+| WR-01 | fixed  | fdac13b | Reordered bind() gates: timestamp (F3 skew) and endpoint pin run BEFORE nonce consume. Updated docstring. 2 regression tests confirm stale / wrong-endpoint proofs do NOT burn the nonce. |
+| WR-02 | fixed  | f44ad8d | load_signing_key branches on os.name: POSIX bit-mask enforced on POSIX, warning emitted on Windows (NTFS ACLs are operator responsibility), silent skip elsewhere. 3 tests (POSIX 0o600 OK, POSIX 0o644 rejected, simulated Windows warns). |
+| WR-03 | fixed  | b74874f | _assert_sub_is_oauth_sub now rejects plain-alpha 1-15-char subjects without ``:``/``|`` (bare-username F7 form). 2 regression tests (alice refused; github:12345 still accepted). |
+| WR-04 | fixed  | 44f510b | _default_plc_resolve wraps the blocking `resolver.did.resolve(did)` call in `asyncio.to_thread` so the event loop is not stalled during PLC fetches. |
+| WR-05 | fixed  | fcf9901 | _did_web_url uses urllib.parse.unquote on the domain segment (handles `%3A` ports) and refuses loopback / link-local hosts (localhost, 127.0.0.1, ::1, 0.0.0.0, 169.254.x.x). 5 regression tests. |
+| WR-06 | fixed: requires human verification | a30616a | verifier short-circuits to cache-only when `sig.did_doc_snapshot_at` is non-None AND DID is did:web/did:plc: cache miss returns False without consulting http/plc_resolver. Updated 4 existing tests to pre-seed cache; added 2 new cold-cache fail-closed tests. Logic change — please confirm Phase 13 persistence layer's plan to pre-seed the cache at sign time is consistent with this strict path. |
+| WR-07 | fixed  | fcb16c3 | `did verify` CLI: added `--did-doc` (offline) and `--allow-network` flags. By default the CLI rejects any did:web/did:plc resolution that would hit the network (raises inside an injected http that always errors). did:key verification still works unconditionally. |
+| WR-08 | fixed  | d2f9ba4 | _normalize_for_jcs uses an anchored regex (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$`) and replaces `Z` only at the END (not via blanket replace). 3 regression tests (malformed lookalike stays string; Z-suffix and +00:00 forms both canonicalize). |
+| WR-09 | fixed  | b64d5a4 | Centralized `_b64url_nopad_encode` / `_b64url_nopad_decode` in `src/folio_insights/identity/_b64.py`; keys.py, signer.py, verifier.py import from there. The `_b64.py` underscore prefix keeps it out of the no-server-keys AST contract surface. |
+| IN-01..05 | skipped | n/a   | Info findings out of scope per `--fix` scope (critical_warning). |
+
+Final test result: `uv run pytest tests/identity tests/shards tests/revision -q` → 394 passed, 1 warning (pre-existing Pydantic serializer warning unrelated to phase 6).
+
