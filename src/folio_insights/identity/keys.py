@@ -26,7 +26,9 @@ keystore module, the contract test is the gate that catches it.
 from __future__ import annotations
 
 import json
+import os
 import stat
+import warnings
 from pathlib import Path
 
 import base58
@@ -216,19 +218,35 @@ def load_signing_key(key_path: Path = KEY_PATH) -> Ed25519PrivateKey:
             "live ONLY on the operator's machine)"
         )
 
-    # POSIX mode check — refuse a world/group-readable keyfile.
-    try:
-        mode = key_path.stat().st_mode
-    except OSError as exc:  # pragma: no cover — stat rarely fails after exists()
-        raise OSError(f"could not stat {key_path}: {exc}") from exc
-    # The low 9 bits are rwxrwxrwx; we want owner-only (0o600 = 0o400|0o200).
-    # If ANY group or other read/write bit is set, refuse.
-    forbidden_bits = stat.S_IRWXG | stat.S_IRWXO
-    if mode & forbidden_bits:
-        raise PermissionError(
-            f"signing keyfile {key_path} is group/world readable (mode "
-            f"{oct(mode & 0o777)}); DID-06 requires 0o600. Run "
-            f"`chmod 600 {key_path}` to fix."
+    # WR-02 fix — POSIX mode check is meaningful only on POSIX-mode platforms.
+    # On Windows, ``Path.stat().st_mode`` is a synthesized mode where files
+    # default to 0o666 (rw for owner/group/other), so the previous unconditional
+    # bit-mask check raised ``PermissionError`` for EVERY Windows key load with
+    # no way for the operator to fix via ``chmod``. We now branch on
+    # ``os.name``: enforce the bit mask on POSIX, surface a warning on Windows
+    # (operator MUST rely on NTFS ACLs there), skip silently elsewhere.
+    if os.name == "posix":
+        try:
+            mode = key_path.stat().st_mode
+        except OSError as exc:  # pragma: no cover — stat rarely fails after exists()
+            raise OSError(f"could not stat {key_path}: {exc}") from exc
+        # The low 9 bits are rwxrwxrwx; we want owner-only (0o600 = 0o400|0o200).
+        # If ANY group or other read/write bit is set, refuse.
+        forbidden_bits = stat.S_IRWXG | stat.S_IRWXO
+        if mode & forbidden_bits:
+            raise PermissionError(
+                f"signing keyfile {key_path} is group/world readable (mode "
+                f"{oct(mode & 0o777)}); DID-06 requires 0o600. Run "
+                f"`chmod 600 {key_path}` to fix."
+            )
+    elif os.name == "nt":  # pragma: no cover — exercised under Windows only
+        # On Windows, the POSIX mode bits Path.stat() reports are synthesized and
+        # never reflect real ACL state. We can't enforce DID-06 here; emit a
+        # warning so the operator knows NTFS ACLs are their responsibility.
+        warnings.warn(
+            f"On Windows, POSIX mode bits on {key_path} are synthesized; rely "
+            "on NTFS ACLs to restrict access to the keyfile (DID-06).",
+            stacklevel=2,
         )
 
     jwk = json.loads(key_path.read_text(encoding="utf-8"))
