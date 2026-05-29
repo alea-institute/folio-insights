@@ -58,7 +58,14 @@ from folio_insights.identity.preview import (
     SigningPreview,
     build_signing_preview,
 )
-from folio_insights.identity.cli import did_group
+
+# NOTE (CR-04 fix): The Click-based ``did_group`` CLI command is NOT imported here.
+# Eager-importing ``identity.cli`` would pull ``click`` (and the rest of the CLI
+# import graph) into every consumer of ``identity/`` — including the signer /
+# verifier hot paths and the ``test_no_server_keys_contract`` AST surface. The
+# root CLI registers the subgroup directly via
+# ``from folio_insights.identity.cli import did_group`` in
+# ``src/folio_insights/cli.py``; callers that want the CLI surface can do the same.
 
 __all__ = [
     # keys.py
@@ -97,6 +104,7 @@ __all__ = [
     "GOVERNANCE_ACTIONS",
     "SigningPreview",
     "build_signing_preview",
-    # cli.py — Plan 03 (DID-05 / DID-07 CLI subgroup)
-    "did_group",
+    # NOTE (CR-04): ``did_group`` is intentionally NOT re-exported here — see the
+    # docstring above. Import directly from ``folio_insights.identity.cli`` if
+    # needed.
 ]
