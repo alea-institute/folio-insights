@@ -228,6 +228,23 @@ class InMemoryNonceStore:
 # ── F7 helper — sub must be an OAuth ``sub`` claim, never email/username ────
 
 
+# WR-03: a short, plain-alphanumeric subject (no provider prefix, no ``:``,
+# no digits-only form) is the typical shape of a USERNAME — exactly the F7
+# GitHub-takeover vector this function is supposed to catch. Accepting these
+# silently means an operator who passes a GitHub username instead of the
+# numeric id (a common F7 mistake) gets a binding the design says to refuse.
+#
+# Accepted "looks like an opaque sub" shapes:
+#   * Provider-prefixed:    ``github:12345``, ``google:117_...``, ``auth0|abc...``
+#   * Numeric-only id:      ``12345``, ``117345678``
+#   * Opaque ≥16 chars:     ``abc123def456ghi7…`` (treated as an opaque id)
+#
+# Refused as username-shaped:
+#   * Plain alpha 1–15 chars w/o ``:``: ``alice``, ``bob``, ``corp-admin``,
+#     ``user_name`` — these are the F7 GitHub-username form.
+_SUSPECT_USERNAME = __import__("re").compile(r"^[a-zA-Z][a-zA-Z0-9_-]{0,14}$")
+
+
 def _assert_sub_is_oauth_sub(sub: str) -> None:
     """Refuse a binding subject that looks like an email or a bare username (F7).
 
@@ -236,17 +253,15 @@ def _assert_sub_is_oauth_sub(sub: str) -> None:
     ``github:12345``). It is NOT a username and it is NOT an email — both of
     which are mutable and the F7 GitHub-username-takeover vector exploits.
 
-    Conservative heuristic — reject the two MOST common F7 mistakes:
+    Refuses (WR-03 strengthened heuristic):
 
-    * Contains ``@`` → looks like an email (``alice@example.com``).
-    * Empty or all-whitespace → not a usable identifier.
+    * Empty or all-whitespace — not a usable identifier.
+    * Contains ``@`` — looks like an email (``alice@example.com``).
+    * Plain alpha 1–15 chars without ``:`` or other provider-prefix marker
+      — looks like a username (``alice``, ``bob``, ``corp-admin``).
 
-    A "looks like a bare username" check (e.g., short, all-lowercase, no
-    provider prefix) would be too restrictive — many providers do issue
-    short opaque ids that look usernamey. The ``@`` rejection covers email
-    (the highest-volume F7 mistake); operators threading raw GitHub usernames
-    are flagged in the doc string of ``bind()`` to use ``github:<numeric_id>``
-    style sub values.
+    Accepts as "opaque sub-shaped": provider-prefixed (contains ``:`` or
+    ``|``), numeric-only, or opaque length-≥16 strings.
     """
     if not sub or not sub.strip():
         raise InvalidSubject(
@@ -258,6 +273,19 @@ def _assert_sub_is_oauth_sub(sub: str) -> None:
             f"Binding subject {sub!r} looks like an email — bind to the "
             "immutable OAuth `sub` claim, NEVER email (F7 / SEC-06 / "
             "GitHub-takeover defense)."
+        )
+    # WR-03: reject bare-username shapes. The provider-prefix markers ``:``
+    # and ``|`` (auth0 style) are the well-known opaque-sub conventions;
+    # presence of either is enough to accept the value as provider-issued.
+    if (
+        _SUSPECT_USERNAME.match(sub) is not None
+        and ":" not in sub
+        and "|" not in sub
+    ):
+        raise InvalidSubject(
+            f"Binding subject {sub!r} looks like a bare username — bind to "
+            "the provider-prefixed OAuth `sub` claim (e.g. 'github:12345'), "
+            "NEVER a username (F7 / SEC-06 / GitHub-takeover defense — WR-03)."
         )
 
 

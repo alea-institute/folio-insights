@@ -665,3 +665,51 @@ async def test_endpoint_mismatch_does_not_consume_nonce(doc_cache) -> None:
 
     # Nonce still consumable.
     assert await nonce_store.consume(nonce) is True
+
+
+# ── WR-03 — strengthened F7 subject heuristic (bare-username rejected) ─────
+
+
+@pytest.mark.asyncio
+async def test_bare_username_sub_refused(doc_cache) -> None:
+    """WR-03: a plain ``alice`` subject is refused (F7 GitHub-username form)."""
+    sk, did = _make_didkey()
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+    bad_sub = "alice"
+    proof = ProofPayload(
+        sub=bad_sub, nonce=nonce, issued_at=now,
+        binding_endpoint=_BINDING_ENDPOINT, did=did,
+    )
+    sig = _sign_proof(proof, sk, did, signed_at=now)
+    with pytest.raises(InvalidSubject):
+        await bind(
+            bad_sub, did, proof, sig,
+            nonce_store=nonce_store, binding_store=binding_store,
+            expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+            now=lambda: now,
+        )
+
+
+@pytest.mark.asyncio
+async def test_provider_prefixed_numeric_sub_accepted(doc_cache) -> None:
+    """WR-03 boundary: ``github:12345`` (provider-prefixed) still binds successfully."""
+    sk, did = _make_didkey()
+    nonce_store = InMemoryNonceStore()
+    nonce = await _issue_nonce(nonce_store)
+    binding_store: dict = {}
+    now = datetime(2026, 5, 1, 12, 0, 0, tzinfo=UTC)
+    proof = ProofPayload(
+        sub=_VALID_SUB, nonce=nonce, issued_at=now,
+        binding_endpoint=_BINDING_ENDPOINT, did=did,
+    )
+    sig = _sign_proof(proof, sk, did, signed_at=now)
+    record = await bind(
+        _VALID_SUB, did, proof, sig,
+        nonce_store=nonce_store, binding_store=binding_store,
+        expected_binding_endpoint=_BINDING_ENDPOINT, cache=doc_cache,
+        now=lambda: now,
+    )
+    assert record.sub == _VALID_SUB
