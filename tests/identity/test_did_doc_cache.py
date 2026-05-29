@@ -336,3 +336,129 @@ async def test_default_plc_resolver_used_when_at_is_none(monkeypatch) -> None:
     snap = await _resolver.resolve_did("did:plc:abc123", at=None)
     assert snap.did == "did:plc:abc123"
     assert snap.public_key_multibase.startswith("z")
+
+
+# ── CR-03 — did:web fetch hardening (HTTPS + response-size cap) ─────────────
+
+
+@pytest.mark.asyncio
+async def test_did_web_non_https_url_refused() -> None:
+    """CR-03: a non-HTTPS URL must fail closed at the default http fetcher.
+
+    We exercise the default fetcher directly. A custom fetcher that bypasses
+    the scheme check is out of scope (operators choosing to do so accept the
+    SSRF/MITM risk explicitly).
+    """
+    from folio_insights.identity.resolver import (
+        _default_http_get,
+        UnresolvableDidError as _Unresolvable,
+    )
+
+    with pytest.raises(_Unresolvable):
+        await _default_http_get("http://example.org/.well-known/did.json")
+
+
+@pytest.mark.asyncio
+async def test_did_web_response_too_large_rejected() -> None:
+    """CR-03: a response body exceeding 1 MiB must fail closed.
+
+    We patch the default fetcher's httpx client with a fake that streams
+    chunks past the cap, then assert ``UnresolvableDidError`` fires. This
+    keeps the test offline and deterministic.
+    """
+    from folio_insights.identity.resolver import (
+        _default_http_get,
+        _MAX_DID_WEB_BYTES,
+        UnresolvableDidError as _Unresolvable,
+    )
+
+    # Build a fake httpx.AsyncClient context manager whose .stream() yields
+    # chunks adding up to just over the cap.
+    class _FakeResp:
+        def raise_for_status(self):
+            return None
+
+        async def aiter_bytes(self):
+            # Yield 1 KiB chunks until we cross the cap; +1 chunk pushes us
+            # over and the function must abort.
+            chunk = b"x" * 1024
+            yielded = 0
+            target = _MAX_DID_WEB_BYTES + 4096
+            while yielded < target:
+                yield chunk
+                yielded += len(chunk)
+
+    class _FakeStream:
+        def __init__(self, resp):
+            self._resp = resp
+
+        async def __aenter__(self):
+            return self._resp
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def stream(self, method, url):
+            return _FakeStream(_FakeResp())
+
+    import folio_insights.identity.resolver as _resolver_mod
+
+    # Patch httpx.AsyncClient inside the resolver module's import binding.
+    orig_async_client = _resolver_mod.httpx.AsyncClient
+    _resolver_mod.httpx.AsyncClient = lambda *a, **kw: _FakeClient()
+    try:
+        with pytest.raises(_Unresolvable):
+            await _default_http_get("https://example.org/.well-known/did.json")
+    finally:
+        _resolver_mod.httpx.AsyncClient = orig_async_client
+
+
+@pytest.mark.asyncio
+async def test_did_web_response_within_cap_succeeds() -> None:
+    """CR-03 boundary: a small valid response still flows through normally."""
+    from folio_insights.identity.resolver import _default_http_get
+    import folio_insights.identity.resolver as _resolver_mod
+
+    payload = b'{"id": "did:web:example.org", "verificationMethod": []}'
+
+    class _FakeResp:
+        def raise_for_status(self):
+            return None
+
+        async def aiter_bytes(self):
+            yield payload
+
+    class _FakeStream:
+        def __init__(self, resp):
+            self._resp = resp
+
+        async def __aenter__(self):
+            return self._resp
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def stream(self, method, url):
+            return _FakeStream(_FakeResp())
+
+    orig_async_client = _resolver_mod.httpx.AsyncClient
+    _resolver_mod.httpx.AsyncClient = lambda *a, **kw: _FakeClient()
+    try:
+        doc = await _default_http_get("https://example.org/.well-known/did.json")
+        assert doc["id"] == "did:web:example.org"
+    finally:
+        _resolver_mod.httpx.AsyncClient = orig_async_client

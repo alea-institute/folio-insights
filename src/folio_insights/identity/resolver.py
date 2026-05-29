@@ -71,12 +71,69 @@ class _PlcResolver(Protocol):
     async def __call__(self, did: str, at: datetime | None) -> dict: ...
 
 
+# CR-03: cap did:web response bodies. Real DID documents are kilobytes (the
+# verificationMethod list + a couple of metadata fields). A 1 MiB cap is two
+# orders of magnitude above legitimate use and forecloses memory exhaustion
+# from a malicious / compromised did:web host. 06-RESEARCH §6 calls out
+# "did:web HTTPS fetch (TLS verification, fetch size limits)" as a phase-6
+# review focus; before this fix only TLS verification (httpx default) was
+# enforced.
+_MAX_DID_WEB_BYTES = 1 * 1024 * 1024
+
+
 async def _default_http_get(url: str) -> dict:
-    """Default did:web fetcher. Used only when the caller did not inject one."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        return resp.json()
+    """Default did:web fetcher with HTTPS enforcement + response-size cap (CR-03).
+
+    Hardenings vs. the pre-CR-03 implementation:
+
+    * **HTTPS-only.** A non-``https://`` URL fails closed before any network
+      call. The ``_did_web_url`` derivation already produces ``https://``, but
+      explicit enforcement defends against future code paths or operator-
+      supplied custom http callables that might follow a redirect to plain
+      ``http://``. ``follow_redirects=False`` belt-and-braces.
+    * **1 MiB response cap.** Streams the body and aborts past
+      ``_MAX_DID_WEB_BYTES`` so a malicious did:web host cannot OOM the
+      process by returning gigabytes of bytes (or a slow trickle within the
+      per-chunk timeout window).
+    * **No redirect following.** Combined with HTTPS-only and the size cap,
+      this means the request lands on EXACTLY the host ``_did_web_url``
+      derived from the DID — no SSRF detour through an attacker-controlled
+      redirect.
+
+    The function still returns the parsed JSON dict so the rest of the
+    pipeline (``_pick_ed25519_vm`` / ``_ed25519_pub_from_vm``) is unchanged.
+
+    Operators in SERVER-SIDE contexts SHOULD supply a vetted custom ``http``
+    callable rather than relying on this default — see ``_did_web_url`` for
+    the SSRF allow-list applied at URL-derivation time (WR-05).
+    """
+    if not url.startswith("https://"):
+        raise UnresolvableDidError(
+            f"did:web fetch requires https://, got {url!r}; refusing "
+            "to fetch over an insecure scheme (CR-03)."
+        )
+    async with httpx.AsyncClient(
+        timeout=10.0,
+        follow_redirects=False,
+        verify=True,
+    ) as client:
+        async with client.stream("GET", url) as resp:
+            resp.raise_for_status()
+            chunks: list[bytes] = []
+            total = 0
+            async for chunk in resp.aiter_bytes():
+                total += len(chunk)
+                if total > _MAX_DID_WEB_BYTES:
+                    raise UnresolvableDidError(
+                        f"did:web response from {url!r} exceeds "
+                        f"{_MAX_DID_WEB_BYTES} bytes (received {total}); "
+                        "refusing to load (CR-03 — DoS / memory-exhaustion "
+                        "defense)."
+                    )
+                chunks.append(chunk)
+    import json as _json
+
+    return _json.loads(b"".join(chunks))
 
 
 async def _default_plc_resolve(did: str, at: datetime | None) -> dict:
