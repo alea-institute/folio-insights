@@ -316,18 +316,69 @@ def sign_cmd(
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="AttestedSignature JSON (model_dump form) to verify.",
 )
-def verify_cmd(shard_json: Path, signature_json: Path) -> None:
+@click.option(
+    "--did-doc",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Path to a recorded did.json (offline did:web verify). When set, "
+        "the verifier resolves the DID document from this file instead of "
+        "making a network call."
+    ),
+)
+@click.option(
+    "--allow-network",
+    is_flag=True,
+    default=False,
+    help=(
+        "Permit live did:web / did:plc resolution. OFF by default (WR-07): "
+        "an attacker-supplied AttestedSignature carrying did:web:internal.corp "
+        "could otherwise pivot the verifier into an SSRF against an internal "
+        "service. Operators in offline / air-gapped contexts MUST keep this "
+        "flag off and supply --did-doc for did:web verification."
+    ),
+)
+def verify_cmd(
+    shard_json: Path,
+    signature_json: Path,
+    did_doc: Path | None,
+    allow_network: bool,
+) -> None:
     """Verify a recorded ``AttestedSignature`` against the shard (PASS/FAIL).
 
     Resolves the signing-time key via the in-memory cache + Plan-02
-    resolver (did:key decoded locally; did:web / did:plc require recorded
-    fixtures or live network — Phase 6 wires the cache, Phase 13 fills
-    persistence). Exits 0 on PASS, 1 on FAIL.
+    resolver. By default (WR-07) the CLI does NOT touch the network — a
+    did:web / did:plc verify against a non-cached snapshot fails unless the
+    caller supplies ``--did-doc`` (offline path) or ``--allow-network``.
+    did:key signatures verify cleanly without either (no network needed).
+    Exits 0 on PASS, 1 on FAIL.
     """
     shard = _load_shard(shard_json)
     sig = _load_signature(signature_json)
     cache = InMemoryDidDocCache()
-    ok = asyncio.run(verify_attestation(shard, sig, cache=cache))
+
+    if did_doc is not None:
+        recorded = json.loads(did_doc.read_text(encoding="utf-8"))
+
+        async def _offline_http(_url: str) -> dict:
+            return recorded
+
+        http_callable = _offline_http
+    elif allow_network:
+        http_callable = None  # let the verifier fall through to default
+    else:
+        async def _refuse_network(url: str) -> dict:
+            raise RuntimeError(
+                f"verify needs to fetch {url!r} but --allow-network is off "
+                "and no --did-doc was supplied (WR-07: the CLI does not "
+                "touch the network by default)."
+            )
+
+        http_callable = _refuse_network
+
+    ok = asyncio.run(
+        verify_attestation(shard, sig, cache=cache, http=http_callable)
+    )
     if ok:
         click.echo("VERIFY: PASS")
         sys.exit(0)
