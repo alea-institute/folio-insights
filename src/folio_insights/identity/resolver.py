@@ -22,6 +22,7 @@ error; the resolver never returns a wrong key silently (T-06-09).
 """
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any, Awaitable, Callable, Protocol
 
@@ -174,7 +175,12 @@ async def _default_plc_resolve(did: str, at: datetime | None) -> dict:
     from atproto import IdResolver  # type: ignore[import-untyped]
 
     resolver = IdResolver()
-    doc = resolver.did.resolve(did)
+    # WR-04 fix: ``resolver.did.resolve`` is a blocking network call. Wrapping
+    # it in ``asyncio.to_thread`` keeps the event loop free for other
+    # coroutines while the PLC fetch runs (e.g. callers using
+    # ``asyncio.gather`` over multiple verifies — common in batch-verify
+    # workflows).
+    doc = await asyncio.to_thread(resolver.did.resolve, did)
     if doc is None:
         raise UnresolvableDidError(f"atproto IdResolver returned None for {did!r}")
     # atproto's resolve() returns a typed DIDDocument; coerce to a plain dict
