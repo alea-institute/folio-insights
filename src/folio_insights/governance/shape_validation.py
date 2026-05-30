@@ -602,13 +602,129 @@ def validate_supersession_shape(event: "SupersessionEvent") -> ValidationResult:
     )
 
 
-def validate_retraction_shape(event: RetractionEvent) -> ValidationResult:
-    """Validate a RetractionEvent (cascade_preview_hash committed) — (07-05b)."""
-    raise NotImplementedError("filled by 07-05b (retraction shape)")
+def _build_retraction_graph(event: "RetractionEvent") -> Graph:
+    """Materialize a RetractionEvent as RDF for fi:RetractionShape (07-05b).
+
+    Plain Literals on the two slots so the SHACL belt's xsd:string +
+    minLength constraints fire cleanly (07-04a bad4055 plain-Literal
+    precedent).
+    """
+    g = Graph()
+    event_node = URIRef("urn:fi:pending:retraction")
+    g.add((event_node, RDF.type, FI.Retraction))
+    g.add(
+        (
+            event_node,
+            FI.shardIri,
+            Literal(event.shard_iri, datatype=XSD.string),
+        )
+    )
+    g.add(
+        (
+            event_node,
+            FI.cascadePreviewHash,
+            Literal(event.cascade_preview_hash, datatype=XSD.string),
+        )
+    )
+    return g
+
+
+def validate_retraction_shape(event: "RetractionEvent") -> ValidationResult:
+    """Validate a RetractionEvent against ``fi:RetractionShape`` (07-05b; D-17).
+
+    SHACL belt: shardIri non-empty + cascadePreviewHash non-empty xsd:string.
+    The code suspenders live in ``governance/retract.py::validate_retraction``;
+    this is the third defense-in-depth layer.
+
+    Returns ``conforms=True`` defensively if the TTL hasn't shipped — matches
+    the 07-04a precedent.
+    """
+    shapes_path = _SHAPES_DIR / "retraction_shape.ttl"
+    if not shapes_path.exists():
+        return ValidationResult(conforms=True, violations=[], results_text="")
+    shapes = _load_shape_graph("retraction_shape.ttl")
+    data_graph = _build_retraction_graph(event)
+    conforms, _g, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+    violations = _parse_violations(results_text) if not conforms else []
+    return ValidationResult(
+        conforms=conforms, violations=violations, results_text=results_text
+    )
+
+
+# ── Turtle export helper (D-08 — 07-05b) ───────────────────────────────────
+#
+# The lone module under governance/ allowed to import rdflib + pyshacl.
+# `governance export` CLI calls this helper INSTEAD of importing rdflib
+# directly — preserving the D-04 boundary at the CLI layer.
+
+
+_PROV = Namespace("http://www.w3.org/ns/prov#")
+
+
+def serialize_log_as_turtle(events: "list[GovernanceEvent]") -> str:
+    """Serialize a list of GovernanceEvents to PROV-O Turtle (D-08, 07-05b).
+
+    Each event becomes a ``prov:Activity`` node carrying:
+      * ``a prov:Activity`` (RDF type).
+      * ``prov:wasAttributedTo <signer_did_uri>`` — the operator who signed.
+      * ``fi:position <int>`` — log row position.
+      * ``fi:action "<action_str>"`` — the SignedAction Literal.
+      * ``fi:signedAt "<iso_datetime>"^^xsd:dateTime`` — wall-clock at signing
+        (omitted if signed_at is None — honest-unsigned discipline).
+
+    Activity URIs are stable: ``urn:fi:event:<corpus>:<position>``.
+
+    Boundary discipline: this is the ONLY place under ``governance/`` (except
+    the per-shape validators above) where rdflib is imported. The CLI in
+    ``governance/cli/export.py`` calls this helper and never touches rdflib
+    directly — D-04 intact.
+
+    Returns the Turtle serialization as a string; callers write it to disk.
+    """
+    g = Graph()
+    g.bind("fi", FI)
+    g.bind("prov", _PROV)
+    for ev in events:
+        activity = URIRef(f"urn:fi:event:{ev.corpus}:{ev.position}")
+        signer = URIRef(ev.signature.did)
+        g.add((activity, RDF.type, _PROV.Activity))
+        g.add((activity, _PROV.wasAttributedTo, signer))
+        g.add(
+            (
+                activity,
+                FI.position,
+                Literal(ev.position, datatype=XSD.integer),
+            )
+        )
+        g.add(
+            (
+                activity,
+                FI.action,
+                Literal(ev.signature.action, datatype=XSD.string),
+            )
+        )
+        if ev.signature.signed_at is not None:
+            g.add(
+                (
+                    activity,
+                    FI.signedAt,
+                    Literal(
+                        ev.signature.signed_at.isoformat(),
+                        datatype=XSD.dateTime,
+                    ),
+                )
+            )
+    return g.serialize(format="turtle")
 
 
 __all__ = [
     "ValidationResult",
+    "serialize_log_as_turtle",
     "validate_contest_resolution_shape",
     "validate_contest_shape",
     "validate_governance_log_shape",

@@ -27,9 +27,16 @@ Action-permission table (PRD §3.1, PATTERNS.md L226-229):
 
   extractor    -> {extract, content_edit}
   reviewer     -> above + {promote, demote, contest, supersede, retract,
-                          distinguo, content_edit, reparent, reconcile}
+                          distinguo, content_edit, reparent, reconcile,
+                          export, show}  (D-19 — read paths still gated)
   arbiter      -> above + {resolve_contest}
   corpus_admin -> above + {role_assertion, role_revocation}
+
+D-19 read-path extension (07-05b): the bookkeeping actions ``export`` and
+``show`` are NOT writes to the log, but every CLI command still passes
+through ``authorize()`` as its first awaited step. Reviewers, arbiters,
+and corpus_admins MAY ``export`` / ``show``; extractors MAY NOT (they
+have no read-of-governance-log mandate in PRD §3.1).
 """
 from __future__ import annotations
 
@@ -104,6 +111,9 @@ _REVIEWER_ACTIONS: frozenset[str] = _EXTRACTOR_ACTIONS | frozenset(
         "distinguo",
         "reparent",
         "reconcile",
+        # 07-05b read-path actions (D-19 reads still pass through authorize):
+        "export",
+        "show",
     }
 )
 

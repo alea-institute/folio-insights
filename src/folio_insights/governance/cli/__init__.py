@@ -13,8 +13,8 @@ Three subcommands ship in 07-04b:
   * ``governance revoke-role <subject_did> --revoked-role <r> --corpus <c>``
     — revoke a previously-asserted role (D-11 lockout refusal surfaces here).
 
-07-05a will extend this group with ``contest``, ``supersede``,
-``resolve-contest``; 07-05b will extend with ``retract``, ``export``.
+07-05a extended this group with ``contest``, ``supersede``,
+``resolve-contest``; 07-05b extends with ``retract``, ``export``, ``show``.
 
 D-19 invariant: every command's first awaited step is ``await authorize(...)``
 — enforced AST-level by ``tests/governance/test_authorize_called_first.py``.
@@ -52,12 +52,22 @@ from folio_insights.governance.cli.resolve_contest import (  # noqa: E402
     resolve_contest_cmd,
 )
 
+# 07-05b: retract (third D-16 sibling) + export (D-08 on-demand Turtle) +
+# show (read companion). D-19 first-step authorize() applies on all three
+# (extends action-permission table with `export` + `show` read actions).
+from folio_insights.governance.cli.retract import retract_cmd  # noqa: E402
+from folio_insights.governance.cli.export import export_cmd  # noqa: E402
+from folio_insights.governance.cli.show import show_cmd  # noqa: E402
+
 governance_group.add_command(promote_cmd)
 governance_group.add_command(role_assert_cmd)
 governance_group.add_command(role_revoke_cmd)
 governance_group.add_command(contest_cmd)
 governance_group.add_command(supersede_cmd)
 governance_group.add_command(resolve_contest_cmd)
+governance_group.add_command(retract_cmd)
+governance_group.add_command(export_cmd)
+governance_group.add_command(show_cmd)
 
 
 __all__ = ["governance_group"]
