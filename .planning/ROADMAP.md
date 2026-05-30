@@ -311,12 +311,29 @@ Plans:
 **Plans**: 7 plans across 5 waves (see `.planning/phases/07-governance-model-3-1/`)
 
 Plans:
+**Wave 1**
+
 - [ ] 07-01-PLAN.md — events foundation: `SignedAction` Literal 12→13 (D-13) + `GovernanceEvent` 13-class discriminated union + `governance/` boundary + dep-leak guard (Wave 1)
 - [ ] 07-02-PLAN.md — RFC lifecycle linter: `python -m folio_insights.rfc.lint` + `RFC-TEMPLATE.md` golden fixture (D-22; GOV-07) (Wave 1, parallel with 07-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 07-03-PLAN.md — `GovernanceLog` Protocol + `InMemoryGovernanceLog` (D-04) + `fi:GovernanceLogShape` SHACL (D-05 amended in-phase gate) + monotonic-position property test (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 07-04a-PLAN.md — roles + central `authorize()` with structural genesis carve-out (D-10/D-19) + `corpus_init` action gate + log.py role-event body + 2 SHACL shapes + F6 closure (D-10/D-11/D-12/D-13) (Wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 07-04b-PLAN.md — promote.py validator (D-20/D-21) + 4 CLI commands (governance promote / assert-role / revoke-role + corpus init via authorize()) + D-19 source-scan regression test covering all 4 commands (Wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 07-05a-PLAN.md — three-way disambiguation pt 1 (contest / supersede / resolve_contest) + 3 SHACL shapes + 3 CLI commands + GOV-05 no-majority-vote + D-16 grep-guard test (own task per quality_gate) + active-roles stability Hypothesis property test (Wave 4)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 07-05b-PLAN.md — three-way disambiguation pt 2: retract.py (cascade preview D-17/D-18 + PreviewStale) + retraction shape + 3 CLI commands (retract / export / show) + dedicated `test_governance_export_cli.py` (D-08 owner) + human-verify checkpoint (Wave 5)
 
 ---
