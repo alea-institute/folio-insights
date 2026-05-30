@@ -1,0 +1,12 @@
+# Per-shape TTL files ship in later plans:
+#   governance_log_shape.ttl        — 07-03
+#   role_assertion_shape.ttl        — 07-04a
+#   role_revocation_shape.ttl       — 07-04a
+#   promotion_shape.ttl             — 07-04b
+#   contest_shape.ttl               — 07-05a
+#   contest_resolution_shape.ttl    — 07-05a
+#   supersession_shape.ttl          — 07-05a
+#   retraction_shape.ttl            — 07-05b
+#
+# This .gitkeep ships the directory so the _SHAPES_DIR loader path resolves
+# even before any TTL files exist.
