@@ -384,8 +384,17 @@ async def commit_cascade(
             f"{preview.taken_at.isoformat()}; re-run --preview"
         )
 
-    # Build, sign, append.
-    from folio_insights.identity.signer import sign_attestation
+    # Build, sign, verify, append.
+    #
+    # CR-01: sign + verify-attestation round-trip via the shared CLI helper.
+    # `governance/retract.py` is invoked from `cli/retract.py`, so the helper
+    # in `cli/_signing.py` is the right seam (lazy import here so retract.py
+    # remains importable when the CLI subpackage is absent — symmetry with
+    # the existing `from folio_insights.identity.signer import sign_attestation`
+    # late import pattern).
+    from folio_insights.governance.cli._signing import sign_and_verify_event
+    from folio_insights.governance.log import InvalidSignature
+    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.shards.envelope import AttestedSignature
 
     now = datetime.now(UTC)
@@ -407,16 +416,22 @@ async def commit_cascade(
     )
     validate_retraction(event)
 
-    payload_hash = event.signature_payload().decode("utf-8")
-    sig = sign_attestation(
-        content_hash=payload_hash,
-        signing_key=signing_key,
-        did=did,
-        action="retract",
-        signing_key_id=f"{did}#{did.removeprefix('did:key:')}",
-        did_doc_snapshot_at=None,
-        now=now,
-    )
+    try:
+        sig = await sign_and_verify_event(
+            event,
+            signing_key=signing_key,
+            did=did,
+            action="retract",
+            signing_key_id=f"{did}#{did.removeprefix('did:key:')}",
+            did_doc_snapshot_at=None,
+            now=now,
+            cache=InMemoryDidDocCache(),
+        )
+    except InvalidSignature:
+        # Re-raise unchanged — the caller (cli/retract.py) reports via the
+        # generic refusal path. The exception type is a ValueError subclass
+        # so existing ValueError handlers still trigger.
+        raise
     signed_event = event.model_copy(update={"signature": sig})
     persisted = await log.append(signed_event)
     return persisted

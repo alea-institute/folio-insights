@@ -81,10 +81,12 @@ def promote_cmd(
     yes: bool,
 ) -> None:
     """Promote a HypothesisShard to an attested status (D-20 + D-21)."""
+    from folio_insights.governance.cli._signing import sign_and_verify_event
     from folio_insights.governance.cli._state import GOVERNANCE_LOG
+    from folio_insights.governance.log import InvalidSignature
+    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
-    from folio_insights.identity.signer import sign_attestation
     from folio_insights.revision.store import InMemoryShardStore
 
     log = GOVERNANCE_LOG
@@ -144,17 +146,21 @@ def promote_cmd(
             click.echo(f"validate_promotion refused: {exc}", err=True)
             sys.exit(1)
 
-        # ── Sign + append (Phase 6 seam → log gate) ──
-        payload_hash = event.signature_payload().decode("utf-8")
-        sig = sign_attestation(
-            content_hash=payload_hash,
-            signing_key=sk,
-            did=signer_did,
-            action="promote",
-            signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
-            did_doc_snapshot_at=None,
-            now=now,
-        )
+        # ── Sign + verify + append (CR-01: shared helper round-trip) ──
+        try:
+            sig = await sign_and_verify_event(
+                event,
+                signing_key=sk,
+                did=signer_did,
+                action="promote",
+                signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
+                did_doc_snapshot_at=None,
+                now=now,
+                cache=InMemoryDidDocCache(),
+            )
+        except InvalidSignature as exc:
+            click.echo(f"verify_attestation refused: {exc}", err=True)
+            sys.exit(1)
         signed_event = event.model_copy(update={"signature": sig})
         try:
             persisted = await log.append(signed_event)
