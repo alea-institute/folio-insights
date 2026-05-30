@@ -1,0 +1,59 @@
+# Phase 7 fi:SupersessionShape — supersession SHACL shape (PRD §21.9, GOV-04).
+#
+# DEFENSE-IN-DEPTH pyshacl shape over SupersessionEvent. The AUTHORITATIVE
+# gate is governance/supersede.py::validate_supersession (Python check);
+# this shape is the SHACL belt at log layer.
+#
+# Constraints:
+#   (a) fi:oldShardIri  — sh:minLength 1 (non-empty)
+#   (b) fi:newShardIri  — sh:minLength 1 (non-empty)
+#   (c) sh:sparql       — REFUSES old == new (a shard cannot supersede itself,
+#                         PRD §21.9 valid-time semantics)
+#
+# Polarity discipline: each SELECT matches the BAD case so a non-empty result
+# set yields conforms=False (mirrors revision/content_edit_shape.ttl precedent
+# and the Phase 7 governance_log_shape.ttl pattern). Polarity spiked against
+# pyshacl 0.31.0 + rdflib 7.6.0.
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi:   <https://folio-insights.example/> .
+
+fi:SupersessionShape a sh:NodeShape ;
+    sh:targetClass fi:Supersession ;
+
+    # Constraint 1: old shard IRI present and non-empty.
+    sh:property [
+        sh:path fi:oldShardIri ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:message "fi:oldShardIri must be a non-empty string" ;
+    ] ;
+
+    # Constraint 2: new shard IRI present and non-empty.
+    sh:property [
+        sh:path fi:newShardIri ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:message "fi:newShardIri must be a non-empty string" ;
+    ] ;
+
+    # Constraint 3: old != new — a shard cannot supersede itself. The SELECT
+    # matches the BAD case (old equals new), so a non-empty result set yields
+    # conforms=False.
+    sh:sparql [
+        sh:message "fi:oldShardIri == fi:newShardIri — a shard cannot supersede itself (PRD §21.9 valid-time semantics)" ;
+        sh:prefixes fi: ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.example/>
+            SELECT $this ?old ?new WHERE {
+                $this a fi:Supersession .
+                $this fi:oldShardIri ?old .
+                $this fi:newShardIri ?new .
+                FILTER(STR(?old) = STR(?new))
+            }
+        """ ;
+    ] .
