@@ -30,6 +30,7 @@ pytestmark = pytest.mark.governance
 # 07-04b ships promote / role_assert / role_revoke / corpus_init (4 files).
 # 07-05a ships contest / supersede / resolve_contest (3 files) — D-19 applies
 # uniformly across the entire CLI surface.
+# 07-05b ships retract / export / show (3 files) — D-19 reads still gated.
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 _COMMAND_FILES = [
     _REPO_ROOT / "src/folio_insights/governance/cli/promote.py",
@@ -40,6 +41,10 @@ _COMMAND_FILES = [
     _REPO_ROOT / "src/folio_insights/governance/cli/contest.py",
     _REPO_ROOT / "src/folio_insights/governance/cli/supersede.py",
     _REPO_ROOT / "src/folio_insights/governance/cli/resolve_contest.py",
+    # 07-05b retract + export + show (read paths still pass through authorize)
+    _REPO_ROOT / "src/folio_insights/governance/cli/retract.py",
+    _REPO_ROOT / "src/folio_insights/governance/cli/export.py",
+    _REPO_ROOT / "src/folio_insights/governance/cli/show.py",
 ]
 
 
