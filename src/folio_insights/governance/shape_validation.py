@@ -422,9 +422,61 @@ def _build_role_revocation_graph(
     return g
 
 
-def validate_promotion_shape(event: PromotionEvent) -> ValidationResult:
-    """Validate a PromotionEvent (cited_iris non-empty, D-20) — (07-04b)."""
-    raise NotImplementedError("filled by 07-04b (promotion shape)")
+def _build_promotion_graph(event: "PromotionEvent") -> Graph:
+    """Materialize a PromotionEvent as RDF for the PromotionShape SPARQL/path checks.
+
+    Emits a ``fi:Promotion`` node carrying:
+      * ``fi:newStatus`` — plain Literal (matches the sh:in plain-string list).
+      * ``fi:citedIri`` — one triple per IRI in ``event.cited_iris`` (may be
+        zero — that's the empty-cited_iris polarity case the SHACL belt
+        catches).
+      * ``fi:shardIri`` — informational (for future cross-shard SPARQL).
+
+    Plain (non-typed) Literals are used for ``fi:newStatus`` so the SHACL
+    ``sh:in ( "..." )`` constraint (which matches plain Literals, not typed
+    ones) fires cleanly. Mirrors the 07-04a precedent (commit bad4055 — drop
+    the xsd:string datatype on role / subjectDid).
+    """
+    g = Graph()
+    event_node = URIRef("urn:fi:pending:promotion")
+    g.add((event_node, RDF.type, FI.Promotion))
+    g.add((event_node, FI.newStatus, Literal(event.new_status)))
+    g.add((event_node, FI.shardIri, Literal(event.shard_iri)))
+    for iri in event.cited_iris:
+        g.add((event_node, FI.citedIri, Literal(iri)))
+    return g
+
+
+def validate_promotion_shape(event: "PromotionEvent") -> ValidationResult:
+    """Validate a PromotionEvent against ``fi:PromotionShape`` (D-20 + D-21, 07-04b).
+
+    SHACL belt for the constraints the shape can express locally:
+      (a) ``fi:newStatus`` Literal in {per_se_nota_quoad_nos, demonstrable,
+          authority_only};
+      (b) ``fi:citedIri`` minCount 1.
+
+    The cite-resolvability + non-self-citation + per-status epistemic-kind
+    checks live in ``governance/promote.py::validate_promotion`` (the code
+    suspenders that run BEFORE this belt).
+
+    Returns ``conforms=True`` if the TTL hasn't shipped yet (defensive —
+    matches the role-event validator precedent in 07-04a).
+    """
+    shapes_path = _SHAPES_DIR / "promotion_shape.ttl"
+    if not shapes_path.exists():
+        return ValidationResult(conforms=True, violations=[], results_text="")
+    shapes = _load_shape_graph("promotion_shape.ttl")
+    data_graph = _build_promotion_graph(event)
+    conforms, _g, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+    violations = _parse_violations(results_text) if not conforms else []
+    return ValidationResult(
+        conforms=conforms, violations=violations, results_text=results_text
+    )
 
 
 def validate_contest_shape(event: ContestEvent) -> ValidationResult:

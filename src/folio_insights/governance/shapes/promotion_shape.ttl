@@ -1,0 +1,52 @@
+# Phase 7 fi:PromotionShape — promotion SHACL shape (D-20, D-21).
+#
+# DEFENSE-IN-DEPTH pyshacl shape over PromotionEvent. The AUTHORITATIVE
+# gates live in governance/promote.py::validate_promotion (D-20 cite-
+# resolvable + D-21 status-kind cross-check at the cross-shard level). This
+# shape is the SHACL belt for the constraints SHACL CAN express locally:
+#
+#   (a) fi:newStatus must be in {per_se_nota_quoad_nos, demonstrable,
+#       authority_only} — sh:in over the 3-Literal set.
+#   (b) fi:citedIri must appear at least once — sh:minCount 1.
+#
+# CANNOT enforce here (lives in validate_promotion):
+#   * cite-resolvability (D-20 part 2) — SHACL cannot reach into the
+#     ShardStore to verify a cited IRI exists.
+#   * non-self-citation (D-20 part 3) — SHACL cannot cross-reference
+#     fi:citedIri to fi:shardIri across distinct event nodes without a
+#     pre-materialized data graph; Python is the right layer.
+#   * D-21 status-kind cross-check — requires reading the cited shard's
+#     class + envelope.epistemic_status; that lookup is the Python validator.
+#
+# Polarity discipline: a valid PromotionEvent yields conforms=True; a
+# missing cited IRI OR an out-of-set newStatus yields conforms=False. Test
+# coverage: tests/governance/test_promotion_shape.py.
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi:   <https://folio-insights.example/> .
+
+fi:PromotionShape a sh:NodeShape ;
+    sh:targetClass fi:Promotion ;
+
+    # Constraint 1: newStatus must be one of the 3 canonical values (D-21
+    # codomain check; the per-status table in promote.py is the cross-shard
+    # check).
+    sh:property [
+        sh:path fi:newStatus ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "per_se_nota_quoad_nos" "demonstrable" "authority_only" ) ;
+        sh:message "fi:newStatus must be one of: per_se_nota_quoad_nos, demonstrable, authority_only" ;
+    ] ;
+
+    # Constraint 2: at least one cited IRI (D-20 part 1 — the field-level
+    # ``Field(min_length=1)`` on PromotionEvent.cited_iris is the first line;
+    # this SHACL belt is the second).
+    sh:property [
+        sh:path fi:citedIri ;
+        sh:minCount 1 ;
+        sh:message "fi:citedIri must have at least one value (D-20 — promotion requires ≥1 citation)" ;
+    ] .
