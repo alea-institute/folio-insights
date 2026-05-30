@@ -2,12 +2,13 @@
 phase: 07-governance-model-3-1
 plan: 05b
 type: execute
-wave: 5
+wave: 6
 depends_on: [07-01, 07-03, 07-04a, 07-04b, 07-05a]
 files_modified:
   - src/folio_insights/governance/retract.py
   - src/folio_insights/governance/shape_validation.py
   - src/folio_insights/governance/shapes/retraction_shape.ttl
+  - src/folio_insights/governance/authorize.py
   - src/folio_insights/governance/cli/__init__.py
   - src/folio_insights/governance/cli/retract.py
   - src/folio_insights/governance/cli/export.py

@@ -403,7 +403,7 @@ tests/governance/
 ├── test_preview_stale_refusal.py                # D-17 --apply on changed state
 ├── test_unsigned_promotion_rejected.py          # acceptance bar
 ├── test_role_revocation_distinct_event.py       # D-13
-├── test_signed_action_literal_12_values.py      # envelope.py:85 extension audit
+├── test_signed_action_literal_13_values.py      # envelope.py:85 extension audit
 ├── test_authorize_central.py                    # D-19 action-permission table
 └── test_dep_leak_guard.py                       # NO aiosqlite/rdflib/pyoxigraph in governance/
 
@@ -1455,7 +1455,7 @@ Phase 5/6 primitives + stdlib.
 | GOV-07 | Body-only edit forbidden from changing status (Reason: trailer required) | integration | `pytest tests/rfc/test_lint_body_only_edit_refused.py -x` | ❌ Wave 0 |
 | CORPUS-05 | corpus init writes self-signed genesis row 0 | integration | `pytest tests/governance/test_genesis_self_signed_carveout.py -x` | ❌ Wave 0 |
 | F6 (D-11) | Last-admin self-revocation refused with `WouldLockoutCorpusAdmin` | unit | `pytest tests/governance/test_last_admin_self_revocation_refused.py -x` | ❌ Wave 0 |
-| D-13 | SignedAction Literal has 12 values | unit | `pytest tests/governance/test_signed_action_literal_12_values.py -x` | ❌ Wave 0 |
+| D-13 | SignedAction Literal has 13 values | unit | `pytest tests/governance/test_signed_action_literal_13_values.py -x` | ❌ Wave 0 |
 | D-19 | Every CLI command calls authorize() as first step | regression | `pytest tests/governance/test_authorize_called_first.py -x` | ❌ Wave 0 |
 | F2 | Active-roles windowed by signed_at (rotation-survival) | property | `pytest tests/governance/test_active_roles_rotation_safe.py -x` | ❌ Wave 0 |
 
