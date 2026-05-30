@@ -129,6 +129,14 @@ class GovernanceLog(Protocol):
         self, corpus: str, position: int
     ) -> GovernanceEvent | None: ...
 
+    # NOTE: declared as a plain `def` returning AsyncIterator (NOT `async def`)
+    # so Protocol structural matching accepts both async-generator
+    # implementations (`async def ... yield` — like InMemoryGovernanceLog
+    # below, which Python types as `def -> AsyncIterator`) and coroutine
+    # implementations that return an AsyncIterator. An `async def`
+    # signature on the Protocol would force every backend into the
+    # coroutine-returning shape and reject the async-generator shape
+    # (CR-02 fix).
     def iter_events(self, corpus: str) -> AsyncIterator[GovernanceEvent]: ...
 
     async def latest_position(self, corpus: str) -> int: ...
