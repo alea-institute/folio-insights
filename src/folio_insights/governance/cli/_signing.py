@@ -39,7 +39,7 @@ not between those commands and a neutral CLI utility.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Optional
 
 from folio_insights.governance.log import InvalidSignature
 

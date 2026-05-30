@@ -78,6 +78,30 @@ fi:GovernanceLogShape a sh:NodeShape ;
     # structural signature of a deletion. We detect by comparing MAX(?p) to
     # (COUNT(?e) - 1); if they differ, we have a gap (or a duplicate, but
     # constraint 1 catches duplicates first).
+    #
+    # WR-05 empty-log edge case (DOCUMENTED + GUARDED):
+    #
+    # When the log is empty:
+    #   * The pattern ``$this fi:hasEvent ?e . ?e fi:position ?p .`` produces
+    #     ZERO bindings, so the GROUP BY yields no group rows for $this.
+    #   * With no group rows, the HAVING clause is vacuously satisfied
+    #     (nothing to filter), and consequently this sh:sparql constraint
+    #     produces zero validation results — i.e. no violation fires.
+    #   * That is the CORRECT behavior: an empty log has no positions, so a
+    #     "gap" is undefined. The genesis-row append (position 0 against an
+    #     empty log) trips constraint 1 (dup) and constraint 2 (signed_at
+    #     monotonicity) per their own SPARQL bodies, but constraint 3 here
+    #     stays silent for the empty-log shape.
+    #
+    # The explicit ``COUNT(?e) > 0`` guard below makes this empty-log
+    # safety EXPLICIT in the HAVING clause rather than relying on
+    # GROUP BY's vacuous-group semantics, which differ slightly between
+    # SHACL implementations (pyshacl over rdflib evaluates the HAVING
+    # against the empty-projection row in some versions). The guard
+    # behaves identically in both vacuous and non-vacuous cases:
+    #   * empty log: COUNT(?e) = 0, guard short-circuits, no violation.
+    #   * non-empty log with N events: COUNT(?e) = N >= 1, guard passes,
+    #     gap check runs (MAX(?p) != N-1 fires on a hole).
     sh:sparql [
         sh:message "Position gap detected (deletion under append-only D-05)" ;
         sh:prefixes fi: ;
@@ -88,6 +112,6 @@ fi:GovernanceLogShape a sh:NodeShape ;
                 ?e fi:position ?p .
             }
             GROUP BY $this
-            HAVING (MAX(?p) != COUNT(?e) - 1)
+            HAVING (COUNT(?e) > 0 && MAX(?p) != COUNT(?e) - 1)
         """ ;
     ] .
