@@ -26,13 +26,20 @@ import pytest
 pytestmark = pytest.mark.governance
 
 
-# The 4 Click command modules MUST satisfy authorize-called-first.
+# The Click command modules MUST satisfy authorize-called-first.
+# 07-04b ships promote / role_assert / role_revoke / corpus_init (4 files).
+# 07-05a ships contest / supersede / resolve_contest (3 files) — D-19 applies
+# uniformly across the entire CLI surface.
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 _COMMAND_FILES = [
     _REPO_ROOT / "src/folio_insights/governance/cli/promote.py",
     _REPO_ROOT / "src/folio_insights/governance/cli/role_assert.py",
     _REPO_ROOT / "src/folio_insights/governance/cli/role_revoke.py",
     _REPO_ROOT / "src/folio_insights/corpus/cli/corpus.py",
+    # 07-05a three-way disambiguation
+    _REPO_ROOT / "src/folio_insights/governance/cli/contest.py",
+    _REPO_ROOT / "src/folio_insights/governance/cli/supersede.py",
+    _REPO_ROOT / "src/folio_insights/governance/cli/resolve_contest.py",
 ]
 
 
