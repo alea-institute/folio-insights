@@ -30,23 +30,26 @@ def test_filename_pattern_positive(name: str, expected_number: int) -> None:
 @pytest.mark.parametrize(
     "name",
     [
-        "1-no-padding.md",          # number must be 4 digits
-        "0001_underscore.md",        # underscore in slug not allowed
-        "0001-UPPER.md",             # uppercase letters not allowed in kebab
-        "0001-trailing-.md",         # well-formed? — actually allowed by regex? Verify pattern rejects trailing dash if needed
-        "0001-add-shacl-shape",      # missing .md
-        "abcd-no-digits.md",         # non-digit prefix
-        "00001-too-many.md",         # 5-digit number
-        "0001-.md",                  # empty slug body
+        "1-no-padding.md",            # number must be 4 digits
+        "0001_underscore.md",          # underscore in slug not allowed
+        "0001-UPPER.md",               # uppercase letters not allowed in kebab
+        "0001-add-shacl-shape",        # missing .md
+        "abcd-no-digits.md",           # non-digit prefix
+        "00001-too-many.md",           # 5-digit number
+        "0001-.md",                    # empty slug body (first slug char required)
+        "0001 spaces.md",              # space not in [a-z0-9-]
+        "0001-bad.txt",                # wrong extension
     ],
 )
 def test_filename_pattern_negative(name: str) -> None:
     """Patterns the linter MUST reject.
 
-    Note: regex `^(\\d{4})-[a-z0-9][a-z0-9-]*\\.md$` requires the slug
-    to start with `[a-z0-9]`, so `0001-.md` (empty slug) is rejected
-    by the leading-character class even though the trailing-dash case
-    is permissive.
+    Regex `^(\\d{4})-[a-z0-9][a-z0-9-]*\\.md$` requires the slug to
+    start with `[a-z0-9]` (so `0001-.md` is rejected) and forbids
+    uppercase, underscores, spaces, non-`.md` extensions, and
+    non-4-digit number prefixes. Trailing dashes are deliberately
+    PERMITTED — D-22 doesn't forbid them and forbidding would be
+    surprise discipline outside the spec.
     """
     assert RFC_FILENAME_RE.match(name) is None, f"expected rejection for {name!r}"
 
