@@ -27,6 +27,22 @@ pytestmark = pytest.mark.governance
 # ── HOME isolation fixture (mirrors tests/identity/test_did_cli.py) ──
 
 
+@pytest.fixture(autouse=True)
+def reset_governance_log():
+    """Reset the process-local GOVERNANCE_LOG singleton between tests.
+
+    The corpus CLI shares an InMemoryGovernanceLog singleton across CliRunner
+    invocations in the same Python process; without per-test reset, a prior
+    test's genesis row leaks into this test's first invocation.
+    """
+    from folio_insights.governance.cli import _state
+    from folio_insights.governance.log import InMemoryGovernanceLog
+
+    _state.GOVERNANCE_LOG = InMemoryGovernanceLog()
+    yield
+    _state.GOVERNANCE_LOG = InMemoryGovernanceLog()
+
+
 @pytest.fixture
 def tmp_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect ``Path.home`` + ``identity.keys.KEY_PATH`` to a tmp dir per test."""
