@@ -1,0 +1,93 @@
+# Phase 7 fi:GovernanceLogShape — append-only structural invariant SHACL (D-05).
+#
+# The amended D-05 in-phase append-only gate has TWO halves:
+#   (a) THIS SHAPE refuses duplicate positions, signed_at moving backward with
+#       position, and gaps in the position sequence (the structural signature
+#       of a deletion under an append-only invariant).
+#   (b) tests/governance/test_governance_log_protocol_contract.py asserts no
+#       public mutation API exists on InMemoryGovernanceLog beyond `append`.
+#
+# Both halves together = D-05 amended in-phase gate. The persistent SQLite
+# BEFORE UPDATE/DELETE → RAISE FAIL trigger TRAVELS FORWARD to Phase 13 — it
+# is NOT in this plan; it is documented in governance/log.py's module
+# docstring as forward-travel.
+#
+# Mirrors src/folio_insights/revision/content_edit_shape.ttl (Phase 5 D-07.2)
+# — the `sh:sparql` polarity discipline is load-bearing: the SELECT matches
+# the BAD case so a non-empty result set yields conforms=False (RESEARCH
+# Pitfall 1; spiked live against pyshacl 0.31.0 / rdflib 7.6.0).
+#
+# Polarity spiked against pyshacl 0.31.0 + rdflib 7.6.0 — mirrors
+# revision/content_edit_shape.ttl bad-case-matches discipline.
+#
+# CANNOT enforce (SHACL is stateless over a single snapshot): mutation or
+# deletion of a row after it lands (Phase 13's SQLite trigger handles this
+# forward-travel half). The validator builds a graph from the
+# `history + pending` snapshot and lets pyshacl find structural violations
+# in THAT snapshot — exactly the substrate Phase 13 swaps a persistent
+# backend behind.
+
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi: <https://folio-insights.example/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+fi:GovernanceLogShape a sh:NodeShape ;
+    sh:targetClass fi:GovernanceLog ;
+
+    # Constraint 1: monotonic + no-duplicate position. Two distinct events
+    # sharing the same position is the structural signature of either a
+    # mistake or a mutation; SHACL refuses.
+    sh:sparql [
+        sh:message "Governance log positions must be monotonic and gap-free (append-only D-05)" ;
+        sh:prefixes fi: ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.example/>
+            SELECT $this ?pos1 WHERE {
+                $this fi:hasEvent ?e1, ?e2 .
+                ?e1 fi:position ?pos1 .
+                ?e2 fi:position ?pos2 .
+                FILTER(?pos1 = ?pos2 && STR(?e1) != STR(?e2))
+            }
+        """ ;
+    ] ;
+
+    # Constraint 2: signed_at monotonically non-decreasing with position. A
+    # later-positioned event with an earlier signed_at than a smaller-
+    # positioned event is back-dating — refused. (Mirrors Phase 5's
+    # content_edit_shape forward-only polarity.)
+    sh:sparql [
+        sh:message "Event signed_at must be monotonically non-decreasing with position" ;
+        sh:prefixes fi: ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.example/>
+            SELECT $this ?e1 ?e2 WHERE {
+                $this fi:hasEvent ?e1, ?e2 .
+                ?e1 fi:position ?p1 .
+                ?e1 fi:signedAt ?t1 .
+                ?e2 fi:position ?p2 .
+                ?e2 fi:signedAt ?t2 .
+                FILTER(?p1 < ?p2 && ?t2 < ?t1)
+            }
+        """ ;
+    ] ;
+
+    # Constraint 3: gap detection. Under an append-only invariant, the
+    # position sequence MUST be dense from 0..N-1 with no holes. A gap is the
+    # structural signature of a deletion. We detect by comparing MAX(?p) to
+    # (COUNT(?e) - 1); if they differ, we have a gap (or a duplicate, but
+    # constraint 1 catches duplicates first).
+    sh:sparql [
+        sh:message "Position gap detected (deletion under append-only D-05)" ;
+        sh:prefixes fi: ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.example/>
+            SELECT $this (MAX(?p) AS ?maxPos) (COUNT(?e) AS ?numEvents) WHERE {
+                $this fi:hasEvent ?e .
+                ?e fi:position ?p .
+            }
+            GROUP BY $this
+            HAVING (MAX(?p) != COUNT(?e) - 1)
+        """ ;
+    ] .
