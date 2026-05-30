@@ -85,4 +85,5 @@ markers = [
     "shards: Phase 2 v2.0 Shard envelope tests",
     "identity: Phase 6 DID substrate tests",
     "governance: Phase 7 governance substrate tests",
+    "rfc: Phase 7 RFC lifecycle linter tests (GOV-07, D-22)",
 ]
