@@ -1,0 +1,43 @@
+# Phase 7 fi:RetractionShape — retraction SHACL shape (PRD §3.1.4, GOV-06).
+#
+# DEFENSE-IN-DEPTH pyshacl shape over RetractionEvent. The AUTHORITATIVE gate
+# is governance/retract.py::validate_retraction (Python field check); this
+# shape is the SHACL belt the log layer runs at append time.
+#
+# Constraints:
+#   (a) fi:shardIri            — sh:minLength 1 (non-empty)
+#   (b) fi:cascadePreviewHash  — sh:minLength 1 + xsd:string (commits the
+#                                preview the operator confirmed — D-17)
+#
+# Polarity: a valid retraction yields conforms=True; an empty shardIri OR an
+# empty cascadePreviewHash yields conforms=False. Test coverage:
+# tests/governance/test_retraction_shape.py.
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi:   <https://folio-insights.example/> .
+
+fi:RetractionShape a sh:NodeShape ;
+    sh:targetClass fi:Retraction ;
+
+    # Constraint 1: shardIri non-empty.
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:message "fi:shardIri must be a non-empty string" ;
+    ] ;
+
+    # Constraint 2: cascadePreviewHash non-empty xsd:string (commits the
+    # preview the operator confirmed — D-17 — so a retraction cannot be
+    # silently re-scoped between preview and signing).
+    sh:property [
+        sh:path fi:cascadePreviewHash ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:datatype xsd:string ;
+        sh:message "fi:cascadePreviewHash must be a non-empty xsd:string (D-17 — every retraction commits the preview the operator confirmed)" ;
+    ] .
