@@ -84,7 +84,18 @@ AuthorizeResult = Union[Allow, Deny]
 #
 # The CLI in 07-04b imports this constant so the corpus_init action name
 # lives in ONE place across the codebase.
-_GENESIS_ACTION = "corpus_init"
+#
+# CR-03: exported as a public constant (no leading underscore) so call
+# sites in src/folio_insights/corpus/cli/corpus.py and any future CLI
+# that bootstraps a corpus can import GENESIS_ACTION instead of
+# duplicating the literal "corpus_init" string. The literal is still
+# accepted by the regression test (test_corpus_init_uses_corpus_init_action)
+# via an AST-level check that also recognizes the imported constant.
+GENESIS_ACTION = "corpus_init"
+
+# Backwards-compatible alias for any internal callsite that still uses
+# the private name. New code should import GENESIS_ACTION.
+_GENESIS_ACTION = GENESIS_ACTION
 
 
 # ── Action-permission table (D-19; PRD §3.1) ─────────────────────────────
