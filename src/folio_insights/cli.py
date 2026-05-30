@@ -639,6 +639,17 @@ from folio_insights.identity.cli import did_group as _did_group
 
 cli.add_command(_did_group)
 
+# Register the Phase 7 governance + corpus subgroups (D-15, D-19; CORPUS-05).
+# Same module-bottom pattern — keeps the rdflib/pyshacl deps off the root
+# `folio-insights --help` invocation for commands that don't need them.
+from folio_insights.governance.cli import governance_group as _governance_group
+
+cli.add_command(_governance_group)
+
+from folio_insights.corpus.cli import corpus_group as _corpus_group
+
+cli.add_command(_corpus_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
