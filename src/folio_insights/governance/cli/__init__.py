@@ -42,9 +42,22 @@ from folio_insights.governance.cli.promote import promote_cmd  # noqa: E402
 from folio_insights.governance.cli.role_assert import role_assert_cmd  # noqa: E402
 from folio_insights.governance.cli.role_revoke import role_revoke_cmd  # noqa: E402
 
+# 07-05a three-way disambiguation (D-16) — each command is structurally
+# distinct and imports ONLY from its own backing module. The grep-guard
+# regression test (tests/governance/test_grep_guard_three_way_disambiguation.py)
+# fails CI if anyone tries to share code across them.
+from folio_insights.governance.cli.contest import contest_cmd  # noqa: E402
+from folio_insights.governance.cli.supersede import supersede_cmd  # noqa: E402
+from folio_insights.governance.cli.resolve_contest import (  # noqa: E402
+    resolve_contest_cmd,
+)
+
 governance_group.add_command(promote_cmd)
 governance_group.add_command(role_assert_cmd)
 governance_group.add_command(role_revoke_cmd)
+governance_group.add_command(contest_cmd)
+governance_group.add_command(supersede_cmd)
+governance_group.add_command(resolve_contest_cmd)
 
 
 __all__ = ["governance_group"]
