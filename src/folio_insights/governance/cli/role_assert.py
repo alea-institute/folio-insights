@@ -65,10 +65,12 @@ def role_assert_cmd(
     yes: bool,
 ) -> None:
     """Issue a role assertion (corpus_admin signs)."""
+    from folio_insights.governance.cli._signing import sign_and_verify_event
     from folio_insights.governance.cli._state import GOVERNANCE_LOG
+    from folio_insights.governance.log import InvalidSignature
+    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
-    from folio_insights.identity.signer import sign_attestation
     from folio_insights.shards.envelope import AttestedSignature
 
     log = GOVERNANCE_LOG
@@ -113,16 +115,24 @@ def role_assert_cmd(
             subject_did=subject_did,
             role=role,  # type: ignore[arg-type]
         )
-        payload_hash = event.signature_payload().decode("utf-8")
-        sig = sign_attestation(
-            content_hash=payload_hash,
-            signing_key=sk,
-            did=signer_did,
-            action="role_assertion",
-            signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
-            did_doc_snapshot_at=None,
-            now=now,
-        )
+        # CR-01: sign + verify-attestation round-trip via the shared helper.
+        # InMemoryDidDocCache() is empty (did:key signers resolve locally
+        # without a cache hit; verify_attestation falls through to the
+        # default resolver which decodes the did:key public key inline).
+        try:
+            sig = await sign_and_verify_event(
+                event,
+                signing_key=sk,
+                did=signer_did,
+                action="role_assertion",
+                signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
+                did_doc_snapshot_at=None,
+                now=now,
+                cache=InMemoryDidDocCache(),
+            )
+        except InvalidSignature as exc:
+            click.echo(f"verify_attestation refused: {exc}", err=True)
+            sys.exit(1)
         signed_event = event.model_copy(update={"signature": sig})
         try:
             persisted = await log.append(signed_event)
