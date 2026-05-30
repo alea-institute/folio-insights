@@ -100,6 +100,11 @@ SignedAction = Literal[
     "reconcile",          # set reconciliation_strategy (PRD §6.1 L226)
     "resolve_contest",    # governance-resolved a contested state
                           #   (PRD §3.1.3 L125)
+    # ── Phase 7 D-13 extension (12 → 13) — append at end for positional stability ──
+    "role_revocation",    # revoke a previously-asserted role (Phase 7 GOV-01 /
+                          #   PRD §3.1; structurally distinct from role_assertion
+                          #   to close F6 — see governance/events.py
+                          #   RoleRevocationEvent).
 ]
 
 
