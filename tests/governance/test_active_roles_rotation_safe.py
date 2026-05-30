@@ -49,7 +49,9 @@ async def test_active_roles_at_uses_signing_time_window() -> None:
     """
     log = InMemoryGovernanceLog()
     t0 = datetime(2026, 1, 1, tzinfo=UTC)
-    t1 = datetime(2026, 1, 2, tzinfo=UTC)
+    # t1 would mark the (hypothetical) key rotation moment; not directly used
+    # below because the rotation is implicit — only signing-time bookkeeping
+    # matters for the windowed query.
 
     # Genesis: Alice self-signs corpus_admin at t0.
     genesis = RoleAssertionEvent(
