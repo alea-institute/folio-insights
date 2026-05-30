@@ -1,0 +1,87 @@
+# Phase 7 fi:RoleRevocationShape — D-11 last-admin lockout refusal SHACL.
+#
+# DEFENSE-IN-DEPTH pyshacl shape over RoleRevocation events. The AUTHORITATIVE
+# gate is the WouldLockoutCorpusAdmin code-layer check in
+# governance/log.py::_handle_role_revocation_append (the suspenders carrying
+# the verbatim D-11 error string). This shape is the SHACL belt:
+#
+#   (a) revokedRole Literal must be in {extractor, reviewer, arbiter, corpus_admin}.
+#   (b) subjectDid is a non-empty xsd:string with cardinality 1.
+#   (c) sh:sparql constraint refuses revocations that would leave the corpus
+#       with 0 active corpus_admins (D-11 / F6 closure).
+#
+# The shape_validation.py data-graph builder emits, for each currently-active
+# role assertion at signed_at, a triple chain:
+#
+#   <signer_did> fi:hasActiveRoleAt [ fi:role "<role>" ; fi:asof "<asof>" ] .
+#
+# The SPARQL counts active corpus_admins and refuses the revocation when
+# the count is 1 AND the lone admin is the subject of the revocation.
+#
+# Polarity discipline: SELECT matches the BAD case. Spiked against pyshacl
+# 0.31.0 + rdflib 7.6.0 (Phase 5 precedent).
+#
+# CANNOT enforce: signature verification or signer-must-be-admin (those are
+# code-layer gates carrying their own NotAuthorized exception). The SHACL
+# belt covers structural lockout detection only.
+
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi: <https://folio-insights.example/> .
+
+fi:RoleRevocationShape a sh:NodeShape ;
+    sh:targetClass fi:RoleRevocation ;
+
+    # Constraint 1: revokedRole Literal must be one of the 4 canonical values.
+    sh:property [
+        sh:path fi:revokedRole ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "extractor" "reviewer" "arbiter" "corpus_admin" ) ;
+        sh:message "fi:revokedRole must be one of: extractor, reviewer, arbiter, corpus_admin" ;
+    ] ;
+
+    # Constraint 2: subjectDid present and a single xsd:string.
+    sh:property [
+        sh:path fi:subjectDid ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "fi:subjectDid must be a single xsd:string" ;
+    ] ;
+
+    # Constraint 3: D-11 last-admin lockout refusal.
+    # BAD case (SELECT matches this):
+    #   revokedRole = "corpus_admin"
+    #   AND the subject is currently an active corpus_admin
+    #   AND COUNT of active corpus_admins at signed_at == 1
+    #
+    # Implementation: subselect counts ALL active admins; outer query joins
+    # against the revocation, checks subject IS one of those admins, and
+    # asserts the count is exactly 1 (lockout would result).
+    sh:sparql [
+        sh:message "Revocation would leave the corpus with 0 active corpus_admins; lockout refused (D-11)" ;
+        sh:prefixes fi: ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.example/>
+            SELECT $this ?subject ?adminCount WHERE {
+                $this a fi:RoleRevocation .
+                $this fi:revokedRole "corpus_admin" .
+                $this fi:subjectDid ?subject .
+                # Subject must currently be an active corpus_admin.
+                ?subjectAdmin fi:hasActiveRoleAt ?subjRoleNode .
+                ?subjRoleNode fi:role "corpus_admin" .
+                FILTER(STR(?subjectAdmin) = CONCAT("urn:fi:did:", STR(?subject)))
+                # Count ALL active corpus_admins via a sub-select.
+                {
+                    SELECT (COUNT(DISTINCT ?adminDid) AS ?adminCount) WHERE {
+                        ?adminDid fi:hasActiveRoleAt ?rn .
+                        ?rn fi:role "corpus_admin" .
+                    }
+                }
+                FILTER(?adminCount = 1)
+            }
+        """ ;
+    ] .

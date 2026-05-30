@@ -354,7 +354,7 @@ def _build_role_context_graph(
         for role in roles:
             role_bnode = BNode()
             g.add((did_node, FI.hasActiveRoleAt, role_bnode))
-            g.add((role_bnode, FI.role, Literal(role, datatype=XSD.string)))
+            g.add((role_bnode, FI.role, Literal(role)))
             if asof is not None:
                 g.add(
                     (
@@ -377,13 +377,9 @@ def _build_role_assertion_graph(
     g.add(
         (event_node, FI.position, Literal(event.position, datatype=XSD.integer))
     )
-    g.add((event_node, FI.role, Literal(event.role, datatype=XSD.string)))
-    g.add(
-        (event_node, FI.subjectDid, Literal(event.subject_did, datatype=XSD.string))
-    )
-    g.add(
-        (event_node, FI.signerDid, Literal(event.signature.did, datatype=XSD.string))
-    )
+    g.add((event_node, FI.role, Literal(event.role)))
+    g.add((event_node, FI.subjectDid, Literal(event.subject_did)))
+    g.add((event_node, FI.signerDid, Literal(event.signature.did)))
     if event.signature.signed_at is not None:
         g.add(
             (
@@ -409,19 +405,9 @@ def _build_role_revocation_graph(
     g.add(
         (event_node, FI.position, Literal(event.position, datatype=XSD.integer))
     )
-    g.add(
-        (
-            event_node,
-            FI.revokedRole,
-            Literal(event.revoked_role, datatype=XSD.string),
-        )
-    )
-    g.add(
-        (event_node, FI.subjectDid, Literal(event.subject_did, datatype=XSD.string))
-    )
-    g.add(
-        (event_node, FI.signerDid, Literal(event.signature.did, datatype=XSD.string))
-    )
+    g.add((event_node, FI.revokedRole, Literal(event.revoked_role)))
+    g.add((event_node, FI.subjectDid, Literal(event.subject_did)))
+    g.add((event_node, FI.signerDid, Literal(event.signature.did)))
     if event.signature.signed_at is not None:
         g.add(
             (
