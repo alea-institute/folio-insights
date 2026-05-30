@@ -292,23 +292,30 @@ Plans:
 
 ### Phase 7: Governance Model (§3.1)
 
-**Goal**: Ship the 4-tier role model, PROV-O governance log, and three-way disambiguation machinery that makes v2.0 governed-by-design.
+**Goal**: Ship the 4-tier role model, PROV-O governance log, and three-way disambiguation machinery that makes v2.0 governed-by-design — scoped to CLI + library + API contracts (web surfaces defer post-Phase-14 per D-03).
 **Depends on**: Phase 6.
-**REQ-IDs covered**: GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06, GOV-07, GOV-08, GOV-09 (P2), GOV-10 (P2), CORPUS-05
+**REQ-IDs covered**: GOV-01, GOV-02, GOV-03, GOV-04, GOV-05, GOV-06, GOV-07, GOV-08, GOV-09 (P2 — deferred per D-01), GOV-10 (P2 — deferred per D-01), CORPUS-05
 **Critical path**: yes.
 **Parallel-track?**: no (unlocks Phase 18 community artifacts to parallel).
 **Research flag**: no (PROV-O + Covenant 2.1 are standard patterns).
-**Ship-critical?**: P1 core; GOV-09, GOV-10 are P2 stretch (timeline viewer + warrant trace-back UI).
-**Exit criteria**:
+**Ship-critical?**: P1 core; GOV-09, GOV-10 are P2 stretch (timeline viewer + warrant trace-back UI — deferred post-Phase-14).
+**Exit criteria (AMENDED per CONTEXT.md D-05 — SQLite trigger TRAVELS to Phase 13)**:
 
   1. Role assertions round-trip; per-corpus role queries return the correct set.
-  2. Append-only governance log: `DELETE`/`UPDATE` on past rows rejected by both SHACL and SQLite trigger.
-  3. Promotion `hypothesis → attested` requires reviewer role + citation + DID-signed `fi:Promotion` — unsigned promotion rejected end-to-end (CLI + API).
-  4. Three-way disambiguation: contest / supersede / retract have **distinct codepaths** and **distinct CLI commands** (no shared code — code-review gate).
-  5. Retraction cascade preview groups dependents `{auto_rederive, aporetic, review_needed}` with rollback-before-commit affordance.
+  2. **AMENDED**: Append-only governance log via `fi:GovernanceLogShape` SHACL + `GovernanceLog` Protocol contract test (no public mutator on past rows). SQLite `BEFORE UPDATE/DELETE → RAISE FAIL` trigger travels forward to Phase 13.
+  3. **AMENDED**: Promotion `hypothesis → attested` requires reviewer role + citation + DID-signed `fi:Promotion` — unsigned promotion rejected end-to-end via CLI (API surface defers per D-03).
+  4. Three-way disambiguation: contest / supersede / retract have **distinct codepaths** (D-16 grep-guard) and **distinct CLI subcommands**.
+  5. Retraction cascade preview groups dependents `{auto_rederive, aporetic, review_needed}` with interactive default + `--preview` + `--apply` rollback-before-commit affordance (D-17).
   6. RFC process: `.planning/rfcs/NNNN-title.md` lifecycle linter green in CI; no auto-merge.
 
-**Plans**: TBD
+**Plans**: 5 plans across 4 waves (see `.planning/phases/07-governance-model-3-1/`)
+
+Plans:
+- [ ] 07-01-PLAN.md — events foundation: `SignedAction` Literal 11→12 (D-13) + `GovernanceEvent` 13-class discriminated union + `governance/` boundary + dep-leak guard (Wave 1)
+- [ ] 07-02-PLAN.md — RFC lifecycle linter: `python -m folio_insights.rfc.lint` + `RFC-TEMPLATE.md` golden fixture (D-22; GOV-07) (Wave 1, parallel with 07-01)
+- [ ] 07-03-PLAN.md — `GovernanceLog` Protocol + `InMemoryGovernanceLog` (D-04) + `fi:GovernanceLogShape` SHACL (D-05 amended in-phase gate) + monotonic-position property test (Wave 2)
+- [ ] 07-04-PLAN.md — roles + central `authorize()` (D-19) + promote.py validator (D-20/D-21) + `corpus init` genesis (D-10) + F6 closure (D-10/D-11/D-12/D-13) + 3 SHACL shapes + 4 CLI commands (Wave 3)
+- [ ] 07-05-PLAN.md — three-way disambiguation (contest / supersede / retract / resolve_contest) + D-16 grep-guard + cascade preview (D-17/D-18) + GOV-05 no-majority-vote + governance export Turtle (D-08) + 4 SHACL shapes + 5 CLI commands (Wave 4)
 
 ---
 
@@ -680,7 +687,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 0/? | Not started | - |
+| 7. Governance Model | 0/5 | Planned | - |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
