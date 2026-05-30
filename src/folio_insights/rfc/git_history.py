@@ -15,9 +15,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
-
-from folio_insights.rfc.frontmatter import _parse_frontmatter_raw, parse_frontmatter
+from folio_insights.rfc.frontmatter import _parse_frontmatter_raw
 
 
 def walk_history(
@@ -100,17 +98,26 @@ def walk_history(
         except subprocess.CalledProcessError:
             continue  # file didn't exist at this commit
 
+        # History walk is intentionally tolerant of `extra="forbid"`
+        # schema violations: a historical commit may carry the optional
+        # `status_change_reason:` key (which Pydantic refuses on the
+        # current schema). The body-only-edit refusal heuristic NEEDS
+        # to see that key. So we parse the raw dict (tolerates unknown
+        # keys) and pull `status` directly from it; we only skip
+        # commits where the frontmatter block is malformed.
         try:
             raw = _parse_frontmatter_raw(content)
-            fm = parse_frontmatter(content)
-        except (ValueError, ValidationError):
-            continue  # malformed frontmatter at this commit — skip
+        except ValueError:
+            continue  # malformed / missing frontmatter at this commit — skip
+        status_value = raw.get("status")
+        if not isinstance(status_value, str) or not status_value:
+            continue  # no status field at this commit — skip
 
         commits.append({
             "sha": sha,
             "subject": subject.strip(),
             "body": body.rstrip("\n"),
-            "status": fm.status,
+            "status": status_value,
             "frontmatter_dict": raw,
         })
     return commits
