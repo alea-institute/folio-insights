@@ -36,8 +36,8 @@ tests against the Phase 5 supersession links).
   now; SQLite trigger travels to Phase 13. In-phase gate = (a) SHACL refuses
   `DELETE`/`UPDATE` on past rows, (b) `GovernanceLog` Protocol contract test.
 - **D-06:** Single write entry — `governance_log.append(event: GovernanceEvent)`.
-  `GovernanceEvent` is a Pydantic discriminated union over **12 event types**
-  (Phase 6's 11-value `SignedAction` Literal + new `role_revocation`).
+  `GovernanceEvent` is a Pydantic discriminated union over **13 event types**
+  (Phase 6's 12-value `SignedAction` Literal + new `role_revocation`).
 - **D-07:** On-disk layout (Phase 13): `<corpus_root>/governance.ttl` +
   `<corpus_root>/.governance.sqlite`.
 - **D-08:** Turtle export on-demand via `folio-insights governance export <corpus>`.
@@ -79,7 +79,7 @@ tests against the Phase 5 supersession links).
   corpus_admins; appoint a successor first`.
 - **D-12:** No corpus-level break-glass. Remedy = fork-the-corpus (Phase 18.5).
 - **D-13:** Revocation is a distinct `fi:RoleRevocation` event (NOT a flag).
-  Adds `role_revocation` to Phase 6's `SignedAction` Literal (11 → 12 values).
+  Adds `role_revocation` to Phase 6's `SignedAction` Literal (12 → 13 values).
   Active-roles query = assertions minus revocations, windowed by
   `signed_at <= asof`.
 
@@ -284,10 +284,10 @@ to avoid this need.
 │ authorize.py         │ │ events.py            │ │ promote.py /         │
 │ (D-19 central        │ │ (GovernanceEvent     │ │ contest.py /         │
 │  authorization)      │ │  discriminated union │ │ supersede.py /       │
-│ • query active       │ │  over 12 classes;    │ │ retract.py /         │
+│ • query active       │ │  over 13 classes;    │ │ retract.py /         │
 │   roles at now via   │ │  Phase 6 SignedAction│ │ roles.py             │
 │   GovernanceLog.     │ │  Literal extended    │ │ (per-event           │
-│   query_active_      │ │  11 → 12 by adding   │ │  validators)         │
+│   query_active_      │ │  12 → 13 by adding   │ │  validators)         │
 │   roles_at()         │ │  role_revocation)    │ │ • D-20 cite-resolve  │
 │ • action-permission  │ │                      │ │ • D-21 status-kind   │
 │   table              │ │                      │ │ • cascade-preview    │
@@ -322,7 +322,7 @@ to avoid this need.
 │    retraction_shape.ttl            │  ┌────────────────────────────────┐
 │    governance_log_shape.ttl        │  │  shards/envelope.py             │
 │  (validated via                    │  │    SignedAction Literal         │
-│   services/shacl_validator —       │  │    11 → 12 (+role_revocation)   │
+│   services/shacl_validator —       │  │    12 → 13 (+role_revocation)   │
 │   pyshacl + rdflib live OUTSIDE    │  │  AttestedSignature              │
 │   the governance/ boundary)        │  │    (Phase 6 D-13 — UNCHANGED)   │
 └────────────────────────────────────┘  └────────────────────────────────┘
@@ -730,7 +730,7 @@ work) and (b) the rfc.lint git-history walk (mechanical but new).
 
 > Skipping in detail — Phase 7 is a **greenfield-add** phase (no rename / refactor /
 > migration). The only "runtime state" concern is the `SignedAction` Literal
-> extension at `src/folio_insights/shards/envelope.py:85` (11 → 12 values), and
+> extension at `src/folio_insights/shards/envelope.py:85` (12 → 13 values), and
 > that's a code change, not stored-data migration.
 
 | Category | Items Found | Action Required |
@@ -739,7 +739,7 @@ work) and (b) the rfc.lint git-history walk (mechanical but new).
 | Live service config | None — no live deployment of governance yet (Phase 7 first ship) | None |
 | OS-registered state | None — no scheduled tasks / pm2 processes mention governance | None |
 | Secrets/env vars | None — reuses Phase 6 `~/.folio-insights/` ed25519 keyfile; no new env vars | None |
-| Build artifacts | **`SignedAction` Literal at `shards/envelope.py:85`** — extending 11 → 12 values (adding `role_revocation`). Audit: 2 callers in tree — `identity/signer.py:36` (imports the Literal), `identity/preview.py` (DID-07 preview iterates the subset). Both accept the new value without code change (Literal is a TypeAlias; subset iteration is hardcoded in `preview.py` and does NOT need to grow per D-13). | Code edit at `envelope.py:85` adding `"role_revocation"`. Audit `grep -rn "SignedAction" src/` confirms only Literal-typed annotations downstream (no exhaustive `match` statement to extend). Add `tests/governance/test_signed_action_literal_12_values.py` asserting `len(get_args(SignedAction)) == 12`. |
+| Build artifacts | **`SignedAction` Literal at `shards/envelope.py:85`** — extending 12 → 13 values (adding `role_revocation`). Audit: 2 callers in tree — `identity/signer.py:36` (imports the Literal), `identity/preview.py` (DID-07 preview iterates the subset). Both accept the new value without code change (Literal is a TypeAlias; subset iteration is hardcoded in `preview.py` and does NOT need to grow per D-13). | Code edit at `envelope.py:85` adding `"role_revocation"`. Audit `grep -rn "SignedAction" src/` confirms only Literal-typed annotations downstream (no exhaustive `match` statement to extend). Add `tests/governance/test_signed_action_literal_13_values.py` asserting `len(get_args(SignedAction)) == 13`. |
 
 ## Common Pitfalls
 
@@ -1381,29 +1381,29 @@ def _classify_dependent(dep_attrs: dict) -> Literal["auto_rederive", "aporetic",
 | A5 | Active-roles-at query can be expressed as `assertions \ revocations` windowed by `signature.signed_at <= asof` with no edge case left over | `query_active_roles_at` | Re-assertion of a revoked role currently returns "active" — correct semantic. Need test: assert → revoke → re-assert; query at each timestamp returns expected state. [ASSUMED] — needs explicit test. |
 | A6 | The cascade-preview `underlying_state_hash` (D-17 PreviewStale) can be computed deterministically over the dependent set's relevant fields + governance-log latest position for the corpus | `commit_cascade()` | If the hash misses a relevant field, a race goes undetected. Recommend: hash the **set of (dep_iri, epistemic_status, reconciliation_strategy, valid_time_end, superseded_by, signing_log_position)** tuples. [ASSUMED] — needs spike. |
 | A7 | The `RFC-TEMPLATE.md` filename is treated specially by the linter (not validated as a real RFC) | rfc.lint `main()` | If treated as a real RFC, linter fails immediately because `RFC-TEMPLATE.md` doesn't match `NNNN-kebab-title.md`. Code explicitly skips `RFC-TEMPLATE.md`. [VERIFIED: locked in skeleton above]. |
-| A8 | The `SignedAction` Literal extension (11 → 12) doesn't break any caller because no exhaustive `match` statement covers all values today | Runtime State Inventory | Grep confirms: `identity/preview.py` hardcodes the DID-07 8-action subset; no `match SignedAction` exhaustive switch elsewhere. [VERIFIED: `grep -rn "SignedAction" src/`]. |
+| A8 | The `SignedAction` Literal extension (12 → 13) doesn't break any caller because no exhaustive `match` statement covers all values today | Runtime State Inventory | Grep confirms: `identity/preview.py` hardcodes the DID-07 8-action subset; no `match SignedAction` exhaustive switch elsewhere. [VERIFIED: `grep -rn "SignedAction" src/`]. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the genesis admin DID be the operator's currently-bound DID, or a freshly generated `did:key`?**
    - What we know: D-10 says `folio-insights corpus init --admin-did did:...`. The flag is required.
    - What's unclear: Whether the CLI should default to the operator's already-bound DID (from Phase 6 `did bind`) or refuse to default at all.
-   - Recommendation: **Refuse to default** — the genesis decision is too important; the operator must pass an explicit DID. CLI errors with a helpful message pointing at `folio-insights did bind`.
+   - **RESOLVED — Refuse to default.** The genesis decision is too important; the operator must pass an explicit DID. CLI errors with a helpful message pointing at `folio-insights did bind`.
 
 2. **Hash-chain over governance events: ship now, or defer to Phase 13?**
    - What we know: F5 mitigation lists "Cryptographic chain: each governance event hash-chains over the prior event's hash" as a strong defense.
    - What's unclear: Is the hash-chain part of the Phase 7 acceptance bar?
-   - Recommendation: **Ship now as part of the per-event `over_content_hash`** — include `prior_event_hash` in the JCS payload before hashing. Cost is one line in `events.py`; gain is Phase 19 audit can re-walk from genesis to verify integrity even before Phase 13's SQLite trigger lands. No new test fixtures needed.
+   - **RESOLVED — Ship now as part of the per-event `over_content_hash`.** Include `prior_event_hash` in the JCS payload before hashing. Cost is one line in `events.py`; gain is Phase 19 audit can re-walk from genesis to verify integrity even before Phase 13's SQLite trigger lands. No new test fixtures needed.
 
 3. **`folio-insights corpus init` — new top-level `corpus` Click subgroup or extension of existing CLI?**
    - What we know: D-10 says "CLI: `folio-insights corpus init --admin-did did:...`" — implies a new `corpus` subgroup or a top-level command.
    - What's unclear: Phase 18.5 `corpus fork` will also live under this namespace; should the subgroup be opened here?
-   - Recommendation: **Open the `corpus` Click subgroup now** (`cli.add_command(corpus_group)` from `governance/cli/corpus.py`). Subcommand `init` ships in Phase 7; `fork` joins in Phase 18.5 with no CLI restructuring needed.
+   - **RESOLVED — Open the `corpus` Click subgroup now** (`cli.add_command(corpus_group)` from `governance/cli/corpus.py`). Subcommand `init` ships in Phase 7; `fork` joins in Phase 18.5 with no CLI restructuring needed.
 
 4. **Should `query_active_roles_at()` accept `corpus` only, or `(corpus, did)` for efficiency on hot paths?**
    - What we know: `authorize.py` calls it on every CLI command; the cost on a 10K-event log is O(N) without indexing.
    - What's unclear: Premature optimization for Phase 7?
-   - Recommendation: **Ship with corpus-only query and a per-DID convenience wrapper `query_active_roles_for_did(corpus, did, asof)`.** Phase 13 backs both with indexed SQLite queries.
+   - **RESOLVED — Ship with corpus-only query and a per-DID convenience wrapper `query_active_roles_for_did(corpus, did, asof)`.** Phase 13 backs both with indexed SQLite queries.
 
 ## Environment Availability
 
