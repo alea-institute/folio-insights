@@ -288,15 +288,9 @@ class InMemoryGovernanceLog:
                 f"position={event.position}"
             )
 
-        # Per-event SHACL belt.
-        shape_result = validate_role_assertion_shape(event, history=history)
-        if not shape_result.conforms:
-            raise ValueError(
-                f"RoleAssertionShape violation refused append: "
-                f"{shape_result.violations}"
-            )
-
-        # Signer-must-be-admin code suspenders.
+        # Signer-must-be-admin code suspenders (runs BEFORE SHACL belt so
+        # the more-specific NotAuthorized exception type is raised when
+        # both gates would refuse).
         signer_roles = await self._roles_for_did_at(
             event.corpus,
             event.signature.did,
@@ -306,6 +300,15 @@ class InMemoryGovernanceLog:
             raise NotAuthorized(
                 f"signer {event.signature.did} is not a corpus_admin "
                 f"at {event.signature.signed_at}"
+            )
+
+        # Per-event SHACL belt (defense-in-depth — catches structural
+        # violations the code didn't already enumerate).
+        shape_result = validate_role_assertion_shape(event, history=history)
+        if not shape_result.conforms:
+            raise ValueError(
+                f"RoleAssertionShape violation refused append: "
+                f"{shape_result.violations}"
             )
 
     async def _handle_role_revocation_append(
@@ -316,19 +319,14 @@ class InMemoryGovernanceLog:
     ) -> None:
         """Validate a RoleRevocation append at the log layer (D-11 + D-19).
 
-        Order:
-          1. Per-event SHACL belt (refuses last-admin lockout structurally).
-          2. Signer-must-be-admin code suspenders.
-          3. D-11 last-admin lockout code check (verbatim error string).
+        Order (code-suspenders run BEFORE SHACL belt so each gate raises its
+        own, semantically-distinct exception type):
+          1. Signer-must-be-admin code suspenders → NotAuthorized.
+          2. D-11 last-admin lockout code check → WouldLockoutCorpusAdmin
+             with verbatim error string locked.
+          3. Per-event SHACL belt → ValueError (catches any structural
+             violations the code didn't already enumerate).
         """
-        # Per-event SHACL belt.
-        shape_result = validate_role_revocation_shape(event, history=history)
-        if not shape_result.conforms:
-            raise ValueError(
-                f"RoleRevocationShape violation refused append: "
-                f"{shape_result.violations}"
-            )
-
         # Signer-must-be-admin code suspenders.
         signer_roles = await self._roles_for_did_at(
             event.corpus,
@@ -341,7 +339,10 @@ class InMemoryGovernanceLog:
                 f"at {event.signature.signed_at}"
             )
 
-        # D-11 last-admin lockout — verbatim error string locked.
+        # D-11 last-admin lockout — verbatim error string locked. Runs BEFORE
+        # the SHACL belt because the verbatim WouldLockoutCorpusAdmin
+        # exception type carries the D-11 contract the test asserts; the
+        # SHACL belt would otherwise fire first and raise a ValueError.
         if event.revoked_role == "corpus_admin":
             active = await self._active_roles_at(
                 event.corpus,
@@ -353,6 +354,15 @@ class InMemoryGovernanceLog:
             if event.subject_did in current_admins and len(current_admins) == 1:
                 # D-11 verbatim error string (locked; checker greps for this single line).
                 raise WouldLockoutCorpusAdmin("revocation would leave the corpus with 0 active corpus_admins; appoint a successor first")  # noqa: E501
+
+        # Per-event SHACL belt (defense-in-depth — runs AFTER the code gates
+        # so the more-specific exception types take precedence).
+        shape_result = validate_role_revocation_shape(event, history=history)
+        if not shape_result.conforms:
+            raise ValueError(
+                f"RoleRevocationShape violation refused append: "
+                f"{shape_result.violations}"
+            )
 
     async def _roles_for_did_at(
         self,
