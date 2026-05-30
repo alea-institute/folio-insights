@@ -35,7 +35,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rdflib import RDF, BNode, Graph, Literal, Namespace
+import pyshacl
+from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import XSD
 
 if TYPE_CHECKING:
@@ -124,10 +125,109 @@ def _build_event_graph(event: GovernanceEvent) -> Graph:
 # ── Per-event validator stubs (8 shapes; bodies filled in later plans) ──
 
 
-def validate_governance_log_shape(event: GovernanceEvent) -> ValidationResult:
-    """Validate the governance-log structural invariants (07-03)."""
-    raise NotImplementedError(
-        "filled by 07-03 (GovernanceLog Protocol + log shape)"
+def _build_log_graph(
+    history: "list[GovernanceEvent]",
+    pending: "GovernanceEvent",
+) -> Graph:
+    """Materialize the (history + pending) snapshot as RDF for pyshacl.
+
+    Emits a single ``fi:GovernanceLog`` container node whose ``fi:hasEvent``
+    predicate points at each event (the events in ``history`` plus
+    ``pending`` — i.e. the POST-APPEND state). Each event carries
+    ``fi:position`` (xsd:integer) and ``fi:signedAt`` (xsd:dateTime) — the
+    two structural predicates the SHACL constraints query against. The DID
+    is included for downstream PROV-O round-trips.
+
+    The append-only invariant is structural over the post-append snapshot;
+    if any constraint fires on the snapshot, the SHACL run reports a
+    violation and ``append`` refuses. Mirrors
+    ``revision/shape_validation.py:_build_edit_graph`` — minimal enough to
+    feed pyshacl, never reaches into the (future) Phase 13 store.
+    """
+    g = Graph()
+    log_node = BNode()
+    g.add((log_node, RDF.type, FI.GovernanceLog))
+
+    all_events = [*history, pending]
+    for i, ev in enumerate(all_events):
+        # Use a stable URIRef per event so the SPARQL self-join can compare
+        # STR(?e1) != STR(?e2) (BNode comparison is implementation-dependent
+        # in some pyshacl/rdflib configurations).
+        event_node = URIRef(f"urn:fi:event:{i}")
+        g.add((log_node, FI.hasEvent, event_node))
+        g.add((event_node, RDF.type, FI.GovernanceEvent))
+        g.add(
+            (event_node, FI.position, Literal(ev.position, datatype=XSD.integer))
+        )
+        # ev.signature.signed_at is an Optional[datetime]; the events module
+        # accepts None for unsigned stubs (T-06-03) but the SHACL invariant
+        # only applies when signed_at is present. We emit a Literal only when
+        # signed_at is non-None; absent timestamps neither pass nor fail the
+        # signed_at constraint (vacuously true).
+        if ev.signature.signed_at is not None:
+            g.add(
+                (
+                    event_node,
+                    FI.signedAt,
+                    Literal(
+                        ev.signature.signed_at.isoformat(),
+                        datatype=XSD.dateTime,
+                    ),
+                )
+            )
+        g.add(
+            (event_node, FI.did, Literal(ev.signature.did, datatype=XSD.string))
+        )
+    return g
+
+
+def validate_governance_log_shape(
+    history: "list[GovernanceEvent]",
+    pending: "GovernanceEvent",
+) -> ValidationResult:
+    """Validate the governance-log structural invariants (D-05; 07-03).
+
+    Builds the post-append RDF snapshot (history + pending) and runs
+    ``pyshacl.validate`` against ``governance_log_shape.ttl``. ``conforms``
+    is False when any of the three constraints fire:
+
+      1. duplicate position (two events share the same ``fi:position``);
+      2. signed_at goes backward with position (back-dating);
+      3. gap in the position sequence (deletion signature).
+
+    Mirrors ``revision/shape_validation.validate_content_edit_shape`` body
+    shape verbatim (Phase 5 D-07.2 precedent) — same pyshacl.validate call
+    + same violations-text parsing.
+
+    The InMemoryGovernanceLog calls this validator from ``append()`` (via
+    lazy import; see governance/log.py D-04 boundary preservation).
+    """
+    shapes = _load_shape_graph("governance_log_shape.ttl")
+    data_graph = _build_log_graph(history, pending)
+
+    conforms, _results_graph, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+
+    violations: list[str] = []
+    if not conforms:
+        for line in results_text.splitlines():
+            line = line.strip()
+            if line.startswith("Message:"):
+                violations.append(line.replace("Message:", "").strip())
+            elif line.startswith("Constraint Violation"):
+                violations.append(line)
+        # Ensure at least one violation is reported even if parsing missed it.
+        if not violations:
+            violations.append(results_text.strip())
+
+    return ValidationResult(
+        conforms=conforms,
+        violations=violations,
+        results_text=results_text,
     )
 
 
