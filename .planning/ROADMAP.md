@@ -326,7 +326,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 07-04b-PLAN.md — promote.py validator (D-20/D-21) + 4 CLI commands (governance promote / assert-role / revoke-role + corpus init via authorize()) + D-19 source-scan regression test covering all 4 commands (Wave 4)
+- [x] 07-04b-PLAN.md — promote.py validator (D-20/D-21) + 4 CLI commands (governance promote / assert-role / revoke-role + corpus init via authorize()) + D-19 source-scan regression test covering all 4 commands (Wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -706,7 +706,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 4/7 | In Progress|  |
+| 7. Governance Model | 5/7 | In Progress|  |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
