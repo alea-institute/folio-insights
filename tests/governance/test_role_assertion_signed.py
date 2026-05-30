@@ -42,12 +42,17 @@ def _make_did_key() -> tuple[Ed25519PrivateKey, str, str]:
 
     Returns (private_key, did, public_key_multibase).
     """
-    from folio_insights.identity.keys import did_key_for_public_key
+    from cryptography.hazmat.primitives import serialization
+
+    from folio_insights.identity.keys import did_key_from_public
 
     sk = Ed25519PrivateKey.generate()
     pk = sk.public_key()
-    did = did_key_for_public_key(pk)
-    # did:key:<multibase> — strip the prefix.
+    raw_pub = pk.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    did = did_key_from_public(raw_pub)
     multibase = did.removeprefix("did:key:")
     return sk, did, multibase
 

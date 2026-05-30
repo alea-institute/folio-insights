@@ -74,6 +74,35 @@ class _BaseEvent(BaseModel):
     position: int = -1
     signature: AttestedSignature
 
+    def signature_payload(self) -> bytes:
+        """Return the JCS-canonical SHA-256 hash bytes of this event's content
+        excluding the signature itself (07-04a — Phase 6 verify_attestation
+        belt-and-suspenders gate for role events).
+
+        Mirrors ``revision.content_edit.canonical_content_hash`` discipline:
+        dump the model to a Python dict, drop the ``signature`` slot, JCS-
+        canonicalize, SHA-256, return the digest hex string encoded as bytes.
+        The returned bytes can be passed to ``sign_attestation`` /
+        ``verify_attestation`` as the ``content_hash`` (those functions expect
+        the hex string of the canonical hash).
+
+        Note: ``position`` is INCLUDED in the payload because it is part of
+        the event's identity (the append-only invariant) by the time the
+        signature is constructed in production paths. Tests construct events
+        with the post-append position before signing.
+        """
+        import hashlib
+
+        import jcs
+
+        # Pydantic dumps with .model_dump(mode="json") to get JSON-safe primitives
+        # for JCS canonicalization (datetimes -> isoformat strings, etc.).
+        data = self.model_dump(mode="json")
+        data.pop("signature", None)
+        canonical = jcs.canonicalize(data)
+        digest = hashlib.sha256(canonical).hexdigest()
+        return digest.encode("utf-8")
+
 
 # ── The 13 event classes (1:1 with the 13 SignedAction Literal values) ──
 #
