@@ -10,6 +10,33 @@ Retract a shard with cascade preview. Three modes (D-17):
     re-runs build_cascade_preview and raises PreviewStale (with --preview
     in the message) on state-change race.
 
+WR-03 Phase 7 limitation: ``--apply`` is DISABLED in Phase 7.
+
+The CLI builds a fresh ``InMemoryShardStore()`` on every invocation
+(see line ~135). With no persistent ShardStore yet wired (Phase 13,
+D-07), ``--apply`` ALWAYS runs against an empty store. That means:
+
+  * The ``underlying_state_hash`` re-computed by ``commit_cascade``'s
+    PreviewStale check is the hash of an EMPTY store, never the hash
+    of the seeded store the original ``--preview`` was taken against.
+  * If a real (seeded) preview is fed to ``--apply``, PreviewStale
+    fires immediately — the operator gets a hash-mismatch refusal
+    that does NOT reflect a real race condition, just the empty
+    in-memory store.
+  * Conversely, if a fake/empty preview is fed in, the empty-store
+    hash happens to match the preview, ``commit_cascade`` proceeds,
+    and a RetractionEvent is appended that doesn't correspond to any
+    real cascade — a SILENT FALSE-SUCCESS path.
+
+Until Phase 13 wires a persistent ShardStore behind the same Protocol
+(D-07), the safe behavior is to fail loudly. The ``--apply`` branch
+raises ``NotImplementedError`` with a clear message pointing at the
+Phase 13 wire-up; the operator runs the interactive (default) mode or
+``--preview`` instead. The interactive + ``--preview`` modes work
+correctly because they build the preview against the SAME in-memory
+store the operator just constructed (so the hash check is trivially
+consistent within a single process).
+
 Order of operations (D-19):
   1. Parse CLI args + load signing key + derive signer_did.
   2. ``await authorize(signer_did, "retract", corpus, log=log)`` — D-19 first.
@@ -162,31 +189,27 @@ def retract_cmd(
         assert isinstance(decision, Allow)
 
         # ── --apply mode ──
+        # WR-03: --apply is DISABLED in Phase 7. The CLI builds a fresh
+        # InMemoryShardStore() on every invocation (line ~135), so
+        # commit_cascade's PreviewStale guard re-hashes an EMPTY store
+        # state — never the seeded state the original --preview ran
+        # against. That collapses into either (a) PreviewStale-always
+        # (real preview vs empty store) or (b) silent false-success
+        # (fake preview against empty store, commit proceeds). Both
+        # close-the-door behaviors fail the operator's expectations.
+        # Refuse loudly with NotImplementedError until Phase 13 (D-07)
+        # wires a persistent ShardStore behind the same Protocol.
         if apply_path is not None:
-            try:
-                preview_json = apply_path.read_text(encoding="utf-8")
-                preview = CascadePreview.model_validate_json(preview_json)
-            except Exception as exc:
-                click.echo(
-                    f"failed to load cascade preview from {apply_path}: {exc}",
-                    err=True,
-                )
-                sys.exit(1)
-            try:
-                event = await commit_cascade(
-                    preview, store=store, log=log, signing_key=sk, did=signer_did
-                )
-            except PreviewStale as exc:
-                click.echo(f"PreviewStale: {exc}", err=True)
-                sys.exit(2)
-            except Exception as exc:
-                click.echo(
-                    f"commit_cascade refused: {type(exc).__name__}: {exc}",
-                    err=True,
-                )
-                sys.exit(1)
-            click.echo(event.model_dump_json(indent=2))
-            return
+            raise NotImplementedError(
+                "--apply requires a persistent ShardStore that survives "
+                "between the --preview run and the --apply run; Phase 7 "
+                "only ships InMemoryShardStore (process-local, reset per "
+                "CLI invocation). Phase 13 (D-07) wires "
+                "<corpus>/governance.ttl + <corpus>/.governance.sqlite "
+                "behind the same ShardStore Protocol, at which point "
+                "--apply will work correctly. For now, use the default "
+                "interactive mode or --preview within a single process."
+            )
 
         # ── Build the cascade preview (shared D-17 builder) ──
         preview = await build_cascade_preview(
