@@ -322,7 +322,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 07-04a-PLAN.md — roles + central `authorize()` with structural genesis carve-out (D-10/D-19) + `corpus_init` action gate + log.py role-event body + 2 SHACL shapes + F6 closure (D-10/D-11/D-12/D-13) (Wave 3)
+- [x] 07-04a-PLAN.md — roles + central `authorize()` with structural genesis carve-out (D-10/D-19) + `corpus_init` action gate + log.py role-event body + 2 SHACL shapes + F6 closure (D-10/D-11/D-12/D-13) (Wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -706,7 +706,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 3/7 | In Progress|  |
+| 7. Governance Model | 4/7 | In Progress|  |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
