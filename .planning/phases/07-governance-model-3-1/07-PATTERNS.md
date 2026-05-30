@@ -55,7 +55,7 @@
 
 | Modified File | Role | Data Flow | Change | Closest Analog |
 |---|---|---|---|---|
-| `src/folio_insights/shards/envelope.py:85` (`SignedAction` Literal) | model | discriminator vocabulary | Add `"role_revocation"` → 11 → 12 values (D-13) | self (existing 11-value Literal at L85-103) |
+| `src/folio_insights/shards/envelope.py:85` (`SignedAction` Literal) | model | discriminator vocabulary | Add `"role_revocation"` → 12 → 13 values (D-13) | self (existing 12-value Literal at L85-103) |
 | `src/folio_insights/services/shacl_validator.py` | service | RDF validation | NOTE: this is the OWL-export validator; per-event `validate_*_shape()` fns belong in `governance/shape_validation.py` mirroring `revision/shape_validation.py` (the real per-event convention). | `revision/shape_validation.py:99` |
 
 ### Test files (under `tests/governance/`, `tests/corpus/`, `tests/rfc/`)
@@ -73,7 +73,7 @@
 | `tests/governance/test_preview_stale_refusal.py` (D-17 `--apply` race) | test | two-snapshot diff | new pattern — closest: `tests/identity/test_signature_survives_key_rotation.py` (two-time-windowed test) | role-match |
 | `tests/governance/test_unsigned_promotion_rejected.py` | test | acceptance e2e | `tests/shards/test_envelope_roundtrip.py` + Phase 6 unsigned-stub honesty checks | role-match |
 | `tests/governance/test_role_revocation_distinct_event.py` (D-13) | test | discriminator assertion | `tests/shards/test_discriminated_union.py` | exact |
-| `tests/governance/test_signed_action_literal_12_values.py` | test | `get_args(SignedAction)` assertion | `tests/shards/test_discriminated_union.py` | exact |
+| `tests/governance/test_signed_action_literal_13_values.py` | test | `get_args(SignedAction)` assertion | `tests/shards/test_discriminated_union.py` | exact |
 | `tests/governance/test_authorize_central.py` (D-19) | test | table-driven action-permission | `tests/polysemy/test_detector_rules.py` | role-match |
 | `tests/governance/test_no_majority_vote_resolution.py` (GOV-05 explicit reject) | test | Literal exhaustiveness | `tests/shards/test_discriminated_union.py` | exact |
 | `tests/governance/property/test_log_append_monotonic.py` (Hypothesis) | test | property test | `tests/identity/test_canonical_jcs_properties.py` (Hypothesis @given, max_examples=1000) | exact |

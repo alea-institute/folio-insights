@@ -2,7 +2,7 @@
 phase: 07-governance-model-3-1
 plan: 05a
 type: execute
-wave: 4
+wave: 5
 depends_on: [07-01, 07-03, 07-04a, 07-04b]
 files_modified:
   - src/folio_insights/governance/contest.py
