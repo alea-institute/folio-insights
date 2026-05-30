@@ -313,8 +313,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — events foundation: `SignedAction` Literal 12→13 (D-13) + `GovernanceEvent` 13-class discriminated union + `governance/` boundary + dep-leak guard (Wave 1)
-- [ ] 07-02-PLAN.md — RFC lifecycle linter: `python -m folio_insights.rfc.lint` + `RFC-TEMPLATE.md` golden fixture (D-22; GOV-07) (Wave 1, parallel with 07-01)
+- [x] 07-01-PLAN.md — events foundation: `SignedAction` Literal 12→13 (D-13) + `GovernanceEvent` 13-class discriminated union + `governance/` boundary + dep-leak guard (Wave 1)
+- [x] 07-02-PLAN.md — RFC lifecycle linter: `python -m folio_insights.rfc.lint` + `RFC-TEMPLATE.md` golden fixture (D-22; GOV-07) (Wave 1, parallel with 07-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -706,7 +706,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 0/5 | Planned | - |
+| 7. Governance Model | 2/7 | In Progress|  |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
