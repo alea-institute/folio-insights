@@ -318,7 +318,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 07-03-PLAN.md — `GovernanceLog` Protocol + `InMemoryGovernanceLog` (D-04) + `fi:GovernanceLogShape` SHACL (D-05 amended in-phase gate) + monotonic-position property test (Wave 2)
+- [x] 07-03-PLAN.md — `GovernanceLog` Protocol + `InMemoryGovernanceLog` (D-04) + `fi:GovernanceLogShape` SHACL (D-05 amended in-phase gate) + monotonic-position property test (Wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -706,7 +706,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 2/7 | In Progress|  |
+| 7. Governance Model | 3/7 | In Progress|  |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
