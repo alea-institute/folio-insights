@@ -172,10 +172,10 @@ following Phase 6's D-12 precedent — see "TRAVELS FORWARD" below):
   Same shape Phase 6 used (D-12 acceptance-bar amendment).
 - **D-06:** **Single write entry: `governance_log.append(event: GovernanceEvent)`.**
   All callers — CLI commands, the post-Phase-14 API, future tooling — go through this
-  function. `GovernanceEvent` is a Pydantic discriminated union over 12 event types
-  (12 `SignedAction` Literal values: `extract, promote, demote, contest,
+  function. `GovernanceEvent` is a Pydantic discriminated union over 13 event types
+  (13 `SignedAction` Literal values: `extract, promote, demote, contest,
   resolve_contest, distinguo, supersede, retract, role_assertion, role_revocation,
-  content_edit, reparent, reconcile` — extending Phase 6's 11-value Literal by adding
+  content_edit, reparent, reconcile` — extending Phase 6's 12-value Literal by adding
   `role_revocation` per D-13). `append()` (i) validates the event's SHACL shape, (ii)
   validates the embedded `AttestedSignature` via Phase 6's `verify_attestation`, (iii)
   assigns the next monotonic `position`, (iv) returns the persisted event.
@@ -287,7 +287,7 @@ following Phase 6's D-12 precedent — see "TRAVELS FORWARD" below):
   requests for M-of-N break-glass aren't lost.
 - **D-13:** **Revocation is a distinct `fi:RoleRevocation` event** (NOT a flag on a
   `RoleAssertion`). Adds `role_revocation` to Phase 6's `SignedAction` Literal
-  (extending from 11 → 12 values). Mirrors GOV-04's three-way-disambiguation
+  (extending from 12 → 13 values). Mirrors GOV-04's three-way-disambiguation
   philosophy: distinct concept → distinct event class → distinct SHACL shape →
   clean PROV-O audit. Active-roles query = role-assertions minus role-revocations,
   windowed by `signed_at <= asof`.
@@ -524,8 +524,8 @@ following Phase 6's D-12 precedent — see "TRAVELS FORWARD" below):
 - **Amended exit bar (D-05) is explicit** about SHACL + Protocol contract being the
   in-phase gate; SQLite trigger travels to Phase 13. Verifier must use the amended
   bar, not the original ROADMAP wording (Phase 6 D-12 set the precedent).
-- **The 12-value `SignedAction` Literal** is the single canonical list of
-  reviewer actions. Phase 7 extends Phase 6's 11 by exactly one (`role_revocation`).
+- **The 13-value `SignedAction` Literal** is the single canonical list of
+  reviewer actions. Phase 7 extends Phase 6's 12 by exactly one (`role_revocation`).
   Future phases (Phase 9 distinguo deepening, Phase 11 SHACL suite) **must not**
   add new values without an ADR.
 
