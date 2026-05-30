@@ -30,6 +30,17 @@ if TYPE_CHECKING:
     from folio_insights.revision.store import ShardStore
 
 
+class ShardNotFound(ValueError):
+    """Raised when a SupersessionEvent references shard IRIs that the
+    ShardStore cannot resolve (WR-04 closure).
+
+    Subclasses ValueError so existing handlers catching ValueError
+    (e.g. the CLI's ``except ValueError as exc`` branch) still
+    trigger; new callers can catch the specific type for richer
+    diagnostics.
+    """
+
+
 async def validate_supersession(
     event: SupersessionEvent,
     *,
@@ -69,23 +80,39 @@ async def validate_supersession(
             f"(PRD §21.9 valid-time semantics)"
         )
     # Resolvability check — defensive; the CLI passes an InMemoryShardStore
-    # that may be empty in test setups. If the store does have entries, both
-    # sides MUST resolve. If the store is empty, we skip (the SHACL belt is
-    # the authoritative gate).
+    # that may be empty in test setups. If the store has entries we require
+    # both sides to resolve.
+    #
+    # WR-04 fix: previously, when BOTH sides were absent (an empty store),
+    # this validator silently passed — leaving the false-success path open
+    # (the CLI would proceed to sign + append a SupersessionEvent referencing
+    # two unresolvable IRIs). Now we refuse with ShardNotFound regardless of
+    # the store's emptiness state: a supersession claim that neither side
+    # exists for is unprovable in EVERY state of the world, not just non-
+    # empty stores. The SHACL belt at the log layer remains the third
+    # defense-in-depth layer, but this is now a hard refusal at the library
+    # validator (matches the discipline validate_promotion uses with its
+    # D-20 cite-resolvable guard).
     old_present = await store.get(event.old_shard_iri)
     new_present = await store.get(event.new_shard_iri)
-    # Only enforce if either side is present (skip-when-empty matches the
-    # 07-04b promote validator's behavior on empty in-memory stores).
+    if (old_present is None) and (new_present is None):
+        raise ShardNotFound(
+            f"SupersessionEvent: neither old_shard_iri "
+            f"({event.old_shard_iri!r}) nor new_shard_iri "
+            f"({event.new_shard_iri!r}) resolve in the ShardStore — a "
+            f"supersession claim is unprovable when neither side exists. "
+            f"Did you mean to seed the store first?"
+        )
     if (old_present is not None) and (new_present is None):
-        raise ValueError(
+        raise ShardNotFound(
             f"SupersessionEvent.new_shard_iri does not resolve in the "
             f"ShardStore ({event.new_shard_iri!r})"
         )
     if (new_present is not None) and (old_present is None):
-        raise ValueError(
+        raise ShardNotFound(
             f"SupersessionEvent.old_shard_iri does not resolve in the "
             f"ShardStore ({event.old_shard_iri!r})"
         )
 
 
-__all__ = ["SupersessionEvent", "validate_supersession"]
+__all__ = ["ShardNotFound", "SupersessionEvent", "validate_supersession"]
