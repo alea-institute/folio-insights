@@ -62,7 +62,6 @@ from rich.table import Table
 
 from folio_insights.governance.authorize import Allow, Deny, authorize
 from folio_insights.governance.retract import (
-    CascadePreview,
     PreviewStale,
     build_cascade_preview,
     commit_cascade,
