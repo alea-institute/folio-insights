@@ -1,0 +1,50 @@
+# Phase 7 fi:ContestShape — contest SHACL shape (PRD §21.8, GOV-04).
+#
+# DEFENSE-IN-DEPTH pyshacl shape over ContestEvent. The AUTHORITATIVE gate is
+# governance/contest.py::validate_contest (Python field check); this shape is
+# the SHACL belt the log layer runs at append time.
+#
+# Constraints:
+#   (a) fi:shardIri      — sh:minLength 1 (non-empty)
+#   (b) fi:voterDid      — sh:minLength 1 + sh:pattern "^did:" (DID URI scheme)
+#   (c) fi:positionText  — sh:minLength 1 (non-empty)
+#
+# Polarity: a valid contest yields conforms=True; an empty position_text OR a
+# non-DID voter_did yields conforms=False. Test coverage:
+# tests/governance/test_contest_shape.py.
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi:   <https://folio-insights.example/> .
+
+fi:ContestShape a sh:NodeShape ;
+    sh:targetClass fi:Contest ;
+
+    # Constraint 1: shardIri non-empty.
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:message "fi:shardIri must be a non-empty string" ;
+    ] ;
+
+    # Constraint 2: voterDid non-empty + DID URI scheme.
+    sh:property [
+        sh:path fi:voterDid ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:pattern "^did:" ;
+        sh:message "fi:voterDid must start with 'did:' (PRD §6.5 / DID-01)" ;
+    ] ;
+
+    # Constraint 3: positionText non-empty.
+    sh:property [
+        sh:path fi:positionText ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:message "fi:positionText must be a non-empty string (PRD §21.8 — a contest carries a position)" ;
+    ] .

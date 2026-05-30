@@ -479,21 +479,127 @@ def validate_promotion_shape(event: "PromotionEvent") -> ValidationResult:
     )
 
 
-def validate_contest_shape(event: ContestEvent) -> ValidationResult:
-    """Validate a ContestEvent (voter_did + position_text) — (07-05a)."""
-    raise NotImplementedError("filled by 07-05a (contest shape)")
+def _build_contest_graph(event: "ContestEvent") -> Graph:
+    """Materialize a ContestEvent as RDF for fi:ContestShape (07-05a).
+
+    Plain (non-typed) Literals on voter_did + position_text so the SHACL
+    pattern / minLength constraints fire cleanly (07-04a bad4055 precedent).
+    """
+    g = Graph()
+    event_node = URIRef("urn:fi:pending:contest")
+    g.add((event_node, RDF.type, FI.Contest))
+    g.add((event_node, FI.shardIri, Literal(event.shard_iri)))
+    g.add((event_node, FI.voterDid, Literal(event.voter_did)))
+    g.add((event_node, FI.positionText, Literal(event.position_text)))
+    return g
+
+
+def validate_contest_shape(event: "ContestEvent") -> ValidationResult:
+    """Validate a ContestEvent against ``fi:ContestShape`` (07-05a).
+
+    SHACL belt for shardIri / voterDid (DID URI scheme) / positionText
+    non-empty. The code suspenders live in
+    ``governance/contest.py::validate_contest``; this is the third layer.
+
+    Returns ``conforms=True`` defensively if the TTL hasn't shipped — matches
+    the 07-04a precedent.
+    """
+    shapes_path = _SHAPES_DIR / "contest_shape.ttl"
+    if not shapes_path.exists():
+        return ValidationResult(conforms=True, violations=[], results_text="")
+    shapes = _load_shape_graph("contest_shape.ttl")
+    data_graph = _build_contest_graph(event)
+    conforms, _g, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+    violations = _parse_violations(results_text) if not conforms else []
+    return ValidationResult(
+        conforms=conforms, violations=violations, results_text=results_text
+    )
+
+
+def _build_contest_resolution_graph(
+    event: "ContestResolutionEvent",
+) -> Graph:
+    """Materialize a ContestResolutionEvent as RDF for fi:ContestResolutionShape.
+
+    Plain Literal on resolution_path so the sh:in plain-string list matches
+    (07-04a bad4055 precedent).
+    """
+    g = Graph()
+    event_node = URIRef("urn:fi:pending:contestresolution")
+    g.add((event_node, RDF.type, FI.ContestResolution))
+    g.add((event_node, FI.shardIri, Literal(event.shard_iri)))
+    g.add((event_node, FI.resolutionPath, Literal(event.resolution_path)))
+    return g
 
 
 def validate_contest_resolution_shape(
-    event: ContestResolutionEvent,
+    event: "ContestResolutionEvent",
 ) -> ValidationResult:
-    """Validate a ContestResolutionEvent (GOV-05 paths) — (07-05a)."""
-    raise NotImplementedError("filled by 07-05a (contest_resolution shape)")
+    """Validate a ContestResolutionEvent against ``fi:ContestResolutionShape``
+    (07-05a; GOV-05 — no majority-vote).
+
+    SHACL belt: resolution_path in {arbiter, distinguo, aporetic}. The
+    Pydantic Literal is the first gate; the validator in
+    ``governance/resolve_contest.py`` is the second; this is the third.
+
+    Returns ``conforms=True`` defensively if the TTL hasn't shipped.
+    """
+    shapes_path = _SHAPES_DIR / "contest_resolution_shape.ttl"
+    if not shapes_path.exists():
+        return ValidationResult(conforms=True, violations=[], results_text="")
+    shapes = _load_shape_graph("contest_resolution_shape.ttl")
+    data_graph = _build_contest_resolution_graph(event)
+    conforms, _g, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+    violations = _parse_violations(results_text) if not conforms else []
+    return ValidationResult(
+        conforms=conforms, violations=violations, results_text=results_text
+    )
 
 
-def validate_supersession_shape(event: SupersessionEvent) -> ValidationResult:
-    """Validate a SupersessionEvent (old != new shard_iri) — (07-05a)."""
-    raise NotImplementedError("filled by 07-05a (supersession shape)")
+def _build_supersession_graph(event: "SupersessionEvent") -> Graph:
+    """Materialize a SupersessionEvent as RDF for fi:SupersessionShape (07-05a)."""
+    g = Graph()
+    event_node = URIRef("urn:fi:pending:supersession")
+    g.add((event_node, RDF.type, FI.Supersession))
+    g.add((event_node, FI.oldShardIri, Literal(event.old_shard_iri)))
+    g.add((event_node, FI.newShardIri, Literal(event.new_shard_iri)))
+    return g
+
+
+def validate_supersession_shape(event: "SupersessionEvent") -> ValidationResult:
+    """Validate a SupersessionEvent against ``fi:SupersessionShape`` (07-05a).
+
+    SHACL belt: oldShardIri + newShardIri non-empty AND old != new
+    (sh:sparql self-comparison). The code suspenders live in
+    ``governance/supersede.py::validate_supersession``.
+
+    Returns ``conforms=True`` defensively if the TTL hasn't shipped.
+    """
+    shapes_path = _SHAPES_DIR / "supersession_shape.ttl"
+    if not shapes_path.exists():
+        return ValidationResult(conforms=True, violations=[], results_text="")
+    shapes = _load_shape_graph("supersession_shape.ttl")
+    data_graph = _build_supersession_graph(event)
+    conforms, _g, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+    violations = _parse_violations(results_text) if not conforms else []
+    return ValidationResult(
+        conforms=conforms, violations=violations, results_text=results_text
+    )
 
 
 def validate_retraction_shape(event: RetractionEvent) -> ValidationResult:

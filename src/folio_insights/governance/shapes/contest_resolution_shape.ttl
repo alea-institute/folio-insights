@@ -1,0 +1,48 @@
+# Phase 7 fi:ContestResolutionShape — contest resolution SHACL shape (PRD §3.1.3, GOV-05).
+#
+# GOV-05 EXPLICIT-REJECTION LOCK: NO majority-vote — locked by 3-value sh:in
+# constraint. Adding a 4th value requires an ADR.
+#
+# DEFENSE-IN-DEPTH pyshacl shape over ContestResolutionEvent. The
+# AUTHORITATIVE gates are:
+#   (1) Pydantic ContestResolutionEvent.resolution_path Literal["arbiter",
+#       "distinguo", "aporetic"] — refuses a 4th value at construction.
+#   (2) governance/resolve_contest.py::validate_contest_resolution — Python
+#       check requiring a prior ContestEvent.
+#   (3) This SHACL belt — refuses any non-3-Literal resolution_path materialized
+#       via model_construct (bypassing Pydantic).
+#
+# Constraints:
+#   (a) fi:resolutionPath  — sh:in ("arbiter" "distinguo" "aporetic")
+#   (b) fi:shardIri        — sh:minLength 1 (non-empty)
+#
+# Plain Literal (no xsd:string datatype) on fi:resolutionPath — sh:in matches
+# plain Literals under pyshacl 0.31.0 (07-04a bad4055 precedent).
+
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi:   <https://folio-insights.example/> .
+
+fi:ContestResolutionShape a sh:NodeShape ;
+    sh:targetClass fi:ContestResolution ;
+
+    # Constraint 1: resolution_path Literal must be one of the 3 GOV-05 values.
+    # GOV-05: NO majority-vote — locked by 3-value sh:in constraint. Adding a
+    # 4th value requires an ADR.
+    sh:property [
+        sh:path fi:resolutionPath ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "arbiter" "distinguo" "aporetic" ) ;
+        sh:message "fi:resolutionPath must be one of: arbiter, distinguo, aporetic (GOV-05 — NO majority-vote; 4th value requires ADR)" ;
+    ] ;
+
+    # Constraint 2: shardIri non-empty.
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+        sh:message "fi:shardIri must be a non-empty string" ;
+    ] .
