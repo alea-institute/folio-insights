@@ -39,6 +39,7 @@ from folio_insights.governance.events import (
     RoleRevocationEvent,
     SupersessionEvent,
 )
+from folio_insights.governance.log import GovernanceLog, InMemoryGovernanceLog
 from folio_insights.governance.shape_validation import ValidationResult
 
 __all__ = [
@@ -60,6 +61,9 @@ __all__ = [
     "RoleName",
     "RoleRevocationEvent",
     "SupersessionEvent",
+    # log.py — Protocol seam + in-memory implementation (07-03)
+    "GovernanceLog",
+    "InMemoryGovernanceLog",
     # shape_validation.py — SHACL result type (validator bodies land in later plans)
     "ValidationResult",
 ]
