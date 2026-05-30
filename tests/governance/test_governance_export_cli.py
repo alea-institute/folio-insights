@@ -34,11 +34,12 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from rdflib import Graph, Namespace, RDF
 from rdflib.namespace import RDF as RDF_NS  # noqa: F401 — explicit alias
 
-from folio_insights.governance.cli._state import GOVERNANCE_LOG
+from folio_insights.governance.cli import _state as _cli_state
 from folio_insights.governance.events import (
     ExtractEvent,
     RoleAssertionEvent,
 )
+from folio_insights.governance.log import InMemoryGovernanceLog
 from folio_insights.shards.envelope import AttestedSignature
 
 pytestmark = pytest.mark.governance
@@ -70,8 +71,15 @@ def _derive_did(sk: Ed25519PrivateKey) -> str:
 
 
 def _reset_log() -> None:
-    """Reset the process-local governance log between tests (CliRunner shares it)."""
-    GOVERNANCE_LOG._by_corpus.clear()  # noqa: SLF001 — test-only reset
+    """Reset the process-local governance log between tests (CliRunner shares it).
+
+    Replaces the singleton (mirrors ``tests/corpus/test_corpus_init_genesis.py``)
+    so the CLI's late-binding ``from ._state import GOVERNANCE_LOG`` always
+    sees a fresh instance — clearing ``_by_corpus`` on the prior instance
+    would only work if the singleton hadn't been replaced by an
+    earlier-running test fixture (corpus tests DO replace it).
+    """
+    _cli_state.GOVERNANCE_LOG = InMemoryGovernanceLog()
 
 
 async def _seed_admin_and_events(
@@ -83,8 +91,9 @@ async def _seed_admin_and_events(
     for subsequent reads (export is an admin-permitted action per the
     extended D-19 action-permission table in 07-05b).
     """
+    log = _cli_state.GOVERNANCE_LOG
     genesis_sig = _sig(admin_did, "role_assertion", datetime(2026, 1, 1, tzinfo=UTC))
-    await GOVERNANCE_LOG.append(
+    await log.append(
         RoleAssertionEvent(
             corpus=corpus,
             signature=genesis_sig,
@@ -93,7 +102,7 @@ async def _seed_admin_and_events(
         )
     )
     for i, day in enumerate([2, 3, 4]):
-        await GOVERNANCE_LOG.append(
+        await log.append(
             ExtractEvent(
                 corpus=corpus,
                 signature=_sig(
