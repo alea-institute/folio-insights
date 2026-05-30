@@ -330,7 +330,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 07-05a-PLAN.md — three-way disambiguation pt 1 (contest / supersede / resolve_contest) + 3 SHACL shapes + 3 CLI commands + GOV-05 no-majority-vote + D-16 grep-guard test (own task per quality_gate) + active-roles stability Hypothesis property test (Wave 4)
+- [x] 07-05a-PLAN.md — three-way disambiguation pt 1 (contest / supersede / resolve_contest) + 3 SHACL shapes + 3 CLI commands + GOV-05 no-majority-vote + D-16 grep-guard test (own task per quality_gate) + active-roles stability Hypothesis property test (Wave 4)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -706,7 +706,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 5/7 | In Progress|  |
+| 7. Governance Model | 6/7 | In Progress|  |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
