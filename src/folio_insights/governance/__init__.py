@@ -39,6 +39,7 @@ from folio_insights.governance.events import (
     RoleRevocationEvent,
     SupersessionEvent,
 )
+from folio_insights.governance.shape_validation import ValidationResult
 
 __all__ = [
     # events.py — the 13 event classes + the discriminated union + shared aliases
@@ -59,4 +60,6 @@ __all__ = [
     "RoleName",
     "RoleRevocationEvent",
     "SupersessionEvent",
+    # shape_validation.py — SHACL result type (validator bodies land in later plans)
+    "ValidationResult",
 ]
