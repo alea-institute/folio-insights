@@ -52,6 +52,11 @@ async def validate_supersession(
 
     Raises ValueError on any failure. Pure-validation discipline: never
     mutates the store, never appends to the log.
+
+    WR-02 contract: this validator MUST NOT read ``event.signature`` or
+    any of its sub-fields. The CLI flow runs validators BEFORE the real
+    signature is computed; the event passed in carries a placeholder
+    signature whose ``over_content_hash`` is the sentinel ``"0" * 64``.
     """
     if not event.old_shard_iri:
         raise ValueError("SupersessionEvent.old_shard_iri must be non-empty")

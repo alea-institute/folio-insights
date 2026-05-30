@@ -92,6 +92,15 @@ async def validate_promotion(
     Raises ``ValueError`` with a diagnostic message naming the violation kind
     on any failure. Pure-validation discipline: this function NEVER mutates
     the store and NEVER appends to the log.
+
+    WR-02 contract: this validator MUST NOT read ``event.signature`` or
+    any of its sub-fields (``over_content_hash`` in particular). The CLI
+    flow runs this validator BEFORE the real signature is computed — the
+    event passed in carries a placeholder ``signature`` whose
+    ``over_content_hash`` is the sentinel ``"0" * 64``. Consulting the
+    placeholder is a logic bug. The body below only reads ``shard_iri``,
+    ``cited_iris``, and ``new_status``; any future field added here must
+    maintain the same discipline.
     """
     # ── D-20: cite-resolvable + non-self-citation ──
     cited_shards = []
