@@ -602,9 +602,58 @@ def validate_supersession_shape(event: "SupersessionEvent") -> ValidationResult:
     )
 
 
-def validate_retraction_shape(event: RetractionEvent) -> ValidationResult:
-    """Validate a RetractionEvent (cascade_preview_hash committed) — (07-05b)."""
-    raise NotImplementedError("filled by 07-05b (retraction shape)")
+def _build_retraction_graph(event: "RetractionEvent") -> Graph:
+    """Materialize a RetractionEvent as RDF for fi:RetractionShape (07-05b).
+
+    Plain Literals on the two slots so the SHACL belt's xsd:string +
+    minLength constraints fire cleanly (07-04a bad4055 plain-Literal
+    precedent).
+    """
+    g = Graph()
+    event_node = URIRef("urn:fi:pending:retraction")
+    g.add((event_node, RDF.type, FI.Retraction))
+    g.add(
+        (
+            event_node,
+            FI.shardIri,
+            Literal(event.shard_iri, datatype=XSD.string),
+        )
+    )
+    g.add(
+        (
+            event_node,
+            FI.cascadePreviewHash,
+            Literal(event.cascade_preview_hash, datatype=XSD.string),
+        )
+    )
+    return g
+
+
+def validate_retraction_shape(event: "RetractionEvent") -> ValidationResult:
+    """Validate a RetractionEvent against ``fi:RetractionShape`` (07-05b; D-17).
+
+    SHACL belt: shardIri non-empty + cascadePreviewHash non-empty xsd:string.
+    The code suspenders live in ``governance/retract.py::validate_retraction``;
+    this is the third defense-in-depth layer.
+
+    Returns ``conforms=True`` defensively if the TTL hasn't shipped — matches
+    the 07-04a precedent.
+    """
+    shapes_path = _SHAPES_DIR / "retraction_shape.ttl"
+    if not shapes_path.exists():
+        return ValidationResult(conforms=True, violations=[], results_text="")
+    shapes = _load_shape_graph("retraction_shape.ttl")
+    data_graph = _build_retraction_graph(event)
+    conforms, _g, results_text = pyshacl.validate(
+        data_graph,
+        shacl_graph=shapes,
+        inference="none",
+        abort_on_first=False,
+    )
+    violations = _parse_violations(results_text) if not conforms else []
+    return ValidationResult(
+        conforms=conforms, violations=violations, results_text=results_text
+    )
 
 
 __all__ = [
