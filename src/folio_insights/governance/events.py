@@ -76,20 +76,41 @@ class _BaseEvent(BaseModel):
 
     def signature_payload(self) -> bytes:
         """Return the JCS-canonical SHA-256 hash bytes of this event's content
-        excluding the signature itself (07-04a — Phase 6 verify_attestation
-        belt-and-suspenders gate for role events).
+        excluding the signature itself AND the log-assigned position (07-04a
+        — Phase 6 verify_attestation belt-and-suspenders gate for role
+        events).
 
         Mirrors ``revision.content_edit.canonical_content_hash`` discipline:
-        dump the model to a Python dict, drop the ``signature`` slot, JCS-
-        canonicalize, SHA-256, return the digest hex string encoded as bytes.
-        The returned bytes can be passed to ``sign_attestation`` /
-        ``verify_attestation`` as the ``content_hash`` (those functions expect
-        the hex string of the canonical hash).
+        dump the model to a Python dict, drop the ``signature`` AND
+        ``position`` slots, JCS-canonicalize, SHA-256, return the digest hex
+        string encoded as bytes. The returned bytes can be passed to
+        ``sign_attestation`` / ``verify_attestation`` as the ``content_hash``
+        (those functions expect the hex string of the canonical hash).
 
-        Note: ``position`` is INCLUDED in the payload because it is part of
-        the event's identity (the append-only invariant) by the time the
-        signature is constructed in production paths. Tests construct events
-        with the post-append position before signing.
+        CR-04: ``position`` is EXCLUDED from the signature payload.
+
+        The CLI flow signs the event BEFORE calling ``log.append``, and
+        ``log.append`` is the single place that assigns the monotonic
+        ``position`` (D-06). If position were part of the payload, the
+        signature would commit to the placeholder ``position=-1`` (the
+        ``_BaseEvent`` default) and any later signature verification
+        against the persisted event (which carries the real position)
+        would fail.
+
+        Position immutability is enforced elsewhere:
+          * The monotonic-position assignment inside
+            ``InMemoryGovernanceLog.append`` (and the Phase 13 SQL
+            ``BEFORE UPDATE/DELETE → RAISE FAIL`` trigger per D-05).
+          * The ``fi:GovernanceLogShape`` SHACL guard, which refuses
+            duplicate positions, signed_at moving backward with
+            position, and gaps in the position sequence.
+
+        Together these enforce that ``position`` is the log's assignment
+        — not part of the signed content — and that no event can be
+        renumbered or reordered post-append. The signature commits to
+        the event's content (corpus, signed_at, subject_did, etc.); the
+        log binds that content to a specific position via the append-
+        only invariant.
         """
         import hashlib
 
@@ -99,6 +120,8 @@ class _BaseEvent(BaseModel):
         # for JCS canonicalization (datetimes -> isoformat strings, etc.).
         data = self.model_dump(mode="json")
         data.pop("signature", None)
+        # CR-04: drop position from the signature payload. See class docstring.
+        data.pop("position", None)
         canonical = jcs.canonicalize(data)
         digest = hashlib.sha256(canonical).hexdigest()
         return digest.encode("utf-8")
