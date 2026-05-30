@@ -45,7 +45,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector (completed 2026-05-27)
 - [x] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping (completed 2026-05-27)
 - [x] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2) (completed 2026-05-28)
-- [ ] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process
+- [x] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process (completed 2026-05-30)
 - [ ] **Phase 8: FOLIO v2 Vocab + Mini-BFO (§7)** — `fi:*` TTL, `bfo_mapping.ttl`, version pinning
 - [ ] **Phase 9: Seven Design Principles (§8)** — Sub-phased 9.P1–9.P7
 - [ ] **Phase 10: Pipeline + LLM-Agnostic Refactor (§9)** — Stage 8 Shard Minter, instructor matrix, Arq migration
@@ -334,7 +334,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 07-05b-PLAN.md — three-way disambiguation pt 2: retract.py (cascade preview D-17/D-18 + PreviewStale) + retraction shape + 3 CLI commands (retract / export / show) + dedicated `test_governance_export_cli.py` (D-08 owner) + human-verify checkpoint (Wave 5)
+- [x] 07-05b-PLAN.md — three-way disambiguation pt 2: retract.py (cascade preview D-17/D-18 + PreviewStale) + retraction shape + 3 CLI commands (retract / export / show) + dedicated `test_governance_export_cli.py` (D-08 owner) + human-verify checkpoint (Wave 5)
 
 ---
 
@@ -706,7 +706,7 @@ Plans:
 | 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 6/7 | In Progress|  |
+| 7. Governance Model | 7/7 | Complete   | 2026-05-30 |
 | 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
