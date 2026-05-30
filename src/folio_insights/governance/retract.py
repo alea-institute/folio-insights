@@ -450,6 +450,12 @@ def validate_retraction(event: RetractionEvent) -> None:
       * ``shard_iri`` is empty,
       * ``cascade_preview_hash`` is empty (a retraction must commit some
         preview the operator confirmed — D-17).
+
+    WR-02 contract: this validator MUST NOT read ``event.signature`` or
+    any of its sub-fields. ``commit_cascade`` runs this validator BEFORE
+    the real signature is computed; the event passed in carries a
+    placeholder signature whose ``over_content_hash`` is the sentinel
+    ``"0" * 64``.
     """
     if not event.shard_iri:
         raise ValueError("RetractionEvent.shard_iri must be non-empty")

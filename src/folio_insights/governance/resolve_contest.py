@@ -62,6 +62,11 @@ async def validate_contest_resolution(
 
     Raises ValueError on failure. Pure-validation discipline: never mutates
     the log, never appends.
+
+    WR-02 contract: this validator MUST NOT read ``event.signature`` or
+    any of its sub-fields. The CLI flow runs this validator BEFORE the
+    real signature is computed; the event passed in carries a placeholder
+    signature whose ``over_content_hash`` is the sentinel ``"0" * 64``.
     """
     if event.resolution_path not in _GOV_05_PATHS:
         raise ValueError(
