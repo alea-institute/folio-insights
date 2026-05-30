@@ -34,7 +34,12 @@ from pathlib import Path
 
 import click
 
-from folio_insights.governance.authorize import Allow, Deny, authorize
+from folio_insights.governance.authorize import (
+    GENESIS_ACTION,
+    Allow,
+    Deny,
+    authorize,
+)
 from folio_insights.governance.events import RoleAssertionEvent
 from folio_insights.identity.keys import KEY_PATH
 
@@ -100,7 +105,7 @@ def corpus_init_cmd(
         # ── D-19 FIRST STEP — Issue #3 closure: NO CLI exemption ──
         decision = await authorize(
             signer_did,
-            action="corpus_init",
+            action=GENESIS_ACTION,
             corpus=corpus_name,
             log=log,
             admin_did=admin_did,

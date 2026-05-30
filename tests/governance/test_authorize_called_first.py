@@ -151,11 +151,35 @@ def test_authorize_is_first_await_before_append(command_file: pathlib.Path) -> N
 def test_corpus_init_uses_corpus_init_action() -> None:
     """corpus init MUST pass ``action="corpus_init"`` to authorize() — the
     bookkeeping action name that triggers the genesis carve-out inside
-    authorize() (Issue #3 closure — no CLI exemption)."""
+    authorize() (Issue #3 closure — no CLI exemption).
+
+    CR-03: also accept ``action=GENESIS_ACTION`` (the exported constant
+    from governance.authorize). The literal ``"corpus_init"`` source
+    string lives in authorize.py as the single source of truth; CLI
+    callers import the constant so the literal does not drift.
+    """
     corpus_cli = _REPO_ROOT / "src/folio_insights/corpus/cli/corpus.py"
     source = corpus_cli.read_text(encoding="utf-8")
-    assert 'action="corpus_init"' in source or "action='corpus_init'" in source, (
-        "corpus init MUST call authorize(..., action=\"corpus_init\", ...). "
+    accepted_forms = (
+        'action="corpus_init"',
+        "action='corpus_init'",
+        "action=GENESIS_ACTION",
+    )
+    assert any(form in source for form in accepted_forms), (
+        "corpus init MUST call authorize(..., action=\"corpus_init\", ...) "
+        "or authorize(..., action=GENESIS_ACTION, ...) where GENESIS_ACTION "
+        "is imported from folio_insights.governance.authorize. "
         "The genesis carve-out lives inside authorize() per 07-04a; the CLI "
         "command is NOT exempt from the authorize-first rule (Issue #3 fix)."
     )
+    # If the imported-constant form is used, also assert the import is
+    # present so we don't accept the string accidentally as a substring
+    # of an unrelated identifier.
+    if "action=GENESIS_ACTION" in source:
+        assert (
+            "from folio_insights.governance.authorize import" in source
+            and "GENESIS_ACTION" in source
+        ), (
+            "corpus/cli/corpus.py uses action=GENESIS_ACTION but does not "
+            "import GENESIS_ACTION from folio_insights.governance.authorize."
+        )
