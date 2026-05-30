@@ -39,7 +39,23 @@ from folio_insights.governance.events import (
     RoleRevocationEvent,
     SupersessionEvent,
 )
-from folio_insights.governance.log import GovernanceLog, InMemoryGovernanceLog
+from folio_insights.governance.authorize import (
+    Allow,
+    AuthorizeResult,
+    Deny,
+    authorize,
+)
+from folio_insights.governance.log import (
+    GovernanceLog,
+    InMemoryGovernanceLog,
+    InvalidSignature,
+    NotAuthorized,
+    WouldLockoutCorpusAdmin,
+)
+from folio_insights.governance.roles import (
+    active_roles_at,
+    active_roles_for_did,
+)
 from folio_insights.governance.shape_validation import ValidationResult
 
 __all__ = [
@@ -64,6 +80,18 @@ __all__ = [
     # log.py — Protocol seam + in-memory implementation (07-03)
     "GovernanceLog",
     "InMemoryGovernanceLog",
+    # log.py — exceptions added in 07-04a
+    "InvalidSignature",
+    "NotAuthorized",
+    "WouldLockoutCorpusAdmin",
+    # roles.py — windowed active-roles query (07-04a; D-13 / F2 closure)
+    "active_roles_at",
+    "active_roles_for_did",
+    # authorize.py — central authorize() gate (07-04a; D-19)
+    "Allow",
+    "AuthorizeResult",
+    "Deny",
+    "authorize",
     # shape_validation.py — SHACL result type (validator bodies land in later plans)
     "ValidationResult",
 ]
