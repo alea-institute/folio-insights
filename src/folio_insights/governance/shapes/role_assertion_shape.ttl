@@ -1,0 +1,96 @@
+# Phase 7 fi:RoleAssertionShape — role-assertion SHACL shape (D-10, D-19).
+#
+# DEFENSE-IN-DEPTH pyshacl shape over RoleAssertion events. The AUTHORITATIVE
+# gates live in governance/log.py::_handle_role_assertion_append (the
+# genesis carve-out + signer-must-be-admin code suspenders). This shape is the
+# SHACL belt:
+#
+#   (a) Role Literal must be in {extractor, reviewer, arbiter, corpus_admin}.
+#   (b) subjectDid is a non-empty xsd:string with cardinality 1.
+#   (c) sh:sparql constraint refuses non-genesis self-signed assertions where
+#       the signer does NOT hold corpus_admin at signed_at (the SHACL belt for
+#       the D-10 carve-out + the signer-must-be-admin code suspenders).
+#
+# Polarity discipline: the sh:sparql SELECT matches the BAD case so a
+# non-empty result set yields conforms=False. Polarity spiked against
+# pyshacl 0.31.0 + rdflib 7.6.0 (Phase 5 precedent — content_edit_shape.ttl
+# polarity).
+#
+# The shape_validation.py data-graph builder emits, for each currently-active
+# role assertion at signed_at, a triple chain:
+#
+#   <signer_did> fi:hasActiveRoleAt [ fi:role "<role>" ; fi:asof "<asof>" ] .
+#
+# The SPARQL constraint joins against these triples to check whether the
+# signer holds corpus_admin at signed_at.
+#
+# CANNOT enforce: signature verification (Phase 6 verify_attestation is the
+# code-layer gate; SHACL doesn't run ed25519 verification). The signer-must-
+# be-admin constraint here works on top of the assumption that the
+# signature.did identifies the actual signer — that holds because
+# verify_attestation refuses signatures whose did doesn't decode to the same
+# public key (the F2 closure).
+
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fi: <https://folio-insights.example/> .
+
+fi:RoleAssertionShape a sh:NodeShape ;
+    sh:targetClass fi:RoleAssertion ;
+
+    # Constraint 1: role Literal must be one of the 4 canonical values.
+    sh:property [
+        sh:path fi:role ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "extractor" "reviewer" "arbiter" "corpus_admin" ) ;
+        sh:message "fi:role must be one of: extractor, reviewer, arbiter, corpus_admin" ;
+    ] ;
+
+    # Constraint 2: subjectDid present and a single xsd:string.
+    sh:property [
+        sh:path fi:subjectDid ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "fi:subjectDid must be a single xsd:string" ;
+    ] ;
+
+    # Constraint 3: non-genesis non-admin-signed refused.
+    # BAD case (the SELECT matches this):
+    #   NOT_GENESIS = (position != 0 OR role != "corpus_admin" OR signer != subject)
+    #   AND
+    #   signer does NOT have fi:hasActiveRoleAt with fi:role "corpus_admin"
+    #
+    # When NOT_GENESIS holds AND the signer is not an active admin, the
+    # assertion is refused. The carve-out (genesis case) requires position=0
+    # AND role=corpus_admin AND signer=subject simultaneously; missing any
+    # one of those triggers the must-be-signed-by-active-admin check.
+    sh:sparql [
+        sh:message "Non-genesis RoleAssertion must be signed by a current corpus_admin (D-10 carve-out limits row 0 self-signed to role=corpus_admin)" ;
+        sh:prefixes fi: ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.example/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            SELECT $this ?pos ?role ?signer ?subject WHERE {
+                $this a fi:RoleAssertion .
+                $this fi:position ?pos .
+                $this fi:role ?role .
+                $this fi:signerDid ?signer .
+                $this fi:subjectDid ?subject .
+                # NOT_GENESIS: at least one of these holds.
+                FILTER(?pos != 0 || ?role != "corpus_admin" || STR(?signer) != STR(?subject))
+                # The signer does NOT hold corpus_admin in the active-roles
+                # context graph (which materializes the windowed query up to
+                # signed_at). FILTER NOT EXISTS is the SPARQL idiom for
+                # "absence" — fires when the join is empty.
+                FILTER NOT EXISTS {
+                    ?signerNode fi:hasActiveRoleAt ?roleNode .
+                    ?roleNode fi:role "corpus_admin" .
+                    FILTER(STR(?signerNode) = CONCAT("urn:fi:did:", STR(?signer)))
+                }
+            }
+        """ ;
+    ] .
