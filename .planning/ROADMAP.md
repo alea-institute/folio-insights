@@ -360,8 +360,8 @@ Plans:
 Plans:
 **Wave 1** (parallel)
 
-- [ ] 08-01-PLAN.md — vocab/ package + 5 TTL files (predicates, classes, bfo_spine, bfo_mapping, shapes) + importlib.resources loaders + v1-legacy marker comments (VOCAB-01..VOCAB-04, D-01..D-09)
-- [ ] 08-02-PLAN.md — ShardEnvelope vocab_version field + field_validator + bench generator fi:vocabVersion emission + digest baseline regen (VOCAB-01 Pydantic belt, D-03/D-04)
+- [x] 08-01-PLAN.md — vocab/ package + 5 TTL files (predicates, classes, bfo_spine, bfo_mapping, shapes) + importlib.resources loaders + v1-legacy marker comments (VOCAB-01..VOCAB-04, D-01..D-09)
+- [x] 08-02-PLAN.md — ShardEnvelope vocab_version field + field_validator + bench generator fi:vocabVersion emission + digest baseline regen (VOCAB-01 Pydantic belt, D-03/D-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -718,7 +718,7 @@ Plans:
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
 | 7. Governance Model | 7/7 | Complete   | 2026-05-30 |
-| 8. FOLIO v2 Vocab + Mini-BFO | 0/4 | Planned | - |
+| 8. FOLIO v2 Vocab + Mini-BFO | 2/4 | In Progress|  |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
 | 11. SHACL Hybrid | 0/? | Not started | - |
