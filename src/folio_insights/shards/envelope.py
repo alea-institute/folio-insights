@@ -34,7 +34,25 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# ── Phase 8 D-02 / D-03 vocab pin (Plan 08-02) ─────────────────────────────
+#
+# VOCAB_VERSION is the source-of-truth FOLIO Insights v2.0 vocabulary version
+# constant. Plan 08-01 is the canonical producer at ``folio_insights.vocab``;
+# Plan 08-02 (this plan) is sibling-Wave-1 with 08-01, so we inline a fallback
+# definition here when ``folio_insights.vocab`` is not yet importable. The
+# orchestrator's post-wave merge swaps this back to the import-only form once
+# Plan 08-01 lands.
+#
+# TODO(Plan 08-01 land): replace the try/except with the bare import line:
+#     from folio_insights.vocab import VOCAB_VERSION
+# and delete the inline ``VOCAB_VERSION = "2026.05.0"`` fallback.
+try:  # pragma: no cover — exercised in the post-Plan-08-01 world
+    from folio_insights.vocab import VOCAB_VERSION  # type: ignore[no-redef]
+except ImportError:
+    # Wave-1 ordering fallback (08-01 hasn't merged yet).
+    VOCAB_VERSION = "2026.05.0"
 
 # D-05: canonical discriminator alias (5 values, ordered per CONTEXT D-05).
 ShardType = Literal[
@@ -302,6 +320,20 @@ class ShardEnvelope(BaseModel):
         default_factory=lambda: datetime.now(UTC)
     )
 
+    # ── Phase 8 D-03 vocab pin (Plan 08-02) — Pydantic belt of D-04 two-belt ──
+    # The default_factory pins the field to the module constant ``VOCAB_VERSION``
+    # so every existing Phase 2-7 fixture auto-inherits the pin. The SHACL belt
+    # (``fi:VocabPinShape``) lives in ``src/folio_insights/vocab/shapes.ttl`` and
+    # ships in Plan 08-01.
+    vocab_version: str = Field(
+        default_factory=lambda: VOCAB_VERSION,
+        description=(
+            "Phase 8 D-03 vocab pin — Pydantic belt of the two-belt D-04 "
+            "enforcement; SHACL belt lives in "
+            "src/folio_insights/vocab/shapes.ttl::fi:VocabPinShape."
+        ),
+    )
+
     # ── SUPERSESSION (link pair — chain enforcement lands in Phase 5 / 7) ──
     supersedes: str | None = None
     superseded_by: str | None = None
@@ -309,6 +341,30 @@ class ShardEnvelope(BaseModel):
     # ── CONTEST STATE (first-class per PRD §6.1 field 9 extension) ──
     contested: bool = False
     contest_votes: dict[str, str] = Field(default_factory=dict)
+
+    # ── Phase 8 D-03 vocab pin validator (Plan 08-02) ─────────────────────
+    #
+    # NOTE: This is the FIRST ``@field_validator`` in the codebase. The
+    # established "refuse-mismatched-value" idiom elsewhere is
+    # ``@model_validator(mode="after")`` (see ``envelope.py:_content_edits_forward_only``
+    # below and ``shards/subtypes.py:_disputed_invariants`` at line 105). Both
+    # primitives yield identical behavior for this single-field check; D-03
+    # calls for ``field_validator`` verbatim because it is the narrower fit
+    # (single-field validation) and aligns with the per-field framing of D-04
+    # ("the field's value must equal the module constant"). Future single-field
+    # "refuse-mismatched-value" gates should prefer ``field_validator``; the
+    # existing ``model_validator`` precedents stay because they assert
+    # cross-field invariants that ``field_validator`` cannot express.
+    @field_validator("vocab_version")
+    @classmethod
+    def _check_vocab_pin(cls, v: str) -> str:
+        """D-03 / D-04: refuse any vocab_version != VOCAB_VERSION module constant."""
+        if v != VOCAB_VERSION:
+            raise ValueError(
+                f"vocab_version must equal module constant {VOCAB_VERSION!r}; "
+                f"got {v!r} (Phase 8 D-03 / D-04 two-belt enforcement)."
+            )
+        return v
 
     @model_validator(mode="after")
     def _content_edits_forward_only(self) -> "ShardEnvelope":

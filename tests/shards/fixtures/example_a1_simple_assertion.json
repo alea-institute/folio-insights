@@ -40,5 +40,6 @@
   "supersedes": null,
   "superseded_by": null,
   "contested": false,
-  "contest_votes": {}
+  "contest_votes": {},
+  "vocab_version": "2026.05.0"
 }

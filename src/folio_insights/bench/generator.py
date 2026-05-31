@@ -44,6 +44,23 @@ from pyoxigraph import (
 
 from folio_insights.bench.profiles import PROFILES, PhaseProfile
 
+# ── Phase 8 D-02 / D-04 vocab pin (Plan 08-02) ─────────────────────────────
+#
+# Per-shard ``fi:vocabVersion`` quad emission stamps every generated shard
+# with the source-of-truth FOLIO Insights v2.0 vocabulary version constant.
+# Plan 08-01 is the canonical producer at ``folio_insights.vocab``; this
+# plan inlines a Wave-1 ordering fallback when ``folio_insights.vocab`` is
+# not yet importable, marked TODO for the post-wave merge.
+#
+# TODO(Plan 08-01 land): replace the try/except with the bare import line:
+#     from folio_insights.vocab import VOCAB_VERSION
+# and delete the inline ``VOCAB_VERSION = "2026.05.0"`` fallback.
+try:  # pragma: no cover — exercised in the post-Plan-08-01 world
+    from folio_insights.vocab import VOCAB_VERSION  # type: ignore[no-redef]
+except ImportError:
+    # Wave-1 ordering fallback (08-01 hasn't merged yet).
+    VOCAB_VERSION = "2026.05.0"
+
 logger = logging.getLogger(__name__)
 
 # Vocab namespaces — MUST match Phase 8 fi:* when those land; for Phase 0
@@ -221,6 +238,20 @@ class BenchGenerator:
                 shard_iri,
                 NamedNode(f"{FI}framework"),
                 NamedNode(f"{FRAMEWORK}{fw}"),
+                graph_iri,
+            )
+        )
+
+        # ── Phase 8 D-04 (Plan 08-02): per-shard fi:vocabVersion pin ──
+        # Deterministic insertion point: AFTER framework, BEFORE the
+        # subject-concept triple. Shifts every Phase 0 digest by exactly N
+        # quads (one per shard); the byte-stability contract (D-15) holds
+        # because the insertion is positionally invariant under fixed seed.
+        out.append(
+            Quad(
+                shard_iri,
+                NamedNode(f"{FI}vocabVersion"),
+                Literal(VOCAB_VERSION),
                 graph_iri,
             )
         )
