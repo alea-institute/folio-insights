@@ -64,5 +64,6 @@
     }
   ],
   "reconciliation_strategy": "jurisdictional_scoping",
-  "reconciliation_note": "The split reflects distinct state policy commitments; reconciled by jurisdictional scoping."
+  "reconciliation_note": "The split reflects distinct state policy commitments; reconciled by jurisdictional scoping.",
+  "vocab_version": "2026.05.0"
 }
