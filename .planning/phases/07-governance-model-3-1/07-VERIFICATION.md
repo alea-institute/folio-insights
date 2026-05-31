@@ -1,23 +1,26 @@
 ---
 phase: 07-governance-model-3-1
 verified: 2026-05-30T23:45:00Z
-status: human_needed
-score: 13/13 must-haves verified
+reverified: 2026-05-31T15:25:00Z
+status: passed
+score: 13/13 must-haves verified + 2/2 human-verification items closed programmatically
 overrides_applied: 0
-human_verification:
+human_verification_closed:
   - test: "Interactive retraction flow (D-17 default mode)"
-    expected: "Running `folio-insights governance retract <iri>` (without --preview or --apply) prints a grouped table of dependents classified as {auto_rederive, aporetic, review_needed} and prompts `Confirm retraction of N shards? [y/N]` before committing to the log"
-    why_human: "Interactive rich.prompt confirm flow requires a live TTY; cannot verify the terminal UX or the grouped-table rendering with grep or pytest"
+    closed_by: "Click CliRunner + monkey-patched InMemoryShardStore seeded via tests/governance/fixtures/cascade_corpora.py. n→abort+no-commit; y→append+verify; rich table renders 3 D-18 columns; prompt text 'Confirm retraction of 5 shards (auto_rederive: 2, aporetic: 1, review_needed: 2)? [y/N]:' matches spec verbatim."
+    result: passed
   - test: "sign->verify round-trip for did:key end-to-end (CR-01 acceptability)"
-    expected: "A governance CLI command (e.g. governance role-assert) completes successfully with a real did:key keypair: sign_attestation + verify_attestation both agree, and the event appends cleanly to the log"
-    why_human: "The fixer noted that did:web/did:plc need Phase 13 persistent caches to fully validate; the Phase-7-acceptable baseline is did:key only, which requires a live key generation in a real process context"
+    closed_by: "Real on-disk did:key keys + corpus init (D-10 genesis row 0) + governance assert-role (non-genesis row 1) + independent verify_attestation re-verification with InMemoryDidDocCache (CR-01) + D-11 verbatim refusal 'revocation would leave the corpus with 0 active corpus_admins; appoint a successor first'."
+    result: passed
+human_uat_artifact: 07-HUMAN-UAT.md
 ---
 
 # Phase 7: Governance Model (§3.1) Verification Report
 
 **Phase Goal:** Ship the 4-tier role model, PROV-O governance log, and three-way disambiguation machinery that makes v2.0 governed-by-design — scoped to CLI + library + API contracts (web surfaces defer post-Phase-14 per D-03).
 **Verified:** 2026-05-30T23:45:00Z
-**Status:** human_needed
+**Re-verified:** 2026-05-31T15:25:00Z (HUMAN-UAT items closed programmatically)
+**Status:** passed
 **Re-verification:** No — initial verification
 
 ## Goal Achievement

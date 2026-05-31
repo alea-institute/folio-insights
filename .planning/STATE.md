@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: "PreCompact (auto) at 2026-05-30T22:12:54Z"
-last_updated: "2026-05-30T22:12:54.426Z"
+status: ready_to_plan
+stopped_at: Phase 07 complete (7/7) — ready to discuss Phase 8
+last_updated: 2026-05-31T15:23:25.113Z
 last_activity: 2026-05-30 -- Phase 07 execution started
 progress:
   total_phases: 24
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 07 — governance-model-3-1
+**Current focus:** Phase 8 — folio v2 vocab + mini bfo spine (§7)
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 07 (governance-model-3-1) — EXECUTING
-Plan: 1 of 7
-Status: Executing Phase 07
-Last activity: 2026-05-30 -- Phase 07 execution started
+Phase: 8
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-31
 
 Progress: [██████████] 100%
 
@@ -39,7 +39,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 
 **Velocity:**
 
-- Total plans completed: 37
+- Total plans completed: 44
 - Average duration: 9.4 min
 - Total execution time: 2.3 hours
 
@@ -58,6 +58,7 @@ Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-produ
 | 04 | 2 | - | - |
 | 05 | 3 | - | - |
 | 6 | 3 | - | - |
+| 07 | 7 | - | - |
 
 **Recent Trend:**
 
