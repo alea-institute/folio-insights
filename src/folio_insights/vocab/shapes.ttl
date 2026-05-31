@@ -160,6 +160,7 @@ fi:DistinctionKindEnumShape a sh:NodeShape ;
 
 fi:SupersessionAlignmentShape a sh:NodeShape ;
     sh:targetSubjectsOf fi:supersedes ;
+    # Constraint 1: B has fi:validTimeEnd but it doesn't match A's fi:validTimeStart.
     sh:sparql [
         sh:message "fi:SupersessionAlignmentShape: A fi:supersedes B requires B.fi:validTimeEnd == A.fi:validTimeStart (PRD §21.9 / Phase 8 D-10)" ;
         sh:prefixes <https://folio-insights.aleainstitute.ai/vocab/shapes> ;
@@ -170,6 +171,21 @@ fi:SupersessionAlignmentShape a sh:NodeShape ;
                 $this fi:validTimeStart ?aStart .
                 ?b fi:validTimeEnd ?bEnd .
                 FILTER(?aStart != ?bEnd)
+            }
+        """ ;
+    ] ;
+    # Constraint 2 (CR-02): B is missing fi:validTimeEnd entirely — a still-current
+    # shard cannot be superseded (chain integrity violation per PRD §21.9).
+    # Without this, the join on ?b fi:validTimeEnd in Constraint 1 returned zero
+    # rows for open-ended superseded shards and the shape silently passed.
+    sh:sparql [
+        sh:message "fi:SupersessionAlignmentShape: A fi:supersedes B but B has no fi:validTimeEnd (still-current shard cannot be superseded, PRD §21.9 / Phase 8 D-10)" ;
+        sh:prefixes <https://folio-insights.aleainstitute.ai/vocab/shapes> ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+            SELECT $this ?b WHERE {
+                $this fi:supersedes ?b .
+                FILTER NOT EXISTS { ?b fi:validTimeEnd ?bEnd . }
             }
         """ ;
     ] .
