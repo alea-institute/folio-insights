@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-05-31T16:31:24.918Z"
-last_activity: 2026-05-31 -- Phase 08 planning complete
+last_updated: "2026-05-31T16:45:41.988Z"
+last_activity: 2026-05-31 -- Phase 08 execution started
 progress:
   total_phases: 24
   completed_phases: 9
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 
 **Core value:** Every piece of actionable legal advocacy knowledge must be discoverable by task, mapped to FOLIO concepts, and structured for practitioners, AI systems, and developers.
-**Current focus:** Phase 8 — folio v2 vocab + mini bfo spine (§7)
+**Current focus:** Phase 08 — folio-v2-vocab-mini-bfo-spine-7
 
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 8
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-31 -- Phase 08 planning complete
+Phase: 08 (folio-v2-vocab-mini-bfo-spine-7) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 08
+Last activity: 2026-05-31 -- Phase 08 execution started
 
 Progress: [██████████] 100%
 
