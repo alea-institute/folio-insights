@@ -107,3 +107,48 @@ fi:RoleEnumShape a sh:NodeShape ;
         ) ;
         sh:message "fi:hasRole must be one of: extractor, reviewer, arbiter, corpus_admin (D-12)" ;
     ] .
+
+# ──────────────────────────────────────────────────────────────────────────
+# fi:SupersessionAlignmentShape — D-10 valid-time alignment
+# ──────────────────────────────────────────────────────────────────────────
+#
+# When shard A fi:supersedes shard B, B.fi:validTimeEnd MUST equal
+# A.fi:validTimeStart. The half-open interval [start, end) contract from
+# PRD §21.9 requires the boundary be shared so old/new shards tile the
+# timeline without gaps or overlaps.
+#
+# Polarity discipline (mirrors governance/shapes/supersession_shape.ttl:47-58
+# and governance_log_shape.ttl:60-74): the sh:sparql SELECT matches the BAD
+# case — non-empty result set yields conforms=False. Polarity spiked against
+# pyshacl 0.31.0 + rdflib 7.6.0.
+#
+# T-08-11 mitigation: this shape catches misaligned supersession chains at
+# storage / export time even when the application layer would have accepted
+# them. The Pydantic envelope cannot enforce cross-shard alignment because
+# it sees one shard at a time; SHACL with sh:sparql crosses the boundary.
+
+fi:SupersessionAlignmentShape a sh:NodeShape ;
+    sh:targetSubjectsOf fi:supersedes ;
+    sh:sparql [
+        sh:message "fi:SupersessionAlignmentShape: A fi:supersedes B requires B.fi:validTimeEnd == A.fi:validTimeStart (PRD §21.9 / Phase 8 D-10)" ;
+        sh:prefixes <https://folio-insights.aleainstitute.ai/vocab/shapes> ;
+        sh:select """
+            PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
+            SELECT $this ?b ?aStart ?bEnd WHERE {
+                $this fi:supersedes ?b .
+                $this fi:validTimeStart ?aStart .
+                ?b fi:validTimeEnd ?bEnd .
+                FILTER(STR(?aStart) != STR(?bEnd))
+            }
+        """ ;
+    ] .
+
+# sh:declare block — gives the sh:sparql constraint a place to resolve the
+# fi: prefix via sh:prefixes above. The ontology node already exists at the
+# top of this file; we attach the sh:declare to it so pyshacl can find both.
+
+<https://folio-insights.aleainstitute.ai/vocab/shapes>
+    sh:declare [
+        sh:prefix "fi" ;
+        sh:namespace "https://folio-insights.aleainstitute.ai/vocab/"^^xsd:anyURI ;
+    ] .
