@@ -1,3 +1,11 @@
+# v1-legacy — DO NOT migrate to v2 prefix (Phase 8 D-01b).
+# This shapes file is owned by the v1 OWL export pipeline
+# (services/owl_serializer.py). The fi: prefix below is the FROZEN v1
+# extension IRI, NOT the v2 https://folio-insights.aleainstitute.ai/vocab/
+# canonical (Phase 8 D-01). The v2 SHACL shapes live in
+# src/folio_insights/vocab/shapes.ttl. Greenfield-on-master is the cover;
+# no bridge axioms, no dual-emission, no rewrite.
+
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .

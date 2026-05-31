@@ -1,0 +1,109 @@
+# FOLIO Insights v2 — shapes.ttl
+# Phase 8 Plan 08-01 / D-04 / D-08 / D-12 — SHACL node shapes co-located with vocab.
+#
+# Decision references:
+#   D-01  canonical fi: prefix
+#   D-04  fi:VocabPinShape — Pydantic/SHACL two-belt enforcement of fi:vocabVersion
+#   D-05  owl:versionIRI carries VOCAB_VERSION = 2026.05.0
+#   D-12  literal-range enums (sh:in) live HERE, not on the property declarations:
+#         fi:SignedActionEnumShape (13-value SignedAction Literal mirror)
+#         fi:RoleEnumShape (4-value role Literal mirror)
+#
+# Polarity discipline (mirrors governance/shapes/governance_log_shape.ttl): all
+# sh:property constraints declare positive shape-of-the-data; pyshacl reports a
+# violation when the data fails the declared shape. The sh:sparql bad-case
+# polarity pattern (Phase 7 supersession_shape) ships in Plan 08-03 alongside
+# fi:SupersessionAlignmentShape — THIS file ships only the three node shapes
+# named in the plan's <action> block.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+
+<https://folio-insights.aleainstitute.ai/vocab/shapes>
+    a owl:Ontology ;
+    owl:versionIRI <https://folio-insights.aleainstitute.ai/vocab/2026.05.0/shapes> ;
+    rdfs:label "FOLIO Insights v2 SHACL shapes" ;
+    dc:description """Phase 8 D-04 + D-12 belts: VocabPin + literal-enum shapes
+co-located with the vocab package; sh:sparql alignment shapes ship in Plan 08-03.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# fi:VocabPinShape — D-04 two-belt enforcement
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Every fi:Shard MUST carry fi:vocabVersion equal to VOCAB_VERSION ("2026.05.0").
+# The Pydantic envelope catches typos at construction (Plan 08-02);
+# this SHACL belt catches raw-triple smuggling at storage / export.
+
+fi:VocabPinShape a sh:NodeShape ;
+    sh:targetClass fi:Shard ;
+    sh:property [
+        sh:path fi:vocabVersion ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:hasValue "2026.05.0" ;
+        sh:message "fi:vocabVersion must equal VOCAB_VERSION constant (Phase 8 D-04 two-belt enforcement)" ;
+    ] .
+
+# ──────────────────────────────────────────────────────────────────────────
+# fi:SignedActionEnumShape — D-12 literal-enum belt for fi:signedAction
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Mirrors src/folio_insights/shards/envelope.py:85 SignedAction Literal
+# (13 values). The Pydantic Literal type enforces at construction; this
+# SHACL belt enforces at storage / export and gives the drift-audit
+# (Plan 08-04) a single TTL artifact to grep against.
+
+fi:SignedActionEnumShape a sh:NodeShape ;
+    sh:targetSubjectsOf fi:signedAction ;
+    sh:property [
+        sh:path fi:signedAction ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in (
+            "extract"
+            "promote"
+            "demote"
+            "contest"
+            "supersede"
+            "retract"
+            "distinguo"
+            "role_assertion"
+            "role_revocation"
+            "resolve_contest"
+            "content_edit"
+            "reparent"
+            "reconcile"
+        ) ;
+        sh:message "fi:signedAction must be one of the 13 SignedAction Literal values (D-12; mirrors envelope.py:85)" ;
+    ] .
+
+# ──────────────────────────────────────────────────────────────────────────
+# fi:RoleEnumShape — D-12 literal-enum belt for fi:hasRole
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Mirrors PRD §7.1 hasRole Literal range — extractor / reviewer / arbiter /
+# corpus_admin. Phase 7's role_assertion_shape.ttl carries the same enum on
+# fi:role (the per-event property); this shape covers fi:hasRole (the
+# subject-side property).
+
+fi:RoleEnumShape a sh:NodeShape ;
+    sh:targetSubjectsOf fi:hasRole ;
+    sh:property [
+        sh:path fi:hasRole ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:in (
+            "extractor"
+            "reviewer"
+            "arbiter"
+            "corpus_admin"
+        ) ;
+        sh:message "fi:hasRole must be one of: extractor, reviewer, arbiter, corpus_admin (D-12)" ;
+    ] .
