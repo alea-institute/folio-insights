@@ -169,7 +169,7 @@ fi:SupersessionAlignmentShape a sh:NodeShape ;
                 $this fi:supersedes ?b .
                 $this fi:validTimeStart ?aStart .
                 ?b fi:validTimeEnd ?bEnd .
-                FILTER(STR(?aStart) != STR(?bEnd))
+                FILTER(?aStart != ?bEnd)
             }
         """ ;
     ] .
