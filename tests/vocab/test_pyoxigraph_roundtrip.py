@@ -94,8 +94,11 @@ def test_rdflib_pyoxigraph_parity_on_ontology_iris() -> None:
         str(s)
         for s in rdflib_g.subjects(RDF.type, OWL.Ontology)
     }
+    # pyoxigraph NamedNode.__str__ returns the angle-bracket Turtle form
+    # ("<https://…>"); .value returns the bare IRI string. Use .value for
+    # parity comparison with rdflib URIRef.__str__.
     pyox_iris = {
-        str(row["ont"])
+        row["ont"].value
         for row in pyox_s.query(
             f"{_OWL_PREFIX} SELECT ?ont WHERE {{ ?ont a owl:Ontology }}"
         )
@@ -190,7 +193,8 @@ def test_vocab_02_distinction_kinds_queryable_in_both_stores(kind: str, stores) 
 
     # Route A — NamedIndividual in predicates.ttl
     route_a_rdflib = (URIRef(f"{FI_PREFIX}{kind}"), RDF.type, OWL.NamedIndividual) in rdflib_g
-    route_a_pyox_rows = list(pyox_s.query(f"""
+    # pyoxigraph ASK returns a QueryBoolean object; bool() coerces to True/False.
+    route_a_pyox = bool(pyox_s.query(f"""
         PREFIX owl: <http://www.w3.org/2002/07/owl#>
         ASK {{
             <{FI_PREFIX}{kind}> a ?t .
@@ -198,7 +202,6 @@ def test_vocab_02_distinction_kinds_queryable_in_both_stores(kind: str, stores) 
                 || ?t = <{FI_PREFIX}DistinctionKind>)
         }}
     """))
-    route_a_pyox = bool(route_a_pyox_rows) and bool(route_a_pyox_rows[0])
 
     # Route B — sh:in literal in shapes.ttl (or anywhere in vocab)
     route_b_query = f"""
@@ -208,10 +211,9 @@ def test_vocab_02_distinction_kinds_queryable_in_both_stores(kind: str, stores) 
             ?shape sh:in/rdf:rest*/rdf:first "{kind}" .
         }}
     """
-    route_b_rdflib_rows = list(rdflib_g.query(route_b_query))
-    route_b_rdflib = bool(route_b_rdflib_rows) and bool(route_b_rdflib_rows[0])
-    route_b_pyox_rows = list(pyox_s.query(route_b_query))
-    route_b_pyox = bool(route_b_pyox_rows) and bool(route_b_pyox_rows[0])
+    # rdflib ASK returns a Result whose bool() is the answer.
+    route_b_rdflib = bool(rdflib_g.query(route_b_query).askAnswer)
+    route_b_pyox = bool(pyox_s.query(route_b_query))
 
     rdflib_ok = route_a_rdflib or route_b_rdflib
     pyox_ok = route_a_pyox or route_b_pyox
