@@ -353,9 +353,20 @@ Plans:
   2. `fi:vocabVersion` SHACL shape enforces pin on every shard — unpinned shards rejected.
   3. All 4 analogia predicates + 4 distinction kinds queryable; Tractarian / Spinozan / Russellian / Carnap / Aristotelian predicates round-trip.
   4. Mini-BFO classes (Continuant, Occurrent, IndependentContinuant, SDC, GDC, Process, Quality, Role, Disposition) present with `owl:equivalentClass` mappings to BFO 2020 in companion `bfo_mapping.ttl`.
-  5. Supersession predicates (`fi:supersedes`, `fi:supersededBy`) distinct from retraction; as-of query returns superseded shard.
+  5. Supersession predicates (`fi:supersedes`, `fi:supersededBy`) distinct from retraction; as-of query returns superseded shard. **AMENDED per CONTEXT.md D-11:** Phase 8 ships predicates + library helper + SPARQL template (`folio_insights.temporal.as_of.query_as_of` + `docs/query-as-of.md`); the `--as-of` CLI/UI surface ships in Phase 11 (triplestore) or Phase 12 (UI).
 
-**Plans**: TBD
+**Plans**: 4 plans across 2 waves (see `.planning/phases/08-folio-v2-vocab-mini-bfo-spine-7/`)
+
+Plans:
+**Wave 1** (parallel)
+
+- [ ] 08-01-PLAN.md — vocab/ package + 5 TTL files (predicates, classes, bfo_spine, bfo_mapping, shapes) + importlib.resources loaders + v1-legacy marker comments (VOCAB-01..VOCAB-04, D-01..D-09)
+- [ ] 08-02-PLAN.md — ShardEnvelope vocab_version field + field_validator + bench generator fi:vocabVersion emission + digest baseline regen (VOCAB-01 Pydantic belt, D-03/D-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-03-PLAN.md — temporal/as_of.py query_as_of helper + fi:SupersessionAlignmentShape + docs/query-as-of.md (VOCAB-05, D-10/D-11)
+- [ ] 08-04-PLAN.md — D-12 drift audit (4 named suspects + full scan) + rdflib/pyoxigraph round-trip + owl:versionIRI verification (VOCAB-01 acceptance gate 1, D-12/D-13)
 
 ---
 
@@ -707,7 +718,7 @@ Plans:
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
 | 7. Governance Model | 7/7 | Complete   | 2026-05-30 |
-| 8. FOLIO v2 Vocab + Mini-BFO | 0/? | Not started | - |
+| 8. FOLIO v2 Vocab + Mini-BFO | 0/4 | Planned | - |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
 | 11. SHACL Hybrid | 0/? | Not started | - |
