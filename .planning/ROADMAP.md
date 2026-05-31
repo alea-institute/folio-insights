@@ -365,7 +365,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-03-PLAN.md — temporal/as_of.py query_as_of helper + fi:SupersessionAlignmentShape + docs/query-as-of.md (VOCAB-05, D-10/D-11)
+- [x] 08-03-PLAN.md — temporal/as_of.py query_as_of helper + fi:SupersessionAlignmentShape + docs/query-as-of.md (VOCAB-05, D-10/D-11)
 - [ ] 08-04-PLAN.md — D-12 drift audit (4 named suspects + full scan) + rdflib/pyoxigraph round-trip + owl:versionIRI verification (VOCAB-01 acceptance gate 1, D-12/D-13)
 
 ---
@@ -718,7 +718,7 @@ Plans:
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
 | 7. Governance Model | 7/7 | Complete   | 2026-05-30 |
-| 8. FOLIO v2 Vocab + Mini-BFO | 2/4 | In Progress|  |
+| 8. FOLIO v2 Vocab + Mini-BFO | 3/4 | In Progress|  |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
 | 11. SHACL Hybrid | 0/? | Not started | - |
