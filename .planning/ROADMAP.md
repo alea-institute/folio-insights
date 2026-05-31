@@ -46,7 +46,7 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping (completed 2026-05-27)
 - [x] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2) (completed 2026-05-28)
 - [x] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process (completed 2026-05-30)
-- [ ] **Phase 8: FOLIO v2 Vocab + Mini-BFO (§7)** — `fi:*` TTL, `bfo_mapping.ttl`, version pinning
+- [x] **Phase 8: FOLIO v2 Vocab + Mini-BFO (§7)** — `fi:*` TTL, `bfo_mapping.ttl`, version pinning (completed 2026-05-31)
 - [ ] **Phase 9: Seven Design Principles (§8)** — Sub-phased 9.P1–9.P7
 - [ ] **Phase 10: Pipeline + LLM-Agnostic Refactor (§9)** — Stage 8 Shard Minter, instructor matrix, Arq migration
 - [ ] **Phase 11: SHACL Hybrid (§10)** — 6 hand-written shapes + Pydantic-to-SHACL generator
@@ -366,7 +366,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 08-03-PLAN.md — temporal/as_of.py query_as_of helper + fi:SupersessionAlignmentShape + docs/query-as-of.md (VOCAB-05, D-10/D-11)
-- [ ] 08-04-PLAN.md — D-12 drift audit (4 named suspects + full scan) + rdflib/pyoxigraph round-trip + owl:versionIRI verification (VOCAB-01 acceptance gate 1, D-12/D-13)
+- [x] 08-04-PLAN.md — D-12 drift audit (4 named suspects + full scan) + rdflib/pyoxigraph round-trip + owl:versionIRI verification (VOCAB-01 acceptance gate 1, D-12/D-13)
 
 ---
 
@@ -718,7 +718,7 @@ Plans:
 | 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
 | 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
 | 7. Governance Model | 7/7 | Complete   | 2026-05-30 |
-| 8. FOLIO v2 Vocab + Mini-BFO | 3/4 | In Progress|  |
+| 8. FOLIO v2 Vocab + Mini-BFO | 4/4 | Complete   | 2026-05-31 |
 | 9. Seven Design Principles | 0/? | Not started | - |
 | 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
 | 11. SHACL Hybrid | 0/? | Not started | - |
