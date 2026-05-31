@@ -59,7 +59,7 @@
     "argues": "On the contrary, promissory estoppel renders certain moral promises enforceable.",
     "strength": 0.85
   },
-  "respondeo": "I respond that a moral promise inducing detrimental reliance is enforceable in equity under §90.",
+  "respondeo": "I respond that a moral promise inducing detrimental reliance is enforceable in equity under \u00a790.",
   "uses_distinctions": [],
   "replies": [
     {
@@ -72,5 +72,6 @@
       "replies_via": "distinguo",
       "argument": "The bargain theory governs contract formation, not equitable enforcement."
     }
-  ]
+  ],
+  "vocab_version": "2026.05.0"
 }
