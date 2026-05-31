@@ -1,0 +1,103 @@
+# FOLIO Insights v2 — bfo_spine.ttl
+# Phase 8 Plan 08-01 / D-06 / D-08 — 9-class mini-BFO spine.
+#
+# D-06 amends PRD §7.2's 7-class list:
+#   * DROPS  fi:Event (folded into fi:Process; BFO 2020 uses process_boundary
+#            only at the alignment layer).
+#   * ADDS   fi:SpecificallyDependentContinuant, fi:GenericallyDependentContinuant,
+#            fi:Quality, fi:Disposition.
+#
+# Plan 08-04 / PRD amendment doc must pick up this divergence.
+#
+# Decision references:
+#   D-01  canonical fi: prefix
+#   D-05  owl:versionIRI carries VOCAB_VERSION = 2026.05.0
+#   D-06  9-class mini-BFO spine (drops fi:Event, adds SDC/GDC/Quality/Disposition)
+#   D-07  owl:equivalentClass rows to BFO 2020 ship in bfo_mapping.ttl, NOT here
+#         (so downstream consumers who don't need the full BFO 2020 alignment
+#         don't pay the parse cost).
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+
+<https://folio-insights.aleainstitute.ai/vocab/bfo_spine>
+    a owl:Ontology ;
+    owl:versionIRI <https://folio-insights.aleainstitute.ai/vocab/2026.05.0/bfo_spine> ;
+    rdfs:label "FOLIO Insights v2 mini-BFO spine" ;
+    dc:description "9-class mini-BFO spine (Phase 8 D-06; amends PRD §7.2)" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Top-level BFO 2020 dichotomy: Continuant vs Occurrent
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Continuant a owl:Class ;
+    rdfs:label "continuant" ;
+    rdfs:comment """Mini-BFO spine: anything that persists through time while
+maintaining identity (BFO 2020 bfo:BFO_0000002 — see bfo_mapping.ttl).""" .
+
+fi:Occurrent a owl:Class ;
+    rdfs:label "occurrent" ;
+    rdfs:comment """Mini-BFO spine: an entity that unfolds in time / has
+temporal parts (BFO 2020 bfo:BFO_0000003).
+
+D-06 divergence from PRD §7.2: this class subsumes PRD's fi:Event — BFO 2020
+treats events as process_boundary occurrents, which the alignment layer
+(bfo_mapping.ttl) can express via the equivalentClass to bfo:BFO_0000003.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Continuant subtree (4 subclasses — D-06 ADDS SDC/GDC/Quality/Disposition)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:IndependentContinuant a owl:Class ;
+    rdfs:subClassOf fi:Continuant ;
+    rdfs:label "independent continuant" ;
+    rdfs:comment "Mini-BFO spine: continuant that doesn't depend on another (bfo:BFO_0000004)." .
+
+fi:SpecificallyDependentContinuant a owl:Class ;
+    rdfs:subClassOf fi:Continuant ;
+    rdfs:label "specifically dependent continuant" ;
+    rdfs:comment """Mini-BFO spine: continuant that inheres in exactly one
+specific bearer (bfo:BFO_0000020). D-06 ADDS this — PRD §7.2 used the broader
+fi:DependentContinuant umbrella; SDC + GDC is the BFO 2020 split.""" .
+
+fi:GenericallyDependentContinuant a owl:Class ;
+    rdfs:subClassOf fi:Continuant ;
+    rdfs:label "generically dependent continuant" ;
+    rdfs:comment """Mini-BFO spine: continuant that depends generically on
+some bearer or other (e.g. a text, a digital document) (bfo:BFO_0000031).
+D-06 ADDS this — pairs with SDC above.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# SDC subtree (Role, Quality, Disposition — D-06 ADDS Quality + Disposition)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Role a owl:Class ;
+    rdfs:subClassOf fi:SpecificallyDependentContinuant ;
+    rdfs:label "role" ;
+    rdfs:comment "Mini-BFO spine: an externally-grounded SDC (bfo:BFO_0000023)." .
+
+fi:Quality a owl:Class ;
+    rdfs:subClassOf fi:SpecificallyDependentContinuant ;
+    rdfs:label "quality" ;
+    rdfs:comment """Mini-BFO spine: an SDC that is fully exhibited as long as
+its bearer exists (bfo:BFO_0000019). D-06 ADDS — Phase 9 P7 classifier
+needs Quality available out of the gate.""" .
+
+fi:Disposition a owl:Class ;
+    rdfs:subClassOf fi:SpecificallyDependentContinuant ;
+    rdfs:label "disposition" ;
+    rdfs:comment """Mini-BFO spine: an SDC realized via processes its bearer
+participates in (bfo:BFO_0000016). D-06 ADDS — pairs with Quality above.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Occurrent subtree (Process; fi:Event folded in per D-06)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Process a owl:Class ;
+    rdfs:subClassOf fi:Occurrent ;
+    rdfs:label "process" ;
+    rdfs:comment """Mini-BFO spine: an occurrent that unfolds through time with
+temporal parts (bfo:BFO_0000015). D-06: subsumes PRD §7.2's fi:Event — BFO 2020
+treats events as process_boundary occurrents (alignment via bfo_mapping.ttl).""" .

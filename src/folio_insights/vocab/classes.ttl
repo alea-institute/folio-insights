@@ -1,0 +1,125 @@
+# FOLIO Insights v2 — classes.ttl
+# Phase 8 Plan 08-01 / D-08 — non-BFO classes from PRD §7.2 + governance classes
+# already targeted by Phase 7 SHACL shapes.
+#
+# Decision references:
+#   D-01  canonical fi: prefix
+#   D-05  owl:versionIRI carries VOCAB_VERSION = 2026.05.0
+#   D-12  drift audit — every fi:* class Phase 2-7 shapes target lives here
+#         so the Plan 08-04 audit can confirm coverage.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+
+<https://folio-insights.aleainstitute.ai/vocab/classes>
+    a owl:Ontology ;
+    owl:versionIRI <https://folio-insights.aleainstitute.ai/vocab/2026.05.0/classes> ;
+    rdfs:label "FOLIO Insights v2 non-BFO classes" ;
+    dc:description "PRD §7.2 axiom tiers + Phase 7 governance classes (Phase 8 D-08, D-12)" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# PRD §7.2 axiom tiers + framework
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:CommonAxiom a owl:Class ;
+    rdfs:label "common axiom" ;
+    rdfs:comment "Self-evident, widely-shared proposition (Spinozan axiom tier)." .
+
+fi:Postulate a owl:Class ;
+    rdfs:label "postulate" ;
+    rdfs:comment "Posited proposition admitted without proof within a framework." .
+
+fi:Definition a owl:Class ;
+    rdfs:label "definition" ;
+    rdfs:comment "Stipulative or explicative definition (Carnap meaning postulate adjacent)." .
+
+fi:MeaningPostulate a owl:Class ;
+    rdfs:label "meaning postulate" ;
+    rdfs:comment "Carnap meaning postulate — analytic linkage between terms in a framework." .
+
+fi:Framework a owl:Class ;
+    rdfs:label "framework" ;
+    rdfs:comment "A linguistic/conceptual framework within which assertions are made." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Core shard class (Phase 2 envelope target — fi:VocabPinShape targets this)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Shard a owl:Class ;
+    rdfs:label "shard" ;
+    rdfs:comment """The base shard envelope class. Every fi:* governance event
+class below is a subclass either directly or via Phase 7's role-assertion /
+content-edit / contest / supersession hierarchy.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 7 governance event classes (D-12 drift-audit targets)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:RoleAssertion a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "role assertion" ;
+    rdfs:comment "GOV-03: agent X has role Y at time T (governance/shapes/role_assertion_shape.ttl)." .
+
+fi:RoleRevocation a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "role revocation" ;
+    rdfs:comment "GOV-03: revoke a previously-asserted role." .
+
+fi:Promotion a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "promotion" ;
+    rdfs:comment "GOV-04: hypothesis → attested promotion event (PRD §3.1.2)." .
+
+fi:Demotion a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "demotion" ;
+    rdfs:comment "GOV-04: attested → hypothesis demotion event (PRD §3.1.3)." .
+
+fi:Contest a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "contest" ;
+    rdfs:comment "GOV-05: marks the target shard as contested (PRD §3.1.3)." .
+
+fi:ContestResolution a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "contest resolution" ;
+    rdfs:comment "GOV-05: arbiter / distinguo / aporetic resolution of a contest." .
+
+fi:Distinguo a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "distinguo" ;
+    rdfs:comment "PRD §6.1: proposed/confirmed sense-fork." .
+
+fi:Supersession a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "supersession" ;
+    rdfs:comment """GOV-04 / VOCAB-05: an event recording that shard A supersedes
+shard B (the fi:supersedes ObjectProperty itself lives in predicates.ttl).""" .
+
+fi:Retraction a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "retraction" ;
+    rdfs:comment "GOV-06: retraction-cascade event (PRD §3.1.4 / DID-02)." .
+
+fi:ContentEdit a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "content edit" ;
+    rdfs:comment "Phase 5: append-only edit-audit event on a mutable shard field." .
+
+fi:GovernanceLog a owl:Class ;
+    rdfs:label "governance log" ;
+    rdfs:comment """The append-only event log itself
+(governance/shapes/governance_log_shape.ttl targets this).""" .
+
+fi:AttestedSignature a owl:Class ;
+    rdfs:label "attested signature" ;
+    rdfs:comment """Phase 6 DID-substrate signature envelope:
+{did, signature, signing_key_id, signed_action, over_content_hash}.""" .
+
+fi:ContestVote a owl:Class ;
+    rdfs:subClassOf fi:Shard ;
+    rdfs:label "contest vote" ;
+    rdfs:comment "GOV-05: individual vote cast in a contest." .
