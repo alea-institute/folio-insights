@@ -36,23 +36,11 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# ── Phase 8 D-02 / D-03 vocab pin (Plan 08-02) ─────────────────────────────
+# ── Phase 8 D-02 / D-03 vocab pin ──────────────────────────────────────────
 #
 # VOCAB_VERSION is the source-of-truth FOLIO Insights v2.0 vocabulary version
-# constant. Plan 08-01 is the canonical producer at ``folio_insights.vocab``;
-# Plan 08-02 (this plan) is sibling-Wave-1 with 08-01, so we inline a fallback
-# definition here when ``folio_insights.vocab`` is not yet importable. The
-# orchestrator's post-wave merge swaps this back to the import-only form once
-# Plan 08-01 lands.
-#
-# TODO(Plan 08-01 land): replace the try/except with the bare import line:
-#     from folio_insights.vocab import VOCAB_VERSION
-# and delete the inline ``VOCAB_VERSION = "2026.05.0"`` fallback.
-try:  # pragma: no cover — exercised in the post-Plan-08-01 world
-    from folio_insights.vocab import VOCAB_VERSION  # type: ignore[no-redef]
-except ImportError:
-    # Wave-1 ordering fallback (08-01 hasn't merged yet).
-    VOCAB_VERSION = "2026.05.0"
+# constant, owned by ``folio_insights.vocab`` (Plan 08-01).
+from folio_insights.vocab import VOCAB_VERSION
 
 # D-05: canonical discriminator alias (5 values, ordered per CONTEXT D-05).
 ShardType = Literal[

@@ -44,22 +44,12 @@ from pyoxigraph import (
 
 from folio_insights.bench.profiles import PROFILES, PhaseProfile
 
-# ── Phase 8 D-02 / D-04 vocab pin (Plan 08-02) ─────────────────────────────
+# ── Phase 8 D-02 / D-04 vocab pin ──────────────────────────────────────────
 #
 # Per-shard ``fi:vocabVersion`` quad emission stamps every generated shard
-# with the source-of-truth FOLIO Insights v2.0 vocabulary version constant.
-# Plan 08-01 is the canonical producer at ``folio_insights.vocab``; this
-# plan inlines a Wave-1 ordering fallback when ``folio_insights.vocab`` is
-# not yet importable, marked TODO for the post-wave merge.
-#
-# TODO(Plan 08-01 land): replace the try/except with the bare import line:
-#     from folio_insights.vocab import VOCAB_VERSION
-# and delete the inline ``VOCAB_VERSION = "2026.05.0"`` fallback.
-try:  # pragma: no cover — exercised in the post-Plan-08-01 world
-    from folio_insights.vocab import VOCAB_VERSION  # type: ignore[no-redef]
-except ImportError:
-    # Wave-1 ordering fallback (08-01 hasn't merged yet).
-    VOCAB_VERSION = "2026.05.0"
+# with the source-of-truth FOLIO Insights v2.0 vocabulary version constant
+# owned by ``folio_insights.vocab`` (Plan 08-01).
+from folio_insights.vocab import VOCAB_VERSION
 
 logger = logging.getLogger(__name__)
 
