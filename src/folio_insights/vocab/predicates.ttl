@@ -260,3 +260,158 @@ fi:vocabVersion a owl:DatatypeProperty ;
     rdfs:comment """The VOCAB_VERSION the shard was minted against (D-03).
 Two-belt enforcement: Pydantic validator on the envelope side, SHACL
 fi:VocabPinShape on the storage side (D-04).""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 7 governance-event predicates (Plan 08-04 D-12 drift-audit fix)
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Plan 08-04 audit discovered these predicates are emitted by
+# src/folio_insights/governance/*.py (Phase 7 GOV-01..07) and the
+# governance/shapes/*.ttl SHACL files but were not yet declared in the
+# canonical vocab. D-13 in-scope fix: add the property declarations only;
+# no Python rename, no shape rewrite, no behaviour change. The Phase 7
+# governance audit-log + per-event SHACL shapes already enforce range
+# constraints; this commit just gives the audit trail one authoritative
+# property declaration per predicate.
+
+fi:hasEvent a owl:ObjectProperty ;
+    rdfs:label "has event" ;
+    rdfs:domain fi:GovernanceLog ;
+    rdfs:comment "Container link from fi:GovernanceLog to an individual governance event (GOV-01)." .
+
+fi:event a owl:ObjectProperty ;
+    rdfs:label "event" ;
+    rdfs:comment "Generic event link used by the governance audit-log emitter (governance/shape_validation.py)." .
+
+fi:action a owl:DatatypeProperty ;
+    rdfs:label "action" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Governance-event action discriminator (string mirror of the GovernanceEvent action field)." .
+
+fi:asof a owl:DatatypeProperty ;
+    rdfs:label "as-of" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Reified point-in-time for fi:hasActiveRoleAt and other governance event timestamps." .
+
+fi:did a owl:DatatypeProperty ;
+    rdfs:label "did" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Decentralised Identifier (did:key / did:plc / did:web) carried on an attestation envelope." .
+
+fi:signedAt a owl:DatatypeProperty ;
+    rdfs:label "signed at" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Wall-clock instant a fi:AttestedSignature was produced." .
+
+fi:signerDid a owl:DatatypeProperty ;
+    rdfs:label "signer DID" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "DID of the agent who signed a role-assertion / governance event (Phase 7 GOV-03 / DID-substrate)." .
+
+fi:subjectDid a owl:DatatypeProperty ;
+    rdfs:label "subject DID" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "DID of the agent the role assertion is about (Phase 7 GOV-03 role_assertion_shape)." .
+
+fi:shardIri a owl:ObjectProperty ;
+    rdfs:label "shard IRI" ;
+    rdfs:comment "Link from a governance event to the target shard it operates on (Phase 7 GOV-04/-05/-06)." .
+
+fi:oldShardIri a owl:ObjectProperty ;
+    rdfs:label "old shard IRI" ;
+    rdfs:comment "Link from a fi:Supersession event to the superseded shard (VOCAB-05; supersession_shape)." .
+
+fi:newShardIri a owl:ObjectProperty ;
+    rdfs:label "new shard IRI" ;
+    rdfs:comment "Link from a fi:Supersession event to the superseding shard (VOCAB-05; supersession_shape)." .
+
+fi:cascadePreviewHash a owl:DatatypeProperty ;
+    rdfs:label "cascade preview hash" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Digest pinning the preview set of a retraction cascade (Phase 7 GOV-06 / DID-02)." .
+
+fi:newStatus a owl:DatatypeProperty ;
+    rdfs:label "new status" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Target epistemic status carried on a promotion / demotion event (Phase 7 GOV-04 / PRD §3.1.2)." .
+
+fi:pending a owl:DatatypeProperty ;
+    rdfs:label "pending" ;
+    rdfs:range xsd:boolean ;
+    rdfs:comment "Boolean flag marking a governance event as pending resolution (GOV-05 contest workflow)." .
+
+fi:position a owl:DatatypeProperty ;
+    rdfs:label "position" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Monotonic per-corpus ordinal used by the governance audit-log (Phase 7 GovernanceEvent.position)." .
+
+fi:citedIri a owl:ObjectProperty ;
+    rdfs:label "cited IRI" ;
+    rdfs:comment "Generic IRI-cite link used by governance events that reference external shards / documents." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 5 revision predicates (Plan 08-04 D-12 drift-audit fix)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:seq a owl:DatatypeProperty ;
+    rdfs:label "seq" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "0-based append-order index for fi:ContentEdit entries (Phase 5 revision/content_edit_shape)." .
+
+fi:contentEdits a owl:ObjectProperty ;
+    rdfs:label "content edits" ;
+    rdfs:comment "Link from a shard to its append-only fi:ContentEdit list (Phase 5 revision/shape_validation)." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 0 bench-generator predicates (Plan 08-04 D-12 drift-audit fix)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:confidence a owl:DatatypeProperty ;
+    rdfs:label "confidence" ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "Annotation-pipe confidence score on a reified statement (Phase 0 bench/generator.py:267)." .
+
+fi:validFrom a owl:DatatypeProperty ;
+    rdfs:label "valid from" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment """Subject-side valid-time start for annotation-pipe reified assertions.
+Semantically equivalent to fi:validTimeStart on the shard envelope; kept as a
+distinct property for the bench generator's annotation-pipe emission pattern
+because it attaches to a reified statement (not a shard) and avoids cross-
+cutting the envelope's validation belt.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 1 polysemy distinguo predicates (Plan 08-04 D-12 drift-audit fix)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:analogousTo a owl:ObjectProperty ;
+    rdfs:label "analogous to" ;
+    rdfs:comment """Typed analogy link emitted by polysemy/distinguo.py on a
+reviewer-modified polysemy fork. References a fi:primeAnalogate target.""" .
+
+fi:proposedAt a owl:DatatypeProperty ;
+    rdfs:label "proposed at" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Instant a distinguo fork was proposed by a reviewer (polysemy/distinguo.py)." .
+
+fi:proposedBy a owl:ObjectProperty ;
+    rdfs:label "proposed by" ;
+    rdfs:comment "Link to the DID of the reviewer who proposed a distinguo fork (polysemy/distinguo.py)." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Polysemy fixture-loader / extraction predicates (Plan 08-04 D-12 drift-audit fix)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:axiomSummary a owl:DatatypeProperty ;
+    rdfs:label "axiom summary" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Short summary text attached to an extracted axiom shard (polysemy/fixture_loader.py)." .
+
+fi:sourceDoc a owl:ObjectProperty ;
+    rdfs:label "source doc" ;
+    rdfs:comment "Link from an extracted shard to its source document IRI (polysemy/fixture_loader.py)." .
+
+fi:termOfArt a owl:DatatypeProperty ;
+    rdfs:label "term of art" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Legal term-of-art string carried on a polysemy shard fixture (polysemy/fixture_loader.py)." .

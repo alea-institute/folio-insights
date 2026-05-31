@@ -109,6 +109,37 @@ fi:RoleEnumShape a sh:NodeShape ;
     ] .
 
 # ──────────────────────────────────────────────────────────────────────────
+# fi:DistinctionKindEnumShape — VOCAB-02 distinction-kind literal-enum belt
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Plan 08-04 D-12 in-scope drift fix: the 4 Scotist distinction-kind values
+# (realis / rationis / rationis_cum_fundamento_in_re / analogica) are part of
+# the VOCAB-02 acceptance gate ("4 predicates + 4 distinction kinds queryable",
+# REQUIREMENTS.md). predicates.ttl declares fi:distinctionKind as an
+# owl:DatatypeProperty (literal range, PRD §7.1.1); this shape attaches the
+# closed enumeration belt — same modeling route as fi:hasRole + fi:signedAction.
+# Plan 08-04 Task 2 (test_vocab_02_distinction_kinds_queryable_in_both_stores)
+# accepts either NamedIndividual or sh:in literal; we pick Route B (sh:in)
+# because it keeps the closed-set semantics on the property declaration where
+# the SHACL belt is checked, mirroring fi:RoleEnumShape's discipline exactly.
+
+fi:DistinctionKindEnumShape a sh:NodeShape ;
+    sh:targetSubjectsOf fi:distinctionKind ;
+    sh:property [
+        sh:path fi:distinctionKind ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in (
+            "realis"
+            "rationis"
+            "rationis_cum_fundamento_in_re"
+            "analogica"
+        ) ;
+        sh:message "fi:distinctionKind must be one of the 4 Scotist values: realis, rationis, rationis_cum_fundamento_in_re, analogica (PRD §7.1.1 / VOCAB-02)" ;
+    ] .
+
+# ──────────────────────────────────────────────────────────────────────────
 # fi:SupersessionAlignmentShape — D-10 valid-time alignment
 # ──────────────────────────────────────────────────────────────────────────
 #
