@@ -8,6 +8,17 @@ Uses SKOS/PROV-O/Dublin Core as annotation properties within a single OWL file,
 per the CONTEXT.md decision: "everything in one OWL file."
 """
 
+# v1-legacy — DO NOT migrate to v2 prefix (Phase 8 D-01b).
+#
+# The https://folio.openlegalstandard.org/ FOLIO canonical IRIs are SACRED
+# (untouched per Phase 8 D-01a — the upstream alea-institute FOLIO ontology),
+# and the .../modules/folio-insights/ extension prefix below is FROZEN to the
+# v1 OWL export pipeline. The Phase 8 v2 vocabulary lives at the disjoint
+# https://folio-insights.aleainstitute.ai/vocab/ namespace (folio_insights.vocab
+# package). Greenfield-on-master is the cover; no bridge axioms, no
+# dual-emission, no rewrite. See .planning/phases/08-folio-v2-vocab-mini-bfo-spine-7/
+# 08-CONTEXT.md decisions D-01, D-01a, D-01b for the full rationale.
+
 from __future__ import annotations
 
 from rdflib import Graph, Literal, Namespace, URIRef

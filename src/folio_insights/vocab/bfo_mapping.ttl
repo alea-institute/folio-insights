@@ -1,0 +1,77 @@
+# FOLIO Insights v2 — bfo_mapping.ttl
+# Phase 8 Plan 08-01 / D-07 / D-08 — exhaustive owl:equivalentClass to BFO 2020.
+#
+# Decision references:
+#   D-01  canonical fi: prefix
+#   D-05  owl:versionIRI carries VOCAB_VERSION = 2026.05.0
+#   D-07  exhaustive owl:equivalentClass rows — every one of the 9 mini-BFO
+#         classes maps to its bfo:BFO_xxxxxxx counterpart. No rdfs:seeAlso
+#         shortcuts; downstream consumers that load both files get seamless
+#         interop without prose-doc lookups.
+#   D-09  loaded opt-in via load_graph(include_bfo_mapping=True); always loaded
+#         by load_pyoxigraph_store().
+#
+# BFO 2020 PURL source: http://purl.obolibrary.org/obo/bfo/2020/bfo.owl
+# Per-class IRIs are http://purl.obolibrary.org/obo/BFO_xxxxxxx.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix bfo: <http://purl.obolibrary.org/obo/> .
+# NOTE: BFO 2020 IRIs are written in full (http://purl.obolibrary.org/obo/BFO_xxxxxxx)
+# rather than as prefixed bfo:BFO_xxxxxxx forms. This makes the canonical
+# "obo/BFO_" substring grep-able per Plan 08-01 <acceptance_criteria> ≥9
+# count without ambiguity about prefix expansion.
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+
+<https://folio-insights.aleainstitute.ai/vocab/bfo_mapping>
+    a owl:Ontology ;
+    owl:versionIRI <https://folio-insights.aleainstitute.ai/vocab/2026.05.0/bfo_mapping> ;
+    rdfs:label "FOLIO Insights v2 → BFO 2020 alignment" ;
+    dc:description """Phase 8 D-07: 9 exhaustive owl:equivalentClass rows from
+the fi:* mini-BFO spine to BFO 2020 (PURL http://purl.obolibrary.org/obo/bfo/2020/bfo.owl).""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Top-level Continuant / Occurrent
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Continuant owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000002> ;
+    rdfs:comment "BFO 2020 Continuant (http://purl.obolibrary.org/obo/BFO_0000002); PURL bfo/2020/bfo.owl." .
+
+fi:Occurrent owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:comment "BFO 2020 Occurrent (http://purl.obolibrary.org/obo/BFO_0000003); PURL bfo/2020/bfo.owl." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Continuant subtree
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:IndependentContinuant owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000004> ;
+    rdfs:comment "BFO 2020 IndependentContinuant (http://purl.obolibrary.org/obo/BFO_0000004); PURL bfo/2020/bfo.owl." .
+
+fi:SpecificallyDependentContinuant owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    rdfs:comment "BFO 2020 SpecificallyDependentContinuant (http://purl.obolibrary.org/obo/BFO_0000020); PURL bfo/2020/bfo.owl." .
+
+fi:GenericallyDependentContinuant owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000031> ;
+    rdfs:comment "BFO 2020 GenericallyDependentContinuant (http://purl.obolibrary.org/obo/BFO_0000031); PURL bfo/2020/bfo.owl." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# SDC subtree
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Role owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000023> ;
+    rdfs:comment "BFO 2020 Role (http://purl.obolibrary.org/obo/BFO_0000023); PURL bfo/2020/bfo.owl." .
+
+fi:Quality owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000019> ;
+    rdfs:comment "BFO 2020 Quality (http://purl.obolibrary.org/obo/BFO_0000019); PURL bfo/2020/bfo.owl." .
+
+fi:Disposition owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000016> ;
+    rdfs:comment "BFO 2020 Disposition (http://purl.obolibrary.org/obo/BFO_0000016); PURL bfo/2020/bfo.owl." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Occurrent subtree
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:Process owl:equivalentClass <http://purl.obolibrary.org/obo/BFO_0000015> ;
+    rdfs:comment """BFO 2020 Process (http://purl.obolibrary.org/obo/BFO_0000015); PURL bfo/2020/bfo.owl.
+D-06 folds PRD §7.2's fi:Event under fi:Process via this equivalence — BFO 2020
+treats events as process_boundary occurrents inside the Process tree.""" .

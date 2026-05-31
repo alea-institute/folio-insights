@@ -1,0 +1,262 @@
+# FOLIO Insights v2 — predicates.ttl
+# Phase 8 Plan 08-01 / D-08 — all PRD §7.1 fi:* properties live here.
+#
+# Decision references:
+#   D-01  canonical fi: prefix https://folio-insights.aleainstitute.ai/vocab/
+#   D-05  owl:versionIRI carries VOCAB_VERSION = 2026.05.0
+#   D-10  fi:supersedes / fi:supersededBy declared as owl:inverseOf pair
+#   D-12  literal-range enums (sh:in for fi:signedAction, fi:role) live in
+#         shapes.ttl, not here — predicates here just declare the property
+#         + rdfs:range xsd:string.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+
+<https://folio-insights.aleainstitute.ai/vocab/predicates>
+    a owl:Ontology ;
+    owl:versionIRI <https://folio-insights.aleainstitute.ai/vocab/2026.05.0/predicates> ;
+    rdfs:label "FOLIO Insights v2 predicates" ;
+    dc:description "PRD §7.1 fi:* predicate definitions (Phase 8 D-08)" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Analogia (PRD §7.1.1 — VOCAB-02)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:primeAnalogate a owl:ObjectProperty ;
+    rdfs:label "prime analogate" ;
+    rdfs:comment "The focal sense in an analogical relation (analogia ad unum)." .
+
+fi:proportionalRelation a owl:ObjectProperty ;
+    rdfs:label "proportional relation" ;
+    rdfs:comment "Analogy of proportion (a:b :: c:d) link between two pairs of analogues." .
+
+fi:distinguishes a owl:ObjectProperty ;
+    rdfs:label "distinguishes" ;
+    rdfs:comment "Marks the related shard as a distinguishing concept (distinguo)." .
+
+fi:distinctionKind a owl:DatatypeProperty ;
+    rdfs:label "distinction kind" ;
+    rdfs:range xsd:string ;
+    rdfs:comment """The kind of distinction (Scotist taxonomy): realis,
+rationis, rationis_cum_fundamento_in_re, analogica.""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Elaboration (Tractarian — PRD §7.1.2)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:elaborates a owl:ObjectProperty ;
+    rdfs:label "elaborates" ;
+    rdfs:comment "Tractarian: child shard elaborates parent in the same proposition." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Dependencies (Spinozan — PRD §7.1.3 — VOCAB-03)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:dependsOnAxiom a owl:ObjectProperty ;
+    rdfs:label "depends on axiom" ;
+    rdfs:comment "Spinozan: this shard logically depends on the referenced axiom." .
+
+fi:dependsOnDefinition a owl:ObjectProperty ;
+    rdfs:label "depends on definition" ;
+    rdfs:comment "Spinozan: this shard logically depends on the referenced definition." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Closure (Russellian — PRD §7.1.4)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:closureMarker a owl:DatatypeProperty ;
+    rdfs:label "closure marker" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Russellian: marks a logically-closed propositional unit boundary." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Framework (Carnap — PRD §7.1.5)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:framework a owl:ObjectProperty ;
+    rdfs:label "framework" ;
+    rdfs:comment "Carnap: the linguistic/conceptual framework this shard sits within." .
+
+fi:inFramework a owl:ObjectProperty ;
+    rdfs:label "in framework" ;
+    rdfs:comment "Inverse-style link: subject is asserted relative to the referenced framework." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Epistemic status (PRD §7.1.6)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:epistemicStatus a owl:DatatypeProperty ;
+    rdfs:label "epistemic status" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Hypothesis / attested / contested / withdrawn / aporetic." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Predication mode (Aristotelian — PRD §7.1.7)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:predicationMode a owl:DatatypeProperty ;
+    rdfs:label "predication mode" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Aristotelian: per_se / per_accidens / univocal / equivocal / analogical." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Supersession (PRD §7.1.8 / §21.9 / VOCAB-05 / D-10)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:supersedes a owl:ObjectProperty ;
+    rdfs:label "supersedes" ;
+    owl:inverseOf fi:supersededBy ;
+    rdfs:comment """Asserts that the subject shard supersedes the object shard.
+D-10: declared as owl:inverseOf fi:supersededBy. Phase 7 supersede.py emits ONLY
+fi:supersedes — the inverse is inferred at query time.""" .
+
+fi:supersededBy a owl:ObjectProperty ;
+    rdfs:label "superseded by" ;
+    owl:inverseOf fi:supersedes ;
+    rdfs:comment "Inverse of fi:supersedes (D-10 — declared explicitly for SPARQL ergonomics)." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Valid-time + transaction-time (PRD §7.1.9 — Phase 5 wired)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:validTimeStart a owl:DatatypeProperty ;
+    rdfs:label "valid-time start" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Inclusive lower bound for valid-time (when the assertion took effect)." .
+
+fi:validTimeEnd a owl:DatatypeProperty ;
+    rdfs:label "valid-time end" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment """Exclusive upper bound for valid-time (when the assertion was
+superseded; unbound means still-current).""" .
+
+fi:transactionTime a owl:DatatypeProperty ;
+    rdfs:label "transaction time" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Wall-clock instant the assertion was recorded in the substrate." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Contest (PRD §7.1.10 — Phase 7 GOV-05)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:contests a owl:ObjectProperty ;
+    rdfs:label "contests" ;
+    rdfs:comment "Records that the subject shard is the target of a contest event." .
+
+fi:contestVote a owl:ObjectProperty ;
+    rdfs:label "contest vote" ;
+    rdfs:comment "Link from a contest to a fi:ContestVote node." .
+
+fi:positionText a owl:DatatypeProperty ;
+    rdfs:label "position text" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Free-text statement of the contesting position." .
+
+fi:voterDid a owl:DatatypeProperty ;
+    rdfs:label "voter DID" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "DID of the agent that cast the contest vote." .
+
+fi:resolutionPath a owl:DatatypeProperty ;
+    rdfs:label "resolution path" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "How a contest was resolved: arbiter / distinguo / aporetic." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Attestations (PRD §7.1.11 — Phase 6 DID-substrate)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:signedAction a owl:DatatypeProperty ;
+    rdfs:label "signed action" ;
+    rdfs:range xsd:string ;
+    rdfs:comment """The action being signed. The 13-value enumeration matching
+src/folio_insights/shards/envelope.py:85 SignedAction Literal lives in
+shapes.ttl::fi:SignedActionEnumShape (D-12 — sh:in belongs there, not on the
+property declaration itself).""" .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Role (PRD §7.1.12 — Phase 7 GOV-03)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:hasRole a owl:DatatypeProperty ;
+    rdfs:label "has role" ;
+    rdfs:range xsd:string ;
+    rdfs:comment """D-12: declared as DatatypeProperty with literal range.
+The 4-value enumeration (extractor, reviewer, arbiter, corpus_admin) lives in
+shapes.ttl::fi:RoleEnumShape per the same shapes-own-enums discipline.""" .
+
+fi:hasActiveRoleAt a owl:ObjectProperty ;
+    rdfs:label "has active role at" ;
+    rdfs:comment "Reified link: agent has role X at point-in-time Y (role-assertion event)." .
+
+fi:role a owl:DatatypeProperty ;
+    rdfs:label "role" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Role literal carried on a fi:RoleAssertion event." .
+
+fi:revokedRole a owl:DatatypeProperty ;
+    rdfs:label "revoked role" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Role literal carried on a fi:RoleRevocation event." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Content-edit (PRD §7.1.13 — Phase 5)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:editedAt a owl:DatatypeProperty ;
+    rdfs:label "edited at" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Instant of a content edit (Phase 5 forward-only audit)." .
+
+fi:editedBy a owl:DatatypeProperty ;
+    rdfs:label "edited by" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "DID of the agent that performed the content edit." .
+
+fi:fieldPath a owl:DatatypeProperty ;
+    rdfs:label "field path" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Dotted path to the mutable field touched by the edit." .
+
+fi:rationale a owl:DatatypeProperty ;
+    rdfs:label "rationale" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Free-text justification for a content edit." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Provenance-hash (PRD §7.1.14 — Phase 4/6)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:provenanceHash a owl:DatatypeProperty ;
+    rdfs:label "provenance hash" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Stable provenance digest over the shard's full lineage." .
+
+fi:canonicalContentHash a owl:DatatypeProperty ;
+    rdfs:label "canonical content hash" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "RFC 8785 JCS hash of the canonical mutable-fields slice (DID-03 / D-12)." .
+
+fi:overContentHash a owl:DatatypeProperty ;
+    rdfs:label "over content hash" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Hash that an attestation signs over; cross-references fi:canonicalContentHash." .
+
+fi:signingKeyId a owl:DatatypeProperty ;
+    rdfs:label "signing key id" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Key identifier (did:key z-form or did:plc fragment) used to produce a signature." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Vocab-version pin (D-03 / D-04 — Phase 8 anchor)
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:vocabVersion a owl:DatatypeProperty ;
+    rdfs:label "vocab version" ;
+    rdfs:range xsd:string ;
+    rdfs:comment """The VOCAB_VERSION the shard was minted against (D-03).
+Two-belt enforcement: Pydantic validator on the envelope side, SHACL
+fi:VocabPinShape on the storage side (D-04).""" .
