@@ -1,0 +1,84 @@
+# Phase 8 Plan 08-03 — supersession chain fixture (D-10 / VOCAB-05).
+#
+# Ten-link supersession chain over a single logical subject <urn:test:doc/1>.
+# Each link is a shard <urn:test:shard/v1>..<urn:test:shard/v10> that carries
+# the test-only predicate fi:exampleProperty (chosen to avoid collision with
+# the real PRD §7.1 predicates).
+#
+# Valid-time layout (D-10 alignment):
+#   v1  [2026-01-01, 2026-02-01)
+#   v2  [2026-02-01, 2026-03-01)
+#   v3  [2026-03-01, 2026-04-01)
+#   v4  [2026-04-01, 2026-05-01)
+#   v5  [2026-05-01, 2026-06-01)
+#   v6  [2026-06-01, 2026-07-01)
+#   v7  [2026-07-01, 2026-08-01)
+#   v8  [2026-08-01, 2026-09-01)
+#   v9  [2026-09-01, 2026-10-01)
+#   v10 [2026-10-01, ∞)              ← open-ended current link
+#
+# Each link n≥2 carries fi:supersedes <urn:test:shard/v(n-1)> so the SHACL
+# fi:SupersessionAlignmentShape (Plan 08-03 Task 2) can validate that every
+# link's validTimeStart equals its predecessor's validTimeEnd.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:test:shard/v1>
+    fi:exampleProperty "object1" ;
+    fi:validTimeStart "2026-01-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-02-01T00:00:00+00:00"^^xsd:dateTime .
+
+<urn:test:shard/v2>
+    fi:exampleProperty "object2" ;
+    fi:validTimeStart "2026-02-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-03-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v1> .
+
+<urn:test:shard/v3>
+    fi:exampleProperty "object3" ;
+    fi:validTimeStart "2026-03-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-04-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v2> .
+
+<urn:test:shard/v4>
+    fi:exampleProperty "object4" ;
+    fi:validTimeStart "2026-04-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-05-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v3> .
+
+<urn:test:shard/v5>
+    fi:exampleProperty "object5" ;
+    fi:validTimeStart "2026-05-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-06-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v4> .
+
+<urn:test:shard/v6>
+    fi:exampleProperty "object6" ;
+    fi:validTimeStart "2026-06-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-07-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v5> .
+
+<urn:test:shard/v7>
+    fi:exampleProperty "object7" ;
+    fi:validTimeStart "2026-07-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-08-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v6> .
+
+<urn:test:shard/v8>
+    fi:exampleProperty "object8" ;
+    fi:validTimeStart "2026-08-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v7> .
+
+<urn:test:shard/v9>
+    fi:exampleProperty "object9" ;
+    fi:validTimeStart "2026-09-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:validTimeEnd   "2026-10-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v8> .
+
+# v10: open-ended current link (no fi:validTimeEnd).
+<urn:test:shard/v10>
+    fi:exampleProperty "object10" ;
+    fi:validTimeStart "2026-10-01T00:00:00+00:00"^^xsd:dateTime ;
+    fi:supersedes <urn:test:shard/v9> .
