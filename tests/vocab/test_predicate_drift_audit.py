@@ -36,6 +36,15 @@ from typing import get_args as _get_args
 
 SH = Namespace("http://www.w3.org/ns/shacl#")
 
+# WR-03: anchor all source-tree paths to __file__ so the audit doesn't
+# silently no-op when pytest is invoked from a non-root cwd. pytest does
+# not chdir to rootdir; bare relative paths previously evaluated against
+# the process cwd and (when wrong) returned an empty scan with vacuous
+# pass.
+_REPO_ROOT = Path(__file__).parent.parent.parent  # tests/vocab/ → repo root
+_SOURCE_ROOT = _REPO_ROOT / "src" / "folio_insights"
+_SHAPES_TTL = _SOURCE_ROOT / "vocab" / "shapes.ttl"
+
 # ---------------------------------------------------------------------------
 # Scan configuration
 # ---------------------------------------------------------------------------
@@ -86,7 +95,7 @@ def _scan_emitted_predicates() -> dict[str, set[str]]:
     Looks at ``*.py`` and ``*.ttl`` files under each of the documented
     Phase 2–7 source packages (D-12 scope).
     """
-    root = Path("src/folio_insights")
+    root = _SOURCE_ROOT
     sources: dict[str, set[str]] = {}
     for pkg in _SOURCE_PACKAGE_DIRS:
         pkg_root = root / pkg
@@ -177,7 +186,7 @@ def test_hasRole_datatype_with_sh_in_enum() -> None:
     )
 
     # The sh:in list must enumerate exactly: extractor / reviewer / arbiter / corpus_admin.
-    shapes_text = Path("src/folio_insights/vocab/shapes.ttl").read_text(encoding="utf-8")
+    shapes_text = _SHAPES_TTL.read_text(encoding="utf-8")
     for role in ("extractor", "reviewer", "arbiter", "corpus_admin"):
         assert f'"{role}"' in shapes_text, (
             f"fi:RoleEnumShape sh:in must include {role!r} (PRD §7.1)"
@@ -199,7 +208,7 @@ def test_signedAction_datatype_with_13_value_enum() -> None:
 
     # Mirror the 13-value SignedAction Literal from envelope.py:85.
     expected_values = set(_get_args(SignedAction))
-    shapes_text = Path("src/folio_insights/vocab/shapes.ttl").read_text(encoding="utf-8")
+    shapes_text = _SHAPES_TTL.read_text(encoding="utf-8")
     for value in expected_values:
         assert f'"{value}"' in shapes_text, (
             f"fi:SignedActionEnumShape sh:in must include {value!r} "
