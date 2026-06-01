@@ -108,6 +108,15 @@ class BenchGenerator:
 
         The final quad count may be slightly below the target due to
         per-corpus share rounding — callers should allow ~0.1% tolerance.
+
+        IN-02 contract: the per-corpus emit loop may truncate the FINAL shard
+        of each corpus mid-emission (up to one partial shard per corpus, three
+        total). Truncated shards carry their leading rdf:type Shard quad but
+        may lack the trailing vocab-version quad. Downstream consumers
+        feeding this output into a SHACL pipeline that runs VocabPinShape
+        MUST validate vocab-version presence per shard before trusting it —
+        partial shards are by-contract for the bench digest-stability path
+        and would correctly fail VocabPin.
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,6 +143,33 @@ class BenchGenerator:
             corpus_target = int(target_triples * share)
             emitted_for_corpus = 0
             shard_idx = 0
+            # IN-02 — CONTRACT-LEVEL DESIGN GAP (documented, not patched):
+            #
+            # The inner ``for quad in shard_quads`` loop breaks the moment
+            # ``emitted_for_corpus`` hits ``corpus_target``, which can land
+            # MID-SHARD. The final shard of each corpus may therefore be
+            # written with only its leading quads (rdf:type Shard, corpus,
+            # framework) and WITHOUT its trailing vocab-version quad. Up to
+            # one truncated shard per corpus (3 total across
+            # advocacy/fre/restatement) is permitted —
+            # ``tests/vocab/test_bench_emits_vocab_version.py`` codifies the
+            # ±3 tolerance against ``_count_shards``.
+            #
+            # The bench generator's contract permits this truncation: the
+            # bench is a digest-stable smoke corpus, not a SHACL-validated
+            # ingestion path. The contract does NOT permit downstream
+            # consumers to ingest these N-Quads files into a SHACL pipeline
+            # that runs VocabPinShape without first filtering rdf:type Shard
+            # rows whose subjects lack a paired vocab-version quad — such
+            # shards would (correctly) fail VocabPinShape.
+            #
+            # If a future phase needs strict per-shard atomicity, change the
+            # break to land on shard boundaries (move the ``corpus_target``
+            # check from the inner per-quad loop to the outer
+            # ``while emitted_for_corpus < corpus_target`` condition) and
+            # accept slight over-run instead of mid-shard truncation. That
+            # would shift the digest baseline, so it is deferred until a
+            # caller actually needs it.
             while emitted_for_corpus < corpus_target:
                 subtype = self._pick_subtype()
                 shard_quads = self._emit_shard_quads(
@@ -147,7 +183,7 @@ class BenchGenerator:
                     emitted_for_corpus += 1
                     triples_emitted += 1
                     if emitted_for_corpus >= corpus_target:
-                        break
+                        break  # IN-02: may truncate mid-shard, see above.
                 shard_idx += 1
 
         logger.info(
