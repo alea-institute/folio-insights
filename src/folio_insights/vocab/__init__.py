@@ -40,34 +40,19 @@ Decision references:
 from __future__ import annotations
 
 from importlib.resources import files
-from typing import Mapping
+from typing import TYPE_CHECKING
 
-from pyoxigraph import RdfFormat, Store
-from rdflib import Graph, Namespace
+from rdflib import Graph
 
-# ---------------------------------------------------------------------------
-# Module constants (D-01, D-02)
-# ---------------------------------------------------------------------------
+# Lightweight constants live in _constants.py so callers needing only the
+# version pin (shards/envelope.py, bench/generator.py) can import without
+# forcing a pyoxigraph import (WR-01). Combined with the lazy pyoxigraph
+# import inside load_pyoxigraph_store, this means importing
+# ``folio_insights.vocab._constants`` only pulls rdflib + stdlib.
+from folio_insights.vocab._constants import FI_PREFIX, NAMESPACES, VOCAB_VERSION
 
-# D-02: CalVer YYYY.MM.PATCH. Patch bumps land as "2026.05.1", "2026.05.2", …
-# Every owl:versionIRI in the 5 TTL files must mirror this value.
-VOCAB_VERSION: str = "2026.05.0"
-
-# D-01: canonical FOLIO Insights v2 extension namespace (PRD §7.1 verbatim).
-# Already encoded inline in polysemy/distinguo.py:33, bench/generator.py:51,
-# polysemy/similarity_query.py:37; this module is now the single source of truth.
-FI_PREFIX: str = "https://folio-insights.aleainstitute.ai/vocab/"
-
-# Promoted from bench/generator.py:51-55 — same canonical IRIs, now as
-# rdflib.Namespace objects so SPARQL builders + graph constructors share one
-# vocabulary surface.
-NAMESPACES: Mapping[str, Namespace] = {
-    "fi": Namespace(FI_PREFIX),
-    "corpus": Namespace("https://folio-insights.aleainstitute.ai/corpus/"),
-    "shard": Namespace("https://folio-insights.aleainstitute.ai/shard/"),
-    "concept": Namespace("https://folio-insights.aleainstitute.ai/concept/"),
-    "framework": Namespace("https://folio-insights.aleainstitute.ai/framework/"),
-}
+if TYPE_CHECKING:
+    from pyoxigraph import Store
 
 # D-08 TTL file inventory. Order matters for deterministic parse — predicates
 # first (most referenced), then classes, spine, opt-in mapping, shapes last
@@ -108,14 +93,20 @@ def load_graph(*, include_bfo_mapping: bool = False) -> Graph:
     return g
 
 
-def load_pyoxigraph_store() -> Store:
+def load_pyoxigraph_store() -> "Store":
     """Return an in-memory ``pyoxigraph.Store`` loaded with ALL 5 TTL files.
 
     Unlike ``load_graph`` the pyoxigraph path always includes ``bfo_mapping.ttl``
     because the SPARQL surface this Store backs (Phase 11 triplestore +
     downstream consumers) always wants the full BFO 2020 alignment available
     for cross-vocab queries.
+
+    WR-01: pyoxigraph is imported lazily inside this function so importing
+    ``folio_insights.vocab`` (or its lightweight ``_constants`` submodule)
+    does not pull pyoxigraph into lightweight environments.
     """
+    from pyoxigraph import RdfFormat, Store
+
     store = Store()
     pkg = files("folio_insights.vocab")
     for name in (*_CORE_TTL_FILES, _BFO_MAPPING_TTL):
