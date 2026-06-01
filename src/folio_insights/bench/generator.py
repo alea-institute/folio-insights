@@ -182,11 +182,19 @@ class BenchGenerator:
         r = self._rng.random() * total
         # WR-02: strict less-than so a zero-weight key (cumweight equal to prior
         # cumweight) is never selected. rng.random() returns [0.0, 1.0) so the
-        # loop always matches before exhaustion under non-zero total weights;
-        # the keys[-1] return below is a floating-point safety valve.
+        # loop always matches before exhaustion under non-zero total weights.
         for k, cw in zip(keys, cumweights, strict=True):
             if r < cw:
                 return k
+        # IN-01: the loop above always returns under exact arithmetic — r < total
+        # and cumweights[-1] == total. This fallback exists as a defensive
+        # floating-point safety valve: the sum-then-compare order means
+        # cumweights[-1] can land a few ULPs below total (e.g. when subtype
+        # weights are dense floats like 0.1 + 0.2 + 0.7), and r * total can in
+        # principle round up to >= cumweights[-1]. Raising here would be wrong:
+        # the correct semantic answer for r at the upper edge of [0.0, total) is
+        # the last sorted key. Keep as a defensive fallback (matches the
+        # codebase's "widen-don't-assert" style — cf. WR-04's BNode widening).
         return keys[-1]
 
     def _emit_shard_quads(
