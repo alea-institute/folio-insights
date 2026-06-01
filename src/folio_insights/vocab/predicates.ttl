@@ -82,7 +82,8 @@ fi:framework a owl:ObjectProperty ;
 
 fi:inFramework a owl:ObjectProperty ;
     rdfs:label "in framework" ;
-    rdfs:comment "Inverse-style link: subject is asserted relative to the referenced framework." .
+    owl:inverseOf fi:framework ;
+    rdfs:comment "Inverse of fi:framework: subject is asserted relative to the referenced framework. WR-05: owl:inverseOf makes the inverse claim machine-readable so OWL reasoners + SPARQL entailment engines can derive the reverse triple (matches the fi:supersedes / fi:supersededBy D-10 pattern)." .
 
 # ──────────────────────────────────────────────────────────────────────────
 # Epistemic status (PRD §7.1.6)
