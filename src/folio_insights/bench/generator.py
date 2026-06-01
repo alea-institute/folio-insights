@@ -180,8 +180,12 @@ class BenchGenerator:
             total += weights[k]
             cumweights.append(total)
         r = self._rng.random() * total
+        # WR-02: strict less-than so a zero-weight key (cumweight equal to prior
+        # cumweight) is never selected. rng.random() returns [0.0, 1.0) so the
+        # loop always matches before exhaustion under non-zero total weights;
+        # the keys[-1] return below is a floating-point safety valve.
         for k, cw in zip(keys, cumweights, strict=True):
-            if r <= cw:
+            if r < cw:
                 return k
         return keys[-1]
 
