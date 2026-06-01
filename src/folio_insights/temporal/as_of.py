@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
-from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib import BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import XSD
 
 # D-01: canonical Phase 8 prefix. NOT the ``https://folio-insights.example/``
@@ -68,12 +68,16 @@ SELECT ?subject ?object WHERE {
 class Row:
     """Optional NamedTuple-style alias for the (subject, object) tuple
     returned by ``query_as_of``. Kept as a dataclass for ergonomics; the
-    function still returns plain ``list[tuple[URIRef, URIRef | Literal]]``
+    function still returns plain ``list[tuple[URIRef, URIRef | Literal | BNode]]``
     so callers can pattern-match or unpack as they prefer.
+
+    WR-04: ``object`` may resolve to a ``BNode`` when the underlying triple's
+    object is a blank node (e.g. an embedded reification). Callers MUST
+    guard for all three rdflib term types.
     """
 
     subject: URIRef
-    object: URIRef | Literal
+    object: URIRef | Literal | BNode
 
 
 def _coerce_at(at_date: date | datetime) -> Literal:
@@ -97,7 +101,7 @@ def query_as_of(
     graph: Graph,
     predicate: URIRef,
     at_date: date | datetime,
-) -> list[tuple[URIRef, URIRef | Literal]]:
+) -> list[tuple[URIRef, URIRef | Literal | BNode]]:
     """Return the binding of ``predicate`` on every subject whose valid-time
     interval contains ``at_date``.
 
@@ -121,11 +125,13 @@ def query_as_of(
 
     Returns
     -------
-    list[tuple[URIRef, URIRef | Literal]]
+    list[tuple[URIRef, URIRef | Literal | BNode]]
         ``(subject, object)`` rows where ``subject`` is the shard IRI whose
         interval contains ``at_date`` and ``object`` is the predicate's
         value on that shard. Empty list when no shard's interval contains
-        ``at_date``.
+        ``at_date``. ``object`` may be a ``BNode`` when the underlying
+        triple's object is a blank node (e.g. an embedded reification —
+        WR-04).
 
     Notes
     -----
