@@ -23,8 +23,9 @@ deferred and waived here with a citation.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
+from typing import get_args as _get_args
 
 import pytest
 from rdflib import OWL, RDF, URIRef
@@ -32,7 +33,6 @@ from rdflib.namespace import Namespace
 
 from folio_insights.vocab import FI_PREFIX, load_graph
 from folio_insights.shards.envelope import SignedAction
-from typing import get_args as _get_args
 
 SH = Namespace("http://www.w3.org/ns/shacl#")
 
