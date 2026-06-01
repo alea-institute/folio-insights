@@ -15,11 +15,13 @@
 # Per-class IRIs are http://purl.obolibrary.org/obo/BFO_xxxxxxx.
 
 @prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
-@prefix bfo: <http://purl.obolibrary.org/obo/> .
-# NOTE: BFO 2020 IRIs are written in full (http://purl.obolibrary.org/obo/BFO_xxxxxxx)
+# IN-04: BFO 2020 IRIs are written in FULL (http://purl.obolibrary.org/obo/BFO_xxxxxxx)
 # rather than as prefixed bfo:BFO_xxxxxxx forms. This makes the canonical
 # "obo/BFO_" substring grep-able per Plan 08-01 <acceptance_criteria> ≥9
-# count without ambiguity about prefix expansion.
+# count without ambiguity about prefix expansion. The previously-declared
+# "@prefix bfo: <http://purl.obolibrary.org/obo/>" was unused in the body
+# (misleading: it implied bfo:BFO_xxxxxxx shorthand was acceptable) and has
+# been removed. New rows MUST continue to use the full IRI form below.
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix dc: <http://purl.org/dc/elements/1.1/> .
