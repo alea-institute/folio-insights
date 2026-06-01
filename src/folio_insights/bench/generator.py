@@ -49,7 +49,7 @@ from folio_insights.bench.profiles import PROFILES, PhaseProfile
 # Per-shard ``fi:vocabVersion`` quad emission stamps every generated shard
 # with the source-of-truth FOLIO Insights v2.0 vocabulary version constant
 # owned by ``folio_insights.vocab`` (Plan 08-01).
-from folio_insights.vocab import VOCAB_VERSION
+from folio_insights.vocab._constants import VOCAB_VERSION  # WR-01: avoid pyoxigraph import via vocab/__init__
 
 logger = logging.getLogger(__name__)
 

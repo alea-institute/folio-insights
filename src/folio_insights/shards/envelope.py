@@ -40,7 +40,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 #
 # VOCAB_VERSION is the source-of-truth FOLIO Insights v2.0 vocabulary version
 # constant, owned by ``folio_insights.vocab`` (Plan 08-01).
-from folio_insights.vocab import VOCAB_VERSION
+from folio_insights.vocab._constants import VOCAB_VERSION  # WR-01: avoid pyoxigraph import via vocab/__init__
 
 # D-05: canonical discriminator alias (5 values, ordered per CONTEXT D-05).
 ShardType = Literal[
