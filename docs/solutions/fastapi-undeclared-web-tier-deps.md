@@ -55,6 +55,25 @@ Result: `import fastapi` works; all 1021 tests collect; `1002 passed` on the qui
 
 Commit: `181b2b7`.
 
+## Same bug, second surface: bridge-tier deps (books-UAT de-risk, 2026-07-05)
+
+The identical failure mode recurred one layer down. folio-insights imports **folio-enrich's
+code via a `sys.path` bridge** (`config.folio_enrich_path` → `../folio-enrich/backend`), so
+folio-enrich's own runtime deps are **not pulled transitively** and were undeclared:
+
+- `python-docx` — its absence made `.docx` ingestion silently read the raw ZIP archive as
+  UTF-8 → "units" of PK-header binary. (All Trial Advocacy chapters are `.docx`.)
+- `rapidfuzz` + `marisa-trie` — back folio-python's search index. Without them folio-python
+  logs *"Disabling search functionality"* at import and **every** FOLIO tag degrades to an
+  un-IRI'd `proposed_class` (looks like "the ontology is missing everything").
+
+Fix: declared `python-docx>=1.1.0`, `rapidfuzz>=3.9.0`, `marisa-trie>=1.2.0` as core deps.
+After: 607/621 units carried real FOLIO IRIs (529 distinct), 0 spurious proposed classes.
+
+**The general rule this reinforces:** *any code your process imports — whether via a package,
+a Dockerfile `RUN`, or a `sys.path` bridge to a sibling repo — its runtime deps must be in
+YOUR manifest.* A bridge that imports `app.*` modules does not bring their `pip` deps with it.
+
 ## Prevention
 
 - **A dependency your shipped code imports belongs in the manifest**, not only in a

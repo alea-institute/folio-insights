@@ -14,6 +14,15 @@ dependencies = [
     "click>=8.0.0",
     "aiosqlite>=0.20.0",
     "folio-python>=0.1.5",
+    # Bridge-tier runtime deps. folio-insights imports folio-enrich's code via a
+    # sys.path bridge (config.folio_enrich_path), so folio-enrich's own runtime deps
+    # are NOT pulled transitively and must be declared here. Their silent absence
+    # disables .docx ingestion (python-docx) and ALL FOLIO IRI matching
+    # (rapidfuzz/marisa-trie back folio-python search → without them every tag
+    # degrades to an un-IRI'd proposed_class). Surfaced by the books-UAT de-risk run.
+    "python-docx>=1.1.0",
+    "rapidfuzz>=3.9.0",
+    "marisa-trie>=1.2.0",
     # Web tier (api/main.py) — FastAPI serving the SvelteKit static SPA + /api.
     # Previously installed ad-hoc in Dockerfile.web (never declared here), which
     # left local dev/CI unable to collect the 7 api/ test suites. Declared as core
