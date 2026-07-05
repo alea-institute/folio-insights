@@ -1,0 +1,1465 @@
+<!--
+  folio-insights · Evidence Pack
+  ------------------------------------------------------------------
+  Self-contained, offline, single-file evidence pack.
+  Rendered by docs/evidence/_template/build_pack.py which replaces the
+  PACK_DATA placeholder below with a validated findings JSON payload.
+
+  No external network requests of any kind. No external fonts.
+  Everything (CSS + JS + data) is inline.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>folio-insights · Evidence Pack</title>
+
+<style>
+  /* ============================================================
+     Design tokens — light / dark aware via [data-theme]
+     Typography: characterful system serif for display,
+     clean system sans for body, system mono for IDs/code.
+     No web fonts. Fully offline.
+     ============================================================ */
+  :root {
+    --font-display: "Iowan Old Style", "Palatino Linotype", "Palatino",
+      "Book Antiqua", Georgia, "Times New Roman", serif;
+    --font-body: ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
+      "Menlo", "Consolas", monospace;
+
+    --maxw: 68rem;
+    --radius: 14px;
+    --radius-sm: 9px;
+    --shadow-1: 0 1px 2px rgba(23, 20, 16, .06), 0 6px 20px rgba(23, 20, 16, .05);
+    --shadow-2: 0 12px 40px rgba(23, 20, 16, .12);
+    --ring: 0 0 0 3px var(--accent-ring);
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+
+  /* Light theme (default) — warm parchment / ink editorial palette */
+  :root, :root[data-theme="light"] {
+    --bg: #f4efe6;
+    --bg-tint: #efe8db;
+    --panel: #fbf8f2;
+    --panel-2: #f6f1e7;
+    --ink: #221d16;
+    --ink-soft: #4a4236;
+    --ink-faint: #7a7060;
+    --hair: #e0d7c6;
+    --hair-strong: #ccc0aa;
+    --accent: #8a3b2e;          /* oxblood — legal-brief red */
+    --accent-ink: #6f2f24;
+    --accent-ring: rgba(138, 59, 46, .28);
+    --accent-2: #1f4e52;        /* deep teal secondary */
+    --link: #8a3b2e;
+
+    --pass-fg: #1f5130;   --pass-bg: #dff0e1;   --pass-bd: #a9d4b3;
+    --bord-fg: #7a5310;   --bord-bg: #f6e9c8;   --bord-bd: #e6cf8f;
+    --fail-fg: #8a2b25;   --fail-bg: #f7dcd8;   --fail-bd: #e6a9a1;
+    --info-fg: #234a63;   --info-bg: #dbe8f2;   --info-bd: #a9c6dc;
+
+    --grain-opacity: .5;
+    --mesh-a: rgba(138, 59, 46, .06);
+    --mesh-b: rgba(31, 78, 82, .06);
+  }
+
+  /* Dark theme — deep slate / candlelit ink */
+  :root[data-theme="dark"] {
+    --bg: #16130f;
+    --bg-tint: #1b1712;
+    --panel: #201b15;
+    --panel-2: #262019;
+    --ink: #ece3d4;
+    --ink-soft: #c3b8a5;
+    --ink-faint: #8f8574;
+    --hair: #342c22;
+    --hair-strong: #453a2c;
+    --accent: #e08a5e;          /* warm ember */
+    --accent-ink: #eda079;
+    --accent-ring: rgba(224, 138, 94, .30);
+    --accent-2: #6bbfc4;
+    --link: #eda079;
+
+    --pass-fg: #8fd6a3;   --pass-bg: #14301d;   --pass-bd: #2c5c3c;
+    --bord-fg: #e6c374;   --bord-bg: #322813;   --bord-bd: #5c4a1f;
+    --fail-fg: #f0a49b;   --fail-bg: #331815;   --fail-bd: #613029;
+    --info-fg: #93c2df;   --info-bg: #14232f;   --info-bd: #2c4a61;
+
+    --grain-opacity: .28;
+    --mesh-a: rgba(224, 138, 94, .10);
+    --mesh-b: rgba(107, 191, 196, .09);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16130f;
+      --bg-tint: #1b1712;
+      --panel: #201b15;
+      --panel-2: #262019;
+      --ink: #ece3d4;
+      --ink-soft: #c3b8a5;
+      --ink-faint: #8f8574;
+      --hair: #342c22;
+      --hair-strong: #453a2c;
+      --accent: #e08a5e;
+      --accent-ink: #eda079;
+      --accent-ring: rgba(224, 138, 94, .30);
+      --accent-2: #6bbfc4;
+      --link: #eda079;
+      --pass-fg: #8fd6a3;   --pass-bg: #14301d;   --pass-bd: #2c5c3c;
+      --bord-fg: #e6c374;   --bord-bg: #322813;   --bord-bd: #5c4a1f;
+      --fail-fg: #f0a49b;   --fail-bg: #331815;   --fail-bd: #613029;
+      --info-fg: #93c2df;   --info-bg: #14232f;   --info-bd: #2c4a61;
+      --grain-opacity: .28;
+      --mesh-a: rgba(224, 138, 94, .10);
+      --mesh-b: rgba(107, 191, 196, .09);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation: none !important; transition: none !important; }
+  }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-padding-top: 6.5rem;
+    position: relative;
+  }
+
+  /* Textured, non-flat background: two soft mesh blooms + fine grain */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(60rem 40rem at 12% -8%, var(--mesh-a), transparent 60%),
+      radial-gradient(52rem 38rem at 96% 6%, var(--mesh-b), transparent 62%),
+      linear-gradient(180deg, var(--bg-tint), var(--bg) 32%);
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>");
+    background-size: 140px 140px;
+    mix-blend-mode: multiply;
+  }
+  :root[data-theme="dark"] body::after { mix-blend-mode: screen; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) body::after { mix-blend-mode: screen; }
+  }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.4rem); }
+
+  a { color: var(--link); text-decoration-color: color-mix(in srgb, var(--link) 40%, transparent); text-underline-offset: 2px; }
+  a:hover { text-decoration-color: var(--link); }
+
+  /* ---------- Sticky command bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: saturate(1.4) blur(10px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--hair);
+  }
+  .topbar .row {
+    display: flex; align-items: center; gap: .9rem;
+    padding: .6rem clamp(1rem, 4vw, 2.4rem);
+    max-width: var(--maxw); margin: 0 auto;
+  }
+  .brand {
+    font-family: var(--font-mono);
+    font-size: .74rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-faint); white-space: nowrap;
+  }
+  .brand b { color: var(--accent); font-weight: 700; }
+  .topbar .spacer { flex: 1; }
+
+  .icon-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font: inherit; font-size: .82rem;
+    border: 1px solid var(--hair-strong); background: var(--panel);
+    color: var(--ink-soft); border-radius: 999px;
+    padding: .34rem .7rem; cursor: pointer;
+    transition: border-color .2s var(--ease), transform .1s var(--ease), color .2s var(--ease);
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--ink); }
+  .icon-btn:active { transform: translateY(1px); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+
+  /* ---------- Masthead ---------- */
+  header.masthead { padding: clamp(2.2rem, 6vw, 4rem) 0 1.4rem; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--accent-ink);
+    display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem;
+  }
+  .eyebrow::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--hair-strong), transparent); }
+  h1.title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(2.1rem, 5.5vw, 3.4rem); line-height: 1.06;
+    letter-spacing: -.01em; margin: 0 0 .5rem; color: var(--ink);
+    text-wrap: balance;
+  }
+  .subline { color: var(--ink-soft); font-size: 1rem; max-width: 46rem; }
+  .meta-line {
+    margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem .9rem;
+    font-family: var(--font-mono); font-size: .76rem; color: var(--ink-faint);
+  }
+  .meta-line span b { color: var(--ink-soft); font-weight: 600; }
+
+  /* Rubric-version banner */
+  .rubric-banner {
+    margin-top: 1.4rem;
+    display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+    padding: .7rem 1rem; border-radius: var(--radius-sm);
+    background: var(--panel);
+    border: 1px solid var(--hair);
+    border-left: 4px solid var(--accent);
+    box-shadow: var(--shadow-1);
+  }
+  .rubric-banner .lbl {
+    font-family: var(--font-mono); font-size: .68rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .rubric-banner .val { font-family: var(--font-mono); font-size: .84rem; color: var(--ink); font-weight: 600; }
+  .rubric-banner .draft-flag {
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .12rem .5rem; border-radius: 999px;
+    background: var(--bord-bg); color: var(--bord-fg); border: 1px solid var(--bord-bd);
+  }
+  .rubric-banner .locked-flag {
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .12rem .5rem; border-radius: 999px;
+    background: var(--pass-bg); color: var(--pass-fg); border: 1px solid var(--pass-bd);
+  }
+
+  /* ---------- Summary stat row ---------- */
+  .summary {
+    display: grid; gap: .8rem; margin: 1.6rem 0 .4rem;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  }
+  .stat {
+    background: var(--panel); border: 1px solid var(--hair);
+    border-radius: var(--radius-sm); padding: .85rem 1rem;
+    box-shadow: var(--shadow-1);
+  }
+  .stat .n { font-family: var(--font-display); font-size: 1.9rem; font-weight: 600; line-height: 1; color: var(--ink); }
+  .stat .k { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); margin-top: .35rem; }
+  .stat.tone-pass { border-color: var(--pass-bd); }
+  .stat.tone-pass .n { color: var(--pass-fg); }
+  .stat.tone-borderline { border-color: var(--bord-bd); }
+  .stat.tone-borderline .n { color: var(--bord-fg); }
+  .stat.tone-fail { border-color: var(--fail-bd); }
+  .stat.tone-fail .n { color: var(--fail-fg); }
+
+  /* verdict bar (proportional pass/borderline/fail) */
+  .verdict-bar {
+    margin: 1rem 0 0; height: 10px; border-radius: 999px; overflow: hidden;
+    display: flex; border: 1px solid var(--hair); background: var(--panel-2);
+  }
+  .verdict-bar i { display: block; height: 100%; }
+  .verdict-bar i.p { background: var(--pass-fg); }
+  .verdict-bar i.b { background: var(--bord-fg); }
+  .verdict-bar i.f { background: var(--fail-fg); }
+
+  /* spend line */
+  .spend {
+    margin-top: 1rem; font-family: var(--font-mono); font-size: .8rem;
+    color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: .3rem .7rem; align-items: baseline;
+  }
+  .spend .usd { color: var(--accent-ink); font-weight: 700; }
+  .spend .dim { color: var(--ink-faint); }
+
+  /* ---------- Controls: filter / jump bar ---------- */
+  .controls {
+    position: sticky; top: 3.1rem; z-index: 40;
+    margin: 2rem 0 1.2rem; padding: .85rem 1rem;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--hair); border-radius: var(--radius);
+    box-shadow: var(--shadow-1);
+    display: grid; gap: .8rem;
+  }
+  .controls .line { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .controls .lbl {
+    font-family: var(--font-mono); font-size: .64rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint); margin-right: .2rem;
+  }
+  .chip-filter {
+    font: inherit; font-size: .78rem; cursor: pointer;
+    border: 1px solid var(--hair-strong); background: var(--panel-2); color: var(--ink-soft);
+    padding: .28rem .7rem; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: .4rem;
+    transition: all .18s var(--ease);
+  }
+  .chip-filter .dot { width: .55rem; height: .55rem; border-radius: 999px; background: currentColor; opacity: .8; }
+  .chip-filter[data-status="pass"] { color: var(--pass-fg); }
+  .chip-filter[data-status="borderline"] { color: var(--bord-fg); }
+  .chip-filter[data-status="fail"] { color: var(--fail-fg); }
+  .chip-filter[data-status="info"] { color: var(--info-fg); }
+  .chip-filter[aria-pressed="true"] {
+    background: color-mix(in srgb, currentColor 16%, var(--panel));
+    border-color: currentColor;
+    font-weight: 600;
+  }
+  .chip-filter:focus-visible { outline: none; box-shadow: var(--ring); }
+  .chip-filter .ct { font-family: var(--font-mono); font-size: .7rem; opacity: .7; }
+
+  select.book-filter, input.q {
+    font: inherit; font-size: .82rem; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--hair-strong);
+    border-radius: 999px; padding: .32rem .8rem;
+  }
+  select.book-filter:focus-visible, input.q:focus-visible { outline: none; box-shadow: var(--ring); }
+  input.q { min-width: 12rem; flex: 1; }
+
+  .controls .count-line { font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint); }
+
+  /* ---------- Two-column layout: TOC + sections ---------- */
+  .layout { display: grid; grid-template-columns: 15rem 1fr; gap: 2rem; align-items: start; margin-top: 1.2rem; }
+  @media (max-width: 62rem) { .layout { grid-template-columns: 1fr; } .toc-rail { display: none; } }
+
+  .toc-rail { position: sticky; top: 8.5rem; }
+  .toc-rail h2 {
+    font-family: var(--font-mono); font-size: .64rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .7rem;
+  }
+  .toc-rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+  .toc-rail a {
+    display: block; text-decoration: none; color: var(--ink-soft);
+    font-size: .8rem; line-height: 1.35; padding: .35rem .6rem;
+    border-radius: 8px; border-left: 2px solid transparent;
+    transition: all .16s var(--ease);
+  }
+  .toc-rail a:hover { background: var(--panel); color: var(--ink); }
+  .toc-rail a.active { border-left-color: var(--accent); color: var(--ink); background: var(--panel); font-weight: 600; }
+  .toc-rail a .eid { font-family: var(--font-mono); font-size: .64rem; color: var(--ink-faint); display: block; }
+  .toc-rail a[data-status="pass"]::before,
+  .toc-rail a[data-status="borderline"]::before,
+  .toc-rail a[data-status="fail"]::before,
+  .toc-rail a[data-status="info"]::before {
+    content: ""; display: inline-block; width: .5rem; height: .5rem;
+    border-radius: 999px; margin-right: .45rem; vertical-align: middle;
+  }
+  .toc-rail a[data-status="pass"]::before { background: var(--pass-fg); }
+  .toc-rail a[data-status="borderline"]::before { background: var(--bord-fg); }
+  .toc-rail a[data-status="fail"]::before { background: var(--fail-fg); }
+  .toc-rail a[data-status="info"]::before { background: var(--info-fg); }
+
+  /* ---------- Section cards ---------- */
+  .sections { display: grid; gap: 1.4rem; min-width: 0; }
+  .card {
+    background: var(--panel); border: 1px solid var(--hair);
+    border-radius: var(--radius); box-shadow: var(--shadow-1);
+    overflow: hidden; scroll-margin-top: 8rem;
+    transition: box-shadow .25s var(--ease), border-color .25s var(--ease);
+  }
+  .card:target { border-color: var(--accent); box-shadow: var(--shadow-2); }
+  .card.status-pass { border-top: 3px solid var(--pass-fg); }
+  .card.status-borderline { border-top: 3px solid var(--bord-fg); }
+  .card.status-fail { border-top: 3px solid var(--fail-fg); }
+  .card.status-info { border-top: 3px solid var(--info-fg); }
+
+  .card > .pad { padding: 1.2rem clamp(1rem, 2.5vw, 1.6rem); }
+
+  .card-head { display: flex; align-items: flex-start; gap: .8rem; flex-wrap: wrap; }
+  .card-head .grow { flex: 1; min-width: 0; }
+
+  .anchor-id {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .04em;
+    color: var(--ink-faint); text-decoration: none;
+    padding: .1rem .3rem; margin-left: -.3rem; border-radius: 6px;
+  }
+  .anchor-id:hover { color: var(--accent); background: var(--panel-2); }
+  .anchor-id .hash { opacity: .5; }
+
+  h3.card-title {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: 1.32rem; line-height: 1.2; margin: .25rem 0 .1rem; color: var(--ink);
+    text-wrap: balance;
+  }
+  .card-sub {
+    font-size: .82rem; color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: .3rem .7rem; align-items: center;
+  }
+  .card-sub .kind {
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--accent-2);
+  }
+  .card-sub .loc b { color: var(--ink-soft); font-weight: 600; }
+
+  /* status chip */
+  .chip {
+    font-family: var(--font-mono); font-size: .68rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: .28rem .6rem; border-radius: 999px; white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .chip.pass { color: var(--pass-fg); background: var(--pass-bg); border-color: var(--pass-bd); }
+  .chip.borderline { color: var(--bord-fg); background: var(--bord-bg); border-color: var(--bord-bd); }
+  .chip.fail { color: var(--fail-fg); background: var(--fail-bg); border-color: var(--fail-bd); }
+  .chip.info { color: var(--info-fg); background: var(--info-bg); border-color: var(--info-bd); }
+
+  /* rubric ref chips */
+  .refs { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .7rem; }
+  .ref {
+    font-family: var(--font-mono); font-size: .68rem; color: var(--accent-2);
+    background: color-mix(in srgb, var(--accent-2) 9%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--accent-2) 30%, transparent);
+    padding: .16rem .5rem; border-radius: 6px;
+  }
+
+  /* body markdown */
+  .body-md { margin-top: 1rem; color: var(--ink-soft); }
+  .body-md > *:first-child { margin-top: 0; }
+  .body-md > *:last-child { margin-bottom: 0; }
+  .body-md p { margin: .7rem 0; }
+  .body-md h1, .body-md h2, .body-md h3, .body-md h4 {
+    font-family: var(--font-display); color: var(--ink); line-height: 1.25;
+    margin: 1.2rem 0 .5rem;
+  }
+  .body-md h1 { font-size: 1.3rem; } .body-md h2 { font-size: 1.15rem; } .body-md h3 { font-size: 1.02rem; }
+  .body-md ul, .body-md ol { margin: .6rem 0; padding-left: 1.3rem; }
+  .body-md li { margin: .3rem 0; }
+  .body-md code {
+    font-family: var(--font-mono); font-size: .86em;
+    background: var(--panel-2); border: 1px solid var(--hair);
+    padding: .08rem .35rem; border-radius: 5px; color: var(--accent-ink);
+  }
+  .body-md pre {
+    background: var(--panel-2); border: 1px solid var(--hair);
+    border-radius: var(--radius-sm); padding: .9rem 1rem; overflow-x: auto; margin: .8rem 0;
+  }
+  .body-md pre code { background: none; border: none; padding: 0; color: var(--ink); }
+  .body-md blockquote {
+    margin: .8rem 0; padding: .3rem 0 .3rem 1rem;
+    border-left: 3px solid var(--hair-strong); color: var(--ink-faint); font-style: italic;
+  }
+  .body-md strong { color: var(--ink); font-weight: 700; }
+  .body-md a { font-weight: 500; }
+
+  /* collapsible evidence panels */
+  .evidence { margin-top: 1rem; display: grid; gap: .6rem; }
+  details.panel {
+    border: 1px solid var(--hair); border-radius: var(--radius-sm);
+    background: var(--panel-2); overflow: hidden;
+  }
+  details.panel > summary {
+    cursor: pointer; list-style: none; user-select: none;
+    padding: .6rem .9rem; display: flex; align-items: center; gap: .5rem;
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-soft);
+  }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary .tw {
+    display: inline-block; transition: transform .2s var(--ease); color: var(--ink-faint);
+  }
+  details.panel[open] > summary .tw { transform: rotate(90deg); }
+  details.panel > summary .cap { flex: 1; }
+  details.panel > summary .kbd {
+    font-size: .62rem; color: var(--ink-faint); border: 1px solid var(--hair);
+    border-radius: 4px; padding: .05rem .3rem; text-transform: none; letter-spacing: 0;
+  }
+  .panel-body { padding: 0 .9rem .9rem; }
+  .panel.quote .panel-body {
+    font-family: var(--font-display); font-size: 1.02rem; line-height: 1.55;
+    color: var(--ink); font-style: italic;
+    border-left: 3px solid var(--accent); padding-left: 1rem; margin-top: .3rem;
+  }
+  .panel.extracted .panel-body {
+    font-family: var(--font-mono); font-size: .82rem; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-word; color: var(--ink);
+  }
+
+  .shot { margin-top: 1rem; }
+  .shot img {
+    max-width: 100%; height: auto; display: block;
+    border: 1px solid var(--hair); border-radius: var(--radius-sm);
+  }
+
+  /* scores table */
+  .scores { margin-top: 1rem; overflow-x: auto; }
+  .scores table { border-collapse: collapse; width: 100%; font-size: .82rem; min-width: 22rem; }
+  .scores th, .scores td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--hair); }
+  .scores th {
+    font-family: var(--font-mono); font-size: .64rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+  }
+  .scores td.crit { font-family: var(--font-mono); font-size: .74rem; color: var(--accent-2); white-space: nowrap; }
+  .scores td.note { color: var(--ink-soft); }
+  .score-pill {
+    display: inline-block; min-width: 1.5rem; text-align: center;
+    font-family: var(--font-mono); font-weight: 700; font-size: .78rem;
+    padding: .05rem .4rem; border-radius: 6px;
+  }
+  .score-pill.s3 { color: var(--pass-fg); background: var(--pass-bg); }
+  .score-pill.s2 { color: var(--pass-fg); background: color-mix(in srgb, var(--pass-bg) 70%, var(--panel)); }
+  .score-pill.s1 { color: var(--bord-fg); background: var(--bord-bg); }
+  .score-pill.s0 { color: var(--fail-fg); background: var(--fail-bg); }
+
+  /* ---------- Feedback affordance: comment box ---------- */
+  .feedback {
+    margin-top: 1.1rem; padding-top: 1rem; border-top: 1px dashed var(--hair-strong);
+  }
+  .feedback .fb-head {
+    display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem;
+  }
+  .feedback .fb-head .fb-lbl {
+    font-family: var(--font-mono); font-size: .64rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint); flex: 1;
+  }
+  .saved-ind {
+    font-family: var(--font-mono); font-size: .64rem; color: var(--pass-fg);
+    opacity: 0; transition: opacity .3s var(--ease);
+    display: inline-flex; align-items: center; gap: .3rem;
+  }
+  .saved-ind.show { opacity: 1; }
+  .feedback textarea {
+    width: 100%; min-height: 4.4rem; resize: vertical;
+    font: inherit; font-size: .9rem; line-height: 1.5; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--hair-strong);
+    border-radius: var(--radius-sm); padding: .65rem .8rem;
+    transition: border-color .2s var(--ease);
+  }
+  .feedback textarea::placeholder { color: var(--ink-faint); }
+  .feedback textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+  .feedback textarea.has-content { border-left: 3px solid var(--accent); }
+  .fb-actions { display: flex; gap: .5rem; margin-top: .55rem; flex-wrap: wrap; }
+  .btn {
+    font: inherit; font-size: .78rem; cursor: pointer;
+    border: 1px solid var(--hair-strong); background: var(--panel-2); color: var(--ink-soft);
+    padding: .38rem .8rem; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: .4rem;
+    transition: all .16s var(--ease);
+  }
+  .btn:hover { border-color: var(--accent); color: var(--ink); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  :root[data-theme="dark"] .btn.primary { color: #1a1510; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #1a1510; } }
+  .btn.primary:hover { filter: brightness(1.06); color: #fff; }
+  :root[data-theme="dark"] .btn.primary:hover { color: #1a1510; }
+
+  /* ---------- Floating export button ---------- */
+  .export-fab {
+    position: fixed; right: clamp(1rem, 3vw, 2rem); bottom: clamp(1rem, 3vw, 2rem);
+    z-index: 60;
+    display: inline-flex; align-items: center; gap: .55rem;
+    font: inherit; font-weight: 600; font-size: .86rem; cursor: pointer;
+    background: var(--accent); color: #fff; border: none;
+    padding: .8rem 1.15rem; border-radius: 999px;
+    box-shadow: var(--shadow-2);
+    transition: transform .15s var(--ease), filter .2s var(--ease), opacity .2s var(--ease);
+  }
+  :root[data-theme="dark"] .export-fab { color: #1a1510; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .export-fab { color: #1a1510; } }
+  .export-fab:hover { filter: brightness(1.07); transform: translateY(-1px); }
+  .export-fab:active { transform: translateY(0); }
+  .export-fab:focus-visible { outline: none; box-shadow: var(--ring), var(--shadow-2); }
+  .export-fab .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem;
+    background: rgba(255, 255, 255, .28); border-radius: 999px;
+    font-family: var(--font-mono); font-size: .74rem; font-weight: 700;
+  }
+  .export-fab[data-count="0"] { opacity: .55; }
+  .export-fab[data-count="0"] .badge { background: rgba(255, 255, 255, .18); }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; bottom: clamp(1rem, 3vw, 2rem);
+    transform: translate(-50%, 1.5rem); z-index: 70;
+    background: var(--ink); color: var(--bg);
+    font-size: .84rem; padding: .6rem 1.1rem; border-radius: 999px;
+    box-shadow: var(--shadow-2); opacity: 0; pointer-events: none;
+    transition: opacity .25s var(--ease), transform .25s var(--ease);
+    max-width: min(90vw, 30rem); text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .empty-note {
+    text-align: center; color: var(--ink-faint); font-style: italic;
+    padding: 3rem 1rem; font-family: var(--font-display);
+  }
+
+  footer.pack-foot {
+    margin: 3rem 0 6rem; padding-top: 1.4rem; border-top: 1px solid var(--hair);
+    font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: .4rem 1rem; justify-content: space-between;
+  }
+
+  /* visually-hidden but accessible */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+</style>
+
+<div class="topbar">
+  <div class="row">
+    <div class="brand">folio<b>·</b>insights <span aria-hidden="true">/</span> <span id="brand-campaign">evidence pack</span></div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="theme-toggle" type="button" aria-label="Toggle light / dark theme">
+      <span id="theme-icon" aria-hidden="true">◐</span><span id="theme-label">Theme</span>
+    </button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow" id="eyebrow">evidence pack</div>
+    <h1 class="title" id="pack-title">folio-insights — Evidence Pack</h1>
+    <p class="subline" id="pack-subline"></p>
+    <div class="meta-line" id="meta-line"></div>
+
+    <div class="rubric-banner" id="rubric-banner">
+      <span class="lbl">Rubric</span>
+      <span class="val" id="rubric-version">—</span>
+    </div>
+
+    <div class="summary" id="summary"></div>
+    <div class="verdict-bar" id="verdict-bar" aria-hidden="true"></div>
+    <div class="spend" id="spend"></div>
+  </header>
+
+  <div class="controls" id="controls">
+    <div class="line" role="group" aria-label="Filter by status">
+      <span class="lbl">Status</span>
+      <button class="chip-filter" data-status="pass" aria-pressed="false" type="button"><span class="dot"></span>Pass <span class="ct" data-ct="pass">0</span></button>
+      <button class="chip-filter" data-status="borderline" aria-pressed="false" type="button"><span class="dot"></span>Borderline <span class="ct" data-ct="borderline">0</span></button>
+      <button class="chip-filter" data-status="fail" aria-pressed="false" type="button"><span class="dot"></span>Fail <span class="ct" data-ct="fail">0</span></button>
+      <button class="chip-filter" data-status="info" aria-pressed="false" type="button"><span class="dot"></span>Info <span class="ct" data-ct="info">0</span></button>
+    </div>
+    <div class="line">
+      <span class="lbl">Book</span>
+      <select class="book-filter" id="book-filter" aria-label="Filter by book"><option value="">All books</option></select>
+      <span class="lbl">Chapter</span>
+      <select class="book-filter" id="chapter-filter" aria-label="Filter by chapter"><option value="">All chapters</option></select>
+      <input class="q" id="q" type="search" placeholder="Search title, ID, text…" aria-label="Search sections" />
+    </div>
+    <div class="count-line" id="count-line"></div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc-rail" aria-label="Section navigation">
+      <h2>Contents</h2>
+      <ol id="toc"></ol>
+    </nav>
+    <main class="sections" id="sections"></main>
+  </div>
+
+  <footer class="pack-foot">
+    <span id="foot-left">folio-insights evidence pack</span>
+    <span id="foot-right">self-contained · offline · no network</span>
+  </footer>
+</div>
+
+<button class="export-fab" id="export-fab" type="button" data-count="0" aria-label="Export all feedback">
+  <span aria-hidden="true">⇧</span>
+  <span>Export feedback</span>
+  <span class="badge" id="fab-badge">0</span>
+</button>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ================================================================
+   PACK_DATA — replaced by build_pack.py. The default {} lets the
+   raw template open standalone (renders an empty-state notice).
+   ================================================================ */
+const PACK_DATA = /*__PACK_DATA__*/ {
+  "campaign": "books",
+  "repo": "INSIGHTS",
+  "title": "folio-insights — Book-Extraction UAT",
+  "subtitle": "First UAT · one-chapter pipeline de-risk (Trial Advocacy Ch01) · findings, not yet rubric-scored",
+  "generated_at": "2026-07-05T22:30:00Z",
+  "rubric_version": "extraction-quality-v1 — DRAFT (awaiting Damien's lock; no scoring until locked, policy 3)",
+  "spend": {
+    "provider": "google",
+    "model": "gemini-2.5-flash-lite",
+    "usd": 0.75,
+    "notes": "one-chapter de-risk run; ~$10/book → ~$30 est. for all 3 books. Cost is not the constraint; correctness is."
+  },
+  "summary": {
+    "books": 1,
+    "chapters": 1,
+    "units": 621,
+    "valid_FOLIO_IRIs": 529,
+    "pass": 3,
+    "borderline": 1,
+    "fail": 3
+  },
+  "sections": [
+    {
+      "id": "EP-INSIGHTS-BOOKS-001",
+      "kind": "finding",
+      "status": "pass",
+      "title": "Pipeline works end-to-end on real book text",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate",
+      "body_md": "The **live v1 pipeline runs end-to-end** on a real chapter and produces good output: **621 knowledge units** (mean confidence 0.87 — 573 high / 44 med / 4 low), **529 distinct valid FOLIO IRIs**, and a SHACL-conformant OWL export. unit_type mix: advice 313 · principle 258 · pitfall 35 · procedural_rule 14 · citation 1. So the core works — the items below are what gate an at-scale run.",
+      "rubric_refs": [
+        "RUB-EXTRACT-08",
+        "RUB-EXTRACT-10"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-002",
+      "kind": "finding",
+      "status": "pass",
+      "title": "All deterministic oracles PASS",
+      "body_md": "The gestalt's deterministic layer (which can run **before** the rubric locks):\n\n- **folio-python IRI existence + branch consistency** (15-of-529 sample): **15/15 pass**, 0 mismatches (18,326 concepts loaded).\n- **SHACL `export --validate`**: **conforms = TRUE** — Shapes / IRI-Uniqueness / Referential-Integrity / Namespace-Consistency all PASS (67 task classes, 440 triples).\n- **`verify-iris`**: N/A — needs the v2 DID/shard registry, which v1 extract/discover/export don't populate.",
+      "rubric_refs": [
+        "RUB-EXTRACT-03",
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-003",
+      "kind": "finding",
+      "status": "pass",
+      "title": "B1 — Bridge venv deps undeclared (FIXED this session)",
+      "body_md": "`python-docx`, `rapidfuzz`, `marisa-trie` are imported via the folio-enrich sys.path bridge but were **never declared in folio-insights' manifest**. Their silent absence killed `.docx` ingestion **and** ALL FOLIO IRI matching (every tag degraded to an un-IRI'd proposed_class). **Fixed:** declared as core deps → 529 valid IRIs, 0 spurious proposed classes. Compounded in `docs/solutions/`.",
+      "extracted": "pyproject.toml += python-docx>=1.1.0, rapidfuzz>=3.9.0, marisa-trie>=1.2.0"
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-004",
+      "kind": "finding",
+      "status": "fail",
+      "title": "B2 — .docx ingestion broken (BLOCKER · [CE])",
+      "body_md": "folio-enrich's `WordIngestor` reads only `document.paragraphs`; this book's prose lives in `<w:sdt>` content-controls → **0 chars read** → the pipeline falls back to reading the raw `.docx` ZIP archive as UTF-8 → 'units' of PK-header binary. **Every Trial Advocacy chapter is `.docx`.** Worked around via `<w:t>` XML extraction for the de-risk run. Fix = traverse sdt/tables/textboxes in the ingestor **or** add a folio-insights docx→text preprocessor. Touches pipeline structure + sibling repo → `/ce:plan` next session.",
+      "rubric_refs": [
+        "RUB-EXTRACT-08"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-005",
+      "kind": "finding",
+      "status": "info",
+      "title": "B3 — OpenAI provider unusable → run on Google (decision)",
+      "body_md": "folio-enrich's `OpenAICompatProvider` forces `response_format: json_object`, but the extraction prompts never contain the literal word 'json' → **400 on every call** (+ TPM 429s). **Decision: run the campaign on Google** — `GOOGLE_API_KEY` is present + valid and the default `gemini-2.5-flash-lite` works and is cheap. No folio-insights change needed; the upstream prompt fix is folio-enrich's scope."
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-006",
+      "kind": "finding",
+      "status": "fail",
+      "title": "B4 — Discovery→Export chain broken (BLOCKER · [CE])",
+      "body_md": "Discovery's LLM stages call a non-existent `provider.generate()` (providers expose `complete`/`chat`) → they **silently fail** → discovered tasks get **no FOLIO IRIs**; CLI `discover` never writes `review.db`; the OWL serializer then crashes on null `folio_iri`. (The SHACL PASS above required manually seeding review.db + minting task IRIs.) The `.generate()`→`complete/chat` rename may be a one-liner, but the review.db-write + null-IRI handling are structural → `/ce:plan`.",
+      "rubric_refs": [
+        "RUB-EXTRACT-13"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-007",
+      "kind": "borderline_extraction",
+      "status": "fail",
+      "title": "Q1 — Provenance spans do NOT trace to source (challenges the thesis) ⭐",
+      "body_md": "**The most important finding for the rubric.** Units are **LLM-distilled paraphrases**, and their `original_span{start,end}` offsets do **not** point at the source text they summarize. So today the pipeline is closer to *abstractive summarization with a broken back-pointer* than to true extraction. This bears directly on how strict `RUB-EXTRACT-05/06/07` should be — **I've asked you this on the Proof doc.** Do you want these to fail outright (forcing a pipeline fix to true extraction) or score borderline-while-we-fix?",
+      "extracted": "Advice unit (conf 0.98): 'Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.'",
+      "source_quote": "span pointed at: ↵The Advocat   ← not the passage the claim came from",
+      "rubric_refs": [
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-07"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-008",
+      "kind": "mapping_decision",
+      "status": "borderline",
+      "title": "Q2 — Semantically wrong FOLIO branch mappings (homonyms)",
+      "body_md": "IRIs are valid FOLIO nodes (deterministic check passes) but the **concept choice** is often a homonym mis-match: 'Expert testimony' → **Location**, 'Rule 26(a)(1)' → **Location**, 'Daubert/Frye' → **Asset Type**. The four-path tagger picks lexically-plausible but semantically wrong concepts. This is the strongest argument for the **FOLIO-MCP semantic gate** (gestalt rule) in judging, and a pipeline-tuning target.",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-02"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-009",
+      "kind": "exemplar",
+      "status": "borderline",
+      "title": "Exemplar · advice · Daubert/Frye depositions",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate",
+      "extracted": "advice (conf 0.98): Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.",
+      "source_quote": "span quote: ↵The Advocat  (Q1 misalignment)",
+      "body_md": "Top FOLIO tag: **Daubert/Frye Standard** · conf 0.98 · branch **Asset Type** (Q2 wrong branch). Good, actionable advice; flagged for span (Q1) + branch (Q2).",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-12"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-010",
+      "kind": "exemplar",
+      "status": "pass",
+      "title": "Exemplar · principle · the advocate's goal",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate",
+      "extracted": "principle (conf 0.90): Focus on the advocate's goal.",
+      "source_quote": "span quote: vocate↵↵A. The Goal of the …  (loosely aligned)",
+      "body_md": "Top FOLIO tag: **advocate** · conf 0.90 · branch Service. Reasonable concept; span only loosely aligned.",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-011",
+      "kind": "exemplar",
+      "status": "fail",
+      "title": "Exemplar · pitfall · expert testimony limits",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate",
+      "extracted": "pitfall (conf 0.90): Expert testimony is limited to opinions in reports/discovered docs; no new bases at trial.",
+      "source_quote": "span quote: .Data Availability↵↵D.Q  (Q1 misalignment)",
+      "body_md": "Top FOLIO tag: **Expert testimony** · conf 0.90 · branch **Location** (Q2 wrong branch). Substantively useful pitfall, but both span (Q1) and branch (Q2) are wrong.",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-12"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-012",
+      "kind": "exemplar",
+      "status": "fail",
+      "title": "Exemplar · procedural_rule · Rule 26 disclosures",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate",
+      "extracted": "procedural_rule (conf 0.95): During discovery, object to untimely witness/exhibit-list disclosures; ensure Rule 26 compliance.",
+      "source_quote": "span quote: .Data Availability↵↵D.Q  (Q1 misalignment)",
+      "body_md": "Top FOLIO tag: **Rule 26(a)(1)** · conf 0.95 · branch **Location** (Q2 wrong branch). High-value rule, correctly typed, but mis-mapped and un-traceable.",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-013",
+      "kind": "finding",
+      "status": "info",
+      "title": "Deferred v1 debug items — status",
+      "body_md": "- **llm-api-config**: now **confirmed working with real data** (mean conf 0.87, 98% of units tagged) — closable.\n- **corpus-processing-no-extraction** + **create-corpus-silent-fail**: were UI-layer fixes; **not** exercised by this CLI run → still need a browser E2E click-through to fully close.\n- Phase 03 HUMAN-UAT (4 scenarios) + VERIFICATION.md (01/01.1/03): mapped onto the S1–S7 story probes; close during the judging loop."
+    }
+  ]
+};
+
+(function () {
+  "use strict";
+
+  const data = (PACK_DATA && typeof PACK_DATA === "object") ? PACK_DATA : {};
+  const sections = Array.isArray(data.sections) ? data.sections : [];
+  const campaign = data.campaign || "pack";
+  const repo = data.repo || "";
+  const LS_NS = "folio-pack:" + campaign + (repo ? ":" + repo : "");
+  const LS_COMMENT = (id) => LS_NS + ":comment:" + id;
+  const LS_THEME = "folio-pack:theme";
+
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+  const escapeHtml = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  const STATUSES = ["pass", "borderline", "fail", "info"];
+  const statusOf = (s) => STATUSES.includes(s && s.status) ? s.status : "info";
+
+  /* ---------- Minimal, safe Markdown -> HTML ---------- */
+  function mdInline(t) {
+    // escape first, then apply inline tokens on the escaped string
+    let s = escapeHtml(t);
+    // inline code
+    s = s.replace(/`([^`]+)`/g, (m, c) => "<code>" + c + "</code>");
+    // bold, italic
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    s = s.replace(/\b_([^_\n]+)_\b/g, "<em>$1</em>");
+    // links [text](url) — allow only http(s), mailto, anchors
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, txt, url) => {
+      if (/^(https?:|mailto:|#)/i.test(url)) {
+        return '<a href="' + url + '" rel="noopener noreferrer">' + txt + "</a>";
+      }
+      return txt;
+    });
+    return s;
+  }
+
+  function renderMarkdown(md) {
+    if (!md) return "";
+    const lines = String(md).replace(/\r\n?/g, "\n").split("\n");
+    let html = "", i = 0;
+    const flushList = (buf, ordered) => {
+      if (!buf.length) return "";
+      const tag = ordered ? "ol" : "ul";
+      return "<" + tag + ">" + buf.map((li) => "<li>" + mdInline(li) + "</li>").join("") + "</" + tag + ">";
+    };
+    while (i < lines.length) {
+      let line = lines[i];
+
+      // fenced code
+      if (/^```/.test(line)) {
+        const lang = line.replace(/^```/, "").trim();
+        i++; const code = [];
+        while (i < lines.length && !/^```/.test(lines[i])) { code.push(lines[i]); i++; }
+        i++; // consume closing fence
+        html += "<pre><code" + (lang ? ' data-lang="' + escapeHtml(lang) + '"' : "") + ">" +
+          escapeHtml(code.join("\n")) + "</code></pre>";
+        continue;
+      }
+      // heading
+      let h = line.match(/^(#{1,4})\s+(.*)$/);
+      if (h) { const lvl = h[1].length; html += "<h" + lvl + ">" + mdInline(h[2]) + "</h" + lvl + ">"; i++; continue; }
+      // blockquote
+      if (/^>\s?/.test(line)) {
+        const buf = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^>\s?/, "")); i++; }
+        html += "<blockquote>" + renderMarkdown(buf.join("\n")) + "</blockquote>";
+        continue;
+      }
+      // unordered list
+      if (/^\s*[-*+]\s+/.test(line)) {
+        const buf = [];
+        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) { buf.push(lines[i].replace(/^\s*[-*+]\s+/, "")); i++; }
+        html += flushList(buf, false); continue;
+      }
+      // ordered list
+      if (/^\s*\d+\.\s+/.test(line)) {
+        const buf = [];
+        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) { buf.push(lines[i].replace(/^\s*\d+\.\s+/, "")); i++; }
+        html += flushList(buf, true); continue;
+      }
+      // hr
+      if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line)) { html += "<hr />"; i++; continue; }
+      // blank
+      if (/^\s*$/.test(line)) { i++; continue; }
+      // paragraph (gather consecutive non-empty, non-special lines)
+      const para = [];
+      while (i < lines.length && !/^\s*$/.test(lines[i]) &&
+             !/^(#{1,4})\s/.test(lines[i]) && !/^```/.test(lines[i]) &&
+             !/^>\s?/.test(lines[i]) && !/^\s*[-*+]\s+/.test(lines[i]) &&
+             !/^\s*\d+\.\s+/.test(lines[i]) && !/^(\*{3,}|-{3,}|_{3,})\s*$/.test(lines[i])) {
+        para.push(lines[i]); i++;
+      }
+      html += "<p>" + mdInline(para.join(" ")) + "</p>";
+    }
+    return html;
+  }
+
+  /* ---------- Theme ---------- */
+  function initTheme() {
+    const saved = localStorage.getItem(LS_THEME);
+    if (saved === "light" || saved === "dark") {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+    syncThemeButton();
+    $("#theme-toggle").addEventListener("click", () => {
+      const cur = currentTheme();
+      const next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem(LS_THEME, next);
+      syncThemeButton();
+    });
+  }
+  function currentTheme() {
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr) return attr;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function syncThemeButton() {
+    const t = currentTheme();
+    $("#theme-icon").textContent = t === "dark" ? "☾" : "☀";
+    $("#theme-label").textContent = t === "dark" ? "Dark" : "Light";
+  }
+
+  /* ---------- Toast ---------- */
+  let toastTimer;
+  function toast(msg) {
+    const el = $("#toast");
+    el.textContent = msg; el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+  }
+
+  /* ---------- Clipboard (with fallback) ---------- */
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    }
+    return Promise.resolve(fallbackCopy(text));
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { document.execCommand("copy"); } catch (e) { /* noop */ }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- Header / summary render ---------- */
+  function renderHeader() {
+    document.title = (data.title || "folio-insights Evidence Pack");
+    $("#brand-campaign").textContent = campaign;
+    $("#eyebrow").textContent = [repo, campaign].filter(Boolean).join(" · ") || "evidence pack";
+    $("#pack-title").textContent = data.title || "folio-insights — Evidence Pack";
+
+    const gen = data.generated_at ? fmtDate(data.generated_at) : "";
+    $("#pack-subline").textContent = data.subtitle ||
+      ("Curated extraction evidence for review. Comment inline; export a single feedback prompt when done.");
+
+    const meta = [];
+    if (repo) meta.push('<span><b>repo</b> ' + escapeHtml(repo) + "</span>");
+    if (campaign) meta.push('<span><b>campaign</b> ' + escapeHtml(campaign) + "</span>");
+    if (gen) meta.push('<span><b>generated</b> ' + escapeHtml(gen) + "</span>");
+    meta.push('<span><b>sections</b> ' + sections.length + "</span>");
+    $("#meta-line").innerHTML = meta.join("");
+
+    // rubric banner
+    const rv = data.rubric_version || "—";
+    $("#rubric-version").textContent = rv;
+    const banner = $("#rubric-banner");
+    if (/draft/i.test(rv)) {
+      banner.insertAdjacentHTML("beforeend", '<span class="draft-flag">Draft · not yet locked</span>');
+    } else if (/lock/i.test(rv)) {
+      banner.insertAdjacentHTML("beforeend", '<span class="locked-flag">Locked</span>');
+    }
+
+    // summary stats
+    const sum = data.summary || {};
+    const cards = [];
+    const orderedKeys = ["books", "chapters", "units"];
+    orderedKeys.forEach((k) => {
+      if (sum[k] != null) cards.push(statCard(sum[k], k, ""));
+    });
+    // any additional non-verdict keys
+    Object.keys(sum).forEach((k) => {
+      if (!orderedKeys.includes(k) && !["pass", "borderline", "fail"].includes(k)) {
+        cards.push(statCard(sum[k], k, ""));
+      }
+    });
+    if (sum.pass != null) cards.push(statCard(sum.pass, "pass", "pass"));
+    if (sum.borderline != null) cards.push(statCard(sum.borderline, "borderline", "borderline"));
+    if (sum.fail != null) cards.push(statCard(sum.fail, "fail", "fail"));
+    $("#summary").innerHTML = cards.join("");
+
+    // verdict bar
+    const p = +sum.pass || 0, b = +sum.borderline || 0, f = +sum.fail || 0;
+    const tot = p + b + f;
+    const vb = $("#verdict-bar");
+    if (tot > 0) {
+      vb.innerHTML =
+        '<i class="p" style="flex:' + p + '" title="pass ' + p + '"></i>' +
+        '<i class="b" style="flex:' + b + '" title="borderline ' + b + '"></i>' +
+        '<i class="f" style="flex:' + f + '" title="fail ' + f + '"></i>';
+    } else { vb.style.display = "none"; }
+
+    // spend
+    const sp = data.spend;
+    if (sp && (sp.usd != null || sp.model)) {
+      const bits = [];
+      if (sp.usd != null) bits.push('<span class="usd">$' + Number(sp.usd).toFixed(sp.usd < 1 ? 4 : 2) + "</span>");
+      bits.push('<span class="dim">app-side spend</span>');
+      const prov = [sp.provider, sp.model].filter(Boolean).join(" / ");
+      if (prov) bits.push("<span>· " + escapeHtml(prov) + "</span>");
+      if (sp.notes) bits.push('<span class="dim">· ' + escapeHtml(sp.notes) + "</span>");
+      $("#spend").innerHTML = bits.join(" ");
+    } else { $("#spend").style.display = "none"; }
+  }
+
+  function statCard(n, key, tone) {
+    return '<div class="stat' + (tone ? " tone-" + tone : "") + '">' +
+      '<div class="n">' + escapeHtml(String(n)) + "</div>" +
+      '<div class="k">' + escapeHtml(key) + "</div></div>";
+  }
+
+  function fmtDate(iso) {
+    try {
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toISOString().replace("T", " ").replace(/:\d\d\.\d+Z$/, "Z").replace(/\.\d+Z$/, "Z");
+    } catch (e) { return iso; }
+  }
+
+  /* ---------- Section cards ---------- */
+  function renderSections() {
+    const host = $("#sections");
+    if (!sections.length) {
+      host.innerHTML = '<div class="empty-note">No sections in this pack yet. ' +
+        "Populate <code>sections[]</code> in the pack JSON and regenerate.</div>";
+      $("#controls").style.display = "none";
+      return;
+    }
+    host.innerHTML = sections.map(renderCard).join("");
+    // wire up per-card behaviour
+    sections.forEach((s) => wireCard(s));
+  }
+
+  function renderCard(s) {
+    const id = s.id || "";
+    const st = statusOf(s);
+    const refs = Array.isArray(s.rubric_refs) ? s.rubric_refs : [];
+    const loc = [];
+    if (s.book) loc.push('<span class="loc"><b>' + escapeHtml(s.book) + "</b></span>");
+    if (s.chapter) loc.push('<span class="loc">' + escapeHtml(s.chapter) + "</span>");
+
+    let html = '<article class="card status-' + st + '" id="' + escapeHtml(id) + '"' +
+      ' data-id="' + escapeHtml(id) + '" data-status="' + st + '"' +
+      ' data-book="' + escapeHtml(s.book || "") + '" data-chapter="' + escapeHtml(s.chapter || "") + '">';
+    html += '<div class="pad">';
+
+    // head
+    html += '<div class="card-head"><div class="grow">';
+    html += '<a class="anchor-id" href="#' + escapeHtml(id) + '"><span class="hash">#</span>' + escapeHtml(id) + "</a>";
+    html += '<h3 class="card-title">' + escapeHtml(s.title || "(untitled)") + "</h3>";
+    html += '<div class="card-sub">';
+    if (s.kind) html += '<span class="kind">' + escapeHtml(String(s.kind).replace(/_/g, " ")) + "</span>";
+    html += loc.join("");
+    html += "</div></div>";
+    html += '<span class="chip ' + st + '">' + st + "</span>";
+    html += "</div>"; // card-head
+
+    // rubric refs
+    if (refs.length) {
+      html += '<div class="refs">' + refs.map((r) =>
+        '<span class="ref">' + escapeHtml(r) + "</span>").join("") + "</div>";
+    }
+
+    // body markdown
+    if (s.body_md) html += '<div class="body-md">' + renderMarkdown(s.body_md) + "</div>";
+
+    // evidence panels
+    const ev = [];
+    if (s.source_quote) {
+      ev.push('<details class="panel quote"><summary><span class="tw">▸</span>' +
+        '<span class="cap">Source quote · provenance span</span></summary>' +
+        '<div class="panel-body">' + escapeHtml(s.source_quote) + "</div></details>");
+    }
+    if (s.extracted) {
+      ev.push('<details class="panel extracted"><summary><span class="tw">▸</span>' +
+        '<span class="cap">Extracted unit / mapping output</span></summary>' +
+        '<div class="panel-body">' + escapeHtml(s.extracted) + "</div></details>");
+    }
+    if (ev.length) html += '<div class="evidence">' + ev.join("") + "</div>";
+
+    // scores table
+    if (Array.isArray(s.scores) && s.scores.length) {
+      html += '<div class="scores"><table><thead><tr>' +
+        "<th>Criterion</th><th>Score</th><th>Note</th></tr></thead><tbody>";
+      s.scores.forEach((sc) => {
+        const v = (sc.score == null ? "" : sc.score);
+        const cls = "s" + (v === "" ? "" : v);
+        html += "<tr><td class='crit'>" + escapeHtml(sc.criterion || "") + "</td>" +
+          "<td><span class='score-pill " + cls + "'>" + escapeHtml(String(v)) + "</span></td>" +
+          "<td class='note'>" + escapeHtml(sc.note || "") + "</td></tr>";
+      });
+      html += "</tbody></table></div>";
+    }
+
+    // screenshot (data: URI only)
+    if (s.screenshot && /^data:image\//i.test(s.screenshot)) {
+      html += '<div class="shot"><img alt="Screenshot for ' + escapeHtml(id) +
+        '" src="' + s.screenshot + '" /></div>';
+    }
+
+    // feedback box
+    html += '<div class="feedback"><div class="fb-head">' +
+      '<span class="fb-lbl">Your review note</span>' +
+      '<span class="saved-ind" data-saved><span aria-hidden="true">✓</span> saved</span></div>' +
+      '<textarea data-comment placeholder="Note a taste call, a fix, a rubric tweak — saved locally to this browser, keyed to ' +
+      escapeHtml(id) + '."></textarea>' +
+      '<div class="fb-actions">' +
+      '<button class="btn primary" data-copy-prompt type="button"><span aria-hidden="true">⧉</span> Copy as prompt</button>' +
+      '<button class="btn" data-clear type="button">Clear note</button>' +
+      "</div></div>";
+
+    html += "</div></article>"; // pad, card
+    return html;
+  }
+
+  function wireCard(s) {
+    const id = s.id || "";
+    const card = document.getElementById(id);
+    if (!card) return;
+    const ta = $("[data-comment]", card);
+    const savedInd = $("[data-saved]", card);
+
+    // load persisted comment
+    const stored = localStorage.getItem(LS_COMMENT(id)) || "";
+    if (stored) { ta.value = stored; ta.classList.add("has-content"); }
+
+    let saveTimer;
+    ta.addEventListener("input", () => {
+      ta.classList.toggle("has-content", ta.value.trim().length > 0);
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        if (ta.value.trim()) localStorage.setItem(LS_COMMENT(id), ta.value);
+        else localStorage.removeItem(LS_COMMENT(id));
+        savedInd.classList.add("show");
+        setTimeout(() => savedInd.classList.remove("show"), 1400);
+        updateFabCount();
+      }, 350);
+    });
+
+    $("[data-clear]", card).addEventListener("click", () => {
+      ta.value = ""; ta.classList.remove("has-content");
+      localStorage.removeItem(LS_COMMENT(id));
+      updateFabCount();
+      toast("Note cleared for " + id);
+    });
+
+    $("[data-copy-prompt]", card).addEventListener("click", () => {
+      copyText(buildSectionPrompt(s, ta.value)).then(() => toast("Copied prompt for " + id));
+    });
+  }
+
+  /* ---------- Prompt builders ---------- */
+  function buildSectionPrompt(s, comment) {
+    const id = s.id || "";
+    const refs = (Array.isArray(s.rubric_refs) ? s.rubric_refs : []).join(", ");
+    const L = [];
+    L.push("## Evidence-pack review note — " + id);
+    L.push("");
+    L.push("**Section:** " + (s.title || "(untitled)"));
+    if (s.kind) L.push("**Kind:** " + s.kind);
+    if (s.status) L.push("**Status:** " + s.status);
+    if (refs) L.push("**Rubric refs:** " + refs);
+    const locBits = [s.book, s.chapter].filter(Boolean).join(" · ");
+    if (locBits) L.push("**Location:** " + locBits);
+    L.push("**Anchor:** #" + id);
+    L.push("");
+    if (s.body_md) { L.push("### Context"); L.push(String(s.body_md).trim()); L.push(""); }
+    if (s.source_quote) { L.push("### Source quote"); L.push("> " + String(s.source_quote).trim().replace(/\n/g, "\n> ")); L.push(""); }
+    if (s.extracted) { L.push("### Extracted output"); L.push("```\n" + String(s.extracted).trim() + "\n```"); L.push(""); }
+    if (Array.isArray(s.scores) && s.scores.length) {
+      L.push("### Scores");
+      s.scores.forEach((sc) => L.push("- " + (sc.criterion || "") + ": " + sc.score + (sc.note ? " — " + sc.note : "")));
+      L.push("");
+    }
+    L.push("### Reviewer note");
+    L.push((comment && comment.trim()) ? comment.trim() : "_(no note written yet)_");
+    L.push("");
+    L.push("### Requested action");
+    L.push("Address the reviewer note above for " + id + ". Cite the rubric refs (" +
+      (refs || "n/a") + ") when justifying the change, and keep the source-quote provenance intact.");
+    return L.join("\n");
+  }
+
+  function collectComments() {
+    const out = [];
+    sections.forEach((s) => {
+      const id = s.id || "";
+      const c = localStorage.getItem(LS_COMMENT(id));
+      if (c && c.trim()) {
+        out.push({
+          id: id,
+          title: s.title || "",
+          rubric_refs: Array.isArray(s.rubric_refs) ? s.rubric_refs : [],
+          status: s.status || "",
+          book: s.book || "",
+          chapter: s.chapter || "",
+          comment: c.trim()
+        });
+      }
+    });
+    return out;
+  }
+
+  function buildExportPrompt(items) {
+    const L = [];
+    L.push("# folio-insights evidence-pack feedback");
+    L.push("");
+    L.push("**Campaign:** " + campaign + (repo ? "  ·  **Repo:** " + repo : ""));
+    if (data.rubric_version) L.push("**Rubric:** " + data.rubric_version);
+    L.push("**Feedback items:** " + items.length);
+    L.push("");
+    L.push("Each item below is a reviewer note tied to an evidence-pack section (EP-ID). " +
+      "Implement the notes; cite the paired rubric refs when justifying changes.");
+    L.push("");
+    items.forEach((it, idx) => {
+      L.push("---");
+      L.push("");
+      L.push("## " + (idx + 1) + ". " + it.id + " — " + it.title);
+      const bits = [];
+      if (it.status) bits.push("status: " + it.status);
+      if (it.rubric_refs.length) bits.push("rubric refs: " + it.rubric_refs.join(", "));
+      const loc = [it.book, it.chapter].filter(Boolean).join(" · ");
+      if (loc) bits.push("location: " + loc);
+      if (bits.length) L.push("_" + bits.join("  ·  ") + "_");
+      L.push("");
+      L.push(it.comment);
+      L.push("");
+    });
+    return L.join("\n");
+  }
+
+  function downloadJson(filename, obj) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  function updateFabCount() {
+    const n = collectComments().length;
+    const fab = $("#export-fab");
+    fab.setAttribute("data-count", String(n));
+    $("#fab-badge").textContent = String(n);
+    fab.setAttribute("aria-label", "Export all feedback — " + n + " note" + (n === 1 ? "" : "s"));
+  }
+
+  function wireExport() {
+    $("#export-fab").addEventListener("click", () => {
+      const items = collectComments();
+      if (!items.length) { toast("No review notes yet — write one in any section first."); return; }
+      const prompt = buildExportPrompt(items);
+      copyText(prompt).then(() => {
+        downloadJson("feedback.json", items.map((it) => ({
+          id: it.id, title: it.title, rubric_refs: it.rubric_refs, comment: it.comment
+        })));
+        toast(items.length + " note" + (items.length === 1 ? "" : "s") +
+          " copied to clipboard + feedback.json downloaded");
+      });
+    });
+  }
+
+  /* ---------- TOC ---------- */
+  function renderToc() {
+    const toc = $("#toc");
+    toc.innerHTML = sections.map((s) => {
+      const id = s.id || "";
+      const st = statusOf(s);
+      return '<li><a href="#' + escapeHtml(id) + '" data-status="' + st + '" data-toc="' + escapeHtml(id) + '">' +
+        escapeHtml(s.title || id) +
+        '<span class="eid">' + escapeHtml(id) + "</span></a></li>";
+    }).join("");
+  }
+
+  /* ---------- Filters ---------- */
+  const activeStatuses = new Set();
+  function wireFilters() {
+    // counts
+    const counts = { pass: 0, borderline: 0, fail: 0, info: 0 };
+    sections.forEach((s) => { counts[statusOf(s)]++; });
+    $$(".chip-filter").forEach((btn) => {
+      const st = btn.getAttribute("data-status");
+      $("[data-ct='" + st + "']", btn).textContent = counts[st] || 0;
+      if (!counts[st]) { btn.disabled = true; btn.style.opacity = ".4"; btn.style.cursor = "default"; }
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        const pressed = btn.getAttribute("aria-pressed") === "true";
+        btn.setAttribute("aria-pressed", String(!pressed));
+        if (pressed) activeStatuses.delete(st); else activeStatuses.add(st);
+        applyFilters();
+      });
+    });
+
+    // book + chapter selects
+    const books = Array.from(new Set(sections.map((s) => s.book).filter(Boolean))).sort();
+    const bf = $("#book-filter");
+    books.forEach((b) => { const o = document.createElement("option"); o.value = b; o.textContent = b; bf.appendChild(o); });
+    bf.addEventListener("change", () => { populateChapters(); applyFilters(); });
+
+    populateChapters();
+    $("#chapter-filter").addEventListener("change", applyFilters);
+    $("#q").addEventListener("input", applyFilters);
+  }
+
+  function populateChapters() {
+    const bf = $("#book-filter").value;
+    const cf = $("#chapter-filter");
+    const prev = cf.value;
+    const chapters = Array.from(new Set(
+      sections.filter((s) => !bf || s.book === bf).map((s) => s.chapter).filter(Boolean)
+    )).sort();
+    cf.innerHTML = '<option value="">All chapters</option>';
+    chapters.forEach((c) => { const o = document.createElement("option"); o.value = c; o.textContent = c; cf.appendChild(o); });
+    if (chapters.includes(prev)) cf.value = prev;
+  }
+
+  function applyFilters() {
+    const bf = $("#book-filter").value;
+    const cf = $("#chapter-filter").value;
+    const q = $("#q").value.trim().toLowerCase();
+    let shown = 0;
+    sections.forEach((s) => {
+      const id = s.id || "";
+      const card = document.getElementById(id);
+      if (!card) return;
+      const st = statusOf(s);
+      let vis = true;
+      if (activeStatuses.size && !activeStatuses.has(st)) vis = false;
+      if (bf && s.book !== bf) vis = false;
+      if (cf && s.chapter !== cf) vis = false;
+      if (q) {
+        const hay = [id, s.title, s.book, s.chapter, s.body_md, s.source_quote, s.extracted,
+          (s.rubric_refs || []).join(" ")].join(" ").toLowerCase();
+        if (!hay.includes(q)) vis = false;
+      }
+      card.style.display = vis ? "" : "none";
+      // toc sync
+      const tocLink = $("[data-toc='" + cssEsc(id) + "']");
+      if (tocLink) tocLink.parentElement.style.display = vis ? "" : "none";
+      if (vis) shown++;
+    });
+    $("#count-line").textContent = "Showing " + shown + " of " + sections.length + " sections" +
+      (activeStatuses.size || bf || cf || q ? " (filtered)" : "");
+  }
+
+  function cssEsc(s) { return String(s).replace(/["\\]/g, "\\$&"); }
+
+  /* ---------- Scrollspy for TOC ---------- */
+  function wireScrollSpy() {
+    if (!("IntersectionObserver" in window)) return;
+    const links = new Map();
+    $$("[data-toc]").forEach((a) => links.set(a.getAttribute("data-toc"), a));
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) {
+          $$(".toc-rail a.active").forEach((a) => a.classList.remove("active"));
+          const link = links.get(en.target.id);
+          if (link) link.classList.add("active");
+        }
+      });
+    }, { rootMargin: "-30% 0px -60% 0px", threshold: 0 });
+    sections.forEach((s) => { const c = document.getElementById(s.id); if (c) io.observe(c); });
+  }
+
+  /* ---------- Boot ---------- */
+  initTheme();
+  renderHeader();
+  renderSections();
+  renderToc();
+  if (sections.length) {
+    wireFilters();
+    wireExport();
+    updateFabCount();
+    applyFilters();
+    wireScrollSpy();
+  } else {
+    $("#export-fab").style.display = "none";
+  }
+})();
+</script>
