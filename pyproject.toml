@@ -14,6 +14,13 @@ dependencies = [
     "click>=8.0.0",
     "aiosqlite>=0.20.0",
     "folio-python>=0.1.5",
+    # Web tier (api/main.py) — FastAPI serving the SvelteKit static SPA + /api.
+    # Previously installed ad-hoc in Dockerfile.web (never declared here), which
+    # left local dev/CI unable to collect the 7 api/ test suites. Declared as core
+    # runtime deps so the manifest matches shipped reality (Dockerfile.web L48-60).
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
     "sse-starlette>=3.3.0",
     "pyshacl>=0.31.0",
     "pyoxigraph==0.5.7",
