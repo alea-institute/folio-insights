@@ -1,0 +1,74 @@
+{
+  "campaign": "books",
+  "repo": "INSIGHTS",
+  "title": "folio-insights — Book Extraction Campaign (sample)",
+  "subtitle": "Three-finding demonstration pack so the template can be reviewed end-to-end. Comment inline; export a single feedback prompt when done.",
+  "generated_at": "2026-07-05T00:00:00Z",
+  "rubric_version": "extraction-quality-v1 (DRAFT)",
+  "spend": {
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "usd": 0.42,
+    "notes": "one-book iteration pass"
+  },
+  "summary": {
+    "books": 1,
+    "chapters": 6,
+    "units": 214,
+    "pass": 180,
+    "borderline": 24,
+    "fail": 10
+  },
+  "sections": [
+    {
+      "id": "EP-INSIGHTS-BOOKS-001",
+      "kind": "mapping_decision",
+      "status": "pass",
+      "title": "Chapter 3 · deposition-sequencing unit maps cleanly to FOLIO",
+      "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-05"],
+      "book": "Trial Advocacy",
+      "chapter": "Ch 3 — Depositions",
+      "body_md": "The extractor identified a **procedural_rule** governing the order in which deposition topics should be sequenced, and mapped it to the FOLIO concept `Deposition` under the *Litigation* branch.\n\nThe mapping is defensible: the concept IRI exists, the `extraction_path` is a single hop, and the confidence (`0.91`) clears the pass threshold. This is a good positive exemplar of a clean one-hop mapping.",
+      "source_quote": "Sequence deposition topics from the general to the specific: establish the witness's background and role before probing the contested events, so that later admissions are anchored to facts the witness has already conceded.",
+      "extracted": "{\n  \"unit_type\": \"procedural_rule\",\n  \"text\": \"Sequence deposition topics general-to-specific; anchor contested-event questions to already-conceded background facts.\",\n  \"folio_tags\": [\n    {\"iri\": \"https://folio.openlegalstandard.org/R8x...Deposition\", \"label\": \"Deposition\", \"confidence\": 0.91, \"branch\": \"Litigation\"}\n  ],\n  \"surprise_score\": 0.12,\n  \"confidence\": 0.91\n}",
+      "scores": [
+        {"criterion": "RUB-EXTRACT-01", "score": 2, "note": "concept correct; one-hop mapping"},
+        {"criterion": "RUB-EXTRACT-05", "score": 2, "note": "provenance span exact"}
+      ],
+      "screenshot": null
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-002",
+      "kind": "borderline_extraction",
+      "status": "borderline",
+      "title": "Chapter 4 · advice unit blends two distinct principles",
+      "rubric_refs": ["RUB-EXTRACT-02", "RUB-EXTRACT-07"],
+      "book": "Trial Advocacy",
+      "chapter": "Ch 4 — Cross-Examination",
+      "body_md": "This unit is logged as **borderline**. The extracted `advice` span conflates two separable ideas:\n\n1. *never ask a question you don't know the answer to* — the classic control principle, and\n2. *use leading questions to constrain the witness*.\n\nBoth are sound, but the rubric prefers **one principle per unit** (`RUB-EXTRACT-07`) so downstream tagging stays crisp. A reviewer call is needed: split into two units, or keep as a compound \"control\" unit?",
+      "source_quote": "The cardinal rule of cross is control: never ask a question whose answer you do not already know, and phrase every question as a leading one so the witness can only ratify the proposition you have put to them.",
+      "extracted": "{\n  \"unit_type\": \"advice\",\n  \"text\": \"On cross, maintain control: never ask a question you don't know the answer to, and use leading questions so the witness can only ratify your proposition.\",\n  \"folio_tags\": [\n    {\"iri\": \"https://folio.openlegalstandard.org/R2c...CrossExamination\", \"label\": \"Cross-Examination\", \"confidence\": 0.78, \"branch\": \"Litigation\"}\n  ],\n  \"surprise_score\": 0.31,\n  \"confidence\": 0.78\n}",
+      "scores": [
+        {"criterion": "RUB-EXTRACT-02", "score": 1, "note": "two principles fused into one unit"},
+        {"criterion": "RUB-EXTRACT-07", "score": 1, "note": "granularity below standard; split candidate"}
+      ],
+      "screenshot": null
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-003",
+      "kind": "finding",
+      "status": "fail",
+      "title": "Chapter 5 · citation unit has a drifted provenance span",
+      "rubric_refs": ["RUB-EXTRACT-05"],
+      "book": "Trial Advocacy",
+      "chapter": "Ch 5 — Exhibits",
+      "body_md": "**Fail.** The extracted citation's `original_span` offsets point at the *preceding* sentence, not the rule statement itself. The offset arithmetic is off by one sentence, so the provenance highlight would mis-attribute the quote.\n\nThis is a deterministic `[DET]` failure — offset drift is scriptable and should be caught before any LLM judgment. Drives a fix in the span-alignment pass.",
+      "source_quote": "Rule 901 requires only a prima facie showing of authenticity — evidence sufficient to support a finding that the item is what its proponent claims — before an exhibit may be admitted.",
+      "extracted": "{\n  \"unit_type\": \"citation\",\n  \"text\": \"FRE 901 requires only a prima facie showing of authenticity before an exhibit is admitted.\",\n  \"original_span\": {\"start\": 10412, \"end\": 10498, \"source_file\": \"ch05.xhtml\"},\n  \"note\": \"span points at the prior sentence — off by one\",\n  \"confidence\": 0.64\n}",
+      "scores": [
+        {"criterion": "RUB-EXTRACT-05", "score": 0, "note": "provenance span drifted by one sentence"}
+      ],
+      "screenshot": null
+    }
+  ]
+}

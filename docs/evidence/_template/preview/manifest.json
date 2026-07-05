@@ -1,0 +1,48 @@
+{
+  "campaign": "books",
+  "repo": "INSIGHTS",
+  "rubric_version": "extraction-quality-v1 (DRAFT)",
+  "generated_at": "2026-07-05T00:00:00Z",
+  "summary": {
+    "books": 1,
+    "chapters": 6,
+    "units": 214,
+    "pass": 180,
+    "borderline": 24,
+    "fail": 10
+  },
+  "sections": {
+    "EP-INSIGHTS-BOOKS-001": {
+      "title": "Chapter 3 · deposition-sequencing unit maps cleanly to FOLIO",
+      "kind": "mapping_decision",
+      "status": "pass",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch 3 — Depositions"
+    },
+    "EP-INSIGHTS-BOOKS-002": {
+      "title": "Chapter 4 · advice unit blends two distinct principles",
+      "kind": "borderline_extraction",
+      "status": "borderline",
+      "rubric_refs": [
+        "RUB-EXTRACT-02",
+        "RUB-EXTRACT-07"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch 4 — Cross-Examination"
+    },
+    "EP-INSIGHTS-BOOKS-003": {
+      "title": "Chapter 5 · citation unit has a drifted provenance span",
+      "kind": "finding",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-05"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch 5 — Exhibits"
+    }
+  }
+}
