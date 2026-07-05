@@ -691,7 +691,7 @@ const PACK_DATA = /*__PACK_DATA__*/ {
   "title": "folio-insights — Book-Extraction UAT",
   "subtitle": "First UAT · one-chapter pipeline de-risk (Trial Advocacy Ch01) · findings, not yet rubric-scored",
   "generated_at": "2026-07-05T22:30:00Z",
-  "rubric_version": "extraction-quality-v1 — DRAFT (awaiting Damien's lock; no scoring until locked, policy 3)",
+  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline provenance-alignment fix)",
   "spend": {
     "provider": "google",
     "model": "gemini-2.5-flash-lite",
@@ -773,7 +773,7 @@ const PACK_DATA = /*__PACK_DATA__*/ {
       "kind": "borderline_extraction",
       "status": "fail",
       "title": "Q1 — Provenance spans do NOT trace to source (challenges the thesis) ⭐",
-      "body_md": "**The most important finding for the rubric.** Units are **LLM-distilled paraphrases**, and their `original_span{start,end}` offsets do **not** point at the source text they summarize. So today the pipeline is closer to *abstractive summarization with a broken back-pointer* than to true extraction. This bears directly on how strict `RUB-EXTRACT-05/06/07` should be — **I've asked you this on the Proof doc.** Do you want these to fail outright (forcing a pipeline fix to true extraction) or score borderline-while-we-fix?",
+      "body_md": "**The most important finding for the rubric.** Units are **LLM-distilled paraphrases**, and their `original_span{start,end}` offsets do **not** point at the source text they summarize. So today the pipeline is closer to *abstractive summarization with a broken back-pointer* than to true extraction. **RESOLVED (locked 2026-07-05): STRICT** — Damien chose that any untraceable claim **fails outright** (`RUB-EXTRACT-05` is now a hard gate). Consequence: the provenance-alignment pipeline fix is the campaign's **critical path** — no chapter can pass until extraction emits true, span-accurate provenance.",
       "extracted": "Advice unit (conf 0.98): 'Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.'",
       "source_quote": "span pointed at: ↵The Advocat   ← not the passage the claim came from",
       "rubric_refs": [
