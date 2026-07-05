@@ -1,7 +1,7 @@
 {
   "campaign": "books",
   "repo": "INSIGHTS",
-  "rubric_version": "extraction-quality-v1 — DRAFT (awaiting Damien's lock; no scoring until locked, policy 3)",
+  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline provenance-alignment fix)",
   "generated_at": "2026-07-05T22:30:00Z",
   "summary": {
     "books": 1,
