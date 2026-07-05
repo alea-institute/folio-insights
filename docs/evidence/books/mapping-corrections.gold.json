@@ -1,0 +1,21 @@
+{
+  "_comment": "Human-verified FOLIO mapping corrections from Damien's evidence-pack review. Gold data for the WS4 mapping-quality fix + eval/regression set (portfolio 'gold-data & eval culture' policy). Each correction is the authoritative right answer for a unit the pipeline mapped wrong.",
+  "rubric_version": "extraction-quality-v1 (locked 2026-07-05)",
+  "reviewer": "Damien Riehl",
+  "corrections": [
+    {
+      "ep_id": "EP-INSIGHTS-BOOKS-009",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate",
+      "unit_text": "Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.",
+      "unit_type": "advice",
+      "pipeline_mapping": { "label": "Daubert/Frye Standard", "branch_reported": "Asset Type", "verdict": "wrong" },
+      "correct_mapping": {
+        "label": "Daubert Motion Practice",
+        "iri": "https://folio.openlegalstandard.org/RT7xQmfA7w5HT02clIpAe",
+        "source": "Damien (reviewer), verbatim"
+      },
+      "notes": "Damien: 'this is horrible mapping!' The advice is about deposition practice supporting Daubert MOTIONS — a litigation activity — not the abstract Daubert/Frye evidentiary standard, and certainly not an Asset Type."
+    }
+  ]
+}
