@@ -1,10 +1,10 @@
-# Extraction-Quality Rubric — v1 (DRAFT, awaiting Damien's lock)
+# Extraction-Quality Rubric — v1 (LOCKED 2026-07-05)
 
 | | |
 |---|---|
 | **Rubric ID** | `RUB-EXTRACT` |
-| **Version** | v1 — **DRAFT** (not yet locked) |
-| **Status** | Awaiting Damien's inline edits via Proof, then lock |
+| **Version** | v1 — **LOCKED** 2026-07-05 |
+| **Status** | Locked via Damien's decisions (§0.5). Amendments trigger re-judging of affected findings (policy 3). |
 | **Applies to** | folio-insights book-extraction campaign (`docs/evidence/books/`) |
 | **Author** | Claude (Opus 4.8), 2026-07-05 |
 | **Policy** | Portfolio policy 3 — *nothing is judged before the rubric is locked* |
@@ -13,7 +13,8 @@
 > Edit freely — tighten thresholds, add/kill criteria, rewrite the taste calls. The
 > **weights** and the **pass thresholds** are the two things I most want your eye on:
 > they encode *your* standard for what "good extraction" means, and every evidence-pack
-> score cites this version. When you're happy, say "lock" and I freeze it as v1.
+> score cites this version. **Locked 2026-07-05** — your four decisions are recorded in §0.5;
+> this is now the scoring standard for the book campaign.
 
 ---
 
@@ -48,6 +49,23 @@ Most criteria compose several: e.g. FOLIO mapping = [DET] IRI-exists + [MCP] con
 
 ---
 
+## 0.5 Locked decisions (Damien, 2026-07-05)
+
+1. **Fidelity gate = STRICT.** Any unit **not traceable to a supporting source span fails
+   outright** (`RUB-EXTRACT-05` becomes a hard gate, alongside `-06` fabrication). This
+   forces the pipeline to produce *true extraction with accurate provenance* — the de-risk
+   run (`docs/evidence/books/DE-RISK-FINDINGS.md` Q1) showed current output is paraphrase
+   with misaligned spans, so **a provenance-alignment pipeline fix is now the campaign's
+   critical path**, ahead of scoring any book as a pass.
+2. **Weights kept as drafted** — Fidelity 30 / Mapping 25 / Usefulness 20 / Completeness 15 / SHACL 10.
+3. **Chapter pass threshold raised to mean ≥ 2.5** (from 2.0), all gates green, completeness ≥ 2.
+4. **Completeness ground truth = LLM-generated salient-points list, correctable in the pack** —
+   a subagent lists each chapter's expected points; that list is an editable pack artifact
+   Damien can fix; recall is scored against it.
+
+_(Not asked; applied as default — revisit anytime: `-04` rewards correct proposed-classes but
+gives no extra bonus for Ecosystem-Loop value.)_
+
 ## 1. Scoring model
 
 Each criterion scores on a **0–3 scale** unless marked **[gate]** (pass/fail):
@@ -66,10 +84,11 @@ Each criterion scores on a **0–3 scale** unless marked **[gate]** (pass/fail):
 
 **Gates (a chapter/book cannot "pass" if any gate fails), most severe first:**
 1. **`RUB-EXTRACT-06` fabricated content = automatic Fail** for the unit and flags the chapter. Zero tolerance: an invented citation, holding, rule, number, or party is the one error that destroys the "extractive, not generative" thesis.
-2. **`RUB-EXTRACT-10` / `-11` SHACL non-conformance** blocks a book-level pass (structural correctness is non-negotiable for a published KG).
-3. **`RUB-EXTRACT-03` invalid/unresolvable IRI** on a non-proposed tag blocks the unit's mapping score from exceeding 1.
+2. **`RUB-EXTRACT-05` untraceable claim = automatic Fail** (STRICT, Damien-locked 2026-07-05). A unit whose claim is not supported by a valid, correctly-located source span fails — no partial credit. This is the gate that forces true extraction over paraphrase.
+3. **`RUB-EXTRACT-10` / `-11` SHACL non-conformance** blocks a book-level pass (structural correctness is non-negotiable for a published KG).
+4. **`RUB-EXTRACT-03` invalid/unresolvable IRI** on a non-proposed tag blocks the unit's mapping score from exceeding 1.
 
-**Chapter pass threshold (proposed, Damien to set):** mean judged score **≥ 2.0**, **all gates green**, and completeness (`RUB-EXTRACT-08`) **≥ 2**.
+**Chapter pass threshold (LOCKED):** mean judged score **≥ 2.5**, **all gates green**, and completeness (`RUB-EXTRACT-08`) **≥ 2**.
 
 ---
 
@@ -103,11 +122,12 @@ feeding upstream — not a mapping the system simply missed.
 
 ### Dimension B — Extractive-not-generative fidelity  *(weight 30% — the thesis)*
 
-**`RUB-EXTRACT-05` — Source traceability** · per-unit · **[DET]+[LLM]** · weight 10%
+**`RUB-EXTRACT-05` — Source traceability** · per-unit · **[DET]+[LLM]** · **[GATE — strict]** · weight 10%
 Every unit points back to its passage. [DET]: `original_span{start,end,source_file}` are valid
 offsets into an existing source file and the sliced text is non-empty. [LLM]: the passage at
 that span **actually supports** the unit's claim (not an adjacent/wrong span).
-- **3** span exact, quote fully supports claim; **2** span slightly loose but supports; **1** span points to the right vicinity but is imprecise; **0** span invalid, empty, or points to unrelated text.
+- **[GATE, Damien-locked] 0 = automatic unit Fail** — any unit not traceable to a supporting, correctly-located span fails, no partial credit. *(Current pipeline output fails this — units are paraphrases with misaligned spans, so the provenance-alignment fix is the campaign's critical path before any chapter can pass.)*
+- **3** span exact, quote fully supports claim; **2** span slightly loose but still supports; **0** span imprecise/vicinity-only, invalid, empty, or unrelated. (Strict gate collapses "borderline traceability" into Fail — no score-1 tier.)
 
 **`RUB-EXTRACT-06` — No fabricated content** · per-unit · **[LLM]+[TASTE]** · **[GATE]** · weight 12%
 The unit asserts **nothing** absent from its source passage: no invented citations, holdings,
@@ -191,9 +211,11 @@ but a hard gate: it's cheap, binary, and non-negotiable rather than a matter of 
 
 ---
 
-## 4. Open questions for Damien (before lock)
+## 4. Resolved questions (locked 2026-07-05 — decisions in §0.5)
 
-1. **Chapter pass threshold** — I proposed mean ≥ 2.0 + all gates green + completeness ≥ 2. Too lenient? Too strict for a first pass?
+_All five resolved: (1) threshold → **≥ 2.5**; (2) fabrication/traceability scope → new facts = `-06` fail **and** untraceable spans = `-05` strict fail; (3) completeness → **LLM salient-points list, correctable in the pack**; (4) weights → **kept as drafted**; (5) proposed-class → correct-proposing rewarded, no extra bonus (applied default). Original questions retained below as rationale._
+
+1. **Chapter pass threshold** — I proposed mean ≥ 2.0 + all gates green + completeness ≥ 2. Too lenient? Too strict for a first pass? → **Resolved: ≥ 2.5.**
 2. **Fabrication scope** — is a *paraphrase that adds a plausible-but-unstated qualifier* a `-06` fabrication (gate-0) or a `-07` compression drift (score 1)? I've drawn the line at "new facts = fabrication, distorted emphasis = compression." Confirm.
 3. **Completeness ground truth** — OK to use an LLM-generated salient-points list (that you can correct in the pack) as the recall denominator, or do you want to hand-author salient points for the first chapter to calibrate?
 4. **Weights** — especially fidelity 30 vs. usefulness 20. Flip them?
@@ -203,5 +225,9 @@ but a hard gate: it's cheap, binary, and non-negotiable rather than a matter of 
 
 ## 5. Changelog
 
-- **v1 (2026-07-05)** — initial draft for Proof review. Grounded in the live v1 `KnowledgeUnit`
-  pipeline; v2 `ShardEnvelope` analogs noted as *(v2-forward)*.
+- **v1 (2026-07-05) — LOCKED.** Grounded in the live v1 `KnowledgeUnit` pipeline; v2
+  `ShardEnvelope` analogs noted as *(v2-forward)*. Locked after Damien's four decisions (§0.5):
+  strict fidelity gate (`-05` untraceable = fail), weights unchanged, pass bar raised to ≥ 2.5,
+  completeness via a correctable LLM salient-points list. **Consequence:** a provenance-alignment
+  pipeline fix becomes the campaign's critical path (current output is paraphrase, not extraction).
+- **v1-draft (2026-07-05)** — initial draft shared for Proof review.
