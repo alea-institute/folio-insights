@@ -1,0 +1,153 @@
+{
+  "campaign": "books",
+  "repo": "INSIGHTS",
+  "rubric_version": "extraction-quality-v1 — DRAFT (awaiting Damien's lock; no scoring until locked, policy 3)",
+  "generated_at": "2026-07-05T22:30:00Z",
+  "summary": {
+    "books": 1,
+    "chapters": 1,
+    "units": 621,
+    "valid_FOLIO_IRIs": 529,
+    "pass": 3,
+    "borderline": 1,
+    "fail": 3
+  },
+  "sections": {
+    "EP-INSIGHTS-BOOKS-001": {
+      "title": "Pipeline works end-to-end on real book text",
+      "kind": "finding",
+      "status": "pass",
+      "rubric_refs": [
+        "RUB-EXTRACT-08",
+        "RUB-EXTRACT-10"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate"
+    },
+    "EP-INSIGHTS-BOOKS-002": {
+      "title": "All deterministic oracles PASS",
+      "kind": "finding",
+      "status": "pass",
+      "rubric_refs": [
+        "RUB-EXTRACT-03",
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11"
+      ],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-003": {
+      "title": "B1 — Bridge venv deps undeclared (FIXED this session)",
+      "kind": "finding",
+      "status": "pass",
+      "rubric_refs": [],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-004": {
+      "title": "B2 — .docx ingestion broken (BLOCKER · [CE])",
+      "kind": "finding",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-08"
+      ],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-005": {
+      "title": "B3 — OpenAI provider unusable → run on Google (decision)",
+      "kind": "finding",
+      "status": "info",
+      "rubric_refs": [],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-006": {
+      "title": "B4 — Discovery→Export chain broken (BLOCKER · [CE])",
+      "kind": "finding",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-13"
+      ],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-007": {
+      "title": "Q1 — Provenance spans do NOT trace to source (challenges the thesis) ⭐",
+      "kind": "borderline_extraction",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-07"
+      ],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-008": {
+      "title": "Q2 — Semantically wrong FOLIO branch mappings (homonyms)",
+      "kind": "mapping_decision",
+      "status": "borderline",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-02"
+      ],
+      "book": "",
+      "chapter": ""
+    },
+    "EP-INSIGHTS-BOOKS-009": {
+      "title": "Exemplar · advice · Daubert/Frye depositions",
+      "kind": "exemplar",
+      "status": "borderline",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-12"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate"
+    },
+    "EP-INSIGHTS-BOOKS-010": {
+      "title": "Exemplar · principle · the advocate's goal",
+      "kind": "exemplar",
+      "status": "pass",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate"
+    },
+    "EP-INSIGHTS-BOOKS-011": {
+      "title": "Exemplar · pitfall · expert testimony limits",
+      "kind": "exemplar",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-12"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate"
+    },
+    "EP-INSIGHTS-BOOKS-012": {
+      "title": "Exemplar · procedural_rule · Rule 26 disclosures",
+      "kind": "exemplar",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 — The Advocate"
+    },
+    "EP-INSIGHTS-BOOKS-013": {
+      "title": "Deferred v1 debug items — status",
+      "kind": "finding",
+      "status": "info",
+      "rubric_refs": [],
+      "book": "",
+      "chapter": ""
+    }
+  }
+}
