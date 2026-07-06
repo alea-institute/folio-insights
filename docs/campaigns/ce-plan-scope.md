@@ -31,19 +31,26 @@ fix `WordIngestor` (traverse sdt/tables/textboxes) **or** a folio-insights docx�
 Acceptance: `discover`→`export --validate` runs clean end-to-end with no manual review.db seeding
 and task-level FOLIO IRIs populated.
 
-**WS3 — provenance-alignment / true extraction (EP-007) — CRITICAL PATH (strict gate).** Units are
-LLM paraphrases whose `original_span` doesn't point at source → every unit fails RUB-EXTRACT-05.
-Change extraction so each unit carries an accurate, verifiable source span (verbatim anchor or
-exact offsets to the passage it derives from). Acceptance: a sampled unit's span slices text that
-supports its claim; `verify()`-style traceability check passes. **No chapter can pass until this lands.**
+**WS3 — source-grounded extraction (EP-007) — CRITICAL PATH (strict gate).** Worse than
+mis-spanned: the deep-dive found units are **fabricated** — not in the ingested source at all
+('Rule 26' appears 0× in the *entire book*; Daubert content is in Ch10, not the ingested Ch01).
+The pipeline generates from LLM training, not the book. Re-architect extraction so every unit is
+**grounded in and traceable to** a real source passage (verbatim anchor / exact offsets), and
+fabricated units are structurally impossible. Acceptance: sampled units quote text that exists in
+the source and supports the claim; a `verify()`-style traceability check passes; fabrication rate
+≈ 0. **No chapter can pass until this lands.**
 
-**WS4 — FOLIO mapping quality / Q2 (EP-008/009/011/012).** The four-path tagger picks
-lexically/embedding-plausible but semantically WRONG concepts (Rule 26→Location, Daubert→Asset
-Type). Fix via the **gestalt cascade**: deterministic candidate generation → **FOLIO-MCP / embedding
-semantic rerank** ("is this concept a sensible fit for this advocacy claim?") → deterministic
-validate. Seed the eval/gold set with Damien's corrections (see `mapping-corrections.gold.json`),
-starting with Daubert advice → `RT7xQmfA7w5HT02clIpAe`. Acceptance: the exemplar units map to
-sensible legal-advocacy concepts; systemic implausible-branch rate drops below a set threshold.
+**WS4 — FOLIO mapping via deterministic IRI resolution (EP-008/009/011/012).** Root cause is
+deeper than "homonyms": in this run FOLIO tags came from the **LLM path ONLY** (`paths=['llm']`)
+and the LLM **hallucinated IRIs** — valid FOLIO strings pointing at the wrong concept
+('Rule 26(a)(1)'→'Russian Federation', 'Daubert/Frye Standard'→'Rye'). **~90% of 2,226 tags are
+wrong; 45% land in implausible branches (Location = 31%).** Core fix: **the LLM must NEVER emit
+IRIs** — it proposes a *label/concept*, then IRI resolution is **deterministic** (folio-python
+exact/alias) → **FOLIO-MCP / embedding semantic rerank** → validate (the gestalt / deterministic-first
+rule). Ensure the deterministic entity_ruler/semantic paths actually run (B1 had disabled them).
+Seed the eval/gold set with Damien's corrections (`mapping-corrections.gold.json`; Daubert →
+`RT7xQmfA7w5HT02clIpAe`). Acceptance: a concept-**match** oracle (not mere existence) passes on a
+sample; implausible-branch rate below threshold; exemplars map to sensible legal concepts.
 
 ## CE triage note
 WS1/WS2/WS3/WS4 all touch pipeline structure → **`/ce:plan` first** (per portfolio CE triage).

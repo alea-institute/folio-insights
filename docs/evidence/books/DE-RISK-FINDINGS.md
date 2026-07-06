@@ -4,13 +4,24 @@ _One-chapter smoke run of the LIVE v1 pipeline on real book text (Trial Advocacy
 _2026-07-05. These are FINDINGS, not rubric scores (rubric not yet locked — policy 3)._
 _They seed the evidence pack and drive the pre-campaign fix list._
 
-## Headline
+## ⚠️ CORRECTION (2026-07-05, post-review deep-dive)
 
-The pipeline **runs end-to-end on real book text and produces good output** — but only after
-clearing environment blockers. On the working config it yielded **621 knowledge units** (mean
-confidence 0.87; 573 high / 44 med / 4 low), **529 distinct valid FOLIO IRIs**, and a
-**SHACL-conformant OWL export**. So the core works. But an at-scale campaign is **blocked** by
-the items below, and two **material quality defects** will shape rubric scoring.
+The "produces good output / 529 valid IRIs / 15-of-15 IRI checks pass" framing below was
+**too optimistic — the checks were too weak.** A concept-**match** deep-dive (resolve each IRI,
+compare its real FOLIO concept to the stored label) found the pipeline is **generative, not
+extractive, at two levels**: (1) the *units* are largely **fabricated** (not in the ingested
+source — 'Rule 26' 0× in the whole book); (2) the FOLIO *IRIs* are **LLM-hallucinated** — valid
+strings pointing at the wrong concept (**~90% of 2,226 tags wrong; 45% in implausible branches,
+Location 31%**). "IRI exists" ≠ "IRI correct". The pack (`pack.html` / Artifact) carries the
+corrected findings and Damien's dispositions; treat that + `ce-plan-scope.md` as current.
+
+## Headline (original, superseded by the correction above)
+
+The pipeline **runs end-to-end on real book text** — but only after clearing environment
+blockers. On the working config it yielded **621 knowledge units** (mean confidence 0.87),
+**529 distinct valid** (existent) **FOLIO IRIs**, and a **SHACL-conformant OWL export**. So the
+*plumbing* works. But an at-scale campaign is **blocked** by the items below, and — per the
+correction — the *content* fails the rubric wholesale.
 
 ## Deterministic oracle results (the parts that CAN run pre-lock)
 
