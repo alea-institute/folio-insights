@@ -1,33 +1,34 @@
 {
   "campaign": "books",
   "repo": "INSIGHTS",
-  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline provenance-alignment fix)",
-  "generated_at": "2026-07-05T22:30:00Z",
+  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline fix)",
+  "generated_at": "2026-07-05T23:15:00Z",
   "summary": {
     "books": 1,
     "chapters": 1,
     "units": 621,
-    "valid_FOLIO_IRIs": 529,
-    "pass": 3,
-    "borderline": 1,
-    "fail": 3
+    "IRIs_wrong_concept_pct": 90,
+    "pass": 2,
+    "borderline": 2,
+    "fail": 7
   },
   "sections": {
     "EP-INSIGHTS-BOOKS-001": {
-      "title": "Pipeline works end-to-end on real book text",
+      "title": "Pipeline RUNS end-to-end — but the output is generative, not extractive",
       "kind": "finding",
-      "status": "pass",
+      "status": "borderline",
       "rubric_refs": [
-        "RUB-EXTRACT-08",
-        "RUB-EXTRACT-10"
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-01"
       ],
       "book": "Trial Advocacy",
       "chapter": "Ch01 — The Advocate"
     },
     "EP-INSIGHTS-BOOKS-002": {
-      "title": "All deterministic oracles PASS",
+      "title": "Oracle correction — 'IRI exists' ≠ 'IRI correct'",
       "kind": "finding",
-      "status": "pass",
+      "status": "borderline",
       "rubric_refs": [
         "RUB-EXTRACT-03",
         "RUB-EXTRACT-10",
@@ -45,7 +46,7 @@
       "chapter": ""
     },
     "EP-INSIGHTS-BOOKS-004": {
-      "title": "B2 — .docx ingestion broken (BLOCKER · [CE])",
+      "title": "B2 — .docx ingestion broken (BLOCKER · [CE] WS1)",
       "kind": "finding",
       "status": "fail",
       "rubric_refs": [
@@ -55,7 +56,7 @@
       "chapter": ""
     },
     "EP-INSIGHTS-BOOKS-005": {
-      "title": "B3 — OpenAI provider unusable → run on Google (decision)",
+      "title": "B3 — OpenAI provider unusable → run on Google (APPROVED)",
       "kind": "finding",
       "status": "info",
       "rubric_refs": [],
@@ -63,7 +64,7 @@
       "chapter": ""
     },
     "EP-INSIGHTS-BOOKS-006": {
-      "title": "B4 — Discovery→Export chain broken (BLOCKER · [CE])",
+      "title": "B4 — Discovery→Export chain broken (BLOCKER · [CE] WS2)",
       "kind": "finding",
       "status": "fail",
       "rubric_refs": [
@@ -73,8 +74,8 @@
       "chapter": ""
     },
     "EP-INSIGHTS-BOOKS-007": {
-      "title": "Q1 — Provenance spans do NOT trace to source (challenges the thesis) ⭐",
-      "kind": "borderline_extraction",
+      "title": "Q1 — Units are FABRICATED, not just mis-spanned (fidelity thesis) ⭐",
+      "kind": "finding",
       "status": "fail",
       "rubric_refs": [
         "RUB-EXTRACT-05",
@@ -85,20 +86,21 @@
       "chapter": ""
     },
     "EP-INSIGHTS-BOOKS-008": {
-      "title": "Q2 — Semantically wrong FOLIO branch mappings (homonyms)",
+      "title": "Q2 — FOLIO IRIs are LLM-HALLUCINATED at scale (~90% wrong)",
       "kind": "mapping_decision",
-      "status": "borderline",
+      "status": "fail",
       "rubric_refs": [
         "RUB-EXTRACT-01",
-        "RUB-EXTRACT-02"
+        "RUB-EXTRACT-02",
+        "RUB-EXTRACT-03"
       ],
       "book": "",
       "chapter": ""
     },
     "EP-INSIGHTS-BOOKS-009": {
-      "title": "Exemplar · advice · Daubert/Frye depositions",
+      "title": "Fail · Daubert advice — 'horrible mapping' (Damien)",
       "kind": "exemplar",
-      "status": "borderline",
+      "status": "fail",
       "rubric_refs": [
         "RUB-EXTRACT-01",
         "RUB-EXTRACT-05",
@@ -108,9 +110,9 @@
       "chapter": "Ch01 — The Advocate"
     },
     "EP-INSIGHTS-BOOKS-010": {
-      "title": "Exemplar · principle · the advocate's goal",
+      "title": "Borderline · principle · 'focus on the advocate's goal'",
       "kind": "exemplar",
-      "status": "pass",
+      "status": "borderline",
       "rubric_refs": [
         "RUB-EXTRACT-01",
         "RUB-EXTRACT-05"
@@ -119,7 +121,7 @@
       "chapter": "Ch01 — The Advocate"
     },
     "EP-INSIGHTS-BOOKS-011": {
-      "title": "Exemplar · pitfall · expert testimony limits",
+      "title": "Fail · pitfall · expert-testimony limits",
       "kind": "exemplar",
       "status": "fail",
       "rubric_refs": [
@@ -131,7 +133,7 @@
       "chapter": "Ch01 — The Advocate"
     },
     "EP-INSIGHTS-BOOKS-012": {
-      "title": "Exemplar · procedural_rule · Rule 26 disclosures",
+      "title": "Fail · Rule 26 — answering 'why Location?'",
       "kind": "exemplar",
       "status": "fail",
       "rubric_refs": [

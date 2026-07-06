@@ -2,41 +2,41 @@
   "campaign": "books",
   "repo": "INSIGHTS",
   "title": "folio-insights — Book-Extraction UAT",
-  "subtitle": "First UAT · one-chapter pipeline de-risk (Trial Advocacy Ch01) · findings, not yet rubric-scored",
-  "generated_at": "2026-07-05T22:30:00Z",
-  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline provenance-alignment fix)",
+  "subtitle": "First UAT · one-chapter de-risk (Trial Advocacy Ch01) · deep-dive: the pipeline is GENERATIVE, not extractive — both the units AND their FOLIO IRIs are largely hallucinated",
+  "generated_at": "2026-07-05T23:15:00Z",
+  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline fix)",
   "spend": {
     "provider": "google",
     "model": "gemini-2.5-flash-lite",
     "usd": 0.75,
-    "notes": "one-chapter de-risk run; ~$10/book → ~$30 est. for all 3 books. Cost is not the constraint; correctness is."
+    "notes": "one-chapter de-risk + review deep-dive; ~$10/book est. Cost is not the constraint; correctness is."
   },
   "summary": {
     "books": 1,
     "chapters": 1,
     "units": 621,
-    "valid_FOLIO_IRIs": 529,
-    "pass": 3,
-    "borderline": 1,
-    "fail": 3
+    "IRIs_wrong_concept_pct": 90,
+    "pass": 2,
+    "borderline": 2,
+    "fail": 7
   },
   "sections": [
     {
       "id": "EP-INSIGHTS-BOOKS-001",
       "kind": "finding",
-      "status": "pass",
-      "title": "Pipeline works end-to-end on real book text",
+      "status": "borderline",
+      "title": "Pipeline RUNS end-to-end — but the output is generative, not extractive",
       "book": "Trial Advocacy",
       "chapter": "Ch01 — The Advocate",
-      "body_md": "The **live v1 pipeline runs end-to-end** on a real chapter and produces good output: **621 knowledge units** (mean confidence 0.87 — 573 high / 44 med / 4 low), **529 distinct valid FOLIO IRIs**, and a SHACL-conformant OWL export. unit_type mix: advice 313 · principle 258 · pitfall 35 · procedural_rule 14 · citation 1. So the core works — the items below are what gate an at-scale run.",
-      "rubric_refs": ["RUB-EXTRACT-08", "RUB-EXTRACT-10"]
+      "body_md": "The plumbing works: `extract`→`discover`→`export` runs on a real chapter and emits **621 units** + a SHACL-conformant OWL file. **But the content fails the rubric wholesale**: the units are largely **LLM-fabricated** (not present in the ingested source — see EP-007) and their FOLIO IRIs are **hallucinated** (see EP-008). So 'the core works' means the pipeline executes; under the locked strict gate, almost nothing here would pass. unit_type mix: advice 313 · principle 258 · pitfall 35 · procedural_rule 14 · citation 1.",
+      "rubric_refs": ["RUB-EXTRACT-06", "RUB-EXTRACT-05", "RUB-EXTRACT-01"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-002",
       "kind": "finding",
-      "status": "pass",
-      "title": "All deterministic oracles PASS",
-      "body_md": "The gestalt's deterministic layer (which can run **before** the rubric locks):\n\n- **folio-python IRI existence + branch consistency** (15-of-529 sample): **15/15 pass**, 0 mismatches (18,326 concepts loaded).\n- **SHACL `export --validate`**: **conforms = TRUE** — Shapes / IRI-Uniqueness / Referential-Integrity / Namespace-Consistency all PASS (67 task classes, 440 triples).\n- **`verify-iris`**: N/A — needs the v2 DID/shard registry, which v1 extract/discover/export don't populate.",
+      "status": "borderline",
+      "title": "Oracle correction — 'IRI exists' ≠ 'IRI correct'",
+      "body_md": "**Correcting my earlier claim.** SHACL structural conformance genuinely PASSES (Shapes / IRI-Uniqueness / Referential-Integrity / Namespace-Consistency; 67 task classes, 440 triples). **But** the folio-python check I first ran verified only that IRIs *exist* — a **deeper concept-match check** (resolve each IRI → compare its real FOLIO label to the stored label) shows **~90% point at the WRONG concept** (EP-008). The IRIs are valid FOLIO strings pointing at unrelated concepts, which is exactly why the weak existence check gave a false green. Lesson baked into the rubric harness: mapping oracles must check concept-match, not existence.",
       "rubric_refs": ["RUB-EXTRACT-03", "RUB-EXTRACT-10", "RUB-EXTRACT-11"]
     },
     {
@@ -44,96 +44,94 @@
       "kind": "finding",
       "status": "pass",
       "title": "B1 — Bridge venv deps undeclared (FIXED this session)",
-      "body_md": "`python-docx`, `rapidfuzz`, `marisa-trie` are imported via the folio-enrich sys.path bridge but were **never declared in folio-insights' manifest**. Their silent absence killed `.docx` ingestion **and** ALL FOLIO IRI matching (every tag degraded to an un-IRI'd proposed_class). **Fixed:** declared as core deps → 529 valid IRIs, 0 spurious proposed classes. Compounded in `docs/solutions/`.",
+      "body_md": "`python-docx`, `rapidfuzz`, `marisa-trie` are imported via the folio-enrich sys.path bridge but were never declared in folio-insights' manifest → silent absence killed `.docx` ingestion **and** folio-python search (which disables the deterministic entity_ruler/semantic tag paths — a contributor to EP-008's LLM-only tagging). **Fixed:** declared as core deps; compounded in `docs/solutions/`.",
       "extracted": "pyproject.toml += python-docx>=1.1.0, rapidfuzz>=3.9.0, marisa-trie>=1.2.0"
     },
     {
       "id": "EP-INSIGHTS-BOOKS-004",
       "kind": "finding",
       "status": "fail",
-      "title": "B2 — .docx ingestion broken (BLOCKER · [CE])",
-      "body_md": "folio-enrich's `WordIngestor` reads only `document.paragraphs`; this book's prose lives in `<w:sdt>` content-controls → **0 chars read** → the pipeline falls back to reading the raw `.docx` ZIP archive as UTF-8 → 'units' of PK-header binary. **Every Trial Advocacy chapter is `.docx`.** Worked around via `<w:t>` XML extraction for the de-risk run. Fix = traverse sdt/tables/textboxes in the ingestor **or** add a folio-insights docx→text preprocessor. Touches pipeline structure + sibling repo → `/ce:plan` next session.",
+      "title": "B2 — .docx ingestion broken (BLOCKER · [CE] WS1)",
+      "body_md": "folio-enrich's `WordIngestor` reads only `document.paragraphs`; this book's prose lives in `<w:sdt>` content-controls → **0 chars read** → the pipeline falls back to reading the raw `.docx` ZIP archive as UTF-8 → 'units' of PK-header binary. **Every Trial Advocacy chapter is `.docx`.** Worked around via `<w:t>` XML extraction for the run. **In `/ce:plan` WS1** (per your note): fix the ingestor (traverse sdt/tables/textboxes) or add a docx→text preprocessor.",
       "rubric_refs": ["RUB-EXTRACT-08"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-005",
       "kind": "finding",
       "status": "info",
-      "title": "B3 — OpenAI provider unusable → run on Google (decision)",
-      "body_md": "folio-enrich's `OpenAICompatProvider` forces `response_format: json_object`, but the extraction prompts never contain the literal word 'json' → **400 on every call** (+ TPM 429s). **Decision: run the campaign on Google** — `GOOGLE_API_KEY` is present + valid and the default `gemini-2.5-flash-lite` works and is cheap. No folio-insights change needed; the upstream prompt fix is folio-enrich's scope."
+      "title": "B3 — OpenAI provider unusable → run on Google (APPROVED)",
+      "body_md": "folio-enrich's `OpenAICompatProvider` forces `response_format: json_object` without the literal word 'json' in the prompt → **400 on every call**. **✅ Damien approved:** run the campaign on the cheap **Gemini Flash** (`gemini-2.5-flash-lite`); `GOOGLE_API_KEY` present + valid. Locked as a config decision — no `/ce:plan` needed."
     },
     {
       "id": "EP-INSIGHTS-BOOKS-006",
       "kind": "finding",
       "status": "fail",
-      "title": "B4 — Discovery→Export chain broken (BLOCKER · [CE])",
-      "body_md": "Discovery's LLM stages call a non-existent `provider.generate()` (providers expose `complete`/`chat`) → they **silently fail** → discovered tasks get **no FOLIO IRIs**; CLI `discover` never writes `review.db`; the OWL serializer then crashes on null `folio_iri`. (The SHACL PASS above required manually seeding review.db + minting task IRIs.) The `.generate()`→`complete/chat` rename may be a one-liner, but the review.db-write + null-IRI handling are structural → `/ce:plan`.",
+      "title": "B4 — Discovery→Export chain broken (BLOCKER · [CE] WS2)",
+      "body_md": "Discovery's LLM stages call a non-existent `provider.generate()` (providers expose `complete`/`chat`) → they **silently fail** → tasks get **no FOLIO IRIs**; CLI `discover` never writes `review.db`; the OWL serializer then crashes on null `folio_iri`. **In `/ce:plan` WS2** (per your note): the `.generate()`→`complete/chat` rename may be a one-liner; the review.db-write + null-IRI handling are structural.",
       "rubric_refs": ["RUB-EXTRACT-13"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-007",
-      "kind": "borderline_extraction",
+      "kind": "finding",
       "status": "fail",
-      "title": "Q1 — Provenance spans do NOT trace to source (challenges the thesis) ⭐",
-      "body_md": "**The most important finding for the rubric.** Units are **LLM-distilled paraphrases**, and their `original_span{start,end}` offsets do **not** point at the source text they summarize. So today the pipeline is closer to *abstractive summarization with a broken back-pointer* than to true extraction. **RESOLVED (locked 2026-07-05): STRICT** — Damien chose that any untraceable claim **fails outright** (`RUB-EXTRACT-05` is now a hard gate). Consequence: the provenance-alignment pipeline fix is the campaign's **critical path** — no chapter can pass until extraction emits true, span-accurate provenance.",
-      "extracted": "Advice unit (conf 0.98): 'Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.'",
-      "source_quote": "span pointed at: ↵The Advocat   ← not the passage the claim came from",
+      "title": "Q1 — Units are FABRICATED, not just mis-spanned (fidelity thesis) ⭐",
+      "body_md": "**The deep-dive makes this worse than reported.** It's not merely that provenance spans are misaligned — the sampled units are **not in the ingested source at all**. 'Daubert/Frye' appears **0×** in Ch01 (the real content is in Ch10 'Experts'); **'Rule 26' appears 0× in the ENTIRE book**. The pipeline is *generating* plausible advocacy content from the LLM's training, not *extracting* it from the book. **RESOLVED (locked): STRICT** — untraceable = fail, so this fails RUB-EXTRACT-05/06 campaign-wide. **`/ce:plan` WS3 (critical path):** re-architect extraction to be source-grounded with verifiable spans; no chapter passes until this lands.",
+      "extracted": "e.g. Rule-26 unit exists in output but 'Rule 26' is nowhere in the book; Daubert unit's content is in Ch10, not the ingested Ch01.",
       "rubric_refs": ["RUB-EXTRACT-05", "RUB-EXTRACT-06", "RUB-EXTRACT-07"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-008",
       "kind": "mapping_decision",
-      "status": "borderline",
-      "title": "Q2 — Semantically wrong FOLIO branch mappings (homonyms)",
-      "body_md": "IRIs are valid FOLIO nodes (deterministic check passes) but the **concept choice** is often a homonym mis-match: 'Expert testimony' → **Location**, 'Rule 26(a)(1)' → **Location**, 'Daubert/Frye' → **Asset Type**. The four-path tagger picks lexically-plausible but semantically wrong concepts. This is the strongest argument for the **FOLIO-MCP semantic gate** (gestalt rule) in judging, and a pipeline-tuning target.",
-      "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-02"]
+      "status": "fail",
+      "title": "Q2 — FOLIO IRIs are LLM-HALLUCINATED at scale (~90% wrong)",
+      "body_md": "**Scale across all 621 units / 2,226 tags:** ~**90% of tags** carry an IRI whose real FOLIO concept ≠ the stored label (valid IRIs → wrong concept); **97% of units** have ≥1; **45% of tags** land in a semantically implausible branch — **Location is the single largest at 31%** (hallucinated IRIs disproportionately collide with country concepts; also Asset Type, Currency, Language).\n\n**Root cause:** in this run every FOLIO tag came from the **LLM path only** (`paths=['llm']`) — the model emitted a plausible *label* beside a *fabricated IRI*; the deterministic entity_ruler/semantic paths never contributed (compounded by B1's missing search deps). One bad IRI even served multiple unrelated labels across units.\n\n**Solution (`/ce:plan` WS4):** the **LLM must never emit IRIs** — it proposes a *label/concept*, then IRI resolution is **deterministic** (folio-python exact/alias) followed by a **FOLIO-MCP semantic rerank** ('is this concept a sensible fit for this advocacy claim?') and validation. This is the gestalt / deterministic-first rule. Damien's corrections seed the regression set.",
+      "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-02", "RUB-EXTRACT-03"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-009",
       "kind": "exemplar",
-      "status": "borderline",
-      "title": "Exemplar · advice · Daubert/Frye depositions",
+      "status": "fail",
+      "title": "Fail · Daubert advice — 'horrible mapping' (Damien)",
       "book": "Trial Advocacy",
       "chapter": "Ch01 — The Advocate",
-      "extracted": "advice (conf 0.98): Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.",
-      "source_quote": "span quote: ↵The Advocat  (Q1 misalignment)",
-      "body_md": "Top FOLIO tag: **Daubert/Frye Standard** · conf 0.98 · branch **Asset Type** (Q2 wrong branch). Good, actionable advice; flagged for span (Q1) + branch (Q2).",
+      "source_quote": "ORIGINAL TEXT: not in Ch01 (0× 'Daubert'). Real content is Ch10 'Experts': “…federal case law regulate expert testimony, including Daubert v. Merrell Dow Pharmaceuticals, 509 U.S. 579 (1993), Kumho Tire…”",
+      "extracted": "UNIT (advice, conf 0.98): 'Obtain full deposition testimony re the factual basis of the expert's opinions for Daubert/Frye motions.'  →  TAG 'Daubert/Frye Standard' IRI R88vPQZIpfowihFD3P0RSJU = FOLIO 'Rye' (Asset Type). Only 'Deposition' tag was correct.",
+      "body_md": "**Original text:** the advice isn't grounded in Ch01 at all (fabricated; real Daubert material is Ch10).\n\n**Problem:** two failures — (a) the *unit* is a hallucination mis-attributed to Ch01; (b) the LLM **hallucinated the IRI** — 'Daubert/Frye Standard' resolves to **'Rye'** (a grain, Asset-Type branch). All tags here came from the LLM path only.\n\n**Suggested solution:** never let the LLM emit IRIs — deterministic folio-python resolution + FOLIO-MCP semantic rerank (WS4). **Your correct mapping — Daubert Motion Practice `RT7xQmfA7w5HT02clIpAe` (Service) — is captured as gold/regression data** (`mapping-corrections.gold.json`). Plus source-grounded extraction (WS3) so fabricated units never appear.",
       "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-05", "RUB-EXTRACT-12"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-010",
       "kind": "exemplar",
-      "status": "pass",
-      "title": "Exemplar · principle · the advocate's goal",
+      "status": "borderline",
+      "title": "Borderline · principle · 'focus on the advocate's goal'",
       "book": "Trial Advocacy",
       "chapter": "Ch01 — The Advocate",
-      "extracted": "principle (conf 0.90): Focus on the advocate's goal.",
-      "source_quote": "span quote: vocate↵↵A. The Goal of the …  (loosely aligned)",
-      "body_md": "Top FOLIO tag: **advocate** · conf 0.90 · branch Service. Reasonable concept; span only loosely aligned.",
+      "extracted": "principle (conf 0.90): 'Focus on the advocate's goal.' → tag 'advocate' (Service).",
+      "body_md": "The only unit whose topic plausibly belongs to Ch01 ('The Advocate'). Concept 'advocate' is reasonable — but given the 90% hallucination rate its IRI is unverified; treat as borderline pending WS4 re-mapping. Illustrates that *some* signal survives; the pipeline isn't uniformly wrong, it's uniformly *unverifiable* today.",
       "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-05"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-011",
       "kind": "exemplar",
       "status": "fail",
-      "title": "Exemplar · pitfall · expert testimony limits",
+      "title": "Fail · pitfall · expert-testimony limits",
       "book": "Trial Advocacy",
       "chapter": "Ch01 — The Advocate",
-      "extracted": "pitfall (conf 0.90): Expert testimony is limited to opinions in reports/discovered docs; no new bases at trial.",
-      "source_quote": "span quote: .Data Availability↵↵D.Q  (Q1 misalignment)",
-      "body_md": "Top FOLIO tag: **Expert testimony** · conf 0.90 · branch **Location** (Q2 wrong branch). Substantively useful pitfall, but both span (Q1) and branch (Q2) are wrong.",
+      "source_quote": "ORIGINAL TEXT: not in Ch01 (14 generic 'expert' mentions, none about report-limited testimony). Nearest real content is Ch03/Ch10 on expert-opinion admissibility (Fed. R. Evid. 702–705); the specific 'no new bases at trial' (a Rule 26(a)(2) concept) is not stated in the book.",
+      "extracted": "UNIT (pitfall, conf 0.90): 'Expert testimony is limited to opinions in reports/discovered docs; no new bases at trial.'  →  'Expert testimony' IRI = FOLIO 'Macao' (Location); 'opinions' = 'British Indian Ocean Territory' (Location).",
+      "body_md": "**Original text:** fabricated — not in the book.\n\n**Problem:** unit not grounded in source; both top tags hallucinate IRIs into the **Location** branch. Note 'Expert testimony' reuses the *same* bad IRI as the Daubert unit → the error is systematic across units.\n\n**Suggested solution:** WS3 (source-grounded extraction) + WS4 (deterministic IRI resolution + semantic rerank). Correct mapping candidates are FOLIO 'Expert Testimony'/'Expert Witness' concepts — confirm in WS4.",
       "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-05", "RUB-EXTRACT-12"]
     },
     {
       "id": "EP-INSIGHTS-BOOKS-012",
       "kind": "exemplar",
       "status": "fail",
-      "title": "Exemplar · procedural_rule · Rule 26 disclosures",
+      "title": "Fail · Rule 26 — answering 'why Location?'",
       "book": "Trial Advocacy",
       "chapter": "Ch01 — The Advocate",
-      "extracted": "procedural_rule (conf 0.95): During discovery, object to untimely witness/exhibit-list disclosures; ensure Rule 26 compliance.",
-      "source_quote": "span quote: .Data Availability↵↵D.Q  (Q1 misalignment)",
-      "body_md": "Top FOLIO tag: **Rule 26(a)(1)** · conf 0.95 · branch **Location** (Q2 wrong branch). High-value rule, correctly typed, but mis-mapped and un-traceable.",
+      "source_quote": "ORIGINAL TEXT: 'Rule 26' appears 0× in the ENTIRE book. The book covers pretrial witness lists / sequestration (Ch03) but never Rule 26(a) discovery-disclosure deadlines. The unit is fabricated.",
+      "extracted": "UNIT (procedural_rule, conf 0.95): 'During discovery, object to untimely witness/exhibit disclosures; ensure Rule 26(a)(1) compliance.'  →  'Rule 26(a)(1)' IRI R53E5e3A8871d86E4f7D1166 = FOLIO 'Russian Federation' (Location); 'exhibit lists' = 'Hawaii State Courts' (Forums); 'exclusion' = 'Slovenia'.",
+      "body_md": "**Answering your question directly:** `unit_type = procedural_rule` **is correct** — that's the folio-insights *unit classification*, and it's right. 'Location' is a **different axis**: it's the FOLIO *branch* of the concept the LLM mapped 'Rule 26(a)(1)' to — IRI `R53E5e3A8871d86E4f7D1166`, which actually resolves to **'Russian Federation'** (Location branch). So the procedural-rule typing is right; the FOLIO *concept* is a hallucinated mismatch — two independent axes.\n\n**Original text:** worse still, 'Rule 26' isn't in the book — the unit is fabricated.\n\n**Suggested solution:** WS4 deterministic IRI resolution + semantic rerank (a real FOLIO disclosure/procedure concept), and WS3 source-grounded extraction so a rule the book never states isn't invented.",
       "rubric_refs": ["RUB-EXTRACT-01", "RUB-EXTRACT-05"]
     },
     {
@@ -141,7 +139,7 @@
       "kind": "finding",
       "status": "info",
       "title": "Deferred v1 debug items — status",
-      "body_md": "- **llm-api-config**: now **confirmed working with real data** (mean conf 0.87, 98% of units tagged) — closable.\n- **corpus-processing-no-extraction** + **create-corpus-silent-fail**: were UI-layer fixes; **not** exercised by this CLI run → still need a browser E2E click-through to fully close.\n- Phase 03 HUMAN-UAT (4 scenarios) + VERIFICATION.md (01/01.1/03): mapped onto the S1–S7 story probes; close during the judging loop."
+      "body_md": "- **llm-api-config**: LLM calls now return data — but the data is hallucinated (EP-007/008), so 'working' means 'wired up', not 'correct'.\n- **corpus-processing-no-extraction** + **create-corpus-silent-fail**: UI-layer fixes; **not** exercised by this CLI run → still need a browser E2E to fully close.\n- Phase 03 HUMAN-UAT + VERIFICATION.md (01/01.1/03): fold into the judging loop after the WS1–WS4 pipeline fixes land."
     }
   ]
 }
