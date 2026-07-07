@@ -346,9 +346,9 @@ class FolioTaggerStage(InsightsPipelineStage):
                             self._label_matches_concept(rc.label, top_match)
                         ):
                             iri = getattr(top_match, "iri", "") or ""
-                            branch = branch or (
-                                getattr(top_match, "branch", "") or ""
-                            )
+                            resolved_branch = getattr(top_match, "branch", "")
+                            if not branch and isinstance(resolved_branch, str):
+                                branch = resolved_branch
                 except Exception:
                     logger.warning(
                         "search_by_label failed for label=%r",
@@ -401,7 +401,16 @@ class FolioTaggerStage(InsightsPipelineStage):
 
         best = 0.0
         for cand in candidates:
-            score = fuzz.token_sort_ratio(wanted, cand.lower())
+            cand_l = cand.lower()
+            # max of token-sort (word-order variants) and partial-ratio
+            # (morphological/stem variants, e.g. "cross-examine" vs
+            # "cross-examination"). partial_ratio rescues genuine noun/verb
+            # forms while the 85 floor still rejects lexically-distant
+            # false-friends (measured: true variants >=96, false-friends <=63).
+            score = max(
+                fuzz.token_sort_ratio(wanted, cand_l),
+                fuzz.partial_ratio(wanted, cand_l),
+            )
             if score > best:
                 best = score
                 if best >= cls._LABEL_IRI_VERIFY_THRESHOLD:
