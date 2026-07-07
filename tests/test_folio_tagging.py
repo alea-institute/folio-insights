@@ -371,3 +371,223 @@ def test_llm_path_low_score_routes_to_proposed_class():
     tags = stage._reconciled_to_tags(reconciled, folio_svc)
     assert tags[0].iri == ""
     assert tags[0].extraction_path == "proposed_class"
+
+
+# ---------- B9 regression: LLM-carried IRIs gated through the verifier ----------
+#
+# Root cause (docs/solutions/llm-path-unverified-iris.md): the base reconciler's
+# embedding triage binds LLM concept_text to a folio_iri, so llm/semantic/
+# heading tags arrive at _reconciled_to_tags ALREADY carrying an IRI and
+# previously skipped _label_matches_concept — emitting country IRIs for
+# advocacy terms (compassion -> Northern Mariana Islands). These lock in the
+# fix: non-entity_ruler IRIs are verified; entity_ruler is trusted.
+
+
+def _concept(iri, preferred_label, alternative_labels=None, branch=""):
+    """A FOLIO concept stub with real string labels (not auto-mocked attrs)."""
+    from unittest.mock import MagicMock
+
+    return MagicMock(
+        iri=iri,
+        preferred_label=preferred_label,
+        folio_pref_label=preferred_label,
+        hidden_label="",
+        alternative_labels=list(alternative_labels or []),
+        branch=branch,
+    )
+
+
+def _folio_svc_with_concepts(concepts_by_iri, search_results=None):
+    """Mock FolioService: get_concept(iri) -> stub; search_by_label -> results."""
+    from unittest.mock import MagicMock
+
+    mock = MagicMock()
+    mock.get_concept.side_effect = lambda iri: concepts_by_iri.get(iri)
+    mock.search_by_label.return_value = search_results or []
+    return mock
+
+
+def test_b9_llm_carried_country_iri_is_dropped_to_proposed_class():
+    """The 'compassion'->country failure class: an LLM tag arriving WITH a
+    country IRI whose concept label does not match the unit label gets its IRI
+    dropped and is demoted to proposed_class (no deterministic re-resolution)."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    country_iri = "https://folio.openlegalstandard.org/RmpNorthernMariana"
+    svc = _folio_svc_with_concepts(
+        {country_iri: _concept(country_iri, "Northern Mariana Islands",
+                               alternative_labels=["MP"], branch="Location")},
+        search_results=[],  # no honest deterministic match for "compassion"
+    )
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri=country_iri,
+            label="compassion",
+            confidence=0.6,
+            contributing_paths=["llm"],
+            branch="Location",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, svc)
+    assert len(tags) == 1
+    assert tags[0].iri == "", "LLM-carried country IRI must be dropped"
+    assert tags[0].extraction_path == "proposed_class"
+    assert tags[0].branch == "", "stale country branch must be cleared"
+
+
+def test_b9_short_country_code_alt_label_no_longer_false_matches():
+    """Calibration item 3: partial_ratio must NOT accept a 2-char country code
+    alt-label ('MP') as a match for 'compassion' (which contains 'mp')."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept = _concept(
+        "https://folio.test/mp", "Northern Mariana Islands",
+        alternative_labels=["MP", "Northern Mariana Is."],
+    )
+    assert FolioTaggerStage._label_matches_concept("compassion", concept) is False
+    # And 'non' must not match 'Lebanon' via containment either.
+    leb = _concept("https://folio.test/lb", "Lebanon", alternative_labels=["LB"])
+    assert FolioTaggerStage._label_matches_concept("non", leb) is False
+
+
+def test_b9_genuine_morphological_variant_still_matches():
+    """Guard against over-correction: long genuine variants still pass
+    (partial_ratio fires when both strings are >=6 chars and length-comparable)."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept = _concept("https://folio.test/cx", "Cross-Examination")
+    assert FolioTaggerStage._label_matches_concept("cross-examine", concept) is True
+
+
+def test_b9_long_substring_containment_no_longer_false_matches():
+    """ce-review hardening: partial_ratio containment of a 6+ char term inside
+    a much longer label ('mariana' inside 'Northern Mariana Islands') must not
+    pass — the length-ratio guard (>=0.6) blocks it."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept = _concept("https://folio.test/mp", "Northern Mariana Islands")
+    assert FolioTaggerStage._label_matches_concept("mariana", concept) is False
+    # 'video' inside 'Montevideo' (ratio 0.5) is likewise blocked.
+    mv = _concept("https://folio.test/mv", "Montevideo")
+    assert FolioTaggerStage._label_matches_concept("video", mv) is False
+
+
+def test_b9_exact_alt_label_abbreviation_still_passes():
+    """Documented trade-off boundary: an abbreviation that IS one of the
+    concept's own labels passes via token_sort_ratio == 100 (no partial_ratio
+    needed); an abbreviation NOT among the labels fails and demotes."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    us = _concept("https://folio.test/us", "United States",
+                  alternative_labels=["US", "USA"])
+    assert FolioTaggerStage._label_matches_concept("US", us) is True
+    # 'writ' is NOT a label of 'Writ of Habeas Corpus' -> rejected (accepted
+    # over-correction: demote to proposed_class rather than trust the IRI).
+    whc = _concept("https://folio.test/whc", "Writ of Habeas Corpus")
+    assert FolioTaggerStage._label_matches_concept("writ", whc) is False
+
+
+def test_b9_llm_wrong_iri_reresolves_to_correct_concept():
+    """A rejected LLM IRI gets a second chance: if the label resolves
+    deterministically to a concept that DOES match, keep the corrected IRI."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    wrong_iri = "https://folio.test/argentina"
+    right_iri = "https://folio.openlegalstandard.org/CasePrep"
+    right = _concept(right_iri, "Case Preparation", branch="Litigation")
+    svc = _folio_svc_with_concepts(
+        {wrong_iri: _concept(wrong_iri, "Argentina", alternative_labels=["AR"],
+                             branch="Location")},
+        search_results=[(right, 0.9)],  # honest deterministic match
+    )
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri=wrong_iri,
+            label="Case Preparation",
+            confidence=0.6,
+            contributing_paths=["llm"],
+            branch="Location",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, svc)
+    assert tags[0].iri == right_iri, "wrong IRI must be re-resolved to the right one"
+    assert tags[0].branch == "Litigation"
+    assert tags[0].extraction_path == "llm"  # concept source preserved
+
+
+def test_b9_entity_ruler_iri_is_trusted_not_reverified():
+    """entity_ruler (exact/alias) tags keep their IRI even if a naive verifier
+    would reject them — blanket re-verification strips good ruler tags."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    ruler_iri = "https://folio.openlegalstandard.org/RulerExact"
+    # get_concept deliberately returns a mismatching label; must be ignored.
+    svc = _folio_svc_with_concepts(
+        {ruler_iri: _concept(ruler_iri, "Totally Different Label")}
+    )
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri=ruler_iri,
+            label="Voir Dire",
+            confidence=0.72,
+            contributing_paths=["entity_ruler"],
+            branch="Litigation",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, svc)
+    assert tags[0].iri == ruler_iri, "entity_ruler IRI must be trusted"
+    assert tags[0].extraction_path == "entity_ruler"
+    svc.get_concept.assert_not_called()
+
+
+def test_b9_semantic_iri_that_matches_label_is_kept():
+    """A non-ruler (semantic) IRI whose concept genuinely matches the label
+    passes verification and is kept — the fix must not over-correct."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    sem_iri = "https://folio.openlegalstandard.org/Deposition"
+    svc = _folio_svc_with_concepts(
+        {sem_iri: _concept(sem_iri, "Deposition", branch="Litigation")}
+    )
+
+    stage = FolioTaggerStage()
+    reconciled = [
+        ReconciledConcept(
+            iri=sem_iri,
+            label="Deposition",
+            confidence=0.7,
+            contributing_paths=["semantic"],
+            branch="Litigation",
+        )
+    ]
+
+    tags = stage._reconciled_to_tags(reconciled, svc)
+    assert tags[0].iri == sem_iri
+    assert tags[0].extraction_path == "semantic"
+
+
+def test_b9_verify_iri_concept_rejects_on_lookup_failure():
+    """If get_concept raises or returns None, the IRI is rejected (never kept
+    on the strength of a check that could not run)."""
+    from unittest.mock import MagicMock
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+
+    raising = MagicMock()
+    raising.get_concept.side_effect = RuntimeError("ontology unavailable")
+    assert stage._verify_iri_concept("x", "https://folio.test/x", raising) is False
+
+    missing = MagicMock()
+    missing.get_concept.return_value = None
+    assert stage._verify_iri_concept("x", "https://folio.test/x", missing) is False

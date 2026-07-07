@@ -334,9 +334,31 @@ class FolioTaggerStage(InsightsPipelineStage):
             else:
                 primary_path = "unknown"
 
-            # Resolve IRI via FolioService if the reconciled concept lacks one
             iri = rc.iri
             branch = rc.branch
+
+            # B9 guard — verify IRIs carried by non-deterministic paths.
+            # The base reconciler's embedding triage binds LLM concept_text to
+            # a folio_iri, so ``llm``/``semantic``/``heading_context`` concepts
+            # arrive here *already carrying an IRI* and previously bypassed the
+            # concept-label verifier entirely — emitting country IRIs for
+            # advocacy terms (compassion -> Northern Mariana Islands; 56.6% of
+            # Ch01 v4 tags were label<->IRI mismatches). Route every non-ruler
+            # IRI through the SAME verifier the empty-IRI resolution path uses;
+            # on failure drop the IRI (re-resolved deterministically below, or
+            # demoted to proposed_class) — never silently passed. entity_ruler
+            # (exact/alias) is trusted and never re-verified: blanket
+            # re-verification strips good ruler tags and leaves units tagless
+            # (docs/solutions/llm-path-unverified-iris.md, items 1-2).
+            if iri and primary_path != "entity_ruler":
+                if not self._verify_iri_concept(rc.label, iri, folio_service):
+                    iri = ""
+                    branch = ""
+
+            # Resolve IRI via FolioService if the reconciled concept lacks one
+            # (originally-empty LLM labels, or an IRI just rejected above — a
+            # rejected tag gets a second chance at a *correct* IRI via
+            # deterministic label search before falling through to proposed).
             if not iri and rc.label and folio_service is not None:
                 try:
                     results = folio_service.search_by_label(rc.label)
@@ -373,6 +395,35 @@ class FolioTaggerStage(InsightsPipelineStage):
 
         return tags
 
+    def _verify_iri_concept(
+        self, label: str, iri: str, folio_service: Any
+    ) -> bool:
+        """True iff the concept at ``iri`` is genuinely *about* ``label``.
+
+        Gates IRIs carried by non-deterministic paths (llm / semantic /
+        heading_context) through the same concept-label verifier used for
+        empty-IRI resolution. Fetches the concept once (in-memory over the
+        loaded ontology) and delegates to ``_label_matches_concept``.
+
+        On any lookup failure the IRI is *rejected* (returns False) rather
+        than trusted: B9's whole failure mode was wrong IRIs surviving a check
+        that never ran, so a check that cannot run must not green-light the
+        IRI. The caller then re-resolves the label deterministically or routes
+        it to proposed_class. (docs/solutions/llm-path-unverified-iris.md.)
+        """
+        if not iri or folio_service is None:
+            return False
+        try:
+            concept = folio_service.get_concept(iri)
+        except Exception:
+            logger.debug(
+                "IRI verification get_concept failed for %s", iri, exc_info=True
+            )
+            return False
+        if concept is None:
+            return False
+        return self._label_matches_concept(label, concept)
+
     @classmethod
     def _label_matches_concept(cls, label: str, concept: Any) -> bool:
         """True iff ``concept``'s own labels genuinely correspond to ``label``.
@@ -402,15 +453,30 @@ class FolioTaggerStage(InsightsPipelineStage):
         best = 0.0
         for cand in candidates:
             cand_l = cand.lower()
-            # max of token-sort (word-order variants) and partial-ratio
-            # (morphological/stem variants, e.g. "cross-examine" vs
-            # "cross-examination"). partial_ratio rescues genuine noun/verb
-            # forms while the 85 floor still rejects lexically-distant
-            # false-friends (measured: true variants >=96, false-friends <=63).
-            score = max(
-                fuzz.token_sort_ratio(wanted, cand_l),
-                fuzz.partial_ratio(wanted, cand_l),
-            )
+            # token_sort_ratio handles word-order variants and is always safe.
+            score = float(fuzz.token_sort_ratio(wanted, cand_l))
+            # partial_ratio rescues genuine morphological/stem variants
+            # ("cross-examine" vs "cross-examination") but spuriously returns
+            # 100 whenever the shorter string is a substring of the longer —
+            # exactly how B9's country false-friends slipped through
+            # ("compassion" contains "mp" → 2-char country code "MP";
+            # "non" is inside "Lebanon"; "mariana" is inside "Northern
+            # Mariana Islands"). Only trust it when containment is meaningful:
+            # both strings >= 6 chars AND comparable lengths (shorter/longer
+            # >= 0.6). True variants pass ("cross-examine"/"cross-examination"
+            # ratio 0.76); accidental containment is blocked ("mariana"/
+            # "northern mariana islands" 0.29, "video"/"montevideo" 0.5).
+            # Trade-off accepted (ce-review'd): a short abbreviation NOT among
+            # the concept's own labels (e.g. LLM label "writ" bound to "Writ
+            # of Habeas Corpus") now fails verification and demotes to
+            # proposed_class — per the B9 design an unverifiable IRI is never
+            # silently passed. Exact label/alias matches (incl. ISO codes
+            # carried as alternative_labels) still pass via token_sort_ratio
+            # == 100 above. (docs/solutions/llm-path-unverified-iris.md, item 3.)
+            shorter = min(len(wanted), len(cand_l))
+            longer = max(len(wanted), len(cand_l))
+            if shorter >= 6 and (shorter / longer) >= 0.6:
+                score = max(score, float(fuzz.partial_ratio(wanted, cand_l)))
             if score > best:
                 best = score
                 if best >= cls._LABEL_IRI_VERIFY_THRESHOLD:
