@@ -13,7 +13,6 @@ Emits a compact JSON/text summary. Reads bulk data itself so callers don't have 
 """
 from __future__ import annotations
 
-import base64
 import json
 import sys
 from pathlib import Path
@@ -37,24 +36,26 @@ def load_units(path: str) -> list[dict]:
 
 
 def reingest_sources(source_dir: str) -> dict[str, str]:
-    """Reproduce ingested text per source file (keyed by resolved abs path)."""
-    from app.models.document import DocumentInput
-    from app.services.ingestion.registry import ingest
+    """Reproduce ingested text per source file (keyed by resolved abs path).
 
-    text_ext = {".md", ".markdown", ".txt", ".text"}
+    Uses the *same* path the extraction pipeline uses — ``IngestionBridge``,
+    which passes an explicit ``DocumentFormat`` so folio-enrich routes .docx/.pdf
+    to their real ingestors (WordIngestor/PDF) instead of returning the raw
+    base64 string as "text". Calling ``registry.ingest`` with base64 but no
+    format silently returns the undecoded base64 (a ~199k-char string for a 150k
+    .docx), which false-fails the RUB-05 anchor gate for every binary source.
+    """
+    from folio_insights.services.bridge.ingestion_bridge import IngestionBridge
+
+    bridge = IngestionBridge()
     out: dict[str, str] = {}
     for p in sorted(Path(source_dir).rglob("*")):
         if not p.is_file():
             continue
         key = str(p.resolve())
         try:
-            if p.suffix.lower() in text_ext:
-                # Text formats: content is raw text (the ingestor does not base64-decode).
-                out[key] = ingest(DocumentInput(content=p.read_text(encoding="utf-8", errors="replace"), filename=p.name))
-            else:
-                # Binary formats (.docx/.pdf): content is base64 bytes.
-                b64 = base64.b64encode(p.read_bytes()).decode()
-                out[key] = ingest(DocumentInput(content=b64, filename=p.name))
+            text, _elements = bridge.detect_and_ingest(p)
+            out[key] = text or ""
         except Exception as e:  # noqa: BLE001
             out[key] = ""
             print(f"  (reingest failed for {p.name}: {e})", file=sys.stderr)
