@@ -96,3 +96,11 @@ files_changed:
   - viewer/src/lib/stores/corpus.ts
   - viewer/src/lib/components/CorpusSidebar.svelte
   - viewer/src/lib/components/ConfirmDialog.svelte
+
+## 2026-07-07 — VERIFICATION STATUS (books-UAT campaign, Fable)
+The CLI pipeline (extract→discover→export) is now confirmed working end-to-end on real book
+text, which exercises the extraction/discovery layers this item touched. However, the
+remaining verification surface for this item is **UI-layer** (Vite proxy port + Review-page
+rendering / corpus-upload flow) and requires a **browser E2E** pass — NOT exercised by the CLI
+run. **Deferred to a browser session** (chrome-devtools MCP). Code fix remains resolved by
+inspection; live UI confirmation pending.

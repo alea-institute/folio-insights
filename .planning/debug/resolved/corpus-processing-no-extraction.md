@@ -135,3 +135,11 @@ files_changed:
 - viewer/src/routes/+page.svelte
 - viewer/src/lib/components/FolioTree.svelte
 - tests/test_review_api.py
+
+## 2026-07-07 — VERIFICATION STATUS (books-UAT campaign, Fable)
+The CLI pipeline (extract→discover→export) is now confirmed working end-to-end on real book
+text, which exercises the extraction/discovery layers this item touched. However, the
+remaining verification surface for this item is **UI-layer** (Vite proxy port + Review-page
+rendering / corpus-upload flow) and requires a **browser E2E** pass — NOT exercised by the CLI
+run. **Deferred to a browser session** (chrome-devtools MCP). Code fix remains resolved by
+inspection; live UI confirmation pending.

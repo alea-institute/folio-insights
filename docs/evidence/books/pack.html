@@ -689,14 +689,14 @@ const PACK_DATA = /*__PACK_DATA__*/ {
   "campaign": "books",
   "repo": "INSIGHTS",
   "title": "folio-insights — Book-Extraction UAT",
-  "subtitle": "First UAT · one-chapter de-risk (Trial Advocacy Ch01) · deep-dive: the pipeline is GENERATIVE, not extractive — both the units AND their FOLIO IRIs are largely hallucinated",
-  "generated_at": "2026-07-05T23:15:00Z",
-  "rubric_version": "extraction-quality-v1 — LOCKED 2026-07-05 (STRICT fidelity gate; scoring pending the pipeline fix)",
+  "subtitle": "Fixes B2/B4/Q1 shipped + validated; rubric v1.0 locked; first judged story = FAIL (0.38) with B5/B6 root-caused",
+  "generated_at": "2026-07-07",
+  "rubric_version": "extraction-quality-v1.0 — LOCKED 2026-07-07 by Fable (delegated by Damien); HYBRID-STRICT anchoring; pass = all gates + weighted normalized >=0.80/story",
   "spend": {
     "provider": "google",
     "model": "gemini-2.5-flash-lite",
-    "usd": 0.75,
-    "notes": "one-chapter de-risk + review deep-dive; ~$10/book est. Cost is not the constraint; correctness is."
+    "usd": 1.0,
+    "notes": "cumulative: de-risk ~$0.75 (session 1) + ~$0.25 this session (666 calls: killed full-chapter run + 7k-char slice extract+discover+export). Full chapter extraction is wall-clock-bound by CPU Tier-2 boundary detection (B7), not cost. ~$30 est. for full 3-book pass remains cost-approved; queued as QA go/no-go given B5/B6."
   },
   "summary": {
     "books": 1,
@@ -861,6 +861,98 @@ const PACK_DATA = /*__PACK_DATA__*/ {
       "status": "info",
       "title": "Deferred v1 debug items — status",
       "body_md": "- **llm-api-config**: LLM calls now return data — but the data is hallucinated (EP-007/008), so 'working' means 'wired up', not 'correct'.\n- **corpus-processing-no-extraction** + **create-corpus-silent-fail**: UI-layer fixes; **not** exercised by this CLI run → still need a browser E2E to fully close.\n- Phase 03 HUMAN-UAT + VERIFICATION.md (01/01.1/03): fold into the judging loop after the WS1–WS4 pipeline fixes land."
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-014",
+      "kind": "finding",
+      "status": "pass",
+      "title": "B2 FIXED + VALIDATED — .docx `<w:sdt>` content controls now ingest",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "folio-enrich `WordIngestor` now walks `word/document.xml` for all `w:p` (recursing through `w:sdt`/`w:sdtContent`, tables, text boxes) instead of `document.paragraphs`. **Validated on the real Trial Advocacy Ch01 .docx: 119,594 chars of real prose extracted (was 0 chars → raw ZIP bytes).** Nested-`w:p` (text-box) double-count fixed after /ce:review. folio-enrich branch `fix/word-ingestor-sdt-content-controls`; 27 ingestion tests pass.",
+      "rubric_refs": [
+        "RUB-EXTRACT-05"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-015",
+      "kind": "finding",
+      "status": "pass",
+      "title": "B4 FIXED + VALIDATED — discovery→export chain works end-to-end",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "B4a: discovery LLM stages called non-existent `provider.generate()` → renamed to `complete()` (3 sites). B4b: CLI `discover` never wrote `review.db` → added `persist_discovery` (canonical schema relocated to `folio_insights.persistence.review_db`; api re-exports). B4c: OWL serializer crashed on null `folio_iri` → guarded. **Validated on the slice: discover wrote review.db (10 tasks, 99 unit-links), export produced OWL+TTL despite 10 null-IRI proposed-class tasks (no crash), SHACL report all 4 checks PASS.** 1007-test suite green; /ce:reviewed.",
+      "rubric_refs": [
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-016",
+      "kind": "finding",
+      "status": "pass",
+      "title": "Q1 FIXED + VALIDATED — every unit now carries a VERIFIABLE source anchor",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "New `services/anchoring.py` resolves each unit's verbatim boundary text against the ingested source (exact match, else `rapidfuzz.partial_ratio_alignment` >=0.85), storing a real char-span + `source_snippet` + `anchor_verified` + `anchor_score` on `KnowledgeUnit` — replacing the synthetic running offsets that never sliced the claimed text. **Deterministic oracle on the slice: 99/99 units independently anchor-verified (snippet matches re-ingested source), spans slice non-empty, mean score 1.0. RUB-EXTRACT-05 gate PASSES.** This was the campaign's critical path.",
+      "rubric_refs": [
+        "RUB-EXTRACT-05"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-017",
+      "kind": "finding",
+      "status": "fail",
+      "title": "B5 NEW BLOCKER — entity_ruler bridge stale after folio-enrich reorg → FOLIO mapping broken (Q2 root cause)",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "The folio-insights bridge imports `app.services.concept.entity_ruler.AhoCorasickMatcher`, but folio-enrich was reorganized (class moved to `app.services.matching.aho_corasick`, API changed `find_matches`→`search` + explicit pattern-building). The deterministic entity_ruler IRI path silently dies (`ModuleNotFoundError`, per-unit-caught), forcing the LLM/semantic fallback. **Consequence (MCP-verified on 18 distinct IRIs): ~60% map to the WRONG FOLIO concept — 6 resolve to *countries* (Argentina, Germany, Russia…), others to currencies/industries; the same IRI is reused across unrelated labels.** In discovery, `folio_mapping` mapped **0 candidates** → all tasks null-IRI → empty OWL. '245/245 IRIs resolve' is true but hollow — they resolve to wrong concepts. **#1 blocker to a rubric pass. = WS4 deterministic-IRI resolution.**",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-02",
+        "RUB-EXTRACT-03"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-018",
+      "kind": "finding",
+      "status": "fail",
+      "title": "B6 NEW BLOCKER — heading-as-unit → distiller FABRICATION (RUB-06 gate)",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "Boundary detection emits TOC/heading-only lines as units; the distiller then manufactures 'insight' from non-substantive input, **fabricating legal authority absent from the source**: e.g. unit [83] 'file by deadline in **Rule 56(c)**' sourced from `—T.S. Eliot`; unit [2] '**FRE 404(a)(1)**' from the bare heading `C. Character Traits`; 'N/A' shipped as a unit. Fabricated citations = **automatic story FAIL** (RUB-EXTRACT-06, zero tolerance). Note: amplified by a deliberately TOC-heavy slice, but the distiller must not invent authority from heading-only input, and boundary detection should not unit-ize headings/TOC. Fix: gate the distiller on substantive input + drop heading/TOC boundaries.",
+      "rubric_refs": [
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-07",
+        "RUB-EXTRACT-09"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-019",
+      "kind": "finding",
+      "status": "fail",
+      "title": "B7 PERF — boundary detection stalls on very large single elements (at-scale blocker)",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "The full 119k-char Ch01 .docx parsed into only 13 structured elements (some huge). Tier-2 semantic boundary detection then ran >11 min CPU-bound with no checkpoint (killed). A 7k-char slice completed boundary detection in **4.6s**. So cost is fine but **wall-clock scales pathologically with giant elements** — blocks the at-scale 3-book judged pass in a single session. Fix candidates: cap/segment oversized elements before Tier-2; batch encode; make Tier-3 timeout non-blocking.",
+      "rubric_refs": [
+        "RUB-EXTRACT-08"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-020",
+      "kind": "finding",
+      "status": "fail",
+      "title": "JUDGED RESULT — S4 fidelity story on Ch01 slice: FAIL (~0.38; RUB-06 gate)",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (slice)",
+      "body_md": "First judged score under the locked v1.0 rubric (fixed pipeline, 7k real-prose slice). **Deterministic gates PASS**: RUB-05 anchor 99/99 verified; RUB-03 IRI-resolvable 245/245; SHACL RUB-10/11 all PASS. **Probabilistic (LLM+FOLIO-MCP) FAIL**: RUB-06 fabrication = FAIL (≥2 fabricated citations) → automatic story fail; RUB-01 concept-fit ~0.33 (B5); RUB-07 ~1; RUB-09/RUB-12 ~1 (heading filler). Weighted ≈0.38, far below the 0.80 bar. **Key validation: the rubric design worked** — the cheap oracles (anchor, IRI-existence) passed while the output was substantively unusable; the MCP concept-fit + fabrication gates caught it. Verdict: the shipped fixes (B2/B4/Q1) are confirmed working; the pipeline still fails the rubric pending B5 (IRI mapping) + B6 (fabrication).",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-10"
+      ]
     }
   ]
 };

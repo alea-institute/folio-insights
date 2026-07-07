@@ -50,3 +50,4 @@ ci/__pycache__/
 #     --profile phase-0-gate --out fixtures/bench.nq
 fixtures/bench.nq
 
+staging/

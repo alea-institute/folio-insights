@@ -68,3 +68,12 @@ root_cause: Two compounding issues: (1) The anthropic Python SDK is not installe
 fix: Changed default llm_provider from "anthropic" to "google" and llm_model from "claude-sonnet-4-6" to "gemini-2.5-flash" in config.py. The Google provider only needs httpx (already installed as a dependency) and GOOGLE_API_KEY (already set in the environment).
 verification: Self-verified: (1) LLMBridge resolves to GoogleProvider correctly, (2) all three LLM task types return valid structured JSON, (3) 182 tests pass with no regressions. Awaiting human verification of full pipeline re-run.
 files_changed: [src/folio_insights/config.py]
+
+## 2026-07-07 — LIVE-DATA VERIFICATION (books-UAT campaign, Fable)
+Re-verified with a real extraction run (Google gemini-2.5-flash-lite) on a Trial Advocacy
+Ch01 slice: all three LLM stages executed successfully — distiller (103 units), knowledge_classifier
+(103 units), folio_tagger (245 tags) — producing non-empty distilled text, unit_types, and
+FOLIO tags with real confidence. **CLOSED: confirmed working with live data.** (Separate finding
+B5: the entity_ruler *concept-mapping* path is degraded by a folio-enrich reorg — see
+docs/solutions/sys-path-bridge-staleness.md — but the LLM configuration/plumbing this item
+tracked is verified working.)
