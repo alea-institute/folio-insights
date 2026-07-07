@@ -8,16 +8,16 @@
  "spend": {
   "provider": "google",
   "model": "gemini-2.5-flash-lite",
-  "usd": 1.0,
-  "notes": "~$1 session 3 (one full-chapter extract 9min + discover 18min on flash-lite; no token logging). ~$30 for the 3-book S1–S7 pass remains cost-approved but QUEUED (not run — Damien QA r2-q6)."
+  "usd": 2.5,
+  "notes": "~$1 session 3 + ~$1.50 session 4 (one extract 9min + two discovers ~32min total on flash-lite; ~4,500 LLM calls; no token logging). ~$30 3-book S1-S7 pass remains cost-approved and QUEUED — gate is now GREEN (B9 fixed, Ch01 v5 cleared 0.827); awaiting Damien's go."
  },
  "summary": {
   "books": 1,
   "chapters": 1,
-  "units": 367,
-  "IRIs_wrong_concept_pct": 23,
-  "pass": 0,
-  "borderline": 1,
+  "units": 372,
+  "IRIs_wrong_concept_pct": 5,
+  "pass": 1,
+  "borderline": 0,
   "fail": 0
  },
  "sections": [
@@ -307,6 +307,37 @@
    "body_md": "**Oracle repair:** `scripts/uat_det_oracle.py` fed base64 to `registry.ingest()` with no format → folio-enrich returned the undecoded base64 as \"text\" → the RUB-05 anchor gate **false-failed 100% of .docx units**. Now reingests via `IngestionBridge` (the pipeline's own path) — this bug would otherwise have poisoned the entire 3-book pass.\n\n**3-book pass:** deliberately **not run** this session (Damien QA r2-q6 scope change — don't spend ~$30 until a chapter passes). Ready-to-run runbook: `docs/campaigns/books-3book-pass-RUNBOOK.md`, ⛔-gated on B9 fixed + Ch01 re-judged clean, with exact commands/config/per-story matrix/spend and a one-command next-session start.",
    "rubric_refs": [
     "RUB-EXTRACT-05"
+   ]
+  },
+  {
+   "id": "EP-INSIGHTS-BOOKS-024",
+   "kind": "finding",
+   "status": "pass",
+   "title": "B9 FIXED + Ch01 v5 JUDGED: weighted 0.827, ALL GATES PASS — first chapter to CLEAR the locked rubric",
+   "book": "Trial Advocacy",
+   "chapter": "Ch01 (full, 372 units, v5)",
+   "body_md": "**B9 fix (`ce860d4`):** every IRI carried by a non-`entity_ruler` path (llm/semantic/heading) now routes through the same concept-label verifier as empty-IRI resolution — on failure the IRI is dropped, the label re-resolved deterministically, else demoted to `proposed_class`. Never silently passed. `partial_ratio` calibrated (both strings ≥6 chars AND length-ratio ≥0.6) to kill the country-code and containment false-friend classes. ce-review'd (no blockers); 9 regression tests; suite 1038 pass.\n\n**B9 verification (`scripts/uat_concept_verify.py`, LLM path v4→v5):** concept-mismatch **75.7% → ~5.2% true** (985/1301 → 16/306; 67 more flags are raw-`folio`-pkg null-label measurement artifacts); country mismaps **693 (53.3%) → ~2** (residual = exact-alias homonym \"AI\"→Anguilla, an ontology collision, not a bypass). 1109/2258 tags now route to proposed_class (was 28).\n\n**Ch01 v5 judged vs LOCKED rubric v1.0 — CLEARS: weighted normalized 0.827 (bar 0.80; v4 = 0.787, v2 = 0.38).**\n\n**All 4 GATES PASS:** RUB-05 anchor **372/372** (mean 1.0, min 0.998) · RUB-06 **0 fabricated** (9/9 citation-bearing units grounded incl. abbreviation↔spelled-out) · RUB-10 SHACL PASS · RUB-11 structural PASS — on a **non-trivial** export (22 classes / 248 triples).\n\n**Per-criterion (weight):** 01 concept-fit 1.70 (10) · 02 granularity 3.0 (6) · 03 IRI-valid 3.0 (5, 100%) · 04 proposed-class 2.10 (4) · 05 anchoring 2.76 (10) · 06 no-fabrication 3.0 (12) · 07 compression 2.40 (8) · 08 completeness 3.0 (14, 97.7% of 86 headings) · 09 precision 1.0 (6, 1 junk + 2 dups) · 10 SHACL 3.0 (6) · 11 structural 3.0 (4) · 12 actionability 1.70 (6) · 13 discoverability 1.85 (5) · 14 calibration 2.35 (4). Proposed-class bonus (+0.10 cap, 17/20 sampled proposals genuine gaps) would lift to ~0.93 — NOT included in the 0.827 headline.\n\n**Honest residuals** (improvement candidates, not blockers): RUB-01 error mode is now FOLIO alternative-label collisions (\"charge\"→Encumbrance) — needs definition-level judging; RUB-09 junk (1 \"N/A\" unit, 2 near-dups); RUB-12/13 dragged by orphan-snap dump nodes (\"Advocacy skills\" holds 91 units) and zero link confidences.",
+   "rubric_refs": [
+    "RUB-EXTRACT-01",
+    "RUB-EXTRACT-05",
+    "RUB-EXTRACT-06",
+    "RUB-EXTRACT-08",
+    "RUB-EXTRACT-10",
+    "RUB-EXTRACT-11",
+    "RUB-EXTRACT-13"
+   ]
+  },
+  {
+   "id": "EP-INSIGHTS-BOOKS-025",
+   "kind": "finding",
+   "status": "info",
+   "title": "B9 follow-on: empty-IRI proposed tags outvoted real IRIs in task FOLIO mapping — OWL export emptied, SHACL passed trivially",
+   "book": "Trial Advocacy",
+   "chapter": "Ch01 v5 discovery",
+   "body_md": "The B9 demotions (28 → 1109 proposed_class tags) exposed a latent `FolioMappingStage` bug: **every tag voted in the most-frequent-IRI election, including `iri=''` proposals**, which all pool into one bucket. `''` won every election → **0/42 tasks mapped** (v4: 22/22) → OWL export **0 classes / 13 triples** — and the SHACL report still said PASS, because **an empty graph conforms trivially**. Caught only by comparing export statistics against v4 (22 classes / 235 triples).\n\n**Fix (`5ec1e23`):** empty-IRI tags no longer vote; all-proposed candidates route to `proposed_siblings`. Re-run: 22/22 tasks mapped, 22 classes / 248 triples, all checks PASS meaningfully. 2 regression tests.\n\n**Lessons compounded** (`docs/solutions/proposed-tags-outvote-task-mapping.md`): (1) a trivially-green gate is a red flag — deterministic gates need a non-triviality check vs the prior run; (2) majority-vote aggregations must exclude sentinel values; (3) a fix that shifts an output distribution breaks consumers tuned to the old distribution.",
+   "rubric_refs": [
+    "RUB-EXTRACT-10",
+    "RUB-EXTRACT-11"
    ]
   }
  ]

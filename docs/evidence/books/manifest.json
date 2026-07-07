@@ -6,10 +6,10 @@
   "summary": {
     "books": 1,
     "chapters": 1,
-    "units": 367,
-    "IRIs_wrong_concept_pct": 23,
-    "pass": 0,
-    "borderline": 1,
+    "units": 372,
+    "IRIs_wrong_concept_pct": 5,
+    "pass": 1,
+    "borderline": 0,
     "fail": 0
   },
   "sections": {
@@ -264,6 +264,33 @@
       ],
       "book": "(all)",
       "chapter": "—"
+    },
+    "EP-INSIGHTS-BOOKS-024": {
+      "title": "B9 FIXED + Ch01 v5 JUDGED: weighted 0.827, ALL GATES PASS — first chapter to CLEAR the locked rubric",
+      "kind": "finding",
+      "status": "pass",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-08",
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11",
+        "RUB-EXTRACT-13"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (full, 372 units, v5)"
+    },
+    "EP-INSIGHTS-BOOKS-025": {
+      "title": "B9 follow-on: empty-IRI proposed tags outvoted real IRIs in task FOLIO mapping — OWL export emptied, SHACL passed trivially",
+      "kind": "finding",
+      "status": "info",
+      "rubric_refs": [
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 v5 discovery"
     }
   }
 }

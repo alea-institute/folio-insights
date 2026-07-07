@@ -9,23 +9,26 @@ as a one-session start. **This is the next session's entry point** once the gate
 
 ---
 
-## ⛔ DO NOT RUN UNTIL THIS GATE IS GREEN
+## ✅ GATE GREEN (2026-07-07, session 4) — Ch01 CLEARED — pass ready on approval
 
-The three-book pass costs ~$30 and takes hours. Running it before the pipeline can pass a
-single chapter wastes both. **Precondition to start:**
+**Both preconditions met; the pass itself stays QUEUED per Damien's round-2 q6 (spend ~$30
+only on his go).**
 
-1. **B9 fixed** — the LLM/semantic tagging path must stop emitting unverified FOLIO IRIs.
-   Session-3 finding: 56.6% of Ch01 tags (1234/2179) fail concept-label verification;
-   ~23% (508) map advocacy concepts to **countries** (the "Location" branch). Root cause +
-   fix in `docs/solutions/llm-path-unverified-iris.md`. The deterministic `entity_ruler`
-   path is clean (876/878) — the fix is to gate the **LLM-carried IRIs** through the same
-   concept-label verifier that already guards empty-IRI resolution in
-   `folio_tagger._reconciled_to_tags`, calibrated so it does not strip good `entity_ruler`
-   tags.
-2. **Ch01 re-judged clean** — re-extract Ch01 (below), re-run the oracle + LLM/MCP judges,
-   confirm **all gates + weighted ≥ 0.80** (rubric `docs/rubrics/extraction-quality-v1.md`).
+1. **B9 FIXED** (`ce860d4`) — LLM-carried IRIs now gate through the concept-label verifier
+   (`docs/solutions/llm-path-unverified-iris.md`, status FIXED). Measured on Ch01 v5 vs v4
+   (LLM path): concept-mismatch 75.7% → ~5.2% true; country mismaps 693 → ~2. Follow-on
+   discovery bug also fixed (`5ec1e23`, `docs/solutions/proposed-tags-outvote-task-mapping.md`)
+   — empty-IRI proposed tags no longer outvote real IRIs in task mapping (v5: 22/22 tasks
+   mapped, OWL 22 classes / 248 triples).
+2. **Ch01 v5 JUDGED CLEAN — weighted 0.827 ≥ 0.80, ALL GATES PASS** (RUB-05 anchor 372/372 ·
+   RUB-06 zero fabrication · RUB-10/11 SHACL non-trivial), completeness 3.0 ≥ 2. Full score
+   sheet: evidence pack EP-INSIGHTS-BOOKS-024. New oracle for the concept-fit signal:
+   `scripts/uat_concept_verify.py`.
 
-Only then proceed.
+On Damien's approval, proceed with the per-slice commands below. Run
+`scripts/uat_concept_verify.py` per slice alongside the det oracle (non-ruler mismatch should
+stay low; a spike = B9-class regression). **Also compare each slice's export statistics
+(classes/triples) against expectations — an empty graph passes SHACL trivially.**
 
 ---
 
