@@ -3,6 +3,21 @@
 _Compound learning, Lane 2 session 3 (2026-07-07). This is the single blocker that keeps Ch01
 from clearing the locked rubric after B5/B6/B7 landed._
 
+> **STATUS: FIXED (session 4, 2026-07-07, commit `ce860d4`).** Implemented as designed below,
+> plus ce-review hardening: `partial_ratio` gated behind BOTH strings >= 6 chars AND
+> length-ratio >= 0.6 (kills the short-code class "MP"/"AL" AND the long-containment class
+> "mariana" in "Northern Mariana Islands"). `entity_ruler` stays trusted; a rejected IRI is
+> re-resolved deterministically before demotion to `proposed_class`; a failed concept lookup
+> REJECTS (a check that cannot run must not green-light an IRI). 9 regression tests.
+> **Measured on Ch01 v5 vs v4** (`scripts/uat_concept_verify.py`, LLM path): concept-mismatch
+> 985/1301 (75.7%) → 83/306 raw, of which 67 are raw-`folio`-pkg null-label measurement
+> artifacts → **~16 true mismatches (5.2%)**; country mismaps 693 (53.3%) → **~2** (residual =
+> exact-alias homonym "AI"→Anguilla, an ontology collision, not a verifier bypass). 1109/2258
+> tags now route to `proposed_class` (was 28) — which exposed a latent downstream bug, see
+> `docs/solutions/proposed-tags-outvote-task-mapping.md`. Residual error mode for RUB-01 is
+> now FOLIO *alternative-label* collisions ("charge"→"Encumbrance" via alt-label "Charge") —
+> label verification cannot catch these; they need definition-level (MCP) judging.
+
 ## Symptom
 
 Ch01 v4 (clean re-extraction on current code) passes **every deterministic gate** — RUB-05
