@@ -6,11 +6,11 @@
   "summary": {
     "books": 1,
     "chapters": 1,
-    "units": 621,
-    "IRIs_wrong_concept_pct": 90,
-    "pass": 2,
-    "borderline": 2,
-    "fail": 7
+    "units": 367,
+    "IRIs_wrong_concept_pct": 23,
+    "pass": 0,
+    "borderline": 1,
+    "fail": 0
   },
   "sections": {
     "EP-INSIGHTS-BOOKS-001": {
@@ -228,6 +228,42 @@
       ],
       "book": "Trial Advocacy",
       "chapter": "Ch01 (slice)"
+    },
+    "EP-INSIGHTS-BOOKS-021": {
+      "title": "JUDGED — Ch01 v4 (full chapter, clean re-extract): weighted ≈ 0.787, ALL GATES PASS, just under 0.80 bar",
+      "kind": "finding",
+      "status": "borderline",
+      "rubric_refs": [
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-08",
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (full, 367 units)"
+    },
+    "EP-INSIGHTS-BOOKS-022": {
+      "title": "B9 — LLM tag path emits unverified IRIs: 23% of tags map advocacy concepts to COUNTRIES (RUB-01)",
+      "kind": "finding",
+      "status": "fail",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-02",
+        "RUB-EXTRACT-03"
+      ],
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (full)"
+    },
+    "EP-INSIGHTS-BOOKS-023": {
+      "title": "Oracle bug fixed (base64→IngestionBridge) + 3-book pass QUEUED (not run, ~$30 deferred)",
+      "kind": "finding",
+      "status": "info",
+      "rubric_refs": [
+        "RUB-EXTRACT-05"
+      ],
+      "book": "(all)",
+      "chapter": "—"
     }
   }
 }

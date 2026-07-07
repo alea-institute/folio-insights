@@ -689,23 +689,23 @@ const PACK_DATA = /*__PACK_DATA__*/ {
   "campaign": "books",
   "repo": "INSIGHTS",
   "title": "folio-insights — Book-Extraction UAT",
-  "subtitle": "Fixes B2/B4/Q1 shipped + validated; rubric v1.0 locked; first judged story = FAIL (0.38) with B5/B6 root-caused",
+  "subtitle": "Session 3: B5/B6/B7 verified; Ch01 v4 clean re-extract JUDGED = weighted 0.787 (all gates pass, just under 0.80); one blocker left — B9 (LLM-emitted IRIs → countries). 3-book pass queued.",
   "generated_at": "2026-07-07",
   "rubric_version": "extraction-quality-v1.0 — LOCKED 2026-07-07 by Fable (delegated by Damien); HYBRID-STRICT anchoring; pass = all gates + weighted normalized >=0.80/story",
   "spend": {
     "provider": "google",
     "model": "gemini-2.5-flash-lite",
     "usd": 1.0,
-    "notes": "cumulative: de-risk ~$0.75 (session 1) + ~$0.25 this session (666 calls: killed full-chapter run + 7k-char slice extract+discover+export). Full chapter extraction is wall-clock-bound by CPU Tier-2 boundary detection (B7), not cost. ~$30 est. for full 3-book pass remains cost-approved; queued as QA go/no-go given B5/B6."
+    "notes": "~$1 session 3 (one full-chapter extract 9min + discover 18min on flash-lite; no token logging). ~$30 for the 3-book S1–S7 pass remains cost-approved but QUEUED (not run — Damien QA r2-q6)."
   },
   "summary": {
     "books": 1,
     "chapters": 1,
-    "units": 621,
-    "IRIs_wrong_concept_pct": 90,
-    "pass": 2,
-    "borderline": 2,
-    "fail": 7
+    "units": 367,
+    "IRIs_wrong_concept_pct": 23,
+    "pass": 0,
+    "borderline": 1,
+    "fail": 0
   },
   "sections": [
     {
@@ -952,6 +952,48 @@ const PACK_DATA = /*__PACK_DATA__*/ {
         "RUB-EXTRACT-05",
         "RUB-EXTRACT-06",
         "RUB-EXTRACT-10"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-021",
+      "kind": "finding",
+      "status": "borderline",
+      "title": "JUDGED — Ch01 v4 (full chapter, clean re-extract): weighted ≈ 0.787, ALL GATES PASS, just under 0.80 bar",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (full, 367 units)",
+      "body_md": "Session 3 re-extracted the **full** Ch01 (119,594 chars, 367 units) on current code (B5/B6/B7 verified) and judged it under the locked v1.0 rubric. **A large jump from v2's 0.38.**\n\n**All four GATES PASS:** RUB-05 anchor 367/367 (independent snippet re-verify, mean 1.000) · **RUB-06 no-fabrication 0/367** (all 11 citation-bearing units grounded — the v2 fabrication FAIL is fixed; earlier \"FRCP 53 invented\" was a false-positive: the source spells out \"Federal Rule of Civil Procedure 53\" and units faithfully abbreviate) · RUB-10 SHACL · RUB-11 structural. **RUB-03 IRI-valid 100%** (2179/2179 resolvable).\n\n**Probabilistic scores:** 05b 2.8 · 07 2.5 · 08 3.0 (86-heading TOC map, ~100% coverage) · 09 2.0 · 12 2.0 · 14 1.8. Weighted normalized **0.787** — misses 0.80 **entirely on Dimension A** (see EP-022). Only junk: 1 \"N/A\" heading-unit; a \"pitfall\" over-labeling pattern.",
+      "rubric_refs": [
+        "RUB-EXTRACT-05",
+        "RUB-EXTRACT-06",
+        "RUB-EXTRACT-08",
+        "RUB-EXTRACT-10",
+        "RUB-EXTRACT-11"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-022",
+      "kind": "finding",
+      "status": "fail",
+      "title": "B9 — LLM tag path emits unverified IRIs: 23% of tags map advocacy concepts to COUNTRIES (RUB-01)",
+      "book": "Trial Advocacy",
+      "chapter": "Ch01 (full)",
+      "body_md": "The whole 0.79→0.80 gap is **RUB-01 concept-correctness**. The four-path tagger's **entity_ruler path is clean (876/878 verify)** — B5's repair works — but the **LLM path (59.7% of tags) emits its own IRIs by fuzzy label→concept matching**, and **508 tags (23%) land in the FOLIO \"Location\" branch pointing at countries**: \"compassion\"→Northern Mariana Islands, \"ADA Title II\"→Timor-Leste, \"Case Preparation\"→Argentina (all MCP-confirmed). 56.6% of tags fail concept-label verification. **RUB-03 passes anyway** (the country IRIs genuinely exist + sit in the branch they claim) — the rubric's separate [MCP] concept-fit criterion (RUB-01) is what caught the garbage the cheap [DET] oracle green-lit.\n\n**Root cause + fix:** `docs/solutions/llm-path-unverified-iris.md`. The concept-label verifier only guards *empty*-IRI resolution; LLM-carried IRIs bypass it. Fix = gate every non-ruler IRI through the verifier (calibrated so it doesn't strip good ruler tags) → projected weighted well above 0.80. **#1 next fix.**",
+      "rubric_refs": [
+        "RUB-EXTRACT-01",
+        "RUB-EXTRACT-02",
+        "RUB-EXTRACT-03"
+      ]
+    },
+    {
+      "id": "EP-INSIGHTS-BOOKS-023",
+      "kind": "finding",
+      "status": "info",
+      "title": "Oracle bug fixed (base64→IngestionBridge) + 3-book pass QUEUED (not run, ~$30 deferred)",
+      "book": "(all)",
+      "chapter": "—",
+      "body_md": "**Oracle repair:** `scripts/uat_det_oracle.py` fed base64 to `registry.ingest()` with no format → folio-enrich returned the undecoded base64 as \"text\" → the RUB-05 anchor gate **false-failed 100% of .docx units**. Now reingests via `IngestionBridge` (the pipeline's own path) — this bug would otherwise have poisoned the entire 3-book pass.\n\n**3-book pass:** deliberately **not run** this session (Damien QA r2-q6 scope change — don't spend ~$30 until a chapter passes). Ready-to-run runbook: `docs/campaigns/books-3book-pass-RUNBOOK.md`, ⛔-gated on B9 fixed + Ch01 re-judged clean, with exact commands/config/per-story matrix/spend and a one-command next-session start.",
+      "rubric_refs": [
+        "RUB-EXTRACT-05"
       ]
     }
   ]
