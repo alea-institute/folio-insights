@@ -7,6 +7,7 @@ Tier 3: LLM refinement (truly ambiguous multi-idea paragraphs) ~5%
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -21,6 +22,7 @@ from folio_insights.pipeline.stages.base import (
 from folio_insights.pipeline.stages.structure_parser import StructuredElement
 from folio_insights.services.anchoring import resolve_anchor
 from folio_insights.services.boundary.structural import Boundary, detect_structural_boundaries
+from folio_insights.services.substance import is_substantive
 
 logger = logging.getLogger(__name__)
 
@@ -71,18 +73,25 @@ class BoundaryDetectionStage(InsightsPipelineStage):
                 else:
                     final_boundaries.append(b)
 
-            # --- Tier 2: Semantic segmentation for ambiguous paragraphs ---
-            for amb in ambiguous:
-                tier2_splits = await self._run_tier2(amb)
-                if tier2_splits:
-                    final_boundaries.extend(tier2_splits)
-                else:
-                    # Tier 2 found no splits -- try Tier 3 if still ambiguous
-                    tier3_splits = await self._run_tier3(amb)
-                    if tier3_splits:
-                        final_boundaries.extend(tier3_splits)
-                    else:
-                        final_boundaries.append(amb)
+            # --- Tier 2/3: refine ambiguous paragraphs CONCURRENTLY ---
+            # Each ambiguous paragraph is independent I/O-bound work; running
+            # them serially was the >11-min stall (B7). Bounded concurrency
+            # keeps wall-clock flat as the document grows without hammering the
+            # LLM endpoint.
+            from folio_insights.config import get_settings
+
+            concurrency = max(1, get_settings().boundary_tier_concurrency)
+            sem = asyncio.Semaphore(concurrency)
+
+            async def _refine(amb: Boundary) -> list[Boundary]:
+                async with sem:
+                    return await self._refine_ambiguous(amb)
+
+            refined_groups = await asyncio.gather(
+                *(_refine(amb) for amb in ambiguous)
+            )
+            for group in refined_groups:
+                final_boundaries.extend(group)
 
             all_boundaries.extend(final_boundaries)
 
@@ -94,8 +103,17 @@ class BoundaryDetectionStage(InsightsPipelineStage):
             key: data.get("text", "") for key, data in ingested.items()
         }
 
+        # Substance floor for unit-ization (B6). Below this, a boundary is a
+        # heading/TOC/attribution line, not knowledge — dropping it here is the
+        # primary fix that stops the distiller inventing authority to fill the
+        # void (docs/solutions/heading-as-unit-fabrication.md).
+        from folio_insights.config import get_settings
+
+        min_chars = get_settings().min_substantive_chars
+
         # Convert boundaries to KnowledgeUnit objects
         units: list[KnowledgeUnit] = []
+        skipped_non_substantive = 0
         for b in all_boundaries:
             # Skip heading-only boundaries (they define structure, not knowledge)
             if b.method == "structural_heading":
@@ -103,6 +121,11 @@ class BoundaryDetectionStage(InsightsPipelineStage):
 
             text = b.text.strip()
             if not text or len(text) < 10:
+                continue
+
+            # B6: drop heading/TOC/attribution boundaries at the source.
+            if not is_substantive(text, min_chars):
+                skipped_non_substantive += 1
                 continue
 
             content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -153,13 +176,108 @@ class BoundaryDetectionStage(InsightsPipelineStage):
 
         job.units.extend(units)
 
+        job.metadata.setdefault("boundary_detection", {})
+        job.metadata["boundary_detection"]["skipped_non_substantive"] = (
+            skipped_non_substantive
+        )
+
         logger.info(
-            "Boundary detection: %d units from %d files (%d boundaries total)",
+            "Boundary detection: %d units from %d files (%d boundaries total, "
+            "%d non-substantive heading/TOC boundaries dropped)",
             len(units),
             len(structured_data),
             len(all_boundaries),
+            skipped_non_substantive,
         )
         return job
+
+    async def _refine_ambiguous(self, amb: Boundary) -> list[Boundary]:
+        """Refine one ambiguous (>500-char) paragraph into finer boundaries.
+
+        Order: Tier-2 semantic split (cheap CPU) → deterministic sentence-group
+        split as the default fallback → optional Tier-3 LLM refinement (only
+        when ``boundary_llm_refine`` is set). Always returns a non-empty list
+        covering the paragraph; no content is dropped. Any resulting segment
+        that is still larger than ``boundary_max_unit_chars`` is further split
+        deterministically so no giant single unit survives.
+        """
+        from folio_insights.config import get_settings
+
+        settings = get_settings()
+        max_chars = settings.boundary_max_unit_chars
+
+        # Tier 2: embedding-based topic-shift split (cheap, deterministic-ish).
+        tier2_splits = await self._run_tier2(amb)
+        if tier2_splits:
+            return self._cap_sizes(tier2_splits, max_chars)
+
+        # Tier 3 (optional, off by default): LLM refinement. Bounded by the
+        # caller's concurrency semaphore. Flaky/expensive — opt-in only.
+        if settings.boundary_llm_refine:
+            tier3_splits = await self._run_tier3(amb)
+            if tier3_splits:
+                return self._cap_sizes(tier3_splits, max_chars)
+
+        # Deterministic fallback: split the coherent large paragraph into
+        # contiguous sentence groups <= max_chars. No LLM, no network, no
+        # content dropped — replaces the serial per-paragraph LLM call that
+        # caused the B7 stall.
+        det = self._split_sentence_groups(amb, max_chars)
+        return det if det else [amb]
+
+    def _split_sentence_groups(
+        self, boundary: Boundary, max_chars: int
+    ) -> list[Boundary]:
+        """Split a boundary into contiguous sentence groups <= ``max_chars``.
+
+        Deterministic and content-preserving: groups whole sentences until the
+        next would exceed ``max_chars``, then starts a new unit. Char spans are
+        located back into the parent text.
+        """
+        sentences = _split_into_sentences(boundary.text)
+        if len(sentences) < 2:
+            return []
+
+        groups: list[list[str]] = []
+        current: list[str] = []
+        current_len = 0
+        for sent in sentences:
+            s = sent.strip()
+            if not s:
+                continue
+            if current and current_len + len(s) + 1 > max_chars:
+                groups.append(current)
+                current = []
+                current_len = 0
+            current.append(s)
+            current_len += len(s) + 1
+        if current:
+            groups.append(current)
+
+        if len(groups) <= 1:
+            return []
+
+        split_indices: list[int] = []
+        idx = 0
+        for g in groups[:-1]:
+            idx += len(g)
+            split_indices.append(idx)
+        return _indices_to_boundaries(
+            [s.strip() for s in sentences if s.strip()], split_indices, boundary
+        )
+
+    def _cap_sizes(
+        self, boundaries: list[Boundary], max_chars: int
+    ) -> list[Boundary]:
+        """Ensure no boundary exceeds ``max_chars`` by sentence-group splitting."""
+        capped: list[Boundary] = []
+        for b in boundaries:
+            if (b.end - b.start) > max_chars and len(b.text) > max_chars:
+                sub = self._split_sentence_groups(b, max_chars)
+                capped.extend(sub if sub else [b])
+            else:
+                capped.append(b)
+        return capped
 
     async def _run_tier2(self, boundary: Boundary) -> list[Boundary] | None:
         """Run Tier 2 semantic segmentation on an ambiguous boundary."""

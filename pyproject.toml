@@ -23,6 +23,13 @@ dependencies = [
     "python-docx>=1.1.0",
     "rapidfuzz>=3.9.0",
     "marisa-trie>=1.2.0",
+    # spacy backs folio-enrich's FOLIOEntityRuler (app.services.entity_ruler.ruler),
+    # the DETERMINISTIC FOLIO IRI matcher the tagger's entity_ruler path calls
+    # through the bridge. Its absence silently degraded tagging to LLM/semantic
+    # guessing → ~60% wrong-concept IRIs in book-UAT (docs/solutions/
+    # sys-path-bridge-staleness.md). Uses spacy.blank("en") + EntityRuler — no
+    # downloaded model needed.
+    "spacy>=3.7.0",
     # Web tier (api/main.py) — FastAPI serving the SvelteKit static SPA + /api.
     # Previously installed ad-hoc in Dockerfile.web (never declared here), which
     # left local dev/CI unable to collect the 7 api/ test suites. Declared as core

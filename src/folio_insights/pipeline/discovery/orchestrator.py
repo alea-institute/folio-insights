@@ -8,8 +8,8 @@ approved decisions for the frontend DiffView.
 
 Stages (in order):
   1. HeadingAnalysisStage
-  2. FolioMappingStage
-  3. ContentClusteringStage
+  2. ContentClusteringStage
+  3. FolioMappingStage   (after ALL candidate-creating stages; see _build_stages)
   4. HierarchyConstructionStage
   5. CrossSourceMergingStage
   6. ContradictionDetectionStage
@@ -146,10 +146,18 @@ class TaskDiscoveryOrchestrator:
             ContradictionDetectionStage,
         )
 
+        # FolioMapping MUST run after every stage that creates task
+        # candidates. Candidates are created by HeadingAnalysis AND
+        # ContentClustering; running mapping between them left every
+        # cluster-born candidate with folio_iri=None (books-UAT Ch01: heading
+        # analysis found 0 candidates in .docx-derived paragraphs, so ALL 36
+        # tasks were cluster-born and none got an IRI → null-IRI OWL export).
+        # HierarchyConstruction is the first consumer of folio_iri, so
+        # mapping sits directly before it.
         return [
             HeadingAnalysisStage(),
-            FolioMappingStage(),
             ContentClusteringStage(),
+            FolioMappingStage(),
             HierarchyConstructionStage(),
             CrossSourceMergingStage(),
             ContradictionDetectionStage(),

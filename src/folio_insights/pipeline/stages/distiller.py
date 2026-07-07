@@ -75,6 +75,22 @@ class DistillerStage(InsightsPipelineStage):
         llm_bridge: object,
     ) -> None:
         """Distill a single knowledge unit's text."""
+        # B6 guard (defense in depth): never hand a heading/TOC/attribution
+        # line to the generative distiller — it invents authority to fill the
+        # void (docs/solutions/heading-as-unit-fabrication.md). Boundary
+        # detection already drops these; this catches any that slip through.
+        from folio_insights.config import get_settings
+        from folio_insights.services.substance import is_substantive
+
+        if not is_substantive(unit.text, get_settings().min_substantive_chars):
+            record_lineage(
+                unit,
+                stage="distiller",
+                action="distill_skipped",
+                detail="non-substantive input (heading/TOC/attribution); not distilled",
+            )
+            return
+
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
         prompt = DISTILLATION_PROMPT.format(

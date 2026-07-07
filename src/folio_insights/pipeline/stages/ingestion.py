@@ -285,13 +285,25 @@ class IngestionStage(InsightsPipelineStage):
                     text, elements = ingestion_bridge.detect_and_ingest(file_path)
 
                     # Supplement with local element parsing if bridge
-                    # returned no structural elements (e.g. markdown ingestor)
+                    # returned no structural elements (e.g. markdown, or the
+                    # WordIngestor which returns text but no elements).
                     if not elements:
-                        raw_content = file_path.read_text(encoding="utf-8", errors="replace")
                         if ext == ".md":
+                            # Markdown is text on disk — re-read to recover
+                            # heading levels the bridge stripped.
+                            raw_content = file_path.read_text(
+                                encoding="utf-8", errors="replace"
+                            )
                             elements = _parse_markdown_elements(raw_content)
                         else:
-                            elements = _parse_plaintext_elements(raw_content)
+                            # Build paragraph elements from the BRIDGE-EXTRACTED
+                            # text, never by re-reading the raw file: binary
+                            # formats (.docx = ZIP, .pdf) would ingest raw
+                            # container bytes (PK\x03\x04…), which then flow to
+                            # boundary detection as one giant binary "paragraph"
+                            # and stall Tier-2 (>11 min). See docs/solutions/
+                            # docx-elementless-binary-reread.md.
+                            elements = _parse_plaintext_elements(text)
 
                 elif ext in _TABULAR_EXTENSIONS:
                     items = mapper_bridge.parse_tabular(file_path)

@@ -100,12 +100,80 @@ def get_normalizer() -> dict[str, Any]:
     }
 
 
-def get_aho_corasick_matcher() -> Any:
-    """Import and return the AhoCorasickMatcher from folio-enrich."""
-    _ensure_folio_enrich_path()
-    from app.services.concept.entity_ruler import AhoCorasickMatcher
+class BridgeIntegrityError(RuntimeError):
+    """Raised when a required folio-enrich bridge symbol cannot be imported.
 
-    return AhoCorasickMatcher
+    A ``sys.path`` bridge couples folio-insights to folio-enrich by directory
+    layout *and* internal API — either can change with no signal to us. When
+    the deterministic entity-ruler import breaks, the pipeline must fail LOUD:
+    a silent per-item fallback to LLM guessing is what produced ~60%
+    wrong-concept IRIs in book-UAT (docs/solutions/sys-path-bridge-staleness.md).
+    """
+
+
+def get_entity_ruler() -> Any:
+    """Import and return folio-enrich's FOLIOEntityRuler class.
+
+    This is the DETERMINISTIC FOLIO concept matcher: it loads FOLIO concept
+    labels/aliases as spaCy EntityRuler patterns (``load_patterns``) and
+    returns real FOLIO IRIs via ``find_matches`` (``.entity_id`` / ``.text``).
+
+    folio-enrich was reorganized: the old monolithic
+    ``app.services.concept.entity_ruler.AhoCorasickMatcher`` split into a
+    low-level string matcher (``app.services.matching.aho_corasick``) and this
+    FOLIO-aware ruler (``app.services.entity_ruler.ruler``). The ruler's API
+    (``load_patterns(dict[str, LabelInfo])`` + ``find_matches`` →
+    ``EntityRulerMatch(.text, .entity_id, ...)``) is what folio-insights'
+    FolioTaggerStage consumes.
+
+    Raises ``BridgeIntegrityError`` (never returns None) if the symbol is
+    missing, so callers surface a loud failure instead of degrading silently.
+    """
+    enrich_path = _ensure_folio_enrich_path()
+    try:
+        from app.services.entity_ruler.ruler import FOLIOEntityRuler
+    except ImportError as exc:  # module moved, or a runtime dep (spacy) missing
+        raise BridgeIntegrityError(
+            "Could not import the deterministic FOLIO entity ruler "
+            "(app.services.entity_ruler.ruler.FOLIOEntityRuler) from "
+            f"folio-enrich at {enrich_path!r}.\n"
+            f"  Underlying import error: {exc!r}\n"
+            "\n"
+            "This is the DETERMINISTIC IRI path. Without it the FOLIO tagger "
+            "would fall back to LLM/semantic guessing and emit wrong-concept "
+            "IRIs silently (see docs/solutions/sys-path-bridge-staleness.md).\n"
+            "\n"
+            "Likely causes:\n"
+            "  1. folio-enrich was reorganized again — check the module path.\n"
+            "  2. A bridge-tier runtime dep is missing in THIS venv. The ruler "
+            "needs 'spacy'; install the bridge deps:\n"
+            "       VIRTUAL_ENV=\"$PWD/.venv\" uv pip install -e '.[dev]'\n"
+        ) from exc
+
+    return FOLIOEntityRuler
+
+
+# Backwards-compatible alias. The symbol used to be an Aho-Corasick matcher;
+# the deterministic FOLIO matcher is now FOLIOEntityRuler. Callers should
+# prefer get_entity_ruler(); this keeps older import sites working.
+def get_aho_corasick_matcher() -> Any:
+    """Deprecated alias for :func:`get_entity_ruler`."""
+    return get_entity_ruler()
+
+
+def verify_deterministic_bridge() -> Any:
+    """Startup canary: import + instantiate the deterministic ruler, loudly.
+
+    Returns the ``FOLIOEntityRuler`` *class* on success. Raises
+    ``BridgeIntegrityError`` with actionable guidance on failure. Call this
+    once at pipeline init to trip the moment the sibling reorganizes or a dep
+    goes missing — rather than discovering it as silently-wrong output.
+    """
+    ruler_cls = get_entity_ruler()
+    # Instantiation shouldn't touch the ontology, but confirms the class is
+    # constructible (spaCy import path is exercised lazily inside _get_nlp).
+    ruler_cls()
+    return ruler_cls
 
 
 def get_citation_extractor() -> Any:

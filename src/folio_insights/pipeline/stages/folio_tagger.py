@@ -62,7 +62,22 @@ class FolioTaggerStage(InsightsPipelineStage):
         # Initialize services
         folio_service = self._get_folio_service()
         embedding_service = self._get_embedding_service()
-        aho_matcher = self._get_aho_matcher(folio_service)
+        # Deterministic FOLIO IRI path (entity ruler). Loud on failure — a
+        # silent fallback to LLM/semantic guessing is what buried the
+        # wrong-concept-IRI bug (docs/solutions/sys-path-bridge-staleness.md).
+        aho_matcher, det_status, det_reason = self._get_entity_ruler(folio_service)
+        job.metadata["folio_tagger"] = {
+            "deterministic_iri_path": det_status,  # "active" | "degraded"
+            "deterministic_iri_reason": det_reason,
+        }
+        if det_status != "active":
+            logger.error(
+                "FOLIO tagger running in DEGRADED mode — deterministic IRI "
+                "path unavailable (%s). Tags will come from LLM/semantic "
+                "paths only and may be wrong-concept. Surfaced in output "
+                "metadata.folio_tagger.",
+                det_reason,
+            )
         heading_extractor = HeadingContextExtractor(folio_service)
         reconciler = self._get_reconciler(embedding_service)
 
@@ -82,8 +97,21 @@ class FolioTaggerStage(InsightsPipelineStage):
                 )
 
         tagged_count = sum(1 for u in job.units if u.folio_tags)
+        ruler_tag_count = sum(
+            1
+            for u in job.units
+            for t in u.folio_tags
+            if t.extraction_path == "entity_ruler"
+        )
+        job.metadata["folio_tagger"]["units_tagged"] = tagged_count
+        job.metadata["folio_tagger"]["entity_ruler_tags"] = ruler_tag_count
         logger.info(
-            "FOLIO tagger: %d/%d units tagged", tagged_count, len(job.units)
+            "FOLIO tagger: %d/%d units tagged (%d deterministic entity_ruler "
+            "tags, deterministic_iri_path=%s)",
+            tagged_count,
+            len(job.units),
+            ruler_tag_count,
+            job.metadata["folio_tagger"]["deterministic_iri_path"],
         )
         return job
 
@@ -157,12 +185,34 @@ class FolioTaggerStage(InsightsPipelineStage):
             matches = aho_matcher.find_matches(text)
             concepts = []
             for match in matches:
+                iri = getattr(match, "entity_id", "") or ""
+                surface = getattr(match, "text", None) or str(match)
+                # Enrich label/branch from the deterministic IRI so tags carry
+                # the canonical FOLIO label (not the matched surface form) and
+                # a branch for RUB-EXTRACT-02/03 judging. Cheap: FolioService
+                # get_concept is in-memory over the loaded ontology.
+                label = surface
+                branch = ""
+                if iri and folio_service is not None:
+                    try:
+                        concept = folio_service.get_concept(iri)
+                        if concept is not None:
+                            label = (
+                                getattr(concept, "preferred_label", "")
+                                or getattr(concept, "folio_pref_label", "")
+                                or surface
+                            )
+                            branch = getattr(concept, "branch", "") or ""
+                    except Exception:
+                        logger.debug(
+                            "get_concept enrichment failed for %s", iri, exc_info=True
+                        )
                 concepts.append({
-                    "iri": match.entity_id if hasattr(match, "entity_id") else "",
-                    "label": match.text if hasattr(match, "text") else str(match),
-                    "concept_text": match.text if hasattr(match, "text") else str(match),
+                    "iri": iri,
+                    "label": label,
+                    "concept_text": surface,
                     "confidence": 0.72,  # default entity ruler confidence
-                    "branch": "",
+                    "branch": branch,
                 })
             return concepts
         except Exception:
@@ -244,6 +294,16 @@ class FolioTaggerStage(InsightsPipelineStage):
             logger.warning("Semantic path failed", exc_info=True)
             return []
 
+    # A resolved concept must actually carry a label matching the requested
+    # one. Judged run uat_ta_ch01_v3 showed search_by_label at 0.6 binding
+    # invented LLM labels to unrelated IRIs ("skills"→Kiribati, "ADR"→American
+    # Depositary Receipt, "Court Appointed Neutrals"→Web Search Portals
+    # Industry): 1,271/1,337 LLM-path tags (95%) were label↔IRI mismatches.
+    # We now verify the candidate concept's own labels against the requested
+    # label with rapidfuzz and reject below this floor — unresolvable labels
+    # route to proposed_class instead of a wrong IRI (RUB-EXTRACT-01/04).
+    _LABEL_IRI_VERIFY_THRESHOLD = 85.0
+
     def _reconciled_to_tags(
         self,
         reconciled: list[ReconciledConcept],
@@ -251,13 +311,19 @@ class FolioTaggerStage(InsightsPipelineStage):
     ) -> list[ConceptTag]:
         """Convert reconciled concepts to ConceptTag objects.
 
-        IRI resolution: if the reconciled concept has no IRI, try
-        ``folio_service.search_by_label(rc.label)`` and accept the top match if
-        score >= 0.6. If resolution fails, the tag retains ``iri=''`` AND its
-        ``extraction_path`` is rewritten to ``'proposed_class'`` so downstream
-        consumers (proposed_classes.json, OWL exporter) can route correctly.
+        IRI resolution: if the reconciled concept has no IRI (LLM path), try
+        ``folio_service.search_by_label(rc.label)`` — but only accept a match
+        whose OWN labels genuinely correspond to the requested label
+        (rapidfuzz >= ``_LABEL_IRI_VERIFY_THRESHOLD``). Deterministic paths
+        (entity_ruler) and index-backed paths (semantic) already carry
+        canonical FOLIO labels and are not second-guessed here.
 
-        See UAT Issue I-1 for the bug this fixes.
+        If resolution fails or verification rejects the match, the tag retains
+        ``iri=''`` AND its ``extraction_path`` is rewritten to
+        ``'proposed_class'`` so downstream consumers (proposed_classes.json,
+        OWL exporter, Ecosystem Loop) route it as a proposal — never a
+        force-mapped wrong IRI. See UAT Issue I-1 and the uat_ta_ch01_v3
+        judged run (Dimension A collapse) for the bugs this fixes.
         """
         tags: list[ConceptTag] = []
 
@@ -270,13 +336,19 @@ class FolioTaggerStage(InsightsPipelineStage):
 
             # Resolve IRI via FolioService if the reconciled concept lacks one
             iri = rc.iri
+            branch = rc.branch
             if not iri and rc.label and folio_service is not None:
                 try:
                     results = folio_service.search_by_label(rc.label)
                     if results:
                         top_match, top_score = results[0]
-                        if top_score >= self._FOLIO_LABEL_RESOLUTION_THRESHOLD:
+                        if top_score >= self._FOLIO_LABEL_RESOLUTION_THRESHOLD and (
+                            self._label_matches_concept(rc.label, top_match)
+                        ):
                             iri = getattr(top_match, "iri", "") or ""
+                            branch = branch or (
+                                getattr(top_match, "branch", "") or ""
+                            )
                 except Exception:
                     logger.warning(
                         "search_by_label failed for label=%r",
@@ -295,11 +367,52 @@ class FolioTaggerStage(InsightsPipelineStage):
                 label=rc.label,
                 confidence=rc.confidence,
                 extraction_path=primary_path,
-                branch=rc.branch,
+                branch=branch,
             )
             tags.append(tag)
 
         return tags
+
+    @classmethod
+    def _label_matches_concept(cls, label: str, concept: Any) -> bool:
+        """True iff ``concept``'s own labels genuinely correspond to ``label``.
+
+        Guards against search_by_label fuzzy false-friends: the accepted
+        concept must have a preferred/alternative label that rapidfuzz-matches
+        the requested label at >= ``_LABEL_IRI_VERIFY_THRESHOLD`` (token-order
+        insensitive, case-insensitive). Cheap, deterministic, in-memory.
+        """
+        try:
+            from rapidfuzz import fuzz
+        except ImportError:  # rapidfuzz is a declared bridge dep; be safe
+            return True
+
+        wanted = (label or "").strip().lower()
+        if not wanted:
+            return False
+
+        candidates: list[str] = []
+        for attr in ("preferred_label", "folio_pref_label", "hidden_label"):
+            v = getattr(concept, attr, "") or ""
+            if v:
+                candidates.append(v)
+        alts = getattr(concept, "alternative_labels", None) or []
+        candidates.extend(a for a in alts if a)
+
+        best = 0.0
+        for cand in candidates:
+            score = fuzz.token_sort_ratio(wanted, cand.lower())
+            if score > best:
+                best = score
+                if best >= cls._LABEL_IRI_VERIFY_THRESHOLD:
+                    return True
+        logger.debug(
+            "label-IRI verification rejected %r (best label score %.0f < %.0f)",
+            label,
+            best,
+            cls._LABEL_IRI_VERIFY_THRESHOLD,
+        )
+        return False
 
     def _get_folio_service(self) -> Any:
         """Get FolioService from bridge."""
@@ -319,22 +432,61 @@ class FolioTaggerStage(InsightsPipelineStage):
             logger.warning("EmbeddingService not available", exc_info=True)
             return None
 
-    def _get_aho_matcher(self, folio_service: Any) -> Any:
-        """Get AhoCorasickMatcher from bridge."""
+    def _get_entity_ruler(
+        self, folio_service: Any
+    ) -> tuple[Any, str, str]:
+        """Build the deterministic FOLIO entity ruler from the bridge.
+
+        Returns ``(matcher_or_None, status, reason)`` where ``status`` is
+        ``"active"`` or ``"degraded"``.
+
+        Failure is LOUD, never silent: if ``settings.require_deterministic_iri``
+        is set (default True) any failure re-raises so the run aborts with a
+        clear error, rather than emitting plausible-but-wrong LLM IRIs. When
+        disabled, the failure is logged at ERROR level and reported via the
+        returned status so it lands in output metadata.
+        """
+        from folio_insights.config import get_settings
+
+        require = get_settings().require_deterministic_iri
         try:
-            from folio_insights.services.bridge.folio_bridge import (
-                get_aho_corasick_matcher,
+            from folio_insights.services.bridge.folio_bridge import get_entity_ruler
+
+            RulerClass = get_entity_ruler()
+            ruler = RulerClass()
+            if folio_service is None:
+                reason = "FolioService unavailable — no labels to load"
+                if require:
+                    raise RuntimeError(reason)
+                return None, "degraded", reason
+            labels = folio_service.get_all_labels()
+            if not labels:
+                reason = "FolioService.get_all_labels() returned no labels"
+                if require:
+                    raise RuntimeError(reason)
+                return None, "degraded", reason
+            ruler.load_patterns(labels)
+            logger.info(
+                "Deterministic FOLIO entity ruler loaded with %d labels", len(labels)
             )
-            MatcherClass = get_aho_corasick_matcher()
-            matcher = MatcherClass()
-            if folio_service:
-                labels = folio_service.get_all_labels()
-                if labels:
-                    matcher.load_patterns(labels)
-            return matcher
-        except Exception:
-            logger.warning("AhoCorasickMatcher not available", exc_info=True)
-            return None
+            return ruler, "active", ""
+        except Exception as exc:
+            if require:
+                # Fail loud. A broken deterministic path must not silently
+                # degrade to LLM guessing (docs/solutions/
+                # sys-path-bridge-staleness.md). Set
+                # FOLIO_INSIGHTS_REQUIRE_DETERMINISTIC_IRI=false to override.
+                logger.error(
+                    "Deterministic FOLIO IRI path failed to initialize and "
+                    "require_deterministic_iri is set — aborting.",
+                    exc_info=True,
+                )
+                raise
+            logger.error(
+                "Deterministic FOLIO entity ruler unavailable — DEGRADED mode",
+                exc_info=True,
+            )
+            return None, "degraded", f"{type(exc).__name__}: {exc}"
 
     def _get_reconciler(self, embedding_service: Any) -> FourPathReconciler:
         """Get FourPathReconciler wrapping folio-enrich's Reconciler."""
