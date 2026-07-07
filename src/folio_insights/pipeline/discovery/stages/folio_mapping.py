@@ -64,6 +64,14 @@ class FolioMappingStage(DiscoveryStage):
                 if unit is None:
                     continue
                 for tag in unit.folio_tags:
+                    # proposed_class tags carry iri='' and must not vote:
+                    # they all pool into one "" bucket that outvotes every
+                    # real IRI once proposals are numerous (post-B9 the
+                    # tagger demotes unverifiable LLM IRIs to proposed_class
+                    # — ~half of all tags — which zeroed every task's
+                    # folio_iri and emptied the OWL export).
+                    if not tag.iri:
+                        continue
                     iri_counter[tag.iri] += 1
                     iri_labels[tag.iri] = tag.label
                     tag_confidences.append(tag.confidence)

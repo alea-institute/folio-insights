@@ -107,6 +107,100 @@ def test_folio_mapping_resolves_concepts():
             assert c.label  # label should be preserved
 
 
+def test_folio_mapping_ignores_empty_iri_proposed_tags():
+    """B9 follow-on regression: proposed_class tags (iri='') must not vote in
+    the most-frequent-IRI election. Post-B9 the tagger demotes unverifiable
+    LLM IRIs to proposed_class (~half of all tags); pooling them into one ''
+    bucket outvoted every real IRI, zeroing every task's folio_iri and
+    emptying the OWL export (Ch01 v5: 0/42 tasks mapped, 0 classes)."""
+    from unittest.mock import MagicMock
+
+    from folio_insights.models.knowledge_unit import ConceptTag
+    from folio_insights.pipeline.discovery.stages.folio_mapping import (
+        FolioMappingStage,
+    )
+
+    unit = _make_unit("u1", "Prepare the case story", ["Ch1", "Preparation"])
+    unit.folio_tags = [
+        # Three proposed tags (majority) that previously outvoted the real IRI
+        ConceptTag(iri="", label="case story", confidence=0.6,
+                   extraction_path="proposed_class"),
+        ConceptTag(iri="", label="preparation mindset", confidence=0.6,
+                   extraction_path="proposed_class"),
+        ConceptTag(iri="", label="advocacy stance", confidence=0.6,
+                   extraction_path="proposed_class"),
+        ConceptTag(iri="https://folio.test/CasePrep", label="Case Preparation",
+                   confidence=0.72, extraction_path="entity_ruler"),
+    ]
+
+    candidates = [
+        TaskCandidate(
+            label="Case Preparation",
+            source_signal="heading",
+            confidence=0.8,
+            heading_path=["Ch1", "Preparation"],
+            knowledge_unit_ids=["u1"],
+        ),
+    ]
+    job = DiscoveryJob(
+        corpus_name="test",
+        source_dir=Path("/tmp/test"),
+        knowledge_units=[unit],
+        task_candidates=candidates,
+    )
+
+    # FolioService that has no deeper concept (hierarchy traversal no-ops)
+    svc = MagicMock()
+    svc.get_concept.return_value = None
+    stage = FolioMappingStage(folio_service=svc)
+    result = asyncio.run(stage.execute(job))
+
+    c = result.task_candidates[0]
+    assert c.folio_iri == "https://folio.test/CasePrep", (
+        "real IRI must win; empty-IRI proposed tags must not vote"
+    )
+    assert c.folio_label == "Case Preparation"
+
+
+def test_folio_mapping_all_proposed_routes_to_sibling():
+    """A candidate whose units carry ONLY proposed (iri='') tags has no IRI
+    votes and is routed to proposed_siblings, not force-mapped to ''."""
+    from unittest.mock import MagicMock
+
+    from folio_insights.models.knowledge_unit import ConceptTag
+    from folio_insights.pipeline.discovery.stages.folio_mapping import (
+        FolioMappingStage,
+    )
+
+    unit = _make_unit("u1", "Novel concept text", ["Ch1", "Novel"])
+    unit.folio_tags = [
+        ConceptTag(iri="", label="novel thing", confidence=0.6,
+                   extraction_path="proposed_class"),
+    ]
+    candidates = [
+        TaskCandidate(
+            label="Novel Concept",
+            source_signal="heading",
+            confidence=0.8,
+            heading_path=["Ch1", "Novel"],
+            knowledge_unit_ids=["u1"],
+        ),
+    ]
+    job = DiscoveryJob(
+        corpus_name="test",
+        source_dir=Path("/tmp/test"),
+        knowledge_units=[unit],
+        task_candidates=candidates,
+    )
+
+    stage = FolioMappingStage(folio_service=MagicMock())
+    result = asyncio.run(stage.execute(job))
+
+    c = result.task_candidates[0]
+    assert not c.folio_iri
+    assert "Novel Concept" in result.metadata.get("proposed_siblings", [])
+
+
 def test_content_clustering_discovers_implicit_tasks():
     """ContentClusteringStage clusters units by embedding similarity
     and creates TaskCandidates for clusters not already covered by
