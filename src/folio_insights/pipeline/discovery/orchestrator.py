@@ -318,6 +318,28 @@ class TaskDiscoveryOrchestrator:
         pipeline_duration = time.monotonic() - pipeline_start
         self._write_output(job, corpus_dir, diff)
 
+        # 6b. Persist decisions to review.db so `export` (and the reviewer UI)
+        #     can consume them. Without this the CLI `discover` produced JSON but
+        #     no review.db, and `export` aborted (B4b).
+        db_path = self._db_path or (corpus_dir / "review.db")
+        try:
+            from folio_insights.persistence import persist_discovery
+
+            await persist_discovery(db_path, corpus_name, job)
+        except Exception:
+            logger.exception(
+                "Failed to persist discovery results to review.db at %s", db_path
+            )
+            # Surface on stderr too: a silent persist failure would leave `export`
+            # unable to find any tasks with no obvious cause.
+            import sys
+
+            print(
+                f"WARNING: failed to write review.db at {db_path}; "
+                "`export` will find no tasks. See logs.",
+                file=sys.stderr,
+            )
+
         task_count = len(
             job.task_hierarchy.tasks if job.task_hierarchy else []
         )

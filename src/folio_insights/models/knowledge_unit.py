@@ -55,6 +55,14 @@ class KnowledgeUnit(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     text: str
     original_span: Span
+    # HYBRID-STRICT source anchoring (rubric RUB-EXTRACT-05): a unit may be a
+    # paraphrase, but it must carry a verifiable anchor into the source. The
+    # snippet is an exact verbatim substring located in the source; anchor_score
+    # is the rapidfuzz ratio (1.0 = exact) of the stored anchor; anchor_verified
+    # is True when the anchor matched the source at or above threshold (0.85).
+    source_snippet: str = ""
+    anchor_verified: bool = False
+    anchor_score: float = 0.0
     unit_type: KnowledgeType
     source_file: str
     source_section: list[str] = Field(default_factory=list)

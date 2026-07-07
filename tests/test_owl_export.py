@@ -245,6 +245,53 @@ class TestOWLSerializer:
             SAMPLE_METADATA,
         )
 
+    def test_null_folio_iri_does_not_crash(self) -> None:
+        """B4c: a proposed class (folio_iri=None) must be skipped, not crash."""
+        from folio_insights.services.owl_serializer import OWLSerializer
+
+        tasks = [
+            *SAMPLE_TASKS,
+            {
+                "id": "task-proposed",
+                "label": "Novel Advocacy Technique",
+                "folio_iri": None,  # proposed class, no FOLIO IRI
+                "parent_task_id": "task-1",
+                "is_procedural": False,
+                "canonical_order": 3,
+                "is_manual": False,
+                "status": "approved",
+            },
+        ]
+        units_by_task = {
+            **SAMPLE_UNITS_BY_TASK,
+            "task-proposed": [
+                {
+                    "id": "unit-proposed",
+                    "text": "A technique with no existing FOLIO concept.",
+                    "unit_type": "best_practice",
+                    "confidence": 0.8,
+                    "source_file": "trial-advocacy-ch5.md",
+                    "novelty_score": 0.9,
+                }
+            ],
+        }
+        ser = OWLSerializer()
+        g = ser.build_graph(
+            tasks,
+            units_by_task,
+            SAMPLE_IRI_MAP,
+            SAMPLE_CONTRADICTIONS,
+            SAMPLE_METADATA,
+        )
+        # The two IRI-bearing task classes are present...
+        assert (
+            URIRef("https://folio.openlegalstandard.org/abc123"),
+            RDF.type,
+            OWL.Class,
+        ) in g
+        # ...and no triple carries a None/"None" subject from the proposed class.
+        assert not any("None" == str(s) for s, _, _ in g)
+
     def test_ontology_declaration(self) -> None:
         g = self._build_graph()
         ont = URIRef("https://folio.openlegalstandard.org/modules/folio-insights")

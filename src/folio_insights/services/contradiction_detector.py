@@ -151,7 +151,7 @@ class ContradictionDetector:
                 )
                 return None
 
-            response = await llm.generate(prompt)
+            response = await llm.complete(prompt)
             parsed = json.loads(response)
 
             if not parsed.get("is_contradiction", False):

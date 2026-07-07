@@ -19,6 +19,7 @@ from folio_insights.pipeline.stages.base import (
     record_lineage,
 )
 from folio_insights.pipeline.stages.structure_parser import StructuredElement
+from folio_insights.services.anchoring import resolve_anchor
 from folio_insights.services.boundary.structural import Boundary, detect_structural_boundaries
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,14 @@ class BoundaryDetectionStage(InsightsPipelineStage):
 
             all_boundaries.extend(final_boundaries)
 
+        # Canonical per-file source text (what the pipeline actually ingested);
+        # boundary text is a verbatim substring of this, so it is the ground truth
+        # for resolving a verifiable anchor (RUB-EXTRACT-05, HYBRID-STRICT).
+        ingested = job.metadata.get("ingested", {})
+        source_text_by_file = {
+            key: data.get("text", "") for key, data in ingested.items()
+        }
+
         # Convert boundaries to KnowledgeUnit objects
         units: list[KnowledgeUnit] = []
         for b in all_boundaries:
@@ -98,13 +107,35 @@ class BoundaryDetectionStage(InsightsPipelineStage):
 
             content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
+            # Resolve a real, verifiable anchor against the ingested source text.
+            # Store the located char-span, the exact matched snippet, and the
+            # rapidfuzz score so the judge can verify provenance deterministically
+            # instead of trusting synthetic running offsets.
+            src_text = source_text_by_file.get(b.source_file, "")
+            anchor = resolve_anchor(text, src_text) if src_text else None
+            if anchor is not None:
+                span = Span(
+                    start=anchor.start,
+                    end=anchor.end,
+                    source_file=b.source_file,
+                )
+                snippet = anchor.snippet
+                anchor_verified = anchor.verified
+                anchor_score = anchor.score
+            else:
+                # No source text available (e.g. bridge-only ingest without text);
+                # keep the structural offsets but flag the anchor unverified.
+                span = Span(start=b.start, end=b.end, source_file=b.source_file)
+                snippet = ""
+                anchor_verified = False
+                anchor_score = 0.0
+
             unit = KnowledgeUnit(
                 text=text,
-                original_span=Span(
-                    start=b.start,
-                    end=b.end,
-                    source_file=b.source_file,
-                ),
+                original_span=span,
+                source_snippet=snippet,
+                anchor_verified=anchor_verified,
+                anchor_score=anchor_score,
                 unit_type=KnowledgeType.ADVICE,  # placeholder, classified in next stage
                 source_file=b.source_file,
                 source_section=list(b.section_path),

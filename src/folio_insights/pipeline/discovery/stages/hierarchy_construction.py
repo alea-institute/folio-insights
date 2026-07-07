@@ -274,7 +274,7 @@ class HierarchyConstructionStage(DiscoveryStage):
             )
 
             try:
-                response = await llm.generate(prompt)
+                response = await llm.complete(prompt)
                 parsed = _json.loads(response)
 
                 is_ordered = parsed.get("is_ordered", False)
