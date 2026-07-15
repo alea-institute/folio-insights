@@ -1,0 +1,452 @@
+<title>FOLIO-matching proving run — Ch02 before/after</title>
+<style>
+  :root{
+    --bg:#eef1f4; --panel:#ffffff; --panel-2:#f6f8fa; --ink:#1a222c; --ink-2:#48566a;
+    --line:#d5dce4; --line-2:#e6ebf1; --accent:#2f5b8f; --accent-soft:#e2ebf5;
+    --good:#1f7a4d; --good-bg:#e2f2e8; --warn:#9a6a12; --warn-bg:#f6ecd7;
+    --bad:#b0362f; --bad-bg:#f7e2e0; --mono:#334;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --code:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#11161c; --panel:#1a222c; --panel-2:#141b23; --ink:#e7edf3; --ink-2:#9fb0c2;
+      --line:#2b3643; --line-2:#232d38; --accent:#7aa8dc; --accent-soft:#1e2c3e;
+      --good:#5ec98d; --good-bg:#153026; --warn:#e0b25a; --warn-bg:#332a14;
+      --bad:#e88a82; --bad-bg:#33201e; --mono:#b9c4d0;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f4; --panel:#ffffff; --panel-2:#f6f8fa; --ink:#1a222c; --ink-2:#48566a;
+    --line:#d5dce4; --line-2:#e6ebf1; --accent:#2f5b8f; --accent-soft:#e2ebf5;
+    --good:#1f7a4d; --good-bg:#e2f2e8; --warn:#9a6a12; --warn-bg:#f6ecd7;
+    --bad:#b0362f; --bad-bg:#f7e2e0; --mono:#334;
+    --shadow:0 1px 2px rgba(20,30,45,.06),0 6px 20px rgba(20,30,45,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#11161c; --panel:#1a222c; --panel-2:#141b23; --ink:#e7edf3; --ink-2:#9fb0c2;
+    --line:#2b3643; --line-2:#232d38; --accent:#7aa8dc; --accent-soft:#1e2c3e;
+    --good:#5ec98d; --good-bg:#153026; --warn:#e0b25a; --warn-bg:#332a14;
+    --bad:#e88a82; --bad-bg:#33201e; --mono:#b9c4d0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;
+    margin:0;padding:0 clamp(14px,4vw,40px) 120px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto}
+  header.masthead{padding:44px 0 26px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--code);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:600}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(28px,4.6vw,42px);line-height:1.08;
+    margin:.32em 0 .28em;text-wrap:balance;letter-spacing:-.01em}
+  .sub{color:var(--ink-2);font-size:16px;max-width:64ch}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px;font-size:13px;color:var(--ink-2);
+    font-family:var(--code)}
+  .meta b{color:var(--ink);font-weight:600}
+  section{margin-top:40px}
+  h2{font-family:var(--serif);font-weight:600;font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{color:var(--ink-2);font-size:15px;margin:0 0 18px;max-width:70ch}
+  .verdict{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);overflow:hidden}
+  .verdict .band{padding:5px 18px;background:var(--warn-bg);color:var(--warn);font-family:var(--code);
+    font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+    border-bottom:1px solid var(--line-2)}
+  .verdict .body{padding:20px 22px}
+  .verdict h3{margin:0 0 8px;font-family:var(--serif);font-size:20px;font-weight:600}
+  .verdict p{margin:0 0 10px;font-size:15px}
+  .verdict p:last-child{margin-bottom:0}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-family:var(--code);
+    font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap;vertical-align:middle}
+  .pill.good{background:var(--good-bg);color:var(--good)} .pill.warn{background:var(--warn-bg);color:var(--warn)}
+  .pill.bad{background:var(--bad-bg);color:var(--bad)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel);
+    box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:14px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  thead th{background:var(--panel-2);font-family:var(--code);font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-2);font-weight:600;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:var(--code);font-variant-numeric:tabular-nums;text-align:right;color:var(--mono)}
+  td.cls{font-weight:600}
+  .dir{font-family:var(--code);font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap}
+  .dir.fix{background:var(--good-bg);color:var(--good)} .dir.same{background:var(--warn-bg);color:var(--warn)}
+  .dir.reg{background:var(--bad-bg);color:var(--bad)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    padding:20px 22px;margin-top:16px}
+  .card h3{margin:0 0 2px;font-family:var(--serif);font-size:18px;font-weight:600;display:flex;
+    gap:10px;align-items:baseline;flex-wrap:wrap}
+  .card .uid{font-family:var(--code);font-size:12px;color:var(--ink-2)}
+  .card .quote{font-size:14px;color:var(--ink-2);font-style:italic;margin:6px 0 14px;
+    border-left:3px solid var(--line);padding-left:12px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.ba{grid-template-columns:1fr}}
+  .ba .col{background:var(--panel-2);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px}
+  .ba .col h4{margin:0 0 8px;font-family:var(--code);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-2)}
+  .tag{display:block;font-family:var(--code);font-size:12.5px;padding:3px 0;color:var(--ink);
+    border-bottom:1px dashed var(--line-2)}
+  .tag:last-child{border-bottom:none}
+  .tag .iri{color:var(--accent)} .tag .no{color:var(--bad)} .tag .p{color:var(--ink-2)}
+  .assess{margin-top:16px;border-top:1px solid var(--line-2);padding-top:14px}
+  .assess .q{font-size:13px;color:var(--ink-2);margin-bottom:8px;font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{font-family:var(--sans);font-size:13px;font-weight:600;padding:6px 13px;border-radius:999px;
+    border:1px solid var(--line);background:var(--panel);color:var(--ink-2);cursor:pointer;
+    transition:.12s}
+  .chip:hover{border-color:var(--accent);color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  :root[data-theme="dark"] .chip[aria-pressed="true"]{color:#0f1620}
+  @media (prefers-color-scheme:dark){.chip[aria-pressed="true"]{color:#0f1620}}
+  textarea{width:100%;margin-top:10px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:9px;padding:9px 11px;color:var(--ink);font-family:var(--sans);font-size:13.5px;
+    resize:vertical;min-height:44px}
+  textarea:focus,.chip:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  ul.findings{list-style:none;padding:0;margin:0}
+  ul.findings li{padding:12px 0;border-bottom:1px solid var(--line-2);display:flex;gap:12px;
+    align-items:flex-start;font-size:14.5px}
+  ul.findings li:last-child{border-bottom:none}
+  ul.findings .mk{flex:none;margin-top:2px}
+  .ex{font-family:var(--code);font-size:12.5px;background:var(--panel-2);border:1px solid var(--line-2);
+    border-radius:9px;padding:12px 14px;margin-top:12px;overflow-x:auto;white-space:nowrap;color:var(--mono)}
+  .ex b{color:var(--ink)} .ex .r{color:var(--bad)} .ex .g{color:var(--good)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  .kv{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .kv h4{margin:0 0 8px;font-family:var(--code);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+  .kv ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
+  .kv li{margin:4px 0} .kv li b{color:var(--ink)}
+  .dock{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);
+    box-shadow:0 -6px 24px rgba(20,30,45,.12);padding:12px clamp(14px,4vw,40px);z-index:20}
+  .dock .row{max-width:1020px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  button.act{font-family:var(--sans);font-weight:600;font-size:14px;padding:9px 18px;border-radius:10px;
+    border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  :root[data-theme="dark"] button.act{color:#0f1620}
+  @media (prefers-color-scheme:dark){button.act{color:#0f1620}}
+  button.ghost{background:transparent;color:var(--accent)}
+  .dock .hint{font-size:12.5px;color:var(--ink-2);font-family:var(--code)}
+  .preview{max-width:1020px;margin:14px auto 0;display:none}
+  .preview.show{display:block}
+  .preview textarea{min-height:150px;font-family:var(--code);font-size:12px}
+  .theme{position:fixed;top:12px;right:14px;z-index:30;font-family:var(--code);font-size:12px;
+    padding:5px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink-2);cursor:pointer}
+  footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;
+    color:var(--ink-2);font-family:var(--code)}
+  a{color:var(--accent)}
+</style>
+
+<button class="theme" id="themeBtn" type="button">◑ theme</button>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">folio-matching · proving run · lane-2</div>
+  <h1>Does the folio-matching pin actually improve Ch02?</h1>
+  <p class="sub">A before/after of FOLIO concept tagging on the same litigation-treatise chapter —
+    the reviewed baseline (pre-pin) against a fresh run through the pinned pipeline with gates,
+    conjunction-decomposition, and the entity-ruler repair. Read before any other repo migrates.</p>
+  <div class="meta">
+    <span><b>Chapter</b> Ch02 · Planning &amp; Preparation</span>
+    <span><b>Source hash</b> 0b7c2ff… (identical both runs)</span>
+    <span><b>Model</b> gemini-2.5-flash-lite</span>
+    <span><b>App spend</b> v6 ≈ $0.18 · session ≈ $0.37</span>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="band">Bottom line · reviewer decision requested</div>
+  <div class="body">
+    <h3>The plumbing is proven; the gates aren&rsquo;t catching the real failures &mdash; and the run
+      surfaced a new precision regression.</h3>
+    <p>The pinned package integrates cleanly: the reconciler seam runs on <code>folio_matching</code>,
+      the entity-ruler path was restored, and decomposition is wired and unit-tested. But on this
+      chapter the pin <b>trades one failure for another</b>. It eliminates every &ldquo;no map&rdquo;
+      entry (proposed-class-only <span class="pill warn">1244&nbsp;&rarr;&nbsp;0</span>) &mdash;
+      recovering the correct maps you asked for &mdash; yet it does so by force-resolving generic
+      terms, which floods the output with <b>wrong place-name and agency homonyms</b>
+      (<span class="pill bad">non-heading place mis-maps 1&nbsp;&rarr;&nbsp;572</span>). The three
+      headline failures you flagged &mdash; Slovenia, Action, metadata &mdash; are
+      <b>not fixed</b>.</p>
+    <p><b>Recommendation:</b> hold the folio-enrich migration until the gates (place / short-label),
+      calibration, and the domain prior are wired <i>into the label-resolution path</i>, and the
+      resolution threshold is tightened. Detail and per-finding sign-off below.</p>
+  </div>
+</div>
+
+<section>
+  <h2>Headline delta &mdash; per failure class</h2>
+  <p class="lede">v5 = the baseline you reviewed (pre-pin, 464 units). v6 = pinned run (699 units).
+    The two runs re-segmented the chapter differently (an upstream LLM-nondeterminism, orthogonal to
+    the pin), so <b>per-unit rates</b> are the honest comparison &mdash; raw totals are shown for
+    completeness.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Failure class</th><th>v5 raw</th><th>v6 raw</th><th>per-unit v5&rarr;v6</th><th>Direction</th></tr></thead>
+      <tbody>
+        <tr><td class="cls">Proposed-class-only (no FOLIO map)</td><td class="num">1244</td><td class="num">0</td><td class="num">2.68&rarr;0.00</td><td><span class="dir fix">recall ↑ (mixed)</span></td></tr>
+        <tr><td class="cls">Canonical place-name tags</td><td class="num">276</td><td class="num">932</td><td class="num">0.59&rarr;1.33</td><td><span class="dir reg">regressed ↑↑</span></td></tr>
+        <tr><td class="cls">&mdash; non-heading place mis-maps</td><td class="num">1</td><td class="num">572</td><td class="num">0.00&rarr;0.82</td><td><span class="dir reg">new failure</span></td></tr>
+        <tr><td class="cls">Agency-homonym tags (DOJ/FEC-style)</td><td class="num">2</td><td class="num">80</td><td class="num">0.00&rarr;0.11</td><td><span class="dir reg">regressed ↑↑</span></td></tr>
+        <tr><td class="cls">&ldquo;Slovenia&rdquo; heading propagation (units)</td><td class="num">99</td><td class="num">118</td><td class="num">21.3%&rarr;16.9%</td><td><span class="dir same">not fixed</span></td></tr>
+        <tr><td class="cls">Action&rarr;Auction blocklist hits</td><td class="num">0</td><td class="num">0</td><td class="num">&mdash;</td><td><span class="dir same">no-op*</span></td></tr>
+        <tr><td class="cls">Weak-band tags (0.3&le;conf&lt;0.5)</td><td class="num">0</td><td class="num">3</td><td class="num">&mdash;</td><td><span class="dir same">~</span></td></tr>
+        <tr><td class="cls">entity_ruler tags (path health)</td><td class="num">1002</td><td class="num">1705</td><td class="num">2.16&rarr;2.44</td><td><span class="dir fix">restored</span></td></tr>
+        <tr><td class="cls">Total tags</td><td class="num">3383</td><td class="num">4782</td><td class="num">7.29&rarr;6.84</td><td><span class="dir same">~</span></td></tr>
+        <tr><td class="cls">Judge / LLM calls</td><td class="num">1875</td><td class="num">3002</td><td class="num">4.04&rarr;4.05</td><td><span class="dir same">flat/unit</span></td></tr>
+        <tr><td class="cls">App-side cost (USD)</td><td class="num">0.115</td><td class="num">0.183</td><td class="num">scales w/ units</td><td><span class="dir same">~</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lede" style="margin-top:10px">*The alias blocklist ships a <b>synthetic</b> seed
+    (<code>Action &rarr; EXAMPLE-Auction</code>), so it matches nothing in real FOLIO data. The real
+    &ldquo;action&rdquo; mis-tag (&rarr; the litigation <i>Event</i> concept) is never seen by it.</p>
+  <div class="assess" data-id="deltatable" style="border:none;padding-top:4px">
+    <div class="q">Your read on the headline deltas:</div>
+    <div class="chips">
+      <button class="chip" type="button" data-v="Deltas match my concern — precision regression is real">Regression is real</button>
+      <button class="chip" type="button" data-v="The proposed-class→0 recall win outweighs it">Recall win outweighs</button>
+      <button class="chip" type="button" data-v="Need a per-tag correctness audit before deciding">Need per-tag audit</button>
+    </div>
+    <textarea placeholder="Notes on the delta table…" data-note="deltatable"></textarea>
+  </div>
+</section>
+
+<section>
+  <h2>The regression, concretely</h2>
+  <p class="lede">The pin&rsquo;s aggressive whole-string label&rarr;IRI resolution (accept top match at
+    score &ge; 0.6) recovers real maps &mdash; but with no gate able to see it, it also snaps generic
+    legal words onto plausible-looking country / state / agency concepts. Sampled from v6:</p>
+  <div class="grid2">
+    <div class="kv"><h4>Wrong homonym maps (new in v6)</h4><ul>
+      <li><b>law</b> &rarr; <span style="color:var(--bad)">Delaware</span></li>
+      <li><b>Presumptions</b> &rarr; <span style="color:var(--bad)">Northern Mariana Islands</span></li>
+      <li><b>Decision Maker</b> &rarr; <span style="color:var(--bad)">Slovenia</span></li>
+      <li><b>effect of answers</b> &rarr; <span style="color:var(--bad)">Federal Election Commission</span></li>
+      <li><b>Verdict Forms</b> &rarr; <span style="color:var(--bad)">Venezuela</span></li>
+      <li><b>closing statements</b> &rarr; <span style="color:var(--bad)">Collateralized Loan Obligation</span></li>
+      <li><b>Jury charge</b> &rarr; <span style="color:var(--bad)">Argentina</span></li>
+    </ul></div>
+    <div class="kv"><h4>Correct recoveries (also new in v6)</h4><ul>
+      <li><b>Burden of Proof</b> &rarr; <span style="color:var(--good)">Litigation Burdens of Proof</span> <span class="pill good">your finding-005 example</span></li>
+      <li><b>Hearing</b> &rarr; <span style="color:var(--good)">Hearing</span></li>
+      <li><b>Lawyer</b> &rarr; <span style="color:var(--good)">Lawyer</span></li>
+      <li><b>Closing Arguments</b> &rarr; <span style="color:var(--good)">Closing Arguments / Summation</span></li>
+      <li><b>narrative</b> &rarr; <span style="color:var(--good)">Matter Narrative</span></li>
+    </ul></div>
+  </div>
+  <div class="ex" aria-label="root cause">
+    <b>Root cause &mdash;</b> resolved tags carry an <span class="r">empty branch</span>, so the
+    place-name / short-label gates (which key on <b>branch</b>) can&rsquo;t identify them; and
+    high LLM confidence (&ge;0.85) exempts them anyway. The gates run, but the homonyms are invisible to them.
+  </div>
+  <div class="assess" data-id="regression">
+    <div class="q">Is this precision regression a blocker for migrating folio-enrich?</div>
+    <div class="chips">
+      <button class="chip" type="button" data-v="Yes — blocker; wire gates+calibration into the resolution path first">Blocker</button>
+      <button class="chip" type="button" data-v="Fixable follow-up; migrate in parallel with the gate fix">Fixable follow-up</button>
+      <button class="chip" type="button" data-v="Acceptable — the annotator feedback loop will catch these">Acceptable</button>
+    </div>
+    <textarea placeholder="Notes on the regression / root cause…" data-note="regression"></textarea>
+  </div>
+</section>
+
+<section>
+  <h2>Your four flagged units &mdash; old tag vs new outcome</h2>
+  <p class="lede">Units are re-worded run-to-run (the pipeline is generative, not extractive), so these
+    are matched by content, not id. Each shows what the pin actually did to the case you called out.</p>
+
+  <div class="card">
+    <h3>Metadata / front-matter tagged as substance <span class="uid">unit d3c44e2a · verdict: wrong</span></h3>
+    <p class="quote">&ldquo;Source is metadata &mdash; should never have been considered. Exclude
+      metadata/front-matter sources from tagging.&rdquo;</p>
+    <div class="ba">
+      <div class="col"><h4>v5 baseline</h4>
+        <span class="tag">front-matter span tagged as <span class="p">advice</span> &rarr; 10 concept tags</span></div>
+      <div class="col"><h4>v6 pinned</h4>
+        <span class="tag"><span class="no">NOT FIXED</span> — front-matter still enters tagging</span>
+        <span class="tag p">SourceClassifier ships in folio-matching but is not wired</span></div>
+    </div>
+    <div class="assess" data-id="u_meta">
+      <div class="q">Sign-off:</div>
+      <div class="chips">
+        <button class="chip" type="button" data-v="Confirmed not fixed — wire SourceClassifier">Confirm not fixed</button>
+        <button class="chip" type="button" data-v="Lower priority than the homonym regression">Lower priority</button>
+      </div>
+      <textarea placeholder="Notes…" data-note="u_meta"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Compound heading recall <span class="uid">unit 12b5e434 · verdict: wrong (missed both IRIs)</span></h3>
+    <p class="quote">&ldquo;Heading should map to R9G2Hzz… <b>and</b> RNVlq2Re… — system missed BOTH.&rdquo;</p>
+    <div class="ba">
+      <div class="col"><h4>v5 baseline</h4>
+        <span class="tag">&ldquo;disputed factual findings&rdquo; &rarr; <span class="no">proposed_class (no IRI)</span></span>
+        <span class="tag">&ldquo;legal conclusions&rdquo; &rarr; <span class="no">proposed_class (no IRI)</span></span></div>
+      <div class="col"><h4>v6 pinned</h4>
+        <span class="tag">&ldquo;Proposed Findings of Fact and Conclusions of Law&rdquo; &rarr; <span class="iri">RNVlq…</span> <span class="no">(one IRI, mislabeled)</span></span>
+        <span class="tag p">decompose did NOT split it — whole string resolved first</span>
+        <span class="tag">target A <span class="iri">R9G2Hzz…</span>: <span class="no">0 hits</span></span></div>
+    </div>
+    <div class="ex">Partial &amp; wrong: the compound now <b>maps</b>, but to a single IRI (RNVlq, your
+      &ldquo;Conclusions&rdquo; concept) under the label &ldquo;Proposed Findings of Fact.&rdquo; The
+      decomposition seam is wired &amp; tested, yet it only fires when whole-string resolution returns
+      <b>empty</b> — and here it doesn&rsquo;t, so decompose is bypassed.</div>
+    <div class="assess" data-id="u_decomp">
+      <div class="q">Sign-off:</div>
+      <div class="chips">
+        <button class="chip" type="button" data-v="Reorder: try decompose BEFORE accepting a weak whole-string match">Decompose-first</button>
+        <button class="chip" type="button" data-v="Whole-string 0.6 threshold is the real culprit — raise it">Raise threshold</button>
+        <button class="chip" type="button" data-v="Accept partial — mapping exists even if imperfect">Accept partial</button>
+      </div>
+      <textarea placeholder="Notes…" data-note="u_decomp"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Action &ne; Auction <span class="uid">unit 4b06a90c · verdict: wrong (&ldquo;Awful&rdquo;)</span></h3>
+    <p class="quote">&ldquo;Success arises from careful planning, not hasty action.&rdquo; — the everyday
+      word &ldquo;action&rdquo; tagged as a legal concept.</p>
+    <div class="ba">
+      <div class="col"><h4>v5 baseline</h4>
+        <span class="tag">&ldquo;action&rdquo; &rarr; <span class="iri">R8kO</span> <span class="p">(Event)</span></span></div>
+      <div class="col"><h4>v6 pinned</h4>
+        <span class="tag"><span class="no">NOT FIXED</span> — &ldquo;action&rdquo; still tags to a legal Event</span>
+        <span class="tag p">blocklist seed is synthetic (Action→EXAMPLE-Auction); never fires</span></div>
+    </div>
+    <div class="assess" data-id="u_action">
+      <div class="q">Sign-off:</div>
+      <div class="chips">
+        <button class="chip" type="button" data-v="Grow the blocklist from real verdicts, not a synthetic seed">Real blocklist seed</button>
+        <button class="chip" type="button" data-v="This needs the domain prior / judge, not a blocklist">Needs domain prior</button>
+      </div>
+      <textarea placeholder="Notes…" data-note="u_action"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Per-tag annotation &amp; feedback loop <span class="uid">unit 259a84fd · verdict: system directives</span></h3>
+    <p class="quote">&ldquo;correct/weak/wrong must be PER TAG… tags render inside spans… feedback feeds
+      back into the system = self-improving.&rdquo;</p>
+    <div class="ba">
+      <div class="col"><h4>v5 baseline</h4><span class="tag p">per-unit verdicts, HTML artifact only</span></div>
+      <div class="col"><h4>v6 pinned</h4>
+        <span class="tag p">Out of scope for a tagging re-run</span>
+        <span class="tag">annotate primitives (per-tag verdict, notes, feedback store) ship in folio-matching, unwired into the app UI</span></div>
+    </div>
+    <div class="assess" data-id="u_ui">
+      <div class="q">Sign-off:</div>
+      <div class="chips">
+        <button class="chip" type="button" data-v="Correct to defer — this is the v2 in-app annotator, separate track">Defer to annotator</button>
+        <button class="chip" type="button" data-v="Prioritize the annotator — it's how these homonyms get caught">Prioritize annotator</button>
+      </div>
+      <textarea placeholder="Notes…" data-note="u_ui"></textarea>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What was wired vs. not</h2>
+  <ul class="findings">
+    <li><span class="mk pill good">wired</span><div><b>Reconciler seam</b> &mdash; the 2-path base now runs on <code>folio_matching.Reconciler</code>; no folio-enrich checkout needed for reconciliation.</div></li>
+    <li><span class="mk pill good">wired</span><div><b>entity_ruler</b> &mdash; I repaired a broken import (folio-enrich moved the module, silently zeroing the ruler path) by wiring the pinned <code>FOLIOEntityRuler</code>. 68,693 patterns; restored ~1000&rarr;1705 ruler tags. Also advances the migration.</div></li>
+    <li><span class="mk pill good">wired</span><div><b>decompose</b> &mdash; I wired &amp; unit-tested conjunction-split into label resolution. Correct, but rarely fires on Ch02 (whole-string resolution short-circuits it).</div></li>
+    <li><span class="mk pill warn">wired&nbsp;·&nbsp;no-op</span><div><b>alias blocklist</b> &mdash; on, but the seed is synthetic, so it matches nothing in real data.</div></li>
+    <li><span class="mk pill warn">wired&nbsp;·&nbsp;misses</span><div><b>place / short-label gates</b> &mdash; on, but exempt <code>heading_context</code> (the actual Slovenia vector) and can&rsquo;t see resolved tags (empty branch). Net effect on Ch02: negligible.</div></li>
+    <li><span class="mk pill bad">not&nbsp;wired</span><div><b>SourceClassifier</b> (metadata exclusion), <b>DomainPrior</b> (context-aware disambiguation), <b>ScoreCalibration</b> (weak-band), <b>Judge</b> &mdash; all present in folio-matching, none in the tagger path. These are exactly what the regression needs.</div></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Proceed to folio-enrich?</h2>
+  <div class="card">
+    <div class="q" style="font-size:14px;color:var(--ink-2);margin-bottom:10px;font-weight:600">My recommendation: <b style="color:var(--bad)">hold</b> — the seam is proven but the tagging output is not yet a net improvement. Your call:</div>
+    <div class="chips" data-id="gate">
+      <button class="chip" type="button" data-v="HOLD — fix gates+calibration+resolution threshold before any migration">Hold &amp; fix first</button>
+      <button class="chip" type="button" data-v="PROCEED — migrate folio-enrich; treat the regression as a fast-follow">Proceed anyway</button>
+      <button class="chip" type="button" data-v="PROCEED for the seam only; keep the old tagger resolution behavior">Proceed, seam only</button>
+    </div>
+    <textarea placeholder="Any conditions, priorities, or scope for the fix…" data-note="gate"></textarea>
+  </div>
+</section>
+
+<footer>
+  Evidence: output/uat_ta_ch02_v6 (pinned) vs output/uat_ta_ch02_v5 (baseline) · source hash
+  0b7c2ff… identical · rubric extraction-quality-v1.0 (unchanged) · app spend v6 ≈ $0.18, session ≈ $0.37 (cap $1).
+</footer>
+
+</div>
+
+<div class="preview" id="preview"><textarea id="previewText" readonly></textarea></div>
+<div class="dock"><div class="row">
+  <button class="act" id="copyBtn" type="button">Copy answers</button>
+  <button class="act ghost" id="previewBtn" type="button">Show preview</button>
+  <span class="hint" id="status">Tap a chip on any question, add notes, then copy &amp; paste back into the chat.</span>
+</div></div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    var cur=root.getAttribute("data-theme");
+    if(!cur){cur=window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";}
+    root.setAttribute("data-theme",cur==="dark"?"light":"dark");
+  });
+  // single-select chip groups (per data-id container)
+  document.querySelectorAll("[data-id]").forEach(function(group){
+    var chips=group.querySelectorAll(".chip");
+    chips.forEach(function(c){
+      c.setAttribute("aria-pressed","false");
+      c.addEventListener("click",function(){
+        var on=c.getAttribute("aria-pressed")==="true";
+        chips.forEach(function(x){x.setAttribute("aria-pressed","false");});
+        c.setAttribute("aria-pressed",on?"false":"true");
+      });
+    });
+  });
+  var LABELS={
+    deltatable:"Headline deltas", regression:"Precision regression (blocker?)",
+    u_meta:"Unit d3c44e2a (metadata)", u_decomp:"Unit 12b5e434 (decompose)",
+    u_action:"Unit 4b06a90c (Action≠Auction)", u_ui:"Unit 259a84fd (annotator)",
+    gate:"Proceed to folio-enrich?"
+  };
+  function assemble(){
+    var out=["FOLIO-matching proving run — Ch02 review (Damien)","=================================================",""];
+    Object.keys(LABELS).forEach(function(id){
+      var g=document.querySelector('[data-id="'+id+'"]'); if(!g)return;
+      var sel=g.querySelector('.chip[aria-pressed="true"]');
+      var note=document.querySelector('[data-note="'+id+'"]');
+      var pick=sel?sel.getAttribute("data-v"):"(no selection)";
+      out.push("• "+LABELS[id]);
+      out.push("   choice: "+pick);
+      if(note&&note.value.trim()) out.push("   note:   "+note.value.trim());
+      out.push("");
+    });
+    out.push("— spend: v6 ≈ $0.18, session ≈ $0.37 (cap $1); source hash identical both runs.");
+    return out.join("\n");
+  }
+  var pv=document.getElementById("preview"), pvt=document.getElementById("previewText"),
+      status=document.getElementById("status");
+  function refresh(){pvt.value=assemble();}
+  document.getElementById("previewBtn").addEventListener("click",function(){
+    pv.classList.toggle("show"); if(pv.classList.contains("show")){refresh();
+      this.textContent="Hide preview";}else{this.textContent="Show preview";}
+  });
+  document.addEventListener("input",function(e){if(pv.classList.contains("show"))refresh();});
+  document.addEventListener("click",function(e){if(e.target.classList&&e.target.classList.contains("chip")&&pv.classList.contains("show"))refresh();});
+  document.getElementById("copyBtn").addEventListener("click",function(){
+    var text=assemble();
+    function ok(){status.textContent="Copied — paste it back into the chat.";}
+    function fail(){pv.classList.add("show");refresh();document.getElementById("previewBtn").textContent="Hide preview";status.textContent="Copy blocked — select the text in the preview and copy manually.";}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(ok,function(){
+        try{pvt.value=text;pvt.removeAttribute("readonly");pvt.select();var d=document.execCommand("copy");pvt.setAttribute("readonly","");d?ok():fail();}catch(err){fail();}
+      });
+    }else{
+      try{pv.classList.add("show");refresh();pvt.removeAttribute("readonly");pvt.select();var d=document.execCommand("copy");pvt.setAttribute("readonly","");d?ok():fail();}catch(err){fail();}
+    }
+  });
+})();
+</script>
