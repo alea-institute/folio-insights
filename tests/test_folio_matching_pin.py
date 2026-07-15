@@ -64,6 +64,63 @@ def test_place_name_gate_keeps_heading_corroborated_place() -> None:
     assert any(t.iri == "R-slovenia" for t in kept)
 
 
+def test_decompose_splits_compound_heading_into_two_tags() -> None:
+    # Ch02 unit 12b5e434: "Proposed Findings of Fact and Conclusions of Law" is a
+    # compound heading naming TWO sibling FOLIO concepts. Whole-string search returns
+    # nothing; decomposition must resolve each conjunct to its own IRI (recall fix).
+    stage = FolioTaggerStage()
+
+    class _Match:
+        def __init__(self, iri: str) -> None:
+            self.iri = iri
+
+    def fake_search(label: str):
+        table = {
+            "Proposed Findings of Fact": [(_Match("R9G2HzzbJMx6tThsp2m6kjM"), 0.95)],
+            "Proposed Conclusions of Law": [(_Match("RNVlq2ReYjeb3r8UkUYvso"), 0.95)],
+        }
+        return table.get(label, [])
+
+    folio_service = MagicMock()
+    folio_service.search_by_label.side_effect = fake_search
+
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
+    rc = ReconciledConcept(
+        iri="",
+        label="Proposed Findings of Fact and Conclusions of Law",
+        confidence=0.8,
+        contributing_paths=["heading_context"],
+        branch="Document",
+    )
+    tags = stage._reconciled_to_tags([rc], folio_service)
+    iris = {t.iri for t in tags}
+    assert iris == {"R9G2HzzbJMx6tThsp2m6kjM", "RNVlq2ReYjeb3r8UkUYvso"}
+    # No proposed_class fallback should survive when both conjuncts resolve.
+    assert all(t.extraction_path != "proposed_class" for t in tags)
+
+
+def test_decompose_falls_back_to_proposed_class_when_unresolvable() -> None:
+    # A compound label whose conjuncts also fail to resolve stays a single proposed_class.
+    stage = FolioTaggerStage()
+    folio_service = MagicMock()
+    folio_service.search_by_label.return_value = []
+
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
+    rc = ReconciledConcept(
+        iri="",
+        label="Widgets and Gizmos",
+        confidence=0.5,
+        contributing_paths=["llm"],
+        branch="",
+    )
+    tags = stage._reconciled_to_tags([rc], folio_service)
+    assert len(tags) == 1
+    assert tags[0].extraction_path == "proposed_class"
+    assert tags[0].iri == ""
+
+
 def test_get_reconciler_uses_pinned_package() -> None:
     stage = FolioTaggerStage()
     embedding_service = MagicMock(index_size=0)
