@@ -30,54 +30,149 @@ def test_base_reconciler_runs_on_pinned_package() -> None:
 
 
 def test_alias_blocklist_drops_action_auction() -> None:
-    # Ch02 unit 4b06a90c: "Action != Auction". The seed blocklist blocks this pairing.
+    # Ch02 unit 4b06a90c: "Action != Auction". The shipped seed blocks this pairing on the REAL
+    # Auction IRI (proving-run defect #3 fixed — the old seed used a synthetic EXAMPLE-Auction IRI
+    # that could never fire on live resolution).
     stage = FolioTaggerStage()
-    blocked_iri = "https://folio.openlegalstandard.org/EXAMPLE-Auction"
+    auction_iri = "https://folio.openlegalstandard.org/R8kOvHwkY6TrQmB7RnYiWNO"
     tags = [
-        ConceptTag(iri=blocked_iri, label="Action", confidence=0.9, extraction_path="llm", branch="Events"),
+        ConceptTag(iri=auction_iri, label="Action", confidence=0.9, extraction_path="llm", branch="Event"),
         ConceptTag(iri="R-cause", label="Cause of Action", confidence=0.8, extraction_path="llm", branch="Objectives"),
     ]
     kept = stage._apply_match_gates(tags)
     kept_iris = {t.iri for t in kept}
-    assert blocked_iri not in kept_iris
+    assert auction_iri not in kept_iris
     assert "R-cause" in kept_iris
 
 
-def test_place_name_gate_drops_uncorroborated_place() -> None:
-    # Ch02 finding 003: bare place-name hit on a single path is demoted out.
+def _folio_service_returning(label: str, branch: str) -> MagicMock:
+    concept = MagicMock()
+    concept.preferred_label = label
+    concept.label = label
+    concept.branch = branch
+    svc = MagicMock()
+    svc.get_concept.return_value = concept
+    svc.search_by_label.return_value = []
+    return svc
+
+
+def test_place_gate_drops_uncorroborated_nonheading_mismap() -> None:
+    # Ch02 defect #1: a place-branch tag resolved on a single (non-heading) path whose surface
+    # does NOT match the place name ("Decision Maker" -> Slovenia) is a mis-map — vetoed.
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
     stage = FolioTaggerStage()
-    tags = [
-        ConceptTag(iri="R-slovenia", label="Slovenia", confidence=0.6, extraction_path="semantic", branch="Location"),
-        ConceptTag(iri="R-body", label="Cross-Examination", confidence=0.7, extraction_path="llm", branch="Service"),
-    ]
-    kept = stage._apply_match_gates(tags)
-    assert all(t.iri != "R-slovenia" for t in kept)
-    assert any(t.iri == "R-body" for t in kept)
+    svc = _folio_service_returning("Slovenia", "Location")
+    rc = ReconciledConcept(
+        iri="R-slovenia", label="Decision Maker", confidence=0.9,
+        contributing_paths=["llm"], branch="Location",
+    )
+    tags = stage._reconciled_to_tags([rc], svc)
+    assert all(t.iri != "R-slovenia" for t in tags)
 
 
-def test_place_name_gate_keeps_heading_corroborated_place() -> None:
+def test_place_gate_eliminates_heading_only_slovenia_propagation() -> None:
+    # Ch02 finding 003 / defect: the OLD gate exempted heading_context, so Slovenia propagated to
+    # 118 units. Heading context now contributes at most one signal (< min 2) and no longer exempts
+    # — a place carried by headings alone is vetoed.
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
     stage = FolioTaggerStage()
-    tags = [
-        ConceptTag(iri="R-slovenia", label="Slovenia", confidence=0.6, extraction_path="heading_context", branch="Location"),
-    ]
-    kept = stage._apply_match_gates(tags)
-    assert any(t.iri == "R-slovenia" for t in kept)
+    svc = _folio_service_returning("Slovenia", "Location")
+    rc = ReconciledConcept(
+        iri="R-slovenia", label="Slovenia", confidence=0.9,
+        contributing_paths=["heading_context"], branch="Location",
+    )
+    tags = stage._reconciled_to_tags([rc], svc)
+    assert all(t.iri != "R-slovenia" for t in tags)
 
 
-def test_decompose_splits_compound_heading_into_two_tags() -> None:
-    # Ch02 unit 12b5e434: "Proposed Findings of Fact and Conclusions of Law" is a
-    # compound heading naming TWO sibling FOLIO concepts. Whole-string search returns
-    # nothing; decomposition must resolve each conjunct to its own IRI (recall fix).
+def test_place_gate_keeps_corroborated_place() -> None:
+    # A genuinely-mentioned place corroborated across >= 2 non-heading paths (ruler + llm both
+    # agree) is kept — the veto targets mis-maps, not real place mentions.
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
+    stage = FolioTaggerStage()
+    svc = _folio_service_returning("Delaware", "Location")
+    rc = ReconciledConcept(
+        iri="R-delaware", label="Delaware", confidence=0.9,
+        contributing_paths=["entity_ruler", "llm"], branch="Location",
+    )
+    tags = stage._reconciled_to_tags([rc], svc)
+    assert any(t.iri == "R-delaware" for t in tags)
+
+
+def test_agency_homonym_vetoed() -> None:
+    # Ch02 defect #1: "effect of answers" -> Federal Election Commission (Governmental Body) is an
+    # agency homonym; the gate now governs the governmental-body branch too.
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
+    stage = FolioTaggerStage()
+    svc = _folio_service_returning("Federal Election Commission", "Governmental Body")
+    rc = ReconciledConcept(
+        iri="R-fec", label="effect of answers", confidence=0.95,
+        contributing_paths=["llm"], branch="Governmental Body",
+    )
+    tags = stage._reconciled_to_tags([rc], svc)
+    assert all(t.iri != "R-fec" for t in tags)
+
+
+def test_whole_string_bar_rejects_place_mismap_on_real_scale() -> None:
+    # Ch02 defect #2: FOLIO search returns 0-100; the old 0.6 bar accepted the 90.0 place
+    # over-score ("law" -> Delaware). The 92.0 bar rejects it, so the tag becomes proposed_class.
+    from folio_insights.services.bridge.reconciliation_bridge import ReconciledConcept
+
     stage = FolioTaggerStage()
 
     class _Match:
-        def __init__(self, iri: str) -> None:
+        def __init__(self, iri: str, label: str, branch: str) -> None:
+            self.iri, self.preferred_label, self.branch = iri, label, branch
+
+    folio_service = MagicMock()
+    folio_service.search_by_label.return_value = [(_Match("R-delaware", "Delaware", "Location"), 90.0)]
+
+    rc = ReconciledConcept(iri="", label="law", confidence=0.9, contributing_paths=["llm"], branch="")
+    tags = stage._reconciled_to_tags([rc], folio_service)
+    assert all(t.iri != "R-delaware" for t in tags)
+    assert tags and tags[0].extraction_path == "proposed_class"
+
+
+def test_metadata_source_excluded_from_tagging() -> None:
+    # Ch02 unit d3c44e2a: a metadata/front-matter unit must never be tagged.
+    from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit, Span
+
+    def _unit(text: str, section: list[str]) -> KnowledgeUnit:
+        return KnowledgeUnit(
+            text=text,
+            original_span=Span(start=0, end=len(text), source_file="ch.md"),
+            unit_type=KnowledgeType.PRINCIPLE,
+            source_file="ch.md",
+            source_section=section,
+        )
+
+    stage = FolioTaggerStage()
+    front = _unit("ISBN 978-0-13-468599-1", ["Front Matter", "Copyright"])
+    body = _unit("The plaintiff filed a motion.", ["Chapter 2", "Discovery"])
+    assert stage._is_taggable_source(front) is False
+    assert stage._is_taggable_source(body) is True
+
+
+def test_decompose_splits_compound_heading_into_two_tags() -> None:
+    # Ch02 unit 12b5e434: "Proposed Findings of Fact and Conclusions of Law" is a compound heading
+    # naming TWO sibling FOLIO concepts. Decompose-first resolves each conjunct to its own IRI
+    # (scores are on FOLIO's real 0-100 scale; branch is carried through).
+    stage = FolioTaggerStage()
+
+    class _Match:
+        def __init__(self, iri: str, label: str) -> None:
             self.iri = iri
+            self.preferred_label = label
+            self.branch = "Document / Artifact"
 
     def fake_search(label: str):
         table = {
-            "Proposed Findings of Fact": [(_Match("R9G2HzzbJMx6tThsp2m6kjM"), 0.95)],
-            "Proposed Conclusions of Law": [(_Match("RNVlq2ReYjeb3r8UkUYvso"), 0.95)],
+            "Proposed Findings of Fact": [(_Match("R9G2HzzbJMx6tThsp2m6kjM", "Proposed Findings of Fact"), 100.0)],
+            "Proposed Conclusions of Law": [(_Match("RNVlq2ReYjeb3r8UkUYvso", "Proposed Conclusions of Law"), 100.0)],
         }
         return table.get(label, [])
 
@@ -98,6 +193,8 @@ def test_decompose_splits_compound_heading_into_two_tags() -> None:
     assert iris == {"R9G2HzzbJMx6tThsp2m6kjM", "RNVlq2ReYjeb3r8UkUYvso"}
     # No proposed_class fallback should survive when both conjuncts resolve.
     assert all(t.extraction_path != "proposed_class" for t in tags)
+    # Every resolved tag carries its branch (fix a).
+    assert all(t.branch == "Document / Artifact" for t in tags)
 
 
 def test_decompose_falls_back_to_proposed_class_when_unresolvable() -> None:

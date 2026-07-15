@@ -259,11 +259,12 @@ def _make_folio_mock(results):
     return mock
 
 
-def test_llm_path_resolves_folio_iri_at_06_threshold():
-    """UAT I-1: LLM-path label with FOLIO score 0.65 resolves to canonical IRI.
+def test_llm_path_resolves_folio_iri_above_bar():
+    """UAT I-1: an LLM-path label that clears the whole-string bar resolves to its canonical IRI.
 
-    Current code uses a 0.7 threshold, so this test FAILS on unmodified
-    folio_tagger.py. After the fix lowers the threshold to 0.6, it passes.
+    FOLIO's search_by_label returns a 0-100 score; the calibrated bar is 92.0. A clean full match
+    (100.0) resolves. (The old class-local 0.6 bar was a scale bug — it accepted every 90.0 place
+    over-score; see the Ch02 proving-run fix.)
     """
     from unittest.mock import MagicMock
 
@@ -272,8 +273,9 @@ def test_llm_path_resolves_folio_iri_at_06_threshold():
     concept_mock = MagicMock(
         iri="https://folio.openlegalstandard.org/abc123",
         preferred_label="Cross-Examination",
+        branch="Service",
     )
-    folio_svc = _make_folio_mock([(concept_mock, 0.65)])
+    folio_svc = _make_folio_mock([(concept_mock, 100.0)])
 
     stage = FolioTaggerStage()
     reconciled = [
@@ -322,7 +324,7 @@ def test_llm_path_unresolved_label_routes_to_proposed_class():
 
 
 def test_llm_path_high_score_still_resolves():
-    """Regression guard: score 0.92 still resolves (pre-existing behavior preserved)."""
+    """Regression guard: a strong full match (100.0 on the 0-100 scale) still resolves."""
     from unittest.mock import MagicMock
 
     from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
@@ -330,8 +332,9 @@ def test_llm_path_high_score_still_resolves():
     concept_mock = MagicMock(
         iri="https://folio.openlegalstandard.org/ggg777",
         preferred_label="Expert Witness",
+        branch="Actor / Player",
     )
-    folio_svc = _make_folio_mock([(concept_mock, 0.92)])
+    folio_svc = _make_folio_mock([(concept_mock, 100.0)])
 
     stage = FolioTaggerStage()
     reconciled = [
