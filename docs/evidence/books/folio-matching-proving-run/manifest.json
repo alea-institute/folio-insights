@@ -14,7 +14,34 @@
   "model": "gemini-2.5-flash-lite",
   "spend": { "v7_usd": 0.168, "cap_usd": 0.5 },
   "metric_harness": "One consistent harness across all three columns: branch membership from live folio-python (get_locations / get_governmental_bodies); a place/agency tag counts as a mis-map only when surface != resolved label (rapidfuzz token_sort_ratio < 70). v6 non-heading place is 739 under this harness vs 572 first reported in session 6 — same regression, now measured identically.",
-  "verdict": "FIXED — v7 meets the acceptance bar; the folio-enrich migration hold can lift",
+  "ch03_generalization": {
+    "question": "Does the v7 precision fix generalize beyond Ch02, the chapter it was tuned on?",
+    "chapter": "Ch03 · Trial Procedures & Motions (16-ch03-trial-procedures-and-moti-final7th)",
+    "source_hash": "ffbc01e7a0a6567b89fcf019898c97ca9b320432ddbbae43999ecf3a87ec8e8d (identical v5/v7)",
+    "baseline_run": "output/uat_ta_ch03_v5 (2026-07-15 extraction; 865 classes fed governance registry; 491 units)",
+    "fixed_run": "output/uat_ta_ch03_v7 (same branch/config as Ch02 v7; 830 units)",
+    "spend": { "v7_usd": 0.2023, "cap_usd": 0.30 },
+    "deltas": {
+      "non_heading_place_mismaps": { "v5": 3, "v7": 0 },
+      "heading_place_propagation_tags": { "v5": 283, "v7": 0, "unique_places_v5": 30 },
+      "agency_homonym_mismaps": { "v5": 15, "v7": 3, "residual": "appeals->IRS Office of Appeals (entity_ruler alt-label; identical to Ch02 v7)" },
+      "slovenia_units": { "v5": 5, "v7": 0 },
+      "action_auction_hits": { "v5": 0, "v7": 0 },
+      "metadata_units_tagged": { "v5": 0, "v7": 0 },
+      "resolved_iri_tags": { "v5": 2418, "v7": 3273 },
+      "proposed_class_tags": { "v5": 1476, "v7": 1902, "v5_per_unit": 3.006, "v7_per_unit": 2.292 },
+      "proposed_classes_json_total": { "v5": 1152, "v7": 1431 },
+      "units_tags": { "v5": "491/3894", "v7": "830/5175" },
+      "calls_cost": { "v5": "1984/$0.121", "v7": "3491/$0.202" }
+    },
+    "hand_verification": {
+      "suppressed_tags": { "sampled": 10, "confirmed_wrong": 10, "note": "8 countries/regions with 0 source occurrences (heading propagation); AI->Anguilla (AI=artificial intelligence); state->U.S. Dept. of State (common word)" },
+      "new_v7_mappings": { "sampled": 10, "confirmed_right": 8, "note": "8 correct legal-concept resolutions; 1 weak-defensible (advice->Advisory Service); 1 wrong (take->Seizure, entity_ruler generic-word fragment orthogonal to the fix)" }
+    },
+    "recall_guard": "Genuine concepts dropped at pair level still resolve in v7 by IRI (cross-examination, direct examination, motions in limine, ALJ, opening statements, judgments, verdicts, jurors); v7 resolves +855 more IRIs than baseline. Suppression removed noise, not signal.",
+    "verdict": "GENERALIZES — the same failure classes collapse to ~0 on unseen source while recall rises; the fix did not memorize Ch02."
+  },
+  "verdict": "FIXED — v7 meets the acceptance bar on Ch02 and GENERALIZES on Ch03; the folio-enrich migration hold can lift",
   "acceptance_bar": {
     "non_heading_place_mismaps": { "v5": 1, "v6": 739, "v7": 0, "bar": "<= v5 (~1)", "met": true },
     "agency_homonym_mismaps": { "v5": 5, "v6": 150, "v7": 1, "bar": "<= v5 (~5)", "met": true },
