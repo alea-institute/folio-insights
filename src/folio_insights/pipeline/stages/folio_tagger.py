@@ -29,23 +29,17 @@ from folio_insights.services.heading_context import HeadingContextExtractor
 
 logger = logging.getLogger(__name__)
 
-# Branch labels that mark a geographic/place concept (place-name gate, Ch02 finding 003).
-_PLACE_BRANCH_MARKERS = ("location", "geograph", "country", "jurisdiction", "place")
-
 
 def _load_alias_blocklist() -> Any:
-    """Load the pinned seed alias blocklist (Action != Auction, etc.). Cached per process."""
-    from importlib import resources
+    """Load the shipped seed alias blocklist (Action != Auction + agency homonyms).
 
-    from folio_matching import AliasBlocklist
+    The seed now ships inside the pinned ``folio_matching`` package as recorded Ch01/Ch02 verdicts
+    keyed on **real** FOLIO IRIs (the old placeholder used a synthetic ``EXAMPLE-Auction`` IRI that
+    could never match live resolution — the Ch02 proving run's defect #3). Never raises.
+    """
+    from folio_matching import load_seed_blocklist
 
-    try:
-        data_path = resources.files("folio_matching.data") / "alias_blocklist.json"
-        with resources.as_file(data_path) as p:
-            return AliasBlocklist.load(p)
-    except Exception:
-        logger.warning("Alias blocklist seed not found; using empty blocklist", exc_info=True)
-        return AliasBlocklist()
+    return load_seed_blocklist()
 
 
 class FolioTaggerStage(InsightsPipelineStage):
@@ -58,14 +52,11 @@ class FolioTaggerStage(InsightsPipelineStage):
       4. heading_context: Document structure heading mapping
     """
 
-    # Minimum FolioService.search_by_label score to accept a label-to-IRI
-    # resolution as canonical. Calibrated from UAT I-1: LLM-generated labels
-    # are often hyphenated/lower-cased (e.g. 'cross-examine' vs 'Cross-Examination'),
-    # which scored 0.6-0.7 against the FOLIO catalogue. The old threshold of 0.7
-    # rejected most LLM-path matches, producing empty IRIs. 0.6 is the floor
-    # that resolves well-known FOLIO labels without admitting spurious matches
-    # (confirmed against the 27K-label FOLIO catalogue).
-    _FOLIO_LABEL_RESOLUTION_THRESHOLD = 0.6
+    # Label -> IRI resolution (the whole-string acceptance bar and decompose-first ordering) is
+    # owned by the pinned ``folio_matching.LabelResolver``. The old class-local ``0.6`` bar was a
+    # latent scale bug: FolioService.search_by_label returns a 0-100 score, so 0.6 accepted every
+    # top match and generic terms mis-mapped to short place/agency labels (the Ch02 proving-run
+    # regression). The calibrated bar (92.0) now lives in ``folio_matching.WHOLE_STRING_THRESHOLD``.
 
     @property
     def name(self) -> str:
@@ -116,6 +107,20 @@ class FolioTaggerStage(InsightsPipelineStage):
         reconciler: FourPathReconciler,
     ) -> None:
         """Run all four paths and reconcile for a single unit."""
+        # Metadata / front-matter exclusion (Ch02 unit d3c44e2a): a unit whose source is a
+        # title page, copyright block, TOC, index, or publisher metadata is not substantive legal
+        # content and must never be tagged. SourceClassifier declares this as a first-class policy
+        # instead of a heuristic buried in the tagger (proving-run defect #4).
+        if not self._is_taggable_source(unit):
+            unit.folio_tags = []
+            record_lineage(
+                unit,
+                stage="folio_tagger",
+                action="skip",
+                detail="excluded: non-taggable source (metadata/front-matter)",
+            )
+            return
+
         # Path 1: EntityRuler (Aho-Corasick)
         ruler_concepts = self._run_entity_ruler(unit.text, aho_matcher, folio_service)
 
@@ -267,123 +272,133 @@ class FolioTaggerStage(InsightsPipelineStage):
         reconciled: list[ReconciledConcept],
         folio_service: Any,
     ) -> list[ConceptTag]:
-        """Convert reconciled concepts to ConceptTag objects.
+        """Convert reconciled concepts to ConceptTag objects (Ch02 precision-fix path).
 
-        IRI resolution: if the reconciled concept has no IRI, try
-        ``folio_service.search_by_label(rc.label)`` and accept the top match if
-        score >= 0.6. If the whole-string label still fails to resolve, run the
-        pinned ``folio_matching.decompose`` (conjunction split + shared-head
-        restoration) and resolve each conjunct independently — a compound heading
-        like "Proposed Findings of Fact and Conclusions of Law" then yields TWO
-        resolved FOLIO tags instead of one ``proposed_class`` (Ch02 unit
-        ``12b5e434``, Damien's recall-failure verdict). Only if neither the whole
-        string nor any conjunct resolves does the tag retain ``iri=''`` and get
-        its ``extraction_path`` rewritten to ``'proposed_class'``.
+        Resolution is delegated to the pinned ``folio_matching.LabelResolver`` so every consumer
+        resolves identically (proving-run defects #1 and #2):
 
-        See UAT Issue I-1 (empty-IRI bug) and Ch02 finding 005 (recall gap).
+        * **Decompose-first for multi-head strings.** A conjoined heading such as "Proposed
+          Findings of Fact and Conclusions of Law" resolves each conjunct *before* the whole
+          string is considered, yielding one tag per sibling concept (unit ``12b5e434``) instead
+          of one wrong whole-string partial.
+        * **Calibrated whole-string bar on the real 0-100 scale.** The old ``>= 0.6`` bar was a
+          no-op (FOLIO scores 0-100), so generic terms latched onto the short place/agency labels
+          rapidfuzz over-scores to 90 ("law" -> Delaware). The bar is now 92.0.
+        * **Every resolved tag carries its branch**, so the place/agency gate can veto it.
+
+        A concept whose label resolves to nothing (proposed class) keeps ``iri=''`` and is tagged
+        ``proposed_class``. Gates run last: the alias blocklist and the place/agency corroboration
+        veto are deterministic — high LLM confidence does NOT exempt a tag from them.
         """
+        resolver = None
+        if folio_service is not None:
+            from folio_matching import LabelResolver
+
+            resolver = LabelResolver(folio_service.search_by_label)
+
         tags: list[ConceptTag] = []
-
         for rc in reconciled:
-            # Determine primary extraction path from reconciler metadata
-            if rc.contributing_paths:
-                primary_path = rc.contributing_paths[0]
+            primary_path = rc.contributing_paths[0] if rc.contributing_paths else "unknown"
+            paths = rc.contributing_paths or [primary_path]
+
+            if rc.iri:
+                # A path (entity_ruler / semantic / heading_context) already supplied the IRI.
+                # Populate branch if the path left it empty so the gate can see every tag.
+                branch = rc.branch or self._branch_for(rc.iri, folio_service)
+                tags.append(
+                    self._gate_or_none(
+                        ConceptTag(
+                            iri=rc.iri,
+                            label=rc.label,
+                            confidence=rc.confidence,
+                            extraction_path=primary_path,
+                            branch=branch,
+                        ),
+                        resolved_label=self._label_for(rc.iri, folio_service) or rc.label,
+                        surface=rc.label,
+                        paths=paths,
+                    )
+                )
+                continue
+
+            resolved = resolver.resolve(rc.label) if (resolver and rc.label) else []
+            if resolved:
+                seen: set[str] = set()
+                for r in resolved:
+                    if r.iri in seen:
+                        continue
+                    seen.add(r.iri)
+                    tags.append(
+                        self._gate_or_none(
+                            ConceptTag(
+                                iri=r.iri,
+                                label=r.surface or rc.label,
+                                confidence=rc.confidence,
+                                extraction_path=primary_path,
+                                branch=r.branch,
+                            ),
+                            resolved_label=r.label,
+                            surface=r.surface or rc.label,
+                            paths=paths,
+                        )
+                    )
             else:
-                primary_path = "unknown"
-
-            # Resolve IRI via FolioService if the reconciled concept lacks one
-            iri = rc.iri
-            if not iri and rc.label and folio_service is not None:
-                iri = self._resolve_label_to_iri(rc.label, folio_service)
-
-            # Whole-string resolution failed: try conjunction decomposition so a
-            # compound label maps to one tag per resolved conjunct (recall gap fix).
-            if not iri and rc.label and folio_service is not None:
-                decomposed_tags = self._decompose_to_tags(rc, primary_path, folio_service)
-                if decomposed_tags:
-                    tags.extend(decomposed_tags)
-                    continue
-
-            # If still no IRI, this concept is a proposed class — rewrite the
-            # extraction path so downstream consumers can distinguish "LLM
-            # extracted but no FOLIO match" from ordinary LLM-path hits.
-            if not iri:
-                primary_path = "proposed_class"
-
-            tag = ConceptTag(
-                iri=iri,
-                label=rc.label,
-                confidence=rc.confidence,
-                extraction_path=primary_path,
-                branch=rc.branch,
-            )
-            tags.append(tag)
-
-        return self._apply_match_gates(tags)
-
-    def _resolve_label_to_iri(self, label: str, folio_service: Any) -> str:
-        """Resolve a single label to a FOLIO IRI via whole-string search.
-
-        Returns the top match's IRI when its score clears
-        ``_FOLIO_LABEL_RESOLUTION_THRESHOLD``, else ``''``.
-        """
-        try:
-            results = folio_service.search_by_label(label)
-        except Exception:
-            logger.warning("search_by_label failed for label=%r", label, exc_info=True)
-            return ""
-        if not results:
-            return ""
-        top_match, top_score = results[0]
-        if top_score >= self._FOLIO_LABEL_RESOLUTION_THRESHOLD:
-            return getattr(top_match, "iri", "") or ""
-        return ""
-
-    def _decompose_to_tags(
-        self,
-        rc: ReconciledConcept,
-        primary_path: str,
-        folio_service: Any,
-    ) -> list[ConceptTag]:
-        """Split a compound label on conjunctions and resolve each conjunct.
-
-        Uses the pinned ``folio_matching.decompose`` to turn e.g. "Proposed
-        Findings of Fact and Conclusions of Law" into its sibling concepts, each
-        resolved independently. The first decompose candidate is the original
-        whole string (already known to have failed), so it is skipped. Returns a
-        ConceptTag per conjunct that resolves; an empty list if none resolve or
-        the label has no conjunction (decompose returns a single element).
-        """
-        from folio_matching import decompose
-
-        candidates = decompose(rc.label)
-        if len(candidates) < 2:
-            return []
-
-        decomposed: list[ConceptTag] = []
-        seen_iris: set[str] = set()
-        for candidate in candidates[1:]:  # skip original whole string (already failed)
-            part_iri = self._resolve_label_to_iri(candidate, folio_service)
-            if part_iri and part_iri not in seen_iris:
-                seen_iris.add(part_iri)
-                decomposed.append(
+                # No FOLIO match: a genuine proposed class (empty IRI, distinct extraction path).
+                tags.append(
                     ConceptTag(
-                        iri=part_iri,
-                        label=candidate,
+                        iri="",
+                        label=rc.label,
                         confidence=rc.confidence,
-                        extraction_path=primary_path,
+                        extraction_path="proposed_class",
                         branch=rc.branch,
                     )
                 )
-        return decomposed
+
+        return self._apply_match_gates([t for t in tags if t is not None])
+
+    def _gate_or_none(
+        self,
+        tag: ConceptTag,
+        *,
+        resolved_label: str,
+        surface: str,
+        paths: list[str],
+    ) -> ConceptTag | None:
+        """Return the tag, or ``None`` if the place/agency gate vetoes it.
+
+        The gate keys on the resolved *branch* (now always populated). A place- or
+        governmental-body-branch tag is a mis-map unless corroborated by >= 2 signals. Only
+        **non-heading** paths count as corroboration, and heading context contributes at most one
+        signal — so a place resolved on a single path, or propagated through headings alone
+        (Slovenia -> 118 units, the actual vector), is vetoed. The surface term is trusted only
+        for non-heading paths (heading extraction stores the resolved label as its surface).
+        """
+        from folio_matching import PlaceNameGate
+
+        if not tag.iri or not self._is_place_or_agency(tag.branch):
+            return tag
+        non_heading = [p for p in paths if p != "heading_context"]
+        is_heading = "heading_context" in paths
+        gate_query = surface if non_heading else ""  # untrusted heading surface -> no exact exempt
+        decision = PlaceNameGate(min_signals=2).evaluate(
+            query=gate_query,
+            label=resolved_label,
+            branch=tag.branch,
+            score=tag.confidence * 100.0,
+            heading_context_match=is_heading,
+            corroborating_signals=len(non_heading),
+        )
+        if decision.demoted:
+            logger.debug("Place/agency gate vetoed %s -> %s (%s)", surface, tag.iri, decision.reason)
+            return None
+        return tag
 
     def _apply_match_gates(self, tags: list[ConceptTag]) -> list[ConceptTag]:
-        """Apply the pinned folio-matching gates (migration item #1, new capabilities ON).
+        """Final deterministic veto pass: the alias blocklist (Action != Auction + agency homonyms).
 
-        * Alias blocklist — drop deterministic homonyms (Action != Auction, Ch02 unit 4b06a90c).
-        * Place-name gate — drop bare fuzzy place-name hits that lack corroboration
-          (Slovenia -> 99 units, Ch02 finding 003): a place-branch tag surviving on a single
-          extraction path with no heading-context corroboration is demoted out.
+        The place/agency gate runs earlier at resolution time (``_gate_or_none``) where the surface
+        term and resolved label are both known. Here the shipped seed blocklist drops recorded
+        homonym pairings (real FOLIO IRIs) regardless of LLM confidence (Ch02 unit 4b06a90c).
         """
         blocklist = self._get_alias_blocklist()
         kept: list[ConceptTag] = []
@@ -391,26 +406,79 @@ class FolioTaggerStage(InsightsPipelineStage):
             if tag.iri and blocklist.is_blocked(tag.label, tag.iri):
                 logger.debug("Alias blocklist dropped %s -> %s", tag.label, tag.iri)
                 continue
-            if self._is_place_tag(tag) and not self._place_corroborated(tag):
-                logger.debug("Place-name gate demoted %s (%s)", tag.label, tag.branch)
-                continue
             kept.append(tag)
         return kept
+
+    def _branch_for(self, iri: str, folio_service: Any) -> str:
+        """Resolve a concept's branch from the ontology by IRI (cached per process)."""
+        if not iri or folio_service is None:
+            return ""
+        cache = self._branch_cache
+        if iri in cache:
+            return cache[iri]
+        branch = ""
+        try:
+            concept = folio_service.get_concept(iri)
+            branch = getattr(concept, "branch", "") or ""
+        except Exception:
+            logger.warning("branch lookup failed for iri=%r", iri, exc_info=True)
+        cache[iri] = branch
+        return branch
+
+    def _label_for(self, iri: str, folio_service: Any) -> str:
+        """Resolve a concept's canonical FOLIO label from the ontology by IRI (cached)."""
+        if not iri or folio_service is None:
+            return ""
+        cache = self._label_cache
+        if iri in cache:
+            return cache[iri]
+        label = ""
+        try:
+            concept = folio_service.get_concept(iri)
+            label = getattr(concept, "preferred_label", "") or getattr(concept, "label", "") or ""
+        except Exception:
+            logger.warning("label lookup failed for iri=%r", iri, exc_info=True)
+        cache[iri] = label
+        return label
+
+    @property
+    def _branch_cache(self) -> dict[str, str]:
+        cache = getattr(self, "_branch_cache_store", None)
+        if cache is None:
+            cache = {}
+            self._branch_cache_store = cache
+        return cache
+
+    @property
+    def _label_cache(self) -> dict[str, str]:
+        cache = getattr(self, "_label_cache_store", None)
+        if cache is None:
+            cache = {}
+            self._label_cache_store = cache
+        return cache
+
+    def _is_taggable_source(self, unit: KnowledgeUnit) -> bool:
+        """Whether a unit's source is eligible for tagging (metadata/front-matter excluded)."""
+        from folio_matching import SourceClassifier
+
+        classifier = getattr(self, "_source_classifier", None)
+        if classifier is None:
+            classifier = SourceClassifier()
+            self._source_classifier = classifier
+        section_label = " > ".join(unit.source_section) if unit.source_section else ""
+        return bool(classifier.is_taggable(section_label, unit.text or ""))
+
+    @staticmethod
+    def _is_place_or_agency(branch: str) -> bool:
+        from folio_matching.gates import _PLACE_BRANCH_MARKERS
+
+        b = (branch or "").lower()
+        return any(marker in b for marker in _PLACE_BRANCH_MARKERS)
 
     def _get_alias_blocklist(self) -> Any:
         if getattr(self, "_alias_blocklist", None) is None:
             self._alias_blocklist = _load_alias_blocklist()
         return self._alias_blocklist
-
-    @staticmethod
-    def _is_place_tag(tag: ConceptTag) -> bool:
-        branch = (tag.branch or "").lower()
-        return any(marker in branch for marker in _PLACE_BRANCH_MARKERS)
-
-    @staticmethod
-    def _place_corroborated(tag: ConceptTag) -> bool:
-        # A place tag needs heading-context corroboration or a strong (multi-path) confidence.
-        return tag.extraction_path == "heading_context" or tag.confidence >= 0.85
 
     def _get_folio_service(self) -> Any:
         """Get FolioService from bridge."""
