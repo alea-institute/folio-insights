@@ -29,6 +29,24 @@ from folio_insights.services.heading_context import HeadingContextExtractor
 
 logger = logging.getLogger(__name__)
 
+# Branch labels that mark a geographic/place concept (place-name gate, Ch02 finding 003).
+_PLACE_BRANCH_MARKERS = ("location", "geograph", "country", "jurisdiction", "place")
+
+
+def _load_alias_blocklist() -> Any:
+    """Load the pinned seed alias blocklist (Action != Auction, etc.). Cached per process."""
+    from importlib import resources
+
+    from folio_matching import AliasBlocklist
+
+    try:
+        data_path = resources.files("folio_matching.data") / "alias_blocklist.json"
+        with resources.as_file(data_path) as p:
+            return AliasBlocklist.load(p)
+    except Exception:
+        logger.warning("Alias blocklist seed not found; using empty blocklist", exc_info=True)
+        return AliasBlocklist()
+
 
 class FolioTaggerStage(InsightsPipelineStage):
     """Tag knowledge units with FOLIO concepts via four extraction paths.
@@ -299,7 +317,42 @@ class FolioTaggerStage(InsightsPipelineStage):
             )
             tags.append(tag)
 
-        return tags
+        return self._apply_match_gates(tags)
+
+    def _apply_match_gates(self, tags: list[ConceptTag]) -> list[ConceptTag]:
+        """Apply the pinned folio-matching gates (migration item #1, new capabilities ON).
+
+        * Alias blocklist — drop deterministic homonyms (Action != Auction, Ch02 unit 4b06a90c).
+        * Place-name gate — drop bare fuzzy place-name hits that lack corroboration
+          (Slovenia -> 99 units, Ch02 finding 003): a place-branch tag surviving on a single
+          extraction path with no heading-context corroboration is demoted out.
+        """
+        blocklist = self._get_alias_blocklist()
+        kept: list[ConceptTag] = []
+        for tag in tags:
+            if tag.iri and blocklist.is_blocked(tag.label, tag.iri):
+                logger.debug("Alias blocklist dropped %s -> %s", tag.label, tag.iri)
+                continue
+            if self._is_place_tag(tag) and not self._place_corroborated(tag):
+                logger.debug("Place-name gate demoted %s (%s)", tag.label, tag.branch)
+                continue
+            kept.append(tag)
+        return kept
+
+    def _get_alias_blocklist(self) -> Any:
+        if getattr(self, "_alias_blocklist", None) is None:
+            self._alias_blocklist = _load_alias_blocklist()
+        return self._alias_blocklist
+
+    @staticmethod
+    def _is_place_tag(tag: ConceptTag) -> bool:
+        branch = (tag.branch or "").lower()
+        return any(marker in branch for marker in _PLACE_BRANCH_MARKERS)
+
+    @staticmethod
+    def _place_corroborated(tag: ConceptTag) -> bool:
+        # A place tag needs heading-context corroboration or a strong (multi-path) confidence.
+        return tag.extraction_path == "heading_context" or tag.confidence >= 0.85
 
     def _get_folio_service(self) -> Any:
         """Get FolioService from bridge."""
@@ -337,19 +390,25 @@ class FolioTaggerStage(InsightsPipelineStage):
             return None
 
     def _get_reconciler(self, embedding_service: Any) -> FourPathReconciler:
-        """Get FourPathReconciler wrapping folio-enrich's Reconciler."""
-        try:
-            from folio_insights.services.bridge.folio_bridge import (
-                _ensure_folio_enrich_path,
-            )
-            _ensure_folio_enrich_path()
-            from app.services.reconciliation.reconciler import Reconciler
+        """Get FourPathReconciler backed by the pinned ``folio_matching.Reconciler``.
 
-            base = Reconciler(embedding_service=embedding_service)
+        Migration item #1: replaces the sys.path import of folio-enrich's Reconciler with
+        the pinned package. If ``embedding_service`` exposes ``similarity_batch`` the triage
+        path is wired; otherwise the deterministic 2-pass reconcile is used.
+        """
+        try:
+            from folio_matching import Reconciler
+
+            sim = getattr(embedding_service, "similarity_batch", None)
+            index_size = int(getattr(embedding_service, "index_size", 0) or 0)
+            base = Reconciler(
+                similarity_batch=sim if callable(sim) else None,
+                index_size=index_size,
+            )
             return FourPathReconciler(base_reconciler=base)
         except Exception:
             logger.warning(
-                "Base Reconciler not available; using simple merge",
+                "Pinned Reconciler not available; using simple merge",
                 exc_info=True,
             )
             return FourPathReconciler()
