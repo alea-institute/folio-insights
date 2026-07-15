@@ -271,11 +271,16 @@ class FolioTaggerStage(InsightsPipelineStage):
 
         IRI resolution: if the reconciled concept has no IRI, try
         ``folio_service.search_by_label(rc.label)`` and accept the top match if
-        score >= 0.6. If resolution fails, the tag retains ``iri=''`` AND its
-        ``extraction_path`` is rewritten to ``'proposed_class'`` so downstream
-        consumers (proposed_classes.json, OWL exporter) can route correctly.
+        score >= 0.6. If the whole-string label still fails to resolve, run the
+        pinned ``folio_matching.decompose`` (conjunction split + shared-head
+        restoration) and resolve each conjunct independently — a compound heading
+        like "Proposed Findings of Fact and Conclusions of Law" then yields TWO
+        resolved FOLIO tags instead of one ``proposed_class`` (Ch02 unit
+        ``12b5e434``, Damien's recall-failure verdict). Only if neither the whole
+        string nor any conjunct resolves does the tag retain ``iri=''`` and get
+        its ``extraction_path`` rewritten to ``'proposed_class'``.
 
-        See UAT Issue I-1 for the bug this fixes.
+        See UAT Issue I-1 (empty-IRI bug) and Ch02 finding 005 (recall gap).
         """
         tags: list[ConceptTag] = []
 
@@ -289,18 +294,15 @@ class FolioTaggerStage(InsightsPipelineStage):
             # Resolve IRI via FolioService if the reconciled concept lacks one
             iri = rc.iri
             if not iri and rc.label and folio_service is not None:
-                try:
-                    results = folio_service.search_by_label(rc.label)
-                    if results:
-                        top_match, top_score = results[0]
-                        if top_score >= self._FOLIO_LABEL_RESOLUTION_THRESHOLD:
-                            iri = getattr(top_match, "iri", "") or ""
-                except Exception:
-                    logger.warning(
-                        "search_by_label failed for label=%r",
-                        rc.label,
-                        exc_info=True,
-                    )
+                iri = self._resolve_label_to_iri(rc.label, folio_service)
+
+            # Whole-string resolution failed: try conjunction decomposition so a
+            # compound label maps to one tag per resolved conjunct (recall gap fix).
+            if not iri and rc.label and folio_service is not None:
+                decomposed_tags = self._decompose_to_tags(rc, primary_path, folio_service)
+                if decomposed_tags:
+                    tags.extend(decomposed_tags)
+                    continue
 
             # If still no IRI, this concept is a proposed class — rewrite the
             # extraction path so downstream consumers can distinguish "LLM
@@ -318,6 +320,62 @@ class FolioTaggerStage(InsightsPipelineStage):
             tags.append(tag)
 
         return self._apply_match_gates(tags)
+
+    def _resolve_label_to_iri(self, label: str, folio_service: Any) -> str:
+        """Resolve a single label to a FOLIO IRI via whole-string search.
+
+        Returns the top match's IRI when its score clears
+        ``_FOLIO_LABEL_RESOLUTION_THRESHOLD``, else ``''``.
+        """
+        try:
+            results = folio_service.search_by_label(label)
+        except Exception:
+            logger.warning("search_by_label failed for label=%r", label, exc_info=True)
+            return ""
+        if not results:
+            return ""
+        top_match, top_score = results[0]
+        if top_score >= self._FOLIO_LABEL_RESOLUTION_THRESHOLD:
+            return getattr(top_match, "iri", "") or ""
+        return ""
+
+    def _decompose_to_tags(
+        self,
+        rc: ReconciledConcept,
+        primary_path: str,
+        folio_service: Any,
+    ) -> list[ConceptTag]:
+        """Split a compound label on conjunctions and resolve each conjunct.
+
+        Uses the pinned ``folio_matching.decompose`` to turn e.g. "Proposed
+        Findings of Fact and Conclusions of Law" into its sibling concepts, each
+        resolved independently. The first decompose candidate is the original
+        whole string (already known to have failed), so it is skipped. Returns a
+        ConceptTag per conjunct that resolves; an empty list if none resolve or
+        the label has no conjunction (decompose returns a single element).
+        """
+        from folio_matching import decompose
+
+        candidates = decompose(rc.label)
+        if len(candidates) < 2:
+            return []
+
+        decomposed: list[ConceptTag] = []
+        seen_iris: set[str] = set()
+        for candidate in candidates[1:]:  # skip original whole string (already failed)
+            part_iri = self._resolve_label_to_iri(candidate, folio_service)
+            if part_iri and part_iri not in seen_iris:
+                seen_iris.add(part_iri)
+                decomposed.append(
+                    ConceptTag(
+                        iri=part_iri,
+                        label=candidate,
+                        confidence=rc.confidence,
+                        extraction_path=primary_path,
+                        branch=rc.branch,
+                    )
+                )
+        return decomposed
 
     def _apply_match_gates(self, tags: list[ConceptTag]) -> list[ConceptTag]:
         """Apply the pinned folio-matching gates (migration item #1, new capabilities ON).
