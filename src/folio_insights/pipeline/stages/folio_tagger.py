@@ -431,20 +431,28 @@ class FolioTaggerStage(InsightsPipelineStage):
             return None
 
     def _get_aho_matcher(self, folio_service: Any) -> Any:
-        """Get AhoCorasickMatcher from bridge."""
+        """Get the entity ruler backed by the pinned ``folio_matching.FOLIOEntityRuler``.
+
+        Migration item #1 (continued): the ruler previously sys.path-imported folio-enrich's
+        ``AhoCorasickMatcher`` from ``app.services.concept.entity_ruler``. That module moved in
+        folio-enrich (to ``app.services.matching``), breaking the import and silently dropping the
+        entire entity-ruler extraction path. The pinned ``FOLIOEntityRuler`` is a faithful,
+        dependency-free port with the same ``load_patterns(dict[str, LabelInfo])`` /
+        ``find_matches(text) -> [.. .entity_id, .text]`` interface, and consumes
+        ``folio_service.get_all_labels()`` directly (folio-enrich ``LabelInfo`` is duck-compatible:
+        ``.concept.iri`` + ``.label_type``). This removes the fragile folio-enrich matcher import.
+        """
         try:
-            from folio_insights.services.bridge.folio_bridge import (
-                get_aho_corasick_matcher,
-            )
-            MatcherClass = get_aho_corasick_matcher()
-            matcher = MatcherClass()
+            from folio_matching import FOLIOEntityRuler
+
+            ruler = FOLIOEntityRuler()
             if folio_service:
                 labels = folio_service.get_all_labels()
                 if labels:
-                    matcher.load_patterns(labels)
-            return matcher
+                    ruler.load_patterns(labels)
+            return ruler
         except Exception:
-            logger.warning("AhoCorasickMatcher not available", exc_info=True)
+            logger.warning("FOLIOEntityRuler not available", exc_info=True)
             return None
 
     def _get_reconciler(self, embedding_service: Any) -> FourPathReconciler:
