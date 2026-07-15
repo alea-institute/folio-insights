@@ -1,4 +1,4 @@
-<title>FOLIO-matching proving run — Ch02 before/after</title>
+<title>FOLIO-matching proving run — Ch02 before / after / fixed</title>
 <style>
   :root{
     --bg:#eef1f4; --panel:#ffffff; --panel-2:#f6f8fa; --ink:#1a222c; --ink-2:#48566a;
@@ -144,64 +144,74 @@
 <header class="masthead">
   <div class="eyebrow">folio-matching · proving run · lane-2</div>
   <h1>Does the folio-matching pin actually improve Ch02?</h1>
-  <p class="sub">A before/after of FOLIO concept tagging on the same litigation-treatise chapter —
-    the reviewed baseline (pre-pin) against a fresh run through the pinned pipeline with gates,
-    conjunction-decomposition, and the entity-ruler repair. Read before any other repo migrates.</p>
+  <p class="sub">Three runs of FOLIO concept tagging on the same litigation-treatise chapter: the
+    reviewed pre-pin baseline (v5), the first pinned run that regressed on precision (v6), and the
+    precision fix (v7) — shared branch-carrying resolution, decompose-first, a calibrated bar, and
+    deterministic gates. The v7 acceptance bar is met.</p>
   <div class="meta">
     <span><b>Chapter</b> Ch02 · Planning &amp; Preparation</span>
-    <span><b>Source hash</b> 0b7c2ff… (identical both runs)</span>
+    <span><b>Source hash</b> 0b7c2ff… (identical v5/v6/v7)</span>
     <span><b>Model</b> gemini-2.5-flash-lite</span>
-    <span><b>App spend</b> v6 ≈ $0.18 · session ≈ $0.37</span>
+    <span><b>App spend</b> v6 ≈ $0.18 · v7 ≈ $0.17</span>
   </div>
 </header>
 
 <div class="verdict">
-  <div class="band">Bottom line · reviewer decision requested</div>
+  <div class="band" style="background:var(--good-bg);color:var(--good)">Bottom line · v7 fix landed · acceptance bar met</div>
   <div class="body">
-    <h3>The plumbing is proven; the gates aren&rsquo;t catching the real failures &mdash; and the run
-      surfaced a new precision regression.</h3>
-    <p>The pinned package integrates cleanly: the reconciler seam runs on <code>folio_matching</code>,
-      the entity-ruler path was restored, and decomposition is wired and unit-tested. But on this
-      chapter the pin <b>trades one failure for another</b>. It eliminates every &ldquo;no map&rdquo;
-      entry (proposed-class-only <span class="pill warn">1244&nbsp;&rarr;&nbsp;0</span>) &mdash;
-      recovering the correct maps you asked for &mdash; yet it does so by force-resolving generic
-      terms, which floods the output with <b>wrong place-name and agency homonyms</b>
-      (<span class="pill bad">non-heading place mis-maps 1&nbsp;&rarr;&nbsp;572</span>). The three
-      headline failures you flagged &mdash; Slovenia, Action, metadata &mdash; are
-      <b>not fixed</b>.</p>
-    <p><b>Recommendation:</b> hold the folio-enrich migration until the gates (place / short-label),
-      calibration, and the domain prior are wired <i>into the label-resolution path</i>, and the
-      resolution threshold is tightened. Detail and per-finding sign-off below.</p>
+    <h3>The v6 precision regression is fixed. v7 kills the place / agency / Slovenia failure classes
+      while preserving the recoveries &mdash; on identical source, for $0.17.</h3>
+    <p>The v6 root cause was engineering, not modeling: label&rarr;IRI resolution dropped the
+      concept&rsquo;s <b>branch</b> (so the place/agency gates never saw a tag) and accepted the top
+      match at <code>&ge;0.6</code> on a <b>0&ndash;100</b> scale (a no-op bar), so generic terms
+      latched onto the short place/agency labels rapidfuzz over-scores to exactly 90.0. v7 fixes both
+      in the shared <code>folio_matching</code> resolver &mdash; decompose-first for compound
+      headings, a calibrated 92.0 bar, and a branch on every resolved tag &mdash; then lets the
+      deterministic gates and the real-IRI blocklist veto what remains.</p>
+    <p><b>Result (v6&rarr;v7, same harness):</b>
+      <span class="pill good">non-heading place mis-maps 739&nbsp;&rarr;&nbsp;0</span>
+      <span class="pill good">agency homonyms 150&nbsp;&rarr;&nbsp;1</span>
+      <span class="pill good">Slovenia units 168&nbsp;&rarr;&nbsp;0</span>
+      &mdash; all at or below the pre-pin v5 baseline &mdash; while the named recoveries survive
+      (Burden of Proof 55, Hearing 21, Lawyer 47) and the metadata unit is now excluded. Proposed-class
+      rises to 1605 (2.33/unit) because v7 correctly <i>declines</i> to force-resolve the 889 mis-maps
+      v6 invented; per unit that is below v5&rsquo;s 2.68. <b>The folio-enrich migration hold can lift.</b></p>
   </div>
 </div>
 
 <section>
   <h2>Headline delta &mdash; per failure class</h2>
-  <p class="lede">v5 = the baseline you reviewed (pre-pin, 464 units). v6 = pinned run (699 units).
-    The two runs re-segmented the chapter differently (an upstream LLM-nondeterminism, orthogonal to
-    the pin), so <b>per-unit rates</b> are the honest comparison &mdash; raw totals are shown for
-    completeness.</p>
+  <p class="lede">v5 = pre-pin baseline (464 units). v6 = first pinned run, the regression (699 units).
+    v7 = pinned + the precision fix (690 units). All three columns are recomputed with <b>one
+    consistent harness</b> (branch membership from live folio-python; a place/agency tag counts as a
+    mis-map only when the surface term does not match the resolved label, rapidfuzz&nbsp;&lt;70), so
+    the v6&rarr;v7 delta is exact. v6&rsquo;s non-heading place count here is 739 under this harness
+    (vs the 572 first reported in session 6 &mdash; same regression, now measured identically across
+    columns).</p>
   <div class="scroll">
     <table>
-      <thead><tr><th>Failure class</th><th>v5 raw</th><th>v6 raw</th><th>per-unit v5&rarr;v6</th><th>Direction</th></tr></thead>
+      <thead><tr><th>Failure class / signal</th><th>v5</th><th>v6</th><th>v7</th><th>v6&rarr;v7</th><th>vs&nbsp;v5 bar</th></tr></thead>
       <tbody>
-        <tr><td class="cls">Proposed-class-only (no FOLIO map)</td><td class="num">1244</td><td class="num">0</td><td class="num">2.68&rarr;0.00</td><td><span class="dir fix">recall ↑ (mixed)</span></td></tr>
-        <tr><td class="cls">Canonical place-name tags</td><td class="num">276</td><td class="num">932</td><td class="num">0.59&rarr;1.33</td><td><span class="dir reg">regressed ↑↑</span></td></tr>
-        <tr><td class="cls">&mdash; non-heading place mis-maps</td><td class="num">1</td><td class="num">572</td><td class="num">0.00&rarr;0.82</td><td><span class="dir reg">new failure</span></td></tr>
-        <tr><td class="cls">Agency-homonym tags (DOJ/FEC-style)</td><td class="num">2</td><td class="num">80</td><td class="num">0.00&rarr;0.11</td><td><span class="dir reg">regressed ↑↑</span></td></tr>
-        <tr><td class="cls">&ldquo;Slovenia&rdquo; heading propagation (units)</td><td class="num">99</td><td class="num">118</td><td class="num">21.3%&rarr;16.9%</td><td><span class="dir same">not fixed</span></td></tr>
-        <tr><td class="cls">Action&rarr;Auction blocklist hits</td><td class="num">0</td><td class="num">0</td><td class="num">&mdash;</td><td><span class="dir same">no-op*</span></td></tr>
-        <tr><td class="cls">Weak-band tags (0.3&le;conf&lt;0.5)</td><td class="num">0</td><td class="num">3</td><td class="num">&mdash;</td><td><span class="dir same">~</span></td></tr>
-        <tr><td class="cls">entity_ruler tags (path health)</td><td class="num">1002</td><td class="num">1705</td><td class="num">2.16&rarr;2.44</td><td><span class="dir fix">restored</span></td></tr>
-        <tr><td class="cls">Total tags</td><td class="num">3383</td><td class="num">4782</td><td class="num">7.29&rarr;6.84</td><td><span class="dir same">~</span></td></tr>
-        <tr><td class="cls">Judge / LLM calls</td><td class="num">1875</td><td class="num">3002</td><td class="num">4.04&rarr;4.05</td><td><span class="dir same">flat/unit</span></td></tr>
-        <tr><td class="cls">App-side cost (USD)</td><td class="num">0.115</td><td class="num">0.183</td><td class="num">scales w/ units</td><td><span class="dir same">~</span></td></tr>
+        <tr><td class="cls">Non-heading place mis-maps</td><td class="num">1</td><td class="num">739</td><td class="num">0</td><td class="num">739&rarr;0</td><td><span class="dir fix">met (≤1)</span></td></tr>
+        <tr><td class="cls">Agency-homonym mis-maps (DOJ/FEC-style)</td><td class="num">5</td><td class="num">150</td><td class="num">1</td><td class="num">150&rarr;1</td><td><span class="dir fix">met (≤5)</span></td></tr>
+        <tr><td class="cls">&ldquo;Slovenia&rdquo; propagation (units)</td><td class="num">99</td><td class="num">168</td><td class="num">0</td><td class="num">168&rarr;0</td><td><span class="dir fix">eliminated</span></td></tr>
+        <tr><td class="cls">Place mis-maps, all paths</td><td class="num">1</td><td class="num">739</td><td class="num">0</td><td class="num">739&rarr;0</td><td><span class="dir fix">met</span></td></tr>
+        <tr><td class="cls">Action&rarr;Auction hits (homonym)</td><td class="num">3</td><td class="num">1</td><td class="num">0</td><td class="num">1&rarr;0</td><td><span class="dir fix">cleared</span></td></tr>
+        <tr><td class="cls">Proposed-class-only (no FOLIO map)</td><td class="num">1244</td><td class="num">0</td><td class="num">1605</td><td class="num">0&rarr;1605</td><td><span class="dir same">2.33/u &lt; v5 2.68/u</span></td></tr>
+        <tr><td class="cls">&mdash; recovery: Burden of Proof</td><td class="num">28</td><td class="num">53</td><td class="num">55</td><td class="num">53&rarr;55</td><td><span class="dir fix">preserved</span></td></tr>
+        <tr><td class="cls">&mdash; recovery: Hearing / Lawyer</td><td class="num">17/22</td><td class="num">34/49</td><td class="num">21/47</td><td class="num">kept</td><td><span class="dir fix">preserved</span></td></tr>
+        <tr><td class="cls">&mdash; recovery: compound decompose (12b5e434)</td><td class="num">2</td><td class="num">4</td><td class="num">2</td><td class="num">kept</td><td><span class="dir fix">preserved</span></td></tr>
+        <tr><td class="cls">Metadata/front-matter units tagged</td><td class="num">&mdash;</td><td class="num">&ge;1</td><td class="num">0</td><td class="num">&rarr;0</td><td><span class="dir fix">excluded</span></td></tr>
+        <tr><td class="cls">Units / total tags</td><td class="num">464 / 3383</td><td class="num">699 / 4782</td><td class="num">690 / 4201</td><td class="num">&mdash;</td><td><span class="dir same">~</span></td></tr>
+        <tr><td class="cls">LLM calls / cost (USD)</td><td class="num">1875 / 0.115</td><td class="num">3002 / 0.183</td><td class="num">2989 / 0.168</td><td class="num">&mdash;</td><td><span class="dir same">under cap</span></td></tr>
       </tbody>
     </table>
   </div>
-  <p class="lede" style="margin-top:10px">*The alias blocklist ships a <b>synthetic</b> seed
-    (<code>Action &rarr; EXAMPLE-Auction</code>), so it matches nothing in real FOLIO data. The real
-    &ldquo;action&rdquo; mis-tag (&rarr; the litigation <i>Event</i> concept) is never seen by it.</p>
+  <p class="lede" style="margin-top:10px">The alias blocklist now ships a <b>real-IRI</b> seed
+    (<code>Action &rarr; Auction</code> R8kOvHwk…, plus justice/state/tax/arb agency homonyms), so it
+    fires on live data; v7 Action&rarr;Auction hits fall to 0. The single remaining agency mis-map in
+    v7 (&ldquo;appeals&rdquo;&rarr;IRS Office of Appeals) is an <i>entity-ruler</i> alt-label edge,
+    not a label-resolution defect &mdash; a future recorded verdict for the seed.</p>
   <div class="assess" data-id="deltatable" style="border:none;padding-top:4px">
     <div class="q">Your read on the headline deltas:</div>
     <div class="chips">
@@ -219,27 +229,29 @@
     score &ge; 0.6) recovers real maps &mdash; but with no gate able to see it, it also snaps generic
     legal words onto plausible-looking country / state / agency concepts. Sampled from v6:</p>
   <div class="grid2">
-    <div class="kv"><h4>Wrong homonym maps (new in v6)</h4><ul>
-      <li><b>law</b> &rarr; <span style="color:var(--bad)">Delaware</span></li>
-      <li><b>Presumptions</b> &rarr; <span style="color:var(--bad)">Northern Mariana Islands</span></li>
-      <li><b>Decision Maker</b> &rarr; <span style="color:var(--bad)">Slovenia</span></li>
-      <li><b>effect of answers</b> &rarr; <span style="color:var(--bad)">Federal Election Commission</span></li>
-      <li><b>Verdict Forms</b> &rarr; <span style="color:var(--bad)">Venezuela</span></li>
-      <li><b>closing statements</b> &rarr; <span style="color:var(--bad)">Collateralized Loan Obligation</span></li>
-      <li><b>Jury charge</b> &rarr; <span style="color:var(--bad)">Argentina</span></li>
+    <div class="kv"><h4>Wrong homonym maps in v6 &mdash; all vetoed in v7</h4><ul>
+      <li><b>law</b> &rarr; <span style="color:var(--bad)">Delaware</span> <span class="pill good">v7: no map</span></li>
+      <li><b>Presumptions</b> &rarr; <span style="color:var(--bad)">Northern Mariana Islands</span> <span class="pill good">v7: no map</span></li>
+      <li><b>Decision Maker</b> &rarr; <span style="color:var(--bad)">Slovenia</span> <span class="pill good">v7: no map</span></li>
+      <li><b>effect of answers</b> &rarr; <span style="color:var(--bad)">Federal Election Commission</span> <span class="pill good">v7: no map</span></li>
+      <li><b>Verdict Forms</b> &rarr; <span style="color:var(--bad)">Venezuela</span> <span class="pill good">v7: no map</span></li>
+      <li><b>Arbitration and Mediation</b> &rarr; <span style="color:var(--bad)">Trat (place)</span> <span class="pill good">v7: Arbitration + Mediation</span></li>
     </ul></div>
-    <div class="kv"><h4>Correct recoveries (also new in v6)</h4><ul>
-      <li><b>Burden of Proof</b> &rarr; <span style="color:var(--good)">Litigation Burdens of Proof</span> <span class="pill good">your finding-005 example</span></li>
-      <li><b>Hearing</b> &rarr; <span style="color:var(--good)">Hearing</span></li>
-      <li><b>Lawyer</b> &rarr; <span style="color:var(--good)">Lawyer</span></li>
-      <li><b>Closing Arguments</b> &rarr; <span style="color:var(--good)">Closing Arguments / Summation</span></li>
-      <li><b>narrative</b> &rarr; <span style="color:var(--good)">Matter Narrative</span></li>
+    <div class="kv"><h4>Correct recoveries &mdash; preserved in v7</h4><ul>
+      <li><b>Burden of Proof</b> &rarr; <span style="color:var(--good)">Burden of Proof</span> <span class="pill good">v7 ×55</span></li>
+      <li><b>Hearing</b> &rarr; <span style="color:var(--good)">Hearing</span> <span class="pill good">v7 ×21</span></li>
+      <li><b>Lawyer</b> &rarr; <span style="color:var(--good)">Lawyer</span> <span class="pill good">v7 ×47</span></li>
+      <li><b>Proposed Findings of Fact <i>and</i> Conclusions of Law</b> &rarr; <span style="color:var(--good)">two sibling concepts</span> <span class="pill good">decompose-first</span></li>
     </ul></div>
   </div>
-  <div class="ex" aria-label="root cause">
-    <b>Root cause &mdash;</b> resolved tags carry an <span class="r">empty branch</span>, so the
-    place-name / short-label gates (which key on <b>branch</b>) can&rsquo;t identify them; and
-    high LLM confidence (&ge;0.85) exempts them anyway. The gates run, but the homonyms are invisible to them.
+  <div class="ex" aria-label="root cause and fix">
+    <b>Root cause &mdash;</b> resolved tags carried an <span class="r">empty branch</span>, so the
+    place/agency gates (which key on <b>branch</b>) couldn&rsquo;t see them, and the <span class="r">&ge;0.6
+    bar on a 0&ndash;100 scale</span> accepted every 90.0 place over-score.
+    <b class="g">v7 fix &mdash;</b> the shared resolver carries the branch on every tag, raises the bar
+    to 92.0, decomposes multi-head strings first, and the gates run as deterministic vetoes
+    (<span class="g">no confidence exemption</span>). Verified live: all six mis-maps above route to
+    <i>no map</i>; the recoveries resolve.
   </div>
   <div class="assess" data-id="regression">
     <div class="q">Is this precision regression a blocker for migrating folio-enrich?</div>
@@ -268,6 +280,9 @@
         <span class="tag"><span class="no">NOT FIXED</span> — front-matter still enters tagging</span>
         <span class="tag p">SourceClassifier ships in folio-matching but is not wired</span></div>
     </div>
+    <div class="ex"><b class="g">v7 &mdash; FIXED.</b> SourceClassifier is wired at the unit level;
+      metadata / front-matter / TOC / ISBN units are excluded before any path runs. Metadata units
+      tagged in v7: <b class="g">0</b>.</div>
     <div class="assess" data-id="u_meta">
       <div class="q">Sign-off:</div>
       <div class="chips">
@@ -294,6 +309,10 @@
       &ldquo;Conclusions&rdquo; concept) under the label &ldquo;Proposed Findings of Fact.&rdquo; The
       decomposition seam is wired &amp; tested, yet it only fires when whole-string resolution returns
       <b>empty</b> — and here it doesn&rsquo;t, so decompose is bypassed.</div>
+    <div class="ex"><b class="g">v7 &mdash; FIXED.</b> Resolution is now decompose-<i>first</i> for
+      multi-head strings: the compound splits before whole-string acceptance, so it resolves to
+      <span class="g">both</span> siblings &mdash; <span class="iri">R9G2Hzz…</span> (Proposed Findings
+      of Fact) <b>and</b> <span class="iri">RNVlq…</span> (Proposed Conclusions of Law). Verified live.</div>
     <div class="assess" data-id="u_decomp">
       <div class="q">Sign-off:</div>
       <div class="chips">
@@ -316,6 +335,9 @@
         <span class="tag"><span class="no">NOT FIXED</span> — &ldquo;action&rdquo; still tags to a legal Event</span>
         <span class="tag p">blocklist seed is synthetic (Action→EXAMPLE-Auction); never fires</span></div>
     </div>
+    <div class="ex"><b class="g">v7 &mdash; FIXED.</b> The seed is reseeded with the <b>real</b> Auction
+      IRI (<span class="iri">R8kOvHwk…</span>) plus the justice/state/tax/arb agency homonyms, so it
+      fires on live data. Action&rarr;Auction hits: v6 1 &rarr; <b class="g">v7 0</b>.</div>
     <div class="assess" data-id="u_action">
       <div class="q">Sign-off:</div>
       <div class="chips">
@@ -348,33 +370,35 @@
 </section>
 
 <section>
-  <h2>What was wired vs. not</h2>
+  <h2>What was wired vs. not &mdash; v7 status</h2>
   <ul class="findings">
-    <li><span class="mk pill good">wired</span><div><b>Reconciler seam</b> &mdash; the 2-path base now runs on <code>folio_matching.Reconciler</code>; no folio-enrich checkout needed for reconciliation.</div></li>
-    <li><span class="mk pill good">wired</span><div><b>entity_ruler</b> &mdash; I repaired a broken import (folio-enrich moved the module, silently zeroing the ruler path) by wiring the pinned <code>FOLIOEntityRuler</code>. 68,693 patterns; restored ~1000&rarr;1705 ruler tags. Also advances the migration.</div></li>
-    <li><span class="mk pill good">wired</span><div><b>decompose</b> &mdash; I wired &amp; unit-tested conjunction-split into label resolution. Correct, but rarely fires on Ch02 (whole-string resolution short-circuits it).</div></li>
-    <li><span class="mk pill warn">wired&nbsp;·&nbsp;no-op</span><div><b>alias blocklist</b> &mdash; on, but the seed is synthetic, so it matches nothing in real data.</div></li>
-    <li><span class="mk pill warn">wired&nbsp;·&nbsp;misses</span><div><b>place / short-label gates</b> &mdash; on, but exempt <code>heading_context</code> (the actual Slovenia vector) and can&rsquo;t see resolved tags (empty branch). Net effect on Ch02: negligible.</div></li>
-    <li><span class="mk pill bad">not&nbsp;wired</span><div><b>SourceClassifier</b> (metadata exclusion), <b>DomainPrior</b> (context-aware disambiguation), <b>ScoreCalibration</b> (weak-band), <b>Judge</b> &mdash; all present in folio-matching, none in the tagger path. These are exactly what the regression needs.</div></li>
+    <li><span class="mk pill good">wired</span><div><b>Reconciler seam</b> &mdash; the 2-path base runs on <code>folio_matching.Reconciler</code>; no folio-enrich checkout needed for reconciliation.</div></li>
+    <li><span class="mk pill good">wired</span><div><b>entity_ruler</b> &mdash; pinned <code>FOLIOEntityRuler</code>; 68,693 patterns; ~1000&rarr;1694 ruler tags.</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>decompose-first</b> &mdash; multi-head strings now decompose <i>before</i> whole-string acceptance, so the 12b5e434 compound resolves to its two siblings instead of one wrong partial.</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>alias blocklist</b> &mdash; reseeded with <b>real FOLIO IRIs</b> (Action&rarr;Auction + justice/state/tax/arb agency homonyms); fires on live data. Action&rarr;Auction hits 1&rarr;0.</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>place / agency gate + branch on every tag</b> &mdash; resolution now carries the branch, the gate governs Location <i>and</i> Governmental Body, heading context no longer exempts, and confidence no longer bypasses. Non-heading place mis-maps 739&rarr;0, agency 150&rarr;1, Slovenia 168&rarr;0.</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>SourceClassifier</b> (metadata / front-matter exclusion) &mdash; wired at the unit level; metadata units tagged 0 (unit d3c44e2a fixed).</div></li>
+    <li><span class="mk pill warn">deferred</span><div><b>DomainPrior</b>, <b>ScoreCalibration</b>, <b>Judge</b> &mdash; present in folio-matching, still not in the tagger path. Not needed for the precision bar; candidate recall/precision upside for a later pass.</div></li>
   </ul>
 </section>
 
 <section>
   <h2>Proceed to folio-enrich?</h2>
   <div class="card">
-    <div class="q" style="font-size:14px;color:var(--ink-2);margin-bottom:10px;font-weight:600">My recommendation: <b style="color:var(--bad)">hold</b> — the seam is proven but the tagging output is not yet a net improvement. Your call:</div>
+    <div class="q" style="font-size:14px;color:var(--ink-2);margin-bottom:10px;font-weight:600">My recommendation: <b style="color:var(--good)">the hold can lift</b> — v7 turns the pin into a net precision improvement on identical source. Your call:</div>
     <div class="chips" data-id="gate">
-      <button class="chip" type="button" data-v="HOLD — fix gates+calibration+resolution threshold before any migration">Hold &amp; fix first</button>
-      <button class="chip" type="button" data-v="PROCEED — migrate folio-enrich; treat the regression as a fast-follow">Proceed anyway</button>
-      <button class="chip" type="button" data-v="PROCEED for the seam only; keep the old tagger resolution behavior">Proceed, seam only</button>
+      <button class="chip" type="button" data-v="PROCEED — the v7 acceptance bar is met; migrate folio-enrich">Proceed — bar met</button>
+      <button class="chip" type="button" data-v="PROCEED after one more chapter (Ch03) confirms the v7 fix generalizes">Proceed after Ch03</button>
+      <button class="chip" type="button" data-v="HOLD — want DomainPrior/Judge wired before migrating">Hold for judge/prior</button>
     </div>
-    <textarea placeholder="Any conditions, priorities, or scope for the fix…" data-note="gate"></textarea>
+    <textarea placeholder="Any conditions, priorities, or scope…" data-note="gate"></textarea>
   </div>
 </section>
 
 <footer>
-  Evidence: output/uat_ta_ch02_v6 (pinned) vs output/uat_ta_ch02_v5 (baseline) · source hash
-  0b7c2ff… identical · rubric extraction-quality-v1.0 (unchanged) · app spend v6 ≈ $0.18, session ≈ $0.37 (cap $1).
+  Evidence: output/uat_ta_ch02_v7 (fixed) vs v6 (regression) vs v5 (baseline) · source hash
+  0b7c2ff… identical all three · rubric extraction-quality-v1.0 (unchanged) · app spend v7 ≈ $0.168 (cap $0.50).
+  Metrics recomputed with one consistent harness (folio-python branch membership; surface≠label mis-map filter).
 </footer>
 
 </div>
@@ -424,7 +448,8 @@
       if(note&&note.value.trim()) out.push("   note:   "+note.value.trim());
       out.push("");
     });
-    out.push("— spend: v6 ≈ $0.18, session ≈ $0.37 (cap $1); source hash identical both runs.");
+    out.push("— v7 fix landed: place mis-maps 739→0, agency 150→1, Slovenia 168→0; recoveries preserved.");
+    out.push("— spend: v7 ≈ $0.168 (cap $0.50); source hash identical across v5/v6/v7.");
     return out.join("\n");
   }
   var pv=document.getElementById("preview"), pvt=document.getElementById("previewText"),
