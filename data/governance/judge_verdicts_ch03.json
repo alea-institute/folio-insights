@@ -1,0 +1,375 @@
+{
+  "verdicts": [
+    {
+      "proposal_id": "PC-05e9a7fee7de",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'certification' is the procedural act/filing of certifying a case trial-ready (akin to note of issue), whereas candidate 'Certificate (Litigation)' is a written proof-of-fact document and 'Ratification' concerns approving another's acts — labels overlap but definitions differ.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-099f1955fbd1",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RB33Aofuq4YWwq6mOzVUage",
+      "reasoning": "Proposed 'interrogatory' (singular) matches candidate 'Interrogatories' — both are written questions posed by one party to another in discovery, so this is the same concept differing only in number.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-09c388884846",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'dates' refers to calendar dates as facts in an evidence summary, while candidate 'date' is defined narrowly as a technical data-segment field element, so the definitions do not describe the same modeled concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-0d48720e6979",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Record Proceedings' means having a reporter make a stenographic record, whereas all candidates (Proceeding Removed/Reopened/Transferred/Reactivated) describe changes in case status — the shared word 'Proceeding' is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-1856cb0d5b86",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Trial Documents' means documents produced/used at trial, but candidates 'Travel Document', 'Tax Documents', 'Real Estate Documents', and 'Document ID' each define unrelated document types — only the word 'Document' is shared.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-1f616d42dfe3",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Administrative Notice' is notice taken by an administrative tribunal (parallel to judicial notice), while candidates 'Administrative Mandate/Order/Negligence/Discharge' define unrelated administrative acts — the 'Administrative' prefix is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-20f3de7168fc",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Civil Conduct' concerns advocate civility/professional decorum, whereas candidates 'Civil Court', 'Civil Contempt', and 'Civil Contract Law' define unrelated concepts — the 'Civil' label is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-25a9b426e00d",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'omissions' means points left out of an argument, while candidates 'Commission' (a governing body), 'Admission', and 'Commissions (Pay)' are semantically unrelated despite orthographic similarity.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2807b778636f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'case background' means the factual/procedural background of a matter, whereas candidate 'Background Check' is an investigation of an individual's history — the shared word 'background' is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2c670aadf989",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'elicitation' means drawing out a witness's testimony on direct, while candidate 'Solicitation' is the crime of encouraging another to commit an offense — a purely phonetic collision.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2d6ea7d1b7e4",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R6j0hnYnovLTRdqZYalg6B",
+      "reasoning": "Proposed 'assigned' (a successor judge assigned by the clerk) matches candidate 'Assignment', defined as designating a specific case or judge to handle a legal matter, so it names the same concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2ef301cd45aa",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'new matter' means a new topic raised during witness examination, while candidates 'MATTER_NAME', 'matter_net_exp', and 'Matter Net Fees' are billing/case-record fields using 'matter' in the sense of a legal case — an unrelated sense.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2f24ac36c7a6",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RGcqiLEe0IK8lPRt5mFC0D",
+      "reasoning": "Proposed 'summary judgment motions' is the same concept as candidate 'Motion for Summary Judgment' — a request that the court rule in a party's favor without trial based on the evidence — differing only in plural/word order.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-324c86cd603c",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'deny motion' means a ruling denying a motion, whereas candidates 'Demotion', 'Emotion', and 'Demolition' are wholly unrelated words that merely resemble the phrase phonetically.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-326672e85814",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'litigation expense' means the cost of litigating, while candidates 'Litigation Defenses', 'Litigation Events', and 'Litigation Agreements' define unrelated litigation concepts — the 'Litigation' prefix is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3844deb3fb48",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RCLmMhA7u7IrGyH5gDUKn0M",
+      "reasoning": "Proposed 'conduct codes' is a word-order variant of candidate 'Code of Conduct', both defined as written guidelines of ethical principles and proper practices expected of individuals — the same concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3a648b277916",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'trial pace' means the speed/tempo of a trial, whereas candidate 'Trial Practice' is the body of skills and procedures for presenting a case — the shared 'Trial' root is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3bf3fb00fe83",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'concessions' means yielded/admitted points in argument, while candidates 'Confession', 'Concussion', and 'Contusion' define an admission of guilt and brain injuries respectively — pure phonetic collisions.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3c791ec999cd",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'request admission' means requesting that noticed evidence be admitted, whereas candidate 'Requests for Admission' is the pretrial discovery device asking an opponent to admit or deny facts — a coincidental label collision between two different procedures.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3dd8896d9ddf",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'litigation deadlines' means time limits/dates in a case, while candidates 'Litigation Defenses', 'Litigation Identifiers', and 'Litigation Events' define unrelated litigation concepts — only the 'Litigation' prefix matches.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-40fee9f76521",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'motion to deny' (a request that a movant's motion be denied) does not match any candidate; 'Motion to Amend', 'Motion to Hear', 'Motion to File', and 'Motion to Abandon' are all distinct, unrelated motion types.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-421b9c6bb93d",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'evidence introduction' is the general procedural act of introducing evidence, whereas candidate 'Motion to Introduce Evidence' is a specific formal request — the act differs from the motion, and other candidates are evidence subtypes.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4d5f87cc8937",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'substantive evidence' means evidence offered to prove the truth of a matter (versus impeachment), whereas the near-identical-label candidate 'Substantial Evidence' denotes a quantum/standard of proof — the definitions describe different things.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-579918e5a969",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Oral opposition' is spoken opposition to a motion at a hearing, whereas candidate 'Opposition / Reply' is defined as a written response filed in court — a different medium, making this a distinct (oral) form rather than a merge.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-5f73725a2fcc",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'statutory rules' means procedural rules established by statute, while candidates 'Statutory Rape', 'Statutory Lien', and 'Statutory Fraud' define unrelated statutory concepts — only the 'Statutory' prefix is shared.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-64ac353360bd",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'administrative relief' means relief sought from an administrative tribunal, whereas candidates 'Administrative Order', 'Administrative Negligence', and 'Administrative Law Judge' define unrelated administrative concepts — the prefix match is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-6589f7bbac70",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'interjection' means an interrupting remark to avoid during proceedings, while candidates 'Intervention', 'Insurrection', 'Injunction', and 'Infraction' are unrelated legal terms sharing only a similar sound.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-6aee6200a49f",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RDtF3TBuYodaMEI2cA1Hb4H",
+      "reasoning": "Proposed 'Motion to recuse/disqualify judge' matches candidate 'Motion to Disqualify Judge', both defined as a request to remove a judge from a case for conflict of interest or bias — the same concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-6d7ed06b788d",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Certificate of Prejudice' is a certificate-form instrument to remove a judge, distinct from candidate 'Affidavit of Prejudice' which is specifically a sworn affidavit; the source itself lists 'certificate/affidavit' as alternative instruments, so this is a distinct FOLIO gap.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-744ea455208b",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'phrases' (key words/phrases to emphasize) has no definitional match; candidates 'Phrae', 'Horses', 'Radishes', and 'Pheasants' are unrelated place names and animals/plants.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7522f1fe8bee",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'agreement on facts' means a stipulation of facts, whereas candidates 'Factoring Agreement', 'Formation Agreement', 'Mediation Agreement', and 'Franchise Agreement' are all substantive commercial contracts — only the word 'agreement' is shared.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-85e4fec5de30",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Use of Evidence' is the act/practice of presenting and using evidence, whereas candidate 'Rules of Evidence' denotes the procedural rules governing evidence — related but definitionally distinct.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-9e077698056a",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Judicial Role' concerns a judge's conception of their function, while candidates 'Judicial Lien', 'Judicial Order', 'Judicial Privilege', and 'Res Judicata' define unrelated concepts — the 'Judicial' prefix is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-a557d1936498",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'contract case' means a lawsuit arising from a contract, whereas candidates 'Contractual Clause', 'Contract Year Clause', and 'Counterpart Clause' are contract provisions — the shared 'contract' root is coincidental.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-aabcd9e718df",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'administrative hearing officer' is the non-ALJ role that presides over administrative hearings, whereas candidate 'Chief Administrative Officer' is a corporate executive and 'Office of the Chief Administrative Hearing Officer' is a specific federal agency — neither defines this presiding-officer role.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-b62514b15276",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RCKTvbBtse7f4CWyAp1iNdO",
+      "reasoning": "Proposed 'dismiss' (as a dispositive move terminating a case) names the same concept as candidate 'Dismissal', defined as terminating a case without a decision on the merits.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-b81933eafa55",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Electronic Information' means digital/electronically stored information, whereas candidates 'Genetic Information', 'Contact Information', and 'Electric Power Generation' are unrelated despite the shared 'Information'/'Electric' tokens.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-bb4f884d6e70",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'amended' (pleadings amended to conform to evidence) has no definitional match; candidates 'Mende', 'Mubende', 'Agender', and 'Kamwenge' are a language, places, and a gender identity.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-c262e5cc12b3",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Personal service' means personal service of process on a party, whereas candidates 'Personal Care Services', 'Other Personal Services', and 'Postal Service' are NAICS-style industry categories — a coincidental 'service' collision.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-cd69713b7ae4",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'evidence processing' means the logistical handling of evidence to ensure admissibility, whereas candidates 'Impression Evidence', 'Forensic Evidence', and 'Shoeprint Evidence' are forensic evidence types — a coincidental 'evidence' overlap.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-ce8a377bd814",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'places' (geographic locations subject to judicial notice) has no definitional match; candidates 'Laches', 'Lacs', 'Peaches', and 'Lakes' are a legal defense, water bodies, and a fruit.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-d1177f746f09",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R8OhdVjX930P6m8083GA6mL",
+      "reasoning": "Proposed 'Mistrial motions' matches candidate 'Motion for Mistrial', both defined as a request during trial to declare the proceedings invalid due to significant error or misconduct — the same concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-d1b94f75c700",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'positions' means argumentative stances to emphasize, whereas candidates 'Deposition', 'Prostitution', 'Motions', and 'Constitutions' are unrelated concepts sharing only orthographic fragments.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-d3be5c6b0e12",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RCD2P79BJ2ELptWqgOQhbTF",
+      "reasoning": "Proposed 'judge assignment method' names the process of assigning a judge, matching candidate 'Assignment of Judge', defined as the process of designating a judge to preside over a particular case.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-dae8be747d69",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'non-evidentiary motion' is a motion that does NOT concern evidence, the negation of candidate 'Evidentiary Motions' (motions to admit or exclude evidence) — the labels overlap but the definitions are opposites.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-dbe561fd8c87",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'advisement' means a court taking a matter under consideration before ruling, whereas candidate 'Advertisement' is a promotional copyright work — a phonetic collision, and other candidates are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-ddb403c11a69",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'object' is the act of raising an objection, whereas candidate 'Objector' is defined as the person who objects and 'Objectives' as goals — the act differs from both the actor and the aims.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-df34b76f2b17",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Motion Documents' means the set of documents comprising a motion, whereas candidates 'Document Location', 'Objection Document', 'Motion to File Document', and 'Tax Documents' define unrelated document concepts.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-dfad40a36f49",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'main' (a type of court calendar) has no definitional match; candidates 'Maine', 'Mardin', 'Oman', and 'Maio' are all places.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-e61e9ed509a4",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'judicial relief' means relief granted by a court, whereas candidates 'Judicial Lien', 'Judicial Order', and 'Judicial Privilege' define unrelated concepts and 'Equitable Relief' is a specific relief type — none matches the general concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-e80e87b978d5",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'presentation notes' means an advocate's notes/outline used as a speaking guide, whereas candidate 'Presentation' is the persuasive account itself and 'L680 Presentation' is an ESI-display billing activity — the notes differ from the presentation.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-efc2d62738d8",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'Oral motion' is a motion made orally (per FRCP 7(b)), whereas candidates 'Trial Motions', 'Post-Trial Motions', and 'Pretrial Motions' classify motions by timing, not by oral/written manner — none captures the oral-form concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-f6f71d500d6d",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Proposed 'CAT' is Computer-Aided Transcription, an alternative to court reporters, whereas candidates 'Cats', 'Cavite', 'Cattle', and 'Car' are animals, a province, and a vehicle — the acronym coincides with unrelated labels.",
+      "judged_by": "claude-code:opus"
+    }
+  ]
+}

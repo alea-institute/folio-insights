@@ -1,0 +1,774 @@
+{
+  "verdicts": [
+    {
+      "proposal_id": "PC-0184b689bffe",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "The proposal concerns the probative weight/value of evidence, whereas the label-similar candidates define procedural rules (Rules of Evidence), a proof standard (Some Evidence), and a contract doctrine (Parol Evidence Rule) — none captures evidentiary value.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-034729ec75a4",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "An 'evidentiary position' is an argued stance a party takes on evidence, which differs from the candidates' definitions of a motion (Evidentiary Motions), a formal protest (Evidentiary Objection), and the goals of presenting evidence (Evidentiary Objectives) despite the near-identical labels.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-06e5b6e46cd1",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "The proposal uses 'aid' meaning to help/facilitate, a pure string collision with the candidate AIDS (the disease) and place-name languages (Haida, Maidu), whose definitions are wholly unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-07092e74ac4e",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Document drafting' denotes the activity of drafting, whereas the closest candidate 'Draft Document Version' defines an artifact (an intermediate version of a document) — an activity versus a thing, so the definitions do not align.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-0c190816e79c",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Viable' (feasible/meritorious claims) is a near-homograph of the top candidate 'Liable' (legally responsible), but their definitions describe entirely different concepts.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-0cbf9688f281",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Case type' (criminal vs. personal-injury categorization of a matter) only shares the word 'type' with candidates Asset Type, charge_type, and tax_type, whose definitions concern assets, billing, and taxes.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-105ed67da231",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Client advice' (advising a client) shares the word 'advice' with Negligent Advice, but that candidate defines a professional-negligence claim for failing to advise, not the advice itself.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-10d2ffe1a187",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Defense attorney' (defense counsel role) shares the token 'attorney' with candidates defining fees, deceit, and responsible/relationship attorneys, none of which denotes the defense-side lawyer.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-111902dce0f6",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Audio' as a sensory medium is a string collision with Auditor and Audit (financial examination) and Audiobook (a copyrighted recording), whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-162ba2519e30",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Distance' as a perception factor in witness credibility is a coincidental substring of candidates Instance, Nuisance, and Deal Stance, whose definitions have nothing to do with spatial distance.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-1a5af6374d4e",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Case Extension' (prolonging litigation as a delay tactic) shares 'extension' with the candidates, but all of them define contractual term-extension clauses, an unrelated concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-1c05c1bbad51",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Hearing practice' here means rehearsing/simulating hearings for training, sharing only the word 'practice' with candidates defining pleadings, lending, and mediation practice areas.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-1dc2b94a98c1",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Law students' is a specific subtype not equal to the generic candidate 'Student' (any enrolled individual), and the top-scored 'Student Loan' is an unrelated financial-product definition.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-23af6a2a36e7",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Legal education' (educating lawyers) is the inverse of the label-similar candidate 'Education Law' (the body of law governing schools), so despite the word overlap the definitions describe different things.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-253886fb6cbf",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "A 'jury instruction guide' (JIG) is a published reference compilation of pattern instructions, which is distinct from the candidate 'Jury Instructions' (the actual directions a judge gives the jury).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2735464c1735",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Task' (a subdivided unit of work) collides only phonetically with the place-name candidates Tak, Tabuk, and Lasko, whose definitions are geographic.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-27fa34341127",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Attempt' (to try ADR) shares the stem with candidate 'Attempted', but that candidate defines the criminal-law concept of an attempted crime, an unrelated meaning.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-284420604e3f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Solutions' (resolving conflict in a narrative) is a string collision with 'Resolutions' (formal governing-body decisions) and 'Dissolution' (winding down an entity), whose definitions differ entirely.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2c58d5960873",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Chart' (an exhibit chart) coincidentally resembles 'Charter' (a founding governance document) and short tokens Car/Art, none of whose definitions describe a chart.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2d5f462e7656",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "An 'arbitration claim' (the claim filed to commence arbitration) differs from the near-identical-label candidate 'Arbitration Clause' (a contractual provision requiring arbitration); a claim is not a clause.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-2ec25ee6c909",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Innovation' (technological progress) is a near-anagram of the top candidate 'Novation' (contractual substitution of an obligation), but their definitions are wholly unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-321d335d6d4c",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Manufacturing process' (a production method alleged to cause a defect) shares the word 'manufacturing' with the candidates, but all of them are NAICS industry classifications (mattress, tire, spring), not the process concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-33a19d22685e",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Legal options' (a client's available courses of action) differs from the label-similar top candidate 'Legal Operations' (business management of a legal department); options versus operations are distinct concepts.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-357d0e9a1d4f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Intersection' (a road/traffic intersection) is a string collision with candidates Intervention, Intrusion, and Insurrection, whose legal definitions bear no relation to a physical intersection.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-36382639e2e3",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Financial operations' (running finances) resembles 'Financial Obligations' (monetary liabilities) only in label; the definitions describe operations versus debts, which differ.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-36971c28de57",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Issues' (problems flagged in writing) collides as a substring with 'Issuer' (a securities-issuing entity) and place names, whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3952e8cf60c1",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RDmbgHQXJxEvx3QYfR6qWAn",
+      "reasoning": "'Document content' denotes a document's substantive contents, which matches the FOLIO definition of 'Document Components' (a document's legally relevant, substantive contents such as clauses, citations, and facts).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3d935872c675",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Ability' as a witness-perception factor is a coincidental substring of 'Disability' and 'Justiciability', whose definitions concern impairment and judicial reviewability, not perceptual ability.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3dd9b348d511",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Hardware' (computer hardware) is a pure string collision with the place-name candidates Harare, Hardap, and HaDarom, whose definitions are geographic.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-3de34ee1a5fb",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Responsible' (bearing fault for injuries) shares the stem with Response, Responsible Author, and Responsible Attorney, but those candidates define a pleading and specific role-holders, not the adjective of legal fault.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-40d3911644a8",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Conclusions' (reasoned inferences) collides phonetically with the medical candidates 'Concussion' and 'Contusion' (brain injuries), whose definitions are entirely unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4171d1a7fd3e",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Perception' (framing events to enhance recall) is a string collision with 'Exception', 'Election', and 'Petition', whose definitions describe unrelated legal concepts.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4172538d53f0",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Interest' (engaging the fact-finder's attention) differs from the label-similar candidate 'Interested' (parties holding a stake in proceedings); attention versus stakeholder status are distinct meanings.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-436b3b9b8e39",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Online case management' (a digital dispute-handling system) shares 'management' with candidates defining a Case Management Order (a court directive) and Cash Management Motion (a bankruptcy request), which are different concepts.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4a96d756c5e2",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RO1j8FWXas50yVNMQcEmtu",
+      "reasoning": "'Federal court' denotes the federal judiciary handling federal-law, diversity, patent, and bankruptcy matters, which is exactly the concept the FOLIO candidate 'U.S. Federal Courts' defines.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4d6da59f70c3",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Movement' (moving through a scene) is a string collision with 'Moment' (a point in time) and 'Overpayment', whose definitions are unrelated to physical movement.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4d92f4052e95",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Micromanagement' (over-controlling delegation) shares 'management' with CRM/Email/Directory Management candidates, but none of their definitions describes the supervisory anti-pattern of micromanaging.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4e4144071ac1",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Violation of Regulation' (breaching a statute/ordinance/regulation for a jury instruction) shares the 'Violation of...' pattern with 'Violation of Probation', but that candidate specifically defines breaching probation terms, a different breach.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4ece3e53616f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Criminal Case' (a criminal proceeding/matter) is close in label to 'Criminal Claims', but that candidate defines the claims asserted against a defendant rather than the case/proceeding itself.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4f3abb677eeb",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Criminal incapacity' (the infancy presumption barring criminal responsibility) shares 'incapacity' with 'Emotional Incapacity' (inability to manage emotions), but their definitions address different incapacities.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-4fe3677d42f3",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Labor' (labor disputes/employment) is a pure string collision with the place-name candidates Laborie and Tabora, whose definitions are geographic.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-500bdcf88c1f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Prejudicial errors' (outcome-affecting reversible errors listed for appeal) closely resembles 'Judicial Error', but that candidate specifically defines mistakes made by a judge, whereas prejudicial error is a broader category of any error that prejudiced a party.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-525f2162ee9f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Case viability' (likelihood a case can succeed) is a string collision with 'Liability Clause' and 'Severability Clause', whose contract-provision definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-52a1ee9aec3a",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Jargon' (technical language to avoid) is a pure string collision with place names Aragon and Farg'ona and the token Cargo, whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-54d573995d95",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RBgKnOpRzmN0EAjwIwILJoc",
+      "reasoning": "'Elements of crime' (the components that must be proven to establish a crime) matches the FOLIO definition of 'Elements of Criminal Claim' (harm, intent, and causal link proven in a criminal case), even though the higher-scored 'Elements of Claim' is the generic civil version.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-6018d1f5ec1f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Collaboration' (fostering cooperation/trust generally) differs from the candidate 'Collaborative' (a specific collaborative-negotiation approach) and 'Collaboration Agreement' (a contract); the general concept is not captured.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-61939d5822a0",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Case Expense' (ongoing costs of a client's matter) shares 'expense' with candidates that are specific billing codes (expense_code, E100 Expenses, Base Amount - Expense) rather than the general case-expense concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-67c7ac8c5882",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Case Analysis' (analyzing case context) shares 'analysis' with Asset Analysis and Technical Analysis, whose definitions target assets and technical data; the closest, 'Analysis and Strategy', bundles strategy development beyond mere case analysis.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-67e180d300e4",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Efficient communication' (a delivery quality audiences expect) shares 'communication' with candidates defining communication events and channels (email, fax, letter), none of which denotes efficiency as an attribute.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-6c322d62b833",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Counter' (to rebut an objection) shares a stem with 'Counterclaim' (a defendant's affirmative legal claim) and collides with 'country', but none of these definitions matches the act of countering an argument.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-6cba7cb0c2b6",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Pain' (physical suffering for damages) is a string collision with 'Spain' and language names Pali/Ainu, whose definitions are geographic or linguistic and unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7164f5ccc8bf",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Closing Statement' (the closing argument at trial) is the sibling of the label-similar candidate 'Opening Statement', but they are opposite trial phases; the other candidate 'Closing Event' defines an M&A deal completion, so no definition matches.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-71eb0e36208e",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Take' (take a break) is a pure string collision with the place names Tak, Tabuk, and Takelma, whose definitions are geographic.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-750270eab6d1",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Log' (an exhibit status log) is a string collision with 'Blog' and place names Louga and Logar, whose definitions are unrelated to a record log.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-75c2da6945c9",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "Despite the label 'Legal Document', the supporting source describes bagel characteristics (dense chewy dough), so the proposal has no legal meaning at all and matches none of the Sealed/Legal/Opinion Document candidate definitions.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7671fb0d2f8b",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Document list' (a list of reviewed documents) shares 'document' with candidates defining a Document ID, Policy Document, and Document Text, none of which denotes a list/collection of documents.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-76be479f1786",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Motion Practice' (the general practice of filing/arguing motions) shares 'practice' with candidates, but the closest 'Daubert Motion Practice' is a narrow expert-testimony subtype and the others define mediation and deposition practice.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-76e59495dd2f",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R85BLSakJPEy7c7KvxZyOe",
+      "reasoning": "The source lists 'administrative proceedings' as an alternative forum for civil claims, aligning with the FOLIO candidate 'Administrative Proceeding Forum' (a dispute forum overseeing administrative-law proceedings such as tax and immigration).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-775a6908b0e7",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R7YXMd6n1Pa9dmpBWmbf7tI",
+      "reasoning": "'Manufacture Defect' (a defect from the manufacturing process causing injury) is the same concept as the FOLIO candidate 'Manufacturing Defect' (a product not made per its design), a near-identical label and matching definition.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7ad5068da187",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Support' (bolstering evidentiary positions) shares a stem with 'Supporting', but that candidate defines a supporting-actor role, and 'Child Support' is a maintenance obligation, so the definitions differ.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7affd0b0ca9b",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Designed' (negligently designing a product) is a string collision with 'Date Signed', 'Designation', and 'Designation'-like tokens, whose definitions concern signing dates and filing labels, not product design.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7b9e5760ff9e",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Patents' (patent matters under federal jurisdiction) is a string collision with 'Patient', 'Parent', and 'Plants'; the only patent-related candidate, 'UTBMS Patent', is an undefined billing code, so no definition matches.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-7ec2b7da54f5",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Prosecution' (the prosecuting party/side in jury selection) is close to 'Prosecutor', but that candidate defines the individual attorney rather than the prosecuting party/function.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-802ec8973c19",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Burdens' (burdens of proof) is a string collision with 'Burns' (heat injuries) and 'Burmese' (a language), whose definitions are unrelated to evidentiary burdens.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-835c1e9352f0",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RBey1qPhJGDlP3xszUL2JDF",
+      "reasoning": "'Arbitrator awards' (binding awards issued by arbitrators that receive deference) matches the FOLIO definition of 'Arbitration Award' (a binding, enforceable decision by an arbitrator resolving a dispute).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-83aca9ffc7ce",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Character' (an orator's perceived good character) is a string collision with 'Charter' (a founding governance document) and the billing field 'charge_date', whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-8903d1fd00ff",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Receipt status' (whether an exhibit was received into evidence) shares 'status' with 'Status - Received', but that candidate defines an application/document received by an agency, a different receipt context.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-89e3e78d4b53",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Belief' (an advocate's sincere conviction) is a pure string collision with place names Belize, Belait, and Berlin, whose definitions are geographic.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-89f71449f4f1",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Care' (attentiveness conveyed by body language) is a pure string collision with 'Clare' (an Irish county), 'Car', and 'Cree' (a language), whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-9045e7e8dcb8",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Document hearings' (arbitration decided on written submissions without live testimony) shares 'document' with candidates defining Offering Documents and Document Versions, none of which denotes a documents-only hearing procedure.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-91292f43199d",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Document set' (a large collection of documents for AI analysis) shares 'document' with candidates defining Document Text, Document Name, and Sealed Document, none of which denotes a set/corpus of documents.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-92ae3dc28e8a",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Case Alignment' (aligning case theory with a decision-maker's values) resembles 'Assignment of Case' (designating a case to a handler) only by label; alignment and assignment are different concepts.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-93533c152ae4",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Party agreement' (the parties' agreement as a source of arbitration law) shares 'agreement' with Guaranty, Plea, Quality, and Royalty Agreement candidates, whose definitions are specific unrelated contract types.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-94016ca30989",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R9Xkp4FqX83NG5ZI0CDfQ1k",
+      "reasoning": "'Dismissal motions' (motions to dismiss a case) matches the FOLIO definition of 'Motion to Dismiss' (a formal request asking the judge to dismiss a case or claim).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-94120a9cb1b0",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Law practice' (the practice of law generally) shares 'practice' with candidates defining specific areas (Lease Practice, Audit Practice) and 'Legal Malpractice' (attorney negligence), none of which is the general practice-of-law concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-94d3cbd03506",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Court information' (publicly accessible court records/data) is a string collision with 'Contact Information' and 'Contract Formation', whose definitions concern communication details and contract execution.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-98dc7c4ddb43",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Direction' (line-of-sight direction as an eyewitness factor) is a substring collision with 'Director' (an organization's head) and 'Directive' (an authoritative instruction), whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-9e30c6b5ac4b",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Deception' (witnesses exaggerating or lying) is a string collision with the top candidate 'Exception' (a deviation from a rule) and 'Deposition', whose definitions have nothing to do with deceit.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-9ed732458574",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Timely compensation' (fair, prompt payment of legal fees) shares 'compensation' with Victim Compensation and Compensatory Damages, whose definitions concern crime-victim restitution and damages, not attorney-fee timeliness.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-a163f5accf5b",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Introduction of evidence' (the act of presenting evidence in a case-in-chief) differs from the label-similar 'Motion to Introduce Evidence' (a formal request to allow such presentation); the act is not the motion.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-a1a83fbfb5fc",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Internet' (the global network) is a substring collision with 'Intern' (a temporary worker) and 'Intent' (a mental state), whose definitions are unrelated to the internet.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-a29192493149",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'State Constitution' is a specific subtype not equal to the generic candidate 'Constitutions' (any foundational written instrument), and the State Court candidates define courts rather than constitutions.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-a364dba4380a",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R9tZFXPrXQJWHbqSgtCQxJF",
+      "reasoning": "'Witnesses' (persons who testify) is the plural of, and denotes the same concept as, the FOLIO candidate 'Witness' (a person called to provide testimony in a proceeding).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-a75a6efbdfc1",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'File' (the act of filing motions) shares a stem with 'Filer', but that candidate defines the person who files rather than the filing act, and the remaining candidates (Film, Fier, Chile) are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-afa9ee679891",
+      "verdict": "DUPLICATE_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RB8wppcP6f2OWeggLP1jecD",
+      "reasoning": "'Forms' (forms used to aid case preparation) is the plural of, and matches the definition of, the FOLIO candidate 'Form' (a document used to capture and convey information, e.g., intake form, court form).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-afc62514ed93",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Court data' (expanded case data for theory selection) shares the word 'court' with candidates defining court types (Tax Court, State Court, Tribal Court), none of which denotes court-derived data.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-b21287412487",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Civil dispute resolution' (the process/field of resolving civil disputes) shares words with candidates that are contract clauses (Dispute Resolution Clause, ADR Clause) or a forum, none of which denotes the general resolution process.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-b21997bb44b7",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Periodic jury instructions' (interim instructions given during a complex trial) is a specific timing variant not captured by the generic candidates 'Jury Instructions' or 'Proposed Jury Instructions'.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-b6286bbc3b1f",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Grand' (the grand plan of strategy) is a pure string collision with place names Granada, Rwanda, and Nograd and the language Ganda, whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-b9b6fb0b3bc9",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'CasePresentation' (presenting a case at trial) shares a stem with the generic candidate 'Presentation' (a persuasive account to a group such as a conference), but the trial-case-presentation concept is more specific and not captured.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-c06da7dd0f90",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Restitution' (a monetary criminal sanction) is a string collision with 'Prostitution' and 'Constitutions', whose definitions are wholly unrelated to restitutionary payment.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-c099a4e884ed",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R8qItBwG2pRMFhUq1HQEMnb",
+      "reasoning": "'Communication modes' (methods enabling remote appearances) matches the FOLIO definition of 'Communication Modality' (an entity's chosen communication method such as written, email, telephone, or portal).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-c6e9cde0e688",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R9CBXdybYDztLBRNDNJl0W",
+      "reasoning": "'Waived' (an affirmative defense deemed relinquished if not proven) denotes the same legal concept as the FOLIO candidate 'Waiver' (the voluntary relinquishment of a known right, claim, or privilege).",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-c79d321ce8c9",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Win' (winning ethically) is a pure string collision with 'Wien' (Vienna), the language 'Twi', and 'Wyoming', whose definitions are geographic or linguistic.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-ce2608f81541",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Carried' (a victim carried a purse) is a string collision with 'Married', 'Castries', and 'Cranberries', whose definitions concern marital status, a place, and a fruit.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-d38f634bc2b0",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Completion' (finishing the case book) is a string collision with 'Compilation', 'Complaint', and 'Compliance', whose definitions describe copyright compilations, pleadings, and deontic conformity.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-d726f0cc4fa4",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Costly Litigation' (litigation that is expensive and time-consuming) is a descriptor of litigation, distinct from the label-similar 'Litigation Costs', which defines the expenses themselves rather than the costly-litigation concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-db01de6a6844",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Business Decisions' (decisions to humanize in commercial cases) shares 'Business' with candidates defining a Business Division and 'Business'/'Business Day' definitions, none of which denotes business decision-making.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-de102a34ca85",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Principles' (a decision-maker's guiding values) is a string collision with 'Principe' (a place) and 'Principal' (a superior to an agent); the candidates Privacy/Openness Principle define narrow data-privacy principles, not general principles.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-e59bd9d8bd66",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Forum' (a venue for dispute resolution) collides by label with the top candidate 'Form' (a document to capture information) and place names Corum/Loroum, none of whose definitions describes a dispute-resolution forum.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-e5fd6dac0ec8",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/R7TB5AJsngthjmL6KsEht3G",
+      "reasoning": "In context 'research' means verifying jury instructions and verdict forms, matching the FOLIO definition of 'Legal Research' (gathering and analyzing information on legal issues), whereas the higher-scored 'Search' means an evidentiary/physical search.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-e77341ebdc78",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Liability' (the general responsibility half of a verdict) is a substring collision with 'Disability', and the remaining candidates (City/Agent/Family Liability) are narrow subtypes rather than the general liability concept.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-eb34b3a7c593",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Appellate Review' (the appellate court's review process) shares 'appellate' with candidates defining an Appellate Brief and Appellate Standards of Review (the criteria used), but none denotes the review process itself.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-f0079b10872f",
+      "verdict": "SYNONYM_OF",
+      "target_iri": "https://folio.openlegalstandard.org/RCQCiKMTNRjrI3JbFdOhXu2",
+      "reasoning": "'Administrative law proceeding' (a cause heard before an administrative agency) matches the FOLIO definition of 'Administrative Dispute Proceeding Practice' (all or part of a cause heard and determined by an administrative agency), a closer semantic fit than the higher-scored forum/venue candidates.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-f17433293d1d",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Position' (an advantageous strategic stance) is a substring collision with 'Deposition' (sworn discovery testimony) and 'Petition', whose definitions are unrelated to a party's position.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-f37b89979d92",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Reasonable accommodations' (the ADA adjustments courts must provide) is nearly identical in label to 'Reasonable Accommodation Claim', but that candidate defines the cause of action for failing to accommodate, not the accommodations themselves.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-f4f9b36bda03",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Professional assertions' (statements an advocate makes on factual/legal grounds) shares 'professional' with candidates defining a Professional Association and Professional Organizations (entities), which are unrelated to asserted statements.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-f82c1c745ae0",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Apps' (software applications as presentation tools) shares the string with the candidate 'app', but that candidate defines a billing data field naming an associated application, not the software-app concept, and the rest (Apples, Wappo) are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-fb719237d366",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Use' (using an AI book feature) is a pure string collision with 'Ruse' (a deceptive trick), 'House', and place names, whose definitions are unrelated.",
+      "judged_by": "claude-code:opus"
+    },
+    {
+      "proposal_id": "PC-fbaa31568572",
+      "verdict": "NOVEL",
+      "target_iri": null,
+      "reasoning": "'Listener engagement' (holding an audience's attention through delivery) collides on the word 'engagement' with candidates defining a legal Engagement Letter, Engagement Names, and Engagement Scope (retention of legal services), a wholly different sense of 'engagement'.",
+      "judged_by": "claude-code:opus"
+    }
+  ]
+}

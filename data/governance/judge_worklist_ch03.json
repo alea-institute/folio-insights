@@ -1,0 +1,1696 @@
+{
+  "floor": 82,
+  "count": 53,
+  "items": [
+    {
+      "proposal_id": "PC-05e9a7fee7de",
+      "proposed_label": "certification",
+      "draft_definition": "Proposed class “certification”. Surfaced from source: “Cases are placed on the trial calendar after certification or note of issue is filed. Timing varies by jurisdiction based on calendar system and case volume. Court administrators can provide trial call dates.”",
+      "supporting_excerpt": "Cases are placed on the trial calendar after certification or note of issue is filed. Timing varies by jurisdiction based on calendar system and case volume. Court administrators can provide trial call dates.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RBDRtzbiNquelJuhuvpkCWl",
+          "label": "Ratification",
+          "definition": "Plaintiff approved the acts of the defendant and cannot now complain.",
+          "score": 88.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RQqB9qY1Ahd9L7pgXQiUel",
+          "label": "Certificate (Litigation)",
+          "definition": "A certificate is a written document that serves as proof of a particular fact or achievement, often issued by a court or other authority.",
+          "score": 74.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDD510qM8dM4VnyGZojoClb",
+          "label": "Twin-Win Certificate",
+          "definition": "A Twin-Win Certificate is a financial instrument that allows participation in the development of the underlying asset or assets, offering potential profits from both rising and falling asset values. If the underlying asset price falls but does not breach a specified barrier, it converts into profit; however, if the barrier is breached, the product converts into a tracker certificate. This instrument provides a minimum redemption equal to the nominal value, given the barrier remains intact, and with higher risk levels, multiple underlying assets (worst-of) can enable a higher bonus level or lower barrier, thereby reducing the risk compared to a direct investment in the underlying assets.",
+          "score": 72.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RLNlm7nXyJQLJmk8qYnaPQ",
+          "label": "Indemnification",
+          "definition": "Indemnification is a legal remedy sought by a party to be protected from financial loss or liability resulting from a specific event or action, and may be implied or granted by contract or court order.",
+          "score": 71.4
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-099f1955fbd1",
+      "proposed_label": "interrogatory",
+      "draft_definition": "Proposed class “interrogatory”. Surfaced from source: “Opposing party's out-of-court statements and conduct admissible as evidence (FRE 801). Admissions include documents, interrogatory answers, deposition answers, and responses to Requests for Admissions.”",
+      "supporting_excerpt": "Opposing party's out-of-court statements and conduct admissible as evidence (FRE 801). Admissions include documents, interrogatory answers, deposition answers, and responses to Requests for Admissions.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RB33Aofuq4YWwq6mOzVUage",
+          "label": "Interrogatories",
+          "definition": "Interrogatories are written questions posed by one party to another in a legal proceeding, typically used in the discovery phase of a lawsuit in order to obtain information or evidence.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9CCB4r40McaT5uTnKxGaDX",
+          "label": "Interpreter",
+          "definition": "A translator. Taniguchi v. Kan Pac. Saipan, Ltd., 566 U.S. 560 (2012)",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9ek5RZIuIDj7sf24AnIjEM",
+          "label": "Regulatory Notice",
+          "definition": "A Regulatory Notice is an official communication issued by a governmental or regulatory body to inform organizations or the public about new laws, updates to existing regulations, or other important compliance-related matters. It serves as a mechanism to ensure that affected parties are aware of their legal obligations.",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R807IbzdpkbOW3cWijZ1N06",
+          "label": "Interrogatories Practice",
+          "definition": "Interrogatories Practice refers to the specific legal practice of using written questions to obtain information from the opposing party in a legal matter, falling under the broader category of Written Discovery Practice.",
+          "score": 64.9
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-09c388884846",
+      "proposed_label": "dates",
+      "draft_definition": "Proposed class “dates”. Surfaced from source: “Use evidence summaries for complex cases or to refresh recollection on dates/schedules/amounts. Have a knowledgeable witness authenticate the summary as an exhibit.”",
+      "supporting_excerpt": "Use evidence summaries for complex cases or to refresh recollection on dates/schedules/amounts. Have a knowledgeable witness authenticate the summary as an exhibit.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RC0klWYtBTII6YnYAQkUD2J",
+          "label": "date",
+          "definition": "\"Used to define a date associated with the overall extend_header and associated extend_data elements in this segment. \"",
+          "score": 88.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8hYSGZo2qLIETkkstD95Jq",
+          "label": "DNA Test",
+          "definition": "",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDAtMRi4dBGNW1PytkqmH4t",
+          "label": "Diabetes",
+          "definition": "Diabetes is a chronic health condition characterized by high levels of glucose in the blood due to the body's inability to produce or effectively use insulin. It requires ongoing management through lifestyle changes, medication, and regular monitoring to prevent complications.",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9AB2e6C8598a62831141860",
+          "label": "Duarte",
+          "definition": "",
+          "score": 72.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-0d48720e6979",
+      "proposed_label": "Record Proceedings",
+      "draft_definition": "Proposed class “Record Proceedings”. Surfaced from source: “Move for a reporter to record proceedings.”",
+      "supporting_excerpt": "Move for a reporter to record proceedings.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RBhfNPsv8keQ9VVfjW93FQP",
+          "label": "Proceeding Removed",
+          "definition": "Case Removed refers to a legal matter that has been transferred from one court to another, resulting in the case being removed from the original court's jurisdiction.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RIZ1TFgWm4QlpKpNfSeIhj",
+          "label": "Proceeding Reopened",
+          "definition": "The concept of \"Case Reopened\" refers to a legal matter that was previously closed or resolved, but has now been reopened for further proceedings or consideration.",
+          "score": 81.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R93BYWO8QMFsYQLgyLSLv17",
+          "label": "Proceeding Transferred",
+          "definition": "The concept of \"Case Transferred\" refers to the action of moving a legal matter from one court or jurisdiction to another, and is a subcategory of the broader concept of \"Case Closed / Disposed\".",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RtJUihV1Pfh2kMyuacR7W",
+          "label": "Proceeding Reactivated",
+          "definition": "The concept of \"Case Reactivated\" refers to a legal matter that was previously closed or pending, but has now been reopened or resumed.",
+          "score": 75.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-1856cb0d5b86",
+      "proposed_label": "Trial Documents",
+      "draft_definition": "Proposed class “Trial Documents”. Surfaced from source: “Subpoena all witnesses, including allies, to ensure appearance and remind them of date/location. Subpoenas can compel production of trial documents. Failure to appear risks order for rescheduled appearance.”",
+      "supporting_excerpt": "Subpoena all witnesses, including allies, to ensure appearance and remind them of date/location. Subpoenas can compel production of trial documents. Failure to appear risks order for rescheduled appearance.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/ROEhQluRR7rfqDyDYvJ3Dd",
+          "label": "Travel Document",
+          "definition": "",
+          "score": 86.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RC3HfYuaMiOV2nZz0KkiKX4",
+          "label": "Tax Documents",
+          "definition": "Tax Documents are official records that detail financial information used to calculate and report taxes owed by individuals or entities to tax authorities. These documents include tax returns, financial statements, receipts, and other supporting documentation required for tax compliance and auditing.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9OVY5GWczMSrxKsf8cfgpq",
+          "label": "Real Estate Documents",
+          "definition": "Real Estate Documents are written or recorded representations of property ownership, transfer, or use, including but not limited to deeds, mortgages, and leases.",
+          "score": 77.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBlHKm2Sl9aQa1SWLfievei",
+          "label": "Document ID",
+          "definition": "Identifier (e.g., IRIs, UUIDs, GUIDs) of the particular document stored in the systems of stakeholders (e.g., vendors, sellers, buyers, courts).",
+          "score": 76.9
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-1f616d42dfe3",
+      "proposed_label": "Administrative Notice",
+      "draft_definition": "Proposed class “Administrative Notice”. Surfaced from source: “Judicial/Arbitral/Administrative Notice”",
+      "supporting_excerpt": "Judicial/Arbitral/Administrative Notice",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R8L0VeDT62kbpCDGP2YgEs",
+          "label": "Administrative Mandate",
+          "definition": "An Administrative Mandate is a court order that compels a government agency or official to perform a specific duty or act that is required by law.",
+          "score": 83.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RqR6mIq4quTMy3JrdpVViL",
+          "label": "Administrative Order",
+          "definition": "An Administrative Order is a directive issued by an administrative agency or official that has the force of law and is used to implement or interpret statutes, regulations, or policies.",
+          "score": 82.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RzS5kQCctIh5w09UGh8ahy",
+          "label": "Administrative Negligence",
+          "definition": "Administrative Negligence is a legal concept that refers to the failure of a government agency or official to perform their duties with reasonable care, resulting in harm or injury to individuals or the public.",
+          "score": 82.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rp6HMd8Eea47JMlXfYvttU",
+          "label": "Administrative Discharge",
+          "definition": "An Administrative Discharge refers to the release of a service member from their military obligations without the involvement of a court-martial. It is based on administrative reasons rather than punitive ones. This type of discharge can be classified into various categories, such as honorable, other than honorable, or general, based on the circumstances and reasons for the separation. Administrative discharges can result from factors like medical conditions, patterns of misconduct, or other non-judicial reasons.",
+          "score": 80.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-20f3de7168fc",
+      "proposed_label": "Civil Conduct",
+      "draft_definition": "Proposed class “Civil Conduct”. Surfaced from source: “Advocate conduct must be civil and integral, avoiding rudeness, hostility, or obstruction, to ensure fair dispute resolution.”",
+      "supporting_excerpt": "Advocate conduct must be civil and integral, avoiding rudeness, hostility, or obstruction, to ensure fair dispute resolution.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9uoItz60Ut8I4l3jEH3mSF",
+          "label": "Civil Court",
+          "definition": "A Civil Court is a type of court forum that has jurisdiction over non-criminal cases involving private disputes between individuals or organizations.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCEEQRcjKOZf2siSvBcoRN0",
+          "label": "Civil Contempt",
+          "definition": "Civil contempt refers to the willful disobedience of a court order or judgment that is intended to enforce a private right, and can result in sanctions or penalties imposed by the court.",
+          "score": 74.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBrUb9V2u6f7iVR1RBNsyB1",
+          "label": "Civil Contract Law",
+          "definition": "Civil Contract Law refers to a subset of Civil Caw (e.g., civil law countries) that deals with agreements between private entities, as opposed to public or governmental entities. This body of law encompasses the creation, interpretation, and enforcement of these agreements, as well as resolution of disputes related to contract performance, breach, or termination.",
+          "score": 71.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDLrWRGJSuF7G5IbJcLqe0a",
+          "label": "cl_contact",
+          "definition": "Contact Structure (See contact_info segment below).",
+          "score": 69.6
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-25a9b426e00d",
+      "proposed_label": "omissions",
+      "draft_definition": "Proposed class “omissions”. Surfaced from source: “Identify omissions from motion hearing arguments in briefs.”",
+      "supporting_excerpt": "Identify omissions from motion hearing arguments in briefs.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RBLodGElBPA4tNq7xpjKA5l",
+          "label": "Commission",
+          "definition": "A commission is an authoritative body formed by a government or other organization to oversee, manage, and regulate specific activities or issues. Commissions can vary widely in scope, such as city commissions for local governance, the European Commission for regional policy and law, or commissions on human rights to oversee and promote human rights protections.",
+          "score": 84.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R6A041d89658712263e341ca",
+          "label": "Misiones",
+          "definition": "",
+          "score": 82.4
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCz8DPELLjP7N6Q7zuPI9ys",
+          "label": "Admission",
+          "definition": "The concept of Admission refers to the act of acknowledging or accepting the truth or validity of a claim or allegation made by another party in a legal matter.",
+          "score": 77.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Ry9hX7PSumXkvA5dFwO49X",
+          "label": "Commissions (Pay)",
+          "definition": "Commissions refers to a percentage-based payment earned by individuals, often salespeople, for each sale or transaction they facilitate. It serves as a motivation to generate business and is directly linked to the volume or value of sales achieved",
+          "score": 75.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-2807b778636f",
+      "proposed_label": "case background",
+      "draft_definition": "Proposed class “case background”. Surfaced from source: “Moving attorney's opening preface: state relief sought, motion, grounds, and relevant case/procedural background. Judges/arbitrators/ALJs need clarity on decision points.”",
+      "supporting_excerpt": "Moving attorney's opening preface: state relief sought, motion, grounds, and relevant case/procedural background. Judges/arbitrators/ALJs need clarity on decision points.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDAQMAQLYgoUdaKQquAhteq",
+          "label": "Background Check",
+          "definition": "A background check is a process through which an individual's personal, criminal, credit, and/or employment history is investigated and verified, typically by an employer, landlord, or other decision-maker. Background checks are often conducted to assess an individual's suitability for employment, housing, or other opportunities, as well as to ensure the safety and security of a workplace or community. Common elements of a background check may include verifying identity, checking criminal records, reviewing credit history, confirming education and employment history, and examining professional licenses or certifications. In many jurisdictions, background checks are regulated by laws such as the Fair Credit Reporting Act (FCRA) to protect individual privacy and prevent discrimination.",
+          "score": 83.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R59B51dC02d71B849b557f2e",
+          "label": "Castelo Branco",
+          "definition": "Castelo Branco is a city in Portugal.",
+          "score": 62.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R60Fdb8DC72d3CBEf597Cb2f",
+          "label": "Tambacounda",
+          "definition": "Tambacounda is a city in Senegal.",
+          "score": 61.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RC4OZs6YSt1oZgbu3rE1IpW",
+          "label": "base_amount",
+          "definition": "\"The original WIP value of the time entry before adjustments or discounts of any sort are applied. Regardless of charge_type, then base_amount = units * rate prior to any adjustments or discounts. E.g. \"\"300.0000\"\" \"",
+          "score": 61.5
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-2c670aadf989",
+      "proposed_label": "elicitation",
+      "draft_definition": "Proposed class “elicitation”. Surfaced from source: “On direct, elicit witness's entire reasoning, including every case cited, to preempt cross-examination reliance on unstated authority.”",
+      "supporting_excerpt": "On direct, elicit witness's entire reasoning, including every case cited, to preempt cross-examination reliance on unstated authority.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDGL2gCEacTZDXEK0m1dhp2",
+          "label": "Solicitation",
+          "definition": "The concept of Solicitation refers to the act of encouraging, requesting, or commanding another person to commit a crime, with the intent that the crime be committed.",
+          "score": 87.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDJM7d52FqDzFaBbtRdhECs",
+          "label": "Limitations",
+          "definition": "The concept of Limitations refers to the legal time constraints that restrict the period within which a party can bring a claim or defense in a civil litigation matter, including statutes of repose, frauds, and limitations, equitable tolling, and laches.",
+          "score": 81.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8Lc5Rnqk4q1e4JAIkszKOi",
+          "label": "Relocation",
+          "definition": "The concept of Relocation refers to the legal process of moving a child from one geographical location to another, typically in the context of a matrimonial emergency application.",
+          "score": 76.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9aSzp9cEiBCzObnP92jYFX",
+          "label": "Location",
+          "definition": "The name of a position on the Earth, usually in the context of continents, countries, and their political subdivisions (e.g., regions, states or provinces, cities, towns, villages).",
+          "score": 73.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-2d6ea7d1b7e4",
+      "proposed_label": "assigned",
+      "draft_definition": "Proposed class “assigned”. Surfaced from source: “Successor judge assigned by clerk.”",
+      "supporting_excerpt": "Successor judge assigned by clerk.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RBH54tIgUv3NHcHH7pgwdaL",
+          "label": "Assignee",
+          "definition": "An assignee is a person, company or entity who receives the transfer of property, title or rights from a contract. The assignee receives the transfer from the assignor.",
+          "score": 87.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R6j0hnYnovLTRdqZYalg6B",
+          "label": "Assignment",
+          "definition": "The concept of Assignment refers to the act of designating a specific case or judge to handle a legal matter within the context of Litigation Events.",
+          "score": 77.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDCrtMLFIiUfemdZEzgDsKI",
+          "label": "Assignor",
+          "definition": "An assignor is a person, company or entity who transfers rights they hold to another entity. The assignor transfers to the assignee.",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCgWPJFp3h83GkZcWfIPGC8",
+          "label": "Date Signed",
+          "definition": "Date Signed refers to the specific calendar date on which a legal document or contract is executed by the involved parties. This date is crucial as it often marks the commencement of the document’s legal effect and the start of obligations or rights.",
+          "score": 73.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-2ef301cd45aa",
+      "proposed_label": "new matter",
+      "draft_definition": "Proposed class “new matter”. Surfaced from source: “Redirect limited to cross-exam new matter; Recross limited to redirect new matter; Subsequent exams limited to prior exam scope.”",
+      "supporting_excerpt": "Redirect limited to cross-exam new matter; Recross limited to redirect new matter; Subsequent exams limited to prior exam scope.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCCrmqPAC9K1lqoiEH9lXCP",
+          "label": "MATTER_NAME",
+          "definition": "A matter name is a specific identifier used in the LEDES98BI V5 Format Rev 1-2020 standard to describe a legal matter or case.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RLo6IKSAHOn4PXfQzdvvEL",
+          "label": "matter_net_exp",
+          "definition": "\"Using the Math Statement on the next tab: The total for pre-split non-taxable expense items on the bill + The total for pre-split Tax1 expense items on the bill + ... repeated for each pre-split tax expense items on the bill + The total for post-split non-taxable expense items on the bill + The total for post-split Tax1 expense items on the bill + ... repeated for each post-split tax expense items on the bill tax_total_detail_exp \"",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9a75aLK6YBGufPeNeh2N2s",
+          "label": "Matter Net Fees",
+          "definition": "Matter Net Fees are the fees charged for legal services provided in a specific matter, after deducting any expenses or disbursements incurred by the lawyer.",
+          "score": 72.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ReDY2v13rer1U8AyOj55L",
+          "label": "Matter Narrative",
+          "definition": "A textual narrative of a matter's factual and legal details.",
+          "score": 69.2
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-2f24ac36c7a6",
+      "proposed_label": "summary judgment motions",
+      "draft_definition": "Proposed class “summary judgment motions”. Surfaced from source: “File summary judgment motions early to get favorable rulings before trial deadlines, forcing opposing counsel to choose between conceding material facts or facing a summary judgment loss.”",
+      "supporting_excerpt": "File summary judgment motions early to get favorable rulings before trial deadlines, forcing opposing counsel to choose between conceding material facts or facing a summary judgment loss.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RGcqiLEe0IK8lPRt5mFC0D",
+          "label": "Motion for Summary Judgment",
+          "definition": "A Motion for Summary Judgment is a request made by a party in a legal case asking the court to rule in their favor without a trial, based on the evidence presented in the case.",
+          "score": 90.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8K6VFq9c39kbQouame6Onf",
+          "label": "Summary Judgment",
+          "definition": "A Summary Judgment is a legal decision made by a judge based on the evidence and facts presented in a case, without the need for a trial.",
+          "score": 80.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rj3K3GgCUDFW3WWZSB8nsL",
+          "label": "Motion for Judgment",
+          "definition": "A Motion for Judgment is a request made by a party in a trial court asking the judge to make a decision in their favor based on the evidence presented, without the need for a trial.",
+          "score": 69.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9wTpJLzB8Yx3j8cHlTIaDe",
+          "label": "Motion for Summary Adjudication",
+          "definition": "A Motion for Summary Adjudication is a legal request made by a party in a bankruptcy or civil case, asking the court to rule in their favor without a trial, based on the evidence presented in the motion.",
+          "score": 69.1
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-324c86cd603c",
+      "proposed_label": "deny motion",
+      "draft_definition": "Proposed class “deny motion”. Surfaced from source: “Oral opposition at hearing or timely responsive documents usually suffice to deny motion. Late-filed motions may necessitate oral opposition due to insufficient reply time.”",
+      "supporting_excerpt": "Oral opposition at hearing or timely responsive documents usually suffice to deny motion. Late-filed motions may necessitate oral opposition due to insufficient reply time.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDin1xJsNqPCl5y7yYSPVFi",
+          "label": "Demotion",
+          "definition": "Demotion is the reassignment of an employee to a lower rank, position, or salary grade, typically as a disciplinary measure or due to performance issues. This action reduces the employee's responsibilities, authority, and often their compensation.",
+          "score": 84.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R66kux3H2uERxPz0E7KxtN",
+          "label": "Emotion",
+          "definition": "Emotions are complex psychological states involving subjective feelings, physiological arousal, and expressive behaviors, often triggered by external or internal events. They play a significant role in human behavior, decision-making, and interpersonal interactions, including legal contexts.",
+          "score": 77.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDkZBjHchWXuRh8dwpGuJwX",
+          "label": "Demolition",
+          "definition": "Demolition is the process of tearing down or dismantling a building or structure, often to clear land for new construction or to remove unsafe or obsolete buildings. This process involves various techniques and machinery, including manual labor, wrecking balls, and controlled explosives, to safely and efficiently bring down the structure. The demolition may be the result of a legal proceeding (e.g., condemnation).",
+          "score": 76.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7NY3RN4HKneok9Io7xvYmb",
+          "label": "Emergency Motion",
+          "definition": "An Emergency Motion is a type of legal request made in an appellate court that seeks immediate relief due to an urgent situation or circumstance.",
+          "score": 74.1
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-326672e85814",
+      "proposed_label": "litigation expense",
+      "draft_definition": "Proposed class “litigation expense”. Surfaced from source: “Motions are a primary driver of litigation expense and delay. While available in arbitration and administrative hearings, their form and availability may differ.”",
+      "supporting_excerpt": "Motions are a primary driver of litigation expense and delay. While available in arbitration and administrative hearings, their form and availability may differ.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH",
+          "label": "Litigation Defenses",
+          "definition": "Legal argument or theory seeking to defeat a legal action, based on either legal or factual grounds.",
+          "score": 86.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R73Uo5x4VyfiOXt6i4R256t",
+          "label": "Litigation Events",
+          "definition": "Events occurring during the course of disputes.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8wt2n3AFdskQGAtG1Sk2s5",
+          "label": "Litigation Agreements",
+          "definition": "Litigation Related Agreements are contracts associated with disputes, their resolution, and related legal processes. These agreements can dictate the terms, conditions, and procedures to avoid or end litigation.",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P",
+          "label": "Litigation Civil Defenses",
+          "definition": "Litigation Civil Defenses are legal arguments and strategies used by a party in a civil lawsuit to defend against the claims made by the opposing party, including but not limited to, affirmative defenses, evidentiary defenses, and procedural defenses.",
+          "score": 74.4
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-3844deb3fb48",
+      "proposed_label": "conduct codes",
+      "draft_definition": "Proposed class “conduct codes”. Surfaced from source: “Judges are assigned randomly; disqualification for conflicts/conduct codes is possible. Federal judges may recuse themselves, but removal by counsel requires extraordinary cause.”",
+      "supporting_excerpt": "Judges are assigned randomly; disqualification for conflicts/conduct codes is possible. Federal judges may recuse themselves, but removal by counsel requires extraordinary cause.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCLmMhA7u7IrGyH5gDUKn0M",
+          "label": "Code of Conduct",
+          "definition": "A Code of Conduct is a set of written guidelines or rules outlining the ethical principles, responsibilities, and proper practices expected of individuals within a particular organization or community. It serves as a standard for behavior and decision-making, often enforced through disciplinary action.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBq1p3bwUpzZk9djzM7JoHb",
+          "label": "Coconut",
+          "definition": "Coconuts are large, fibrous fruits from the Cocos nucifera palm, known for their versatile applications in food, cosmetics, and industrial products. The fruit is valued for its water, milk, meat, and oil, providing essential nutrients and serving as a staple food source in tropical regions.",
+          "score": 70.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDGDqe9RukedToMQPIHmwJe",
+          "label": "UTBMS Codes",
+          "definition": "A standardized set of codes used to classify legal services and expenses, with specific subcategories for litigation, mergers and acquisitions, and UK-based services.",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RGSYEjChlHNtLNr8xML1Y1",
+          "label": "U.S. Code",
+          "definition": "A law enacted and codified by the United States Congress.",
+          "score": 66.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-3a648b277916",
+      "proposed_label": "trial pace",
+      "draft_definition": "Proposed class “trial pace”. Surfaced from source: “Use bench conferences sparingly to avoid slowing trial pace, jury speculation, and negative juror perception.”",
+      "supporting_excerpt": "Use bench conferences sparingly to avoid slowing trial pace, jury speculation, and negative juror perception.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9dd6R73IfKyiskT5Jf62R7",
+          "label": "Trial Practice",
+          "definition": "Trial Practice refers to the set of legal skills and procedures involved in presenting a case before a court of law, including witness examination, jury selection, trial preparation, testimony, and motion practice.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ME5bcP1ep2LpnUSiBvP1T",
+          "label": "Pretrial Practice",
+          "definition": "Pretrial Practice refers to the legal work and procedures that take place before a trial, including but not limited to motions, pleadings, and discovery.",
+          "score": 74.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R0092bb7927eeC30df81B181",
+          "label": "Central",
+          "definition": "",
+          "score": 70.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8bs2IGOdHj0EAVOmcrj2WO",
+          "label": "Post-Trial Practice",
+          "definition": "Post-Trial Practice refers to the legal work performed after a trial has concluded, including motions and submissions related to the outcome of the trial.",
+          "score": 69.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-3bf3fb00fe83",
+      "proposed_label": "concessions",
+      "draft_definition": "Proposed class “concessions”. Surfaced from source: “Refutation should highlight opposing motion's factual errors, legal mistakes, unsupported conclusions, inappropriate issues, illogical arguments, inconsistencies, or concessions to compel denial.”",
+      "supporting_excerpt": "Refutation should highlight opposing motion's factual errors, legal mistakes, unsupported conclusions, inappropriate issues, illogical arguments, inconsistencies, or concessions to compel denial.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R8DXDUoCjhdysDnfhvIXZle",
+          "label": "Confession",
+          "definition": "A confession is a formal statement made by an individual acknowledging their guilt for a specific crime or offense. It can be given voluntarily or as a result of interrogation, and its validity can be a subject of legal scrutiny, especially if there are concerns about the circumstances under which it was obtained, such as the possibility of coercion or violation of rights.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCroY6MyuPipipJMQllW9dU",
+          "label": "Concussion",
+          "definition": "Mild traumatic brain injury (concussion) is a form of TBI resulting from a blow or jolt to the head that temporarily disrupts brain function. Symptoms can include headache, confusion, dizziness, and memory loss, and while typically short-term, they may require rest and medical monitoring.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7B90dd3673d6987c980Ed63",
+          "label": "Concepcion",
+          "definition": "",
+          "score": 76.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R6EFMAnzS8Aey8OU4n6bAI",
+          "label": "Contusion",
+          "definition": "Moderate traumatic brain injury (TBI) is a disruption in brain function caused by an external mechanical force, leading to a loss of consciousness lasting from 30 minutes to 24 hours, or post-traumatic amnesia lasting from 1 to 7 days. It requires medical intervention and often results in lasting cognitive, physical, and emotional impairments that may necessitate rehabilitation.",
+          "score": 70.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-3c791ec999cd",
+      "proposed_label": "request admission",
+      "draft_definition": "Proposed class “request admission”. Surfaced from source: “Party offering evidence by notice must supply info and request admission; decision makers may also take notice sua sponte.”",
+      "supporting_excerpt": "Party offering evidence by notice must supply info and request admission; decision makers may also take notice sua sponte.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCHIu81uU41YfTOo5pFfrx7",
+          "label": "Requests for Admission",
+          "definition": "Requests for Admission are a type of discovery document used in legal proceedings where one party requests that the other party admit or deny certain facts or allegations.",
+          "score": 87.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCymFqZ4uzSi1MXyfIUk1TH",
+          "label": "Party Admission",
+          "definition": "A Party Admission is a statement made by a party to a legal proceeding that is offered as evidence against that party. Party admissions are considered non-hearsay and are admissible as an exception to the hearsay rule due to the inherent reliability and fairness of allowing a party's own statements to be used against them.",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCE1XxAiarOHMvuEC76is6O",
+          "label": "Requests for Admission Practice",
+          "definition": "Requests for Admission Practice refers to the legal practice of using written requests to ask the opposing party to admit or deny certain facts in a legal matter, typically used in the discovery phase of litigation.",
+          "score": 70.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCz8DPELLjP7N6Q7zuPI9ys",
+          "label": "Admission",
+          "definition": "The concept of Admission refers to the act of acknowledging or accepting the truth or validity of a claim or allegation made by another party in a legal matter.",
+          "score": 69.2
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-3dd8896d9ddf",
+      "proposed_label": "litigation deadlines",
+      "draft_definition": "Proposed class “litigation deadlines”. Surfaced from source: “Review existing litigation deadlines.”",
+      "supporting_excerpt": "Review existing litigation deadlines.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH",
+          "label": "Litigation Defenses",
+          "definition": "Legal argument or theory seeking to defeat a legal action, based on either legal or factual grounds.",
+          "score": 82.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDwU1R53c1yOciDqUV1gV13",
+          "label": "Litigation Identifiers",
+          "definition": "\"Information that denotes a litigation matter.\"",
+          "score": 76.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R73Uo5x4VyfiOXt6i4R256t",
+          "label": "Litigation Events",
+          "definition": "Events occurring during the course of disputes.",
+          "score": 75.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9q7GJc1zsYT0P4Xdp6l9Oz",
+          "label": "Litigation Claims",
+          "definition": "Demand or assertion seeking money, property, or enforcement of another right as provided by law.",
+          "score": 75.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-40fee9f76521",
+      "proposed_label": "motion to deny",
+      "draft_definition": "Proposed class “motion to deny”. Surfaced from source: “Opposing party need not file motion to deny movant's request; file opposition documents based on tribunal rules, timing, and strategy.”",
+      "supporting_excerpt": "Opposing party need not file motion to deny movant's request; file opposition documents based on tribunal rules, timing, and strategy.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCVdu7SLWG41yGP4XqRGGpB",
+          "label": "Motion to Amend",
+          "definition": "A Motion to Amend is a formal request made to a court or tribunal to modify or change a previously filed document or pleading, such as a complaint, petition, or judgment, in order to correct errors or provide additional information.",
+          "score": 82.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8Xh6kVAQjF7V8TKbrDTK1f",
+          "label": "Motion to Hear",
+          "definition": "A Motion to Hear is a formal request made by a party in a trial court to have a specific matter or issue heard by the court.",
+          "score": 78.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8xekNn7K6SxToo5ArjIsTX",
+          "label": "Motion to File",
+          "definition": "A Motion to File is a request made to a court to allow a party to submit a document or pleading that is not currently part of the official record in a case.",
+          "score": 78.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R2ewZzACe0TWtCQEsFSKse",
+          "label": "Motion to Abandon",
+          "definition": "A Motion to Abandon is a legal request made in a bankruptcy case to allow the debtor to give up ownership of a property or asset that is burdensome or of little value, and remove it from the bankruptcy estate.",
+          "score": 77.4
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-421b9c6bb93d",
+      "proposed_label": "evidence introduction",
+      "draft_definition": "Proposed class “evidence introduction”. Surfaced from source: “Decision makers control trial/hearing mechanics, witness examination, evidence introduction, and procedures under FRE 611(a) for truth ascertainment, efficiency, and participant protection.”",
+      "supporting_excerpt": "Decision makers control trial/hearing mechanics, witness examination, evidence introduction, and procedures under FRE 611(a) for truth ascertainment, efficiency, and participant protection.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ZfDTW9ZZuAvpJxvh75trh",
+          "label": "Motion to Introduce Evidence",
+          "definition": "A Motion to Introduce Evidence is a formal request made to a court to allow the presentation of evidence during a trial or hearing.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RILtMHLpDM8luT3w9ni6LK",
+          "label": "Irrelevant Evidence Objection",
+          "definition": "An Irrelevant Evidence Objection is raised when a party in a legal proceeding believes that the evidence being presented is not related to the issues at hand or does not have any probative value. This objection aims to prevent the introduction of extraneous information that could distract or mislead the decision-maker.",
+          "score": 72.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDJxZ2vqqnde5q8ti6PKfnF",
+          "label": "Impression Evidence",
+          "definition": "Impression evidence refers to marks, patterns, or imprints left on surfaces that can be studied and analyzed to derive information about the object or tool that made them. Examples include shoeprints, tire treads, and tool marks. Such evidence can be instrumental in criminal investigations, as it can link a particular object or individual to a crime scene. Detailed analysis of these impressions can reveal unique characteristics or wear patterns that can be matched to specific sources.",
+          "score": 70.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9oa5Hw9eJQOc1E7mtbVFoy",
+          "label": "Fingerprint Evidence",
+          "definition": "Fingerprint evidence involves the collection, analysis, and comparison of the unique patterns found on human fingers. Because every individual has a unique set of fingerprints, they can serve as a reliable means of identification. When fingerprints are recovered from a crime scene, they can be compared to known prints in a database or from suspects to establish a match. The accuracy and reliability of fingerprint evidence have made it a fundamental tool in criminal investigations and forensic science for over a century.",
+          "score": 68.3
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-4d5f87cc8937",
+      "proposed_label": "substantive evidence",
+      "draft_definition": "Proposed class “substantive evidence”. Surfaced from source: “Call opposing party as adverse witness to admit statements; if denied, introduce statements as substantive/impeachment evidence.”",
+      "supporting_excerpt": "Call opposing party as adverse witness to admit statements; if denied, introduce statements as substantive/impeachment evidence.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RC1VlT6Qzfu6Z4lbkxlmU6u",
+          "label": "Substantial Evidence",
+          "definition": "Substantial Evidence: Sufficient and reasonable amount of relevant and credible evidence that a reasonable mind could accept as adequate to support a conclusion in a legal matter, which is subject to appellate review and litigation burdens of proof.",
+          "score": 90.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCiQyc3mFgIldi0c7DVJ7pJ",
+          "label": "Saliva Evidence",
+          "definition": "Saliva evidence involves traces of salivary fluid found at crime scenes or on objects. Analyzing saliva can yield DNA and other markers, aiding in identifying individuals or shedding light on certain activities related to a crime.",
+          "score": 74.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBbWg6xic2y9L6zhfJRuvsy",
+          "label": "Sweat Evidence",
+          "definition": "Sweat evidence refers to the traces of perspiration found on surfaces or objects. While sweat itself contains limited DNA, the skin cells often shed within it can be analyzed for DNA, potentially connecting a person to a specific location or item.",
+          "score": 70.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDJUDQGYk9rhdIFXzTyv11u",
+          "label": "Substantive Due Process Claim",
+          "definition": "A substantive due process claim is a legal action initiated by an individual or entity alleging that their fundamental rights, as protected by the Due Process Clauses of the Fifth and Fourteenth Amendments of the United States Constitution, have been violated by the government or a government actor. Substantive due process protects individuals from arbitrary or unreasonable government actions that infringe on fundamental rights, even if proper procedures were followed. A substantive due process claim may arise in various contexts, such as when a government body enacts a law or regulation that unduly restricts a fundamental right (e.g., the right to privacy, the right to marry, or the right to make decisions about family matters) or when a government actor takes an arbitrary or irrational action that infringes on an individual's rights.",
+          "score": 69.4
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-579918e5a969",
+      "proposed_label": "Oral opposition",
+      "draft_definition": "Proposed class “Oral opposition”. Surfaced from source: “Oral opposition at hearing or timely responsive documents usually suffice to deny motion. Late-filed motions may necessitate oral opposition due to insufficient reply time.”",
+      "supporting_excerpt": "Oral opposition at hearing or timely responsive documents usually suffice to deny motion. Late-filed motions may necessitate oral opposition due to insufficient reply time.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9EcFXhVZqqhn4lXpw0Sdte",
+          "label": "Opposition / Reply",
+          "definition": "A written response to an argument or claim made by the opposing party in a legal case, typically filed in court and presented as evidence.",
+          "score": 83.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8hk4XUNM9YHNxlkeE6izgx",
+          "label": "Reply to Opposition",
+          "definition": "A Reply to Opposition is a legal document filed in response to an opposition brief, typically in an appellate court, that addresses and refutes the arguments made by the opposing party.",
+          "score": 76.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBqBxJEzhWW5x12JraZHgQd",
+          "label": "Oral Copulation",
+          "definition": "Oral copulation is a sexual act involving the stimulation of the genitals by the mouth, which is considered a sex offense under the law.",
+          "score": 73.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9RRPbKQt5nv8xAhzgey6c4",
+          "label": "Musical Composition",
+          "definition": "A Musical Composition is a creation that combines melodies, harmonies, rhythms, and lyrics (if any) to form a complete musical piece intended for performance or recording. Unlike a sound recording, the musical composition is a song's underlying composition (e.g., notated melodies, harmonies, rhythms, lyrics).",
+          "score": 70.6
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-5f73725a2fcc",
+      "proposed_label": "statutory rules",
+      "draft_definition": "Proposed class “statutory rules”. Surfaced from source: “Challenging administrative judges/hearing officers follows statutory or administrative rules. Removal may require showing clear conflict, prejudice, or bias, or may follow judicial/arbitrator removal processes.”",
+      "supporting_excerpt": "Challenging administrative judges/hearing officers follows statutory or administrative rules. Removal may require showing clear conflict, prejudice, or bias, or may follow judicial/arbitrator removal processes.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RBI1GgQFGHi8jZxymdj6eTL",
+          "label": "Statutory Rape",
+          "definition": "Nonforcible sexual intercourse with a person who is under the statutory age of consent.",
+          "score": 82.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rwqd8jdYrbaXvkdbEGoWpS",
+          "label": "Statutory Lien",
+          "definition": "A statutory lien is a legal claim or encumbrance on property that arises by operation of law, typically created by a statute, and provides security for the payment of a debt or obligation.",
+          "score": 82.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCHjUD8ZPY6IzxUQx4LdHZn",
+          "label": "Statutory Fraud",
+          "definition": "The concept of Statutory Fraud refers to a type of fraud that involves a violation of a specific statute or regulation, and is often used in legal claims related to fraudulent activities.",
+          "score": 80.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9wJxE9zsfVpdyT8c4TEuek",
+          "label": "Statutory Appeal",
+          "definition": "A statutory appeal is a type of appeal that is specifically authorized by a statute or law, and allows a party to challenge a decision made by a lower court or administrative agency.",
+          "score": 71.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-64ac353360bd",
+      "proposed_label": "administrative relief",
+      "draft_definition": "Proposed class “administrative relief”. Surfaced from source: “Any attorney request for judicial, arbitral, or administrative relief is a motion, regardless of formal title.”",
+      "supporting_excerpt": "Any attorney request for judicial, arbitral, or administrative relief is a motion, regardless of formal title.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RqR6mIq4quTMy3JrdpVViL",
+          "label": "Administrative Order",
+          "definition": "An Administrative Order is a directive issued by an administrative agency or official that has the force of law and is used to implement or interpret statutes, regulations, or policies.",
+          "score": 82.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RzS5kQCctIh5w09UGh8ahy",
+          "label": "Administrative Negligence",
+          "definition": "Administrative Negligence is a legal concept that refers to the failure of a government agency or official to perform their duties with reasonable care, resulting in harm or injury to individuals or the public.",
+          "score": 82.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RET9EOi2PfSu18PCVKJnhX",
+          "label": "Administrative Law Judge",
+          "definition": "The presiding officer in administrative law proceedings, usually regarding regulatory disputes involving an agency of a jurisdiction's executive branch.",
+          "score": 75.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rp6HMd8Eea47JMlXfYvttU",
+          "label": "Administrative Discharge",
+          "definition": "An Administrative Discharge refers to the release of a service member from their military obligations without the involvement of a court-martial. It is based on administrative reasons rather than punitive ones. This type of discharge can be classified into various categories, such as honorable, other than honorable, or general, based on the circumstances and reasons for the separation. Administrative discharges can result from factors like medical conditions, patterns of misconduct, or other non-judicial reasons.",
+          "score": 75.6
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-6589f7bbac70",
+      "proposed_label": "interjection",
+      "draft_definition": "Proposed class “interjection”. Surfaced from source: “Assist reporter by avoiding superfluous comments, repeating answers, and unnecessary interjections.”",
+      "supporting_excerpt": "Assist reporter by avoiding superfluous comments, repeating answers, and unnecessary interjections.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R90WHv49zBrPgtEvTZszek",
+          "label": "Intervention",
+          "definition": "An Intervention is a legal action taken by a third party to become involved in a lawsuit between two other parties, typically to protect their own interests or rights.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCDSmXwVa56dRfhw74VL2nr",
+          "label": "Insurrection",
+          "definition": "An insurrection is a type of crime against the government that involves a violent uprising or rebellion against the established authority.",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9rhwkH0GU868poYsoFKzVb",
+          "label": "Injunction",
+          "definition": "A court order that requires a party to do or refrain from doing a specific act, typically issued to prevent irreparable harm or to enforce a legal right.",
+          "score": 72.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rwlacj5u1wGL6ZMuJlmLcV",
+          "label": "Infraction",
+          "definition": "An infraction is a violation of a rule or law that is typically considered less serious than a misdemeanor or felony. Infractions are generally punishable by fines, citations, or other minor penalties, rather than imprisonment.",
+          "score": 72.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-6aee6200a49f",
+      "proposed_label": "Motion to recuse/disqualify judge",
+      "draft_definition": "Proposed class “Motion to recuse/disqualify judge”. Surfaced from source: “Motion to recuse/disqualify judge.”",
+      "supporting_excerpt": "Motion to recuse/disqualify judge.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDtF3TBuYodaMEI2cA1Hb4H",
+          "label": "Motion to Disqualify Judge",
+          "definition": "A Motion to Disqualify Judge is a legal request to remove a judge from a case due to a conflict of interest or bias, which may prevent a fair trial.",
+          "score": 88.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCJZ95kGlQKswmdKJiK36S1",
+          "label": "Motion to Disqualify Judge on Due Process Grounds",
+          "definition": "A Motion to Disqualify Judge on Due Process Grounds is a legal request to remove a judge from a case based on a violation of the defendant's right to a fair trial.",
+          "score": 73.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9LsG53BoCxWrxXlWE2kZyY",
+          "label": "Motion for Judge Recusal",
+          "definition": "A Motion for Judge Recusal, also known as a Motion to Reassign, is a legal document filed by a party in a case requesting that the presiding judge be removed from the case due to a conflict of interest or bias.",
+          "score": 70.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7nRpAuHPTYLWKWrxp5F1fB",
+          "label": "Motion to Disqualify Counsel",
+          "definition": "A Motion to Disqualify Counsel is a legal request to remove an attorney from a case due to a conflict of interest or other ethical violation.",
+          "score": 65.6
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-6d7ed06b788d",
+      "proposed_label": "Certificate of Prejudice",
+      "draft_definition": "Proposed class “Certificate of Prejudice”. Surfaced from source: “State removal procedures (certificate/affidavit of prejudice) allow removing the initial judge without cause, but successor judges require disqualification or good cause.”",
+      "supporting_excerpt": "State removal procedures (certificate/affidavit of prejudice) allow removing the initial judge without cause, but successor judges require disqualification or good cause.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RD9WAxaa5KjWQ8QaRPEivN",
+          "label": "Certificate of Service",
+          "definition": "",
+          "score": 82.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8NOhFstiXFl3rquUpFNbjX",
+          "label": "Officer's Certificate",
+          "definition": "An Officer's Certificate is a formal document executed by a company officer attesting to the accuracy of certain facts or figures, often in relation to the company's financials or compliance status. It is commonly used to validate representations made in contracts or agreements.",
+          "score": 75.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R82IWJ1gNpkd1OgHK8jseIE",
+          "label": "Affidavit of Prejudice",
+          "definition": "An Affidavit of Prejudice is a legal document filed by a party in a case, alleging that the decision maker assigned to the case is biased or prejudiced against them, and requesting that the decision maker be disqualified from the case.",
+          "score": 73.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBNm2E230B0owEUIdn4RamS",
+          "label": "Tracker Certificate",
+          "definition": "A Tracker Certificate is a financial instrument that allows participation in the development of the underlying asset(s). These certificates reflect the underlying price movements 1:1, adjusted by the conversion ratio and any related fees, offering a risk profile comparable to direct investment in the underlying asset(s).",
+          "score": 69.8
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-744ea455208b",
+      "proposed_label": "phrases",
+      "draft_definition": "Proposed class “phrases”. Surfaced from source: “Consider emphasizing key words, phrases, or positions throughout your motion argument.”",
+      "supporting_excerpt": "Consider emphasizing key words, phrases, or positions throughout your motion argument.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R965f87F7351d4705e425da1",
+          "label": "Phrae",
+          "definition": "D. Alaska",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9LJ3VYJiCCG4bvoMOFX1Kq",
+          "label": "Horses",
+          "definition": "Horses are large domesticated mammals belonging to the species Equus ferus caballus, known for their strength, speed, and endurance. They have been utilized by humans for transportation, labor, recreation, and competitive sports, and come in a variety of breeds adapted for specific purposes.",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rw8TISGrIXU7Q2wMpVEqtt",
+          "label": "Radishes",
+          "definition": "Radishes are edible root vegetables belonging to the Raphanus sativus species, characterized by their crisp texture and pungent flavor. They are typically small, round or elongated in shape, with colors ranging from white to red to black, and are consumed raw in salads, as garnishes, or cooked in various culinary applications.",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R73uTlrSoALybiLK0Kocj4w",
+          "label": "Pheasants",
+          "definition": "Pheasants are a group of large, colorful birds belonging to the family Phasianidae, often raised for their meat, ornamental value, and hunting purposes. Known for their striking plumage and game bird status, pheasants are commonly found in agricultural and wild settings, contributing to both culinary and recreational activities.",
+          "score": 62.5
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-7522f1fe8bee",
+      "proposed_label": "agreement on facts",
+      "draft_definition": "Proposed class “agreement on facts”. Surfaced from source: “Stipulations streamline evidence presentation by avoiding witnesses, foundation, or exhibit introductions, allowing agreement on facts, authenticity, or testimony.”",
+      "supporting_excerpt": "Stipulations streamline evidence presentation by avoiding witnesses, foundation, or exhibit introductions, allowing agreement on facts, authenticity, or testimony.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9TrVTLjfQnxkv8JTX6c9L2",
+          "label": "Factoring Agreement",
+          "definition": "A Factoring Agreement is a financial arrangement where a business sells its accounts receivable, or invoices, to a third-party factoring company at a discount. This agreement outlines the terms and conditions under which the factoring company will advance funds, collect payments, and charge fees, providing immediate liquidity to the original business.",
+          "score": 86.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7yyIAUvkgjyuhLF0spPwsO",
+          "label": "Formation Agreement",
+          "definition": "A Formation Agreement is a type of legal agreement that outlines the terms and conditions of a business arrangement between parties, specifically related to the creation or formation of a new entity or venture.",
+          "score": 81.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8QAy2M9XDOWZjh3ISKfwLP",
+          "label": "Mediation Agreement",
+          "definition": "A Mediation Agreement is a contract that parties enter into, agreeing to resolve their disputes through mediation: a process where a neutral third-party mediator assists the parties in reaching a voluntary settlement. The agreement outlines the terms of the mediation process and any resultant decisions.",
+          "score": 75.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDTJZtMRTeYLWXGgOgYCK3w",
+          "label": "Franchise Agreement",
+          "definition": "A Franchise Agreement is a legally binding contract between a franchisor and a franchisee that outlines the terms and conditions of the franchise relationship, including the rights and obligations of both parties.",
+          "score": 75.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-85e4fec5de30",
+      "proposed_label": "Use of Evidence",
+      "draft_definition": "Proposed class “Use of Evidence”. Surfaced from source: “Address authenticity, accuracy, tampering, incompleteness, and distortions of digital evidence to prevent objections to its introduction and use; these issues also affect visual aids in opening/summation.”",
+      "supporting_excerpt": "Address authenticity, accuracy, tampering, incompleteness, and distortions of digital evidence to prevent objections to its introduction and use; these issues also affect visual aids in opening/summation.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDqvTdg5IFDf2Oyf3zT3z50",
+          "label": "Rules of Evidence",
+          "definition": "Procedural rules governing the use of evidence.",
+          "score": 87.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7c1yU31BO5LWM06a7c0Pfd",
+          "label": "Some Evidence",
+          "definition": "Some Evidence refers to any type of proof or information presented in a legal case that supports one party's argument or position, and falls under the burden of proof required in litigation.",
+          "score": 78.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDQ4N5uKyIQA6HpY6uoaTyx",
+          "label": "Parol Evidence Rule",
+          "definition": "The Parol Evidence Rule is a legal defense in civil litigation that prohibits the introduction of oral or written evidence that contradicts the terms of a written contract.",
+          "score": 76.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9fyD3lTs6lHrVdVmxbQqun",
+          "label": "Fiber Evidence",
+          "definition": "Fiber evidence comprises tiny threads or fragments from textiles found at crime scenes or on objects. Forensic analysis can determine the type, source, and sometimes specific origin of the fiber, potentially connecting a suspect to a location or another piece of evidence.",
+          "score": 75.9
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-9e077698056a",
+      "proposed_label": "Judicial Role",
+      "draft_definition": "Proposed class “Judicial Role”. Surfaced from source: “Judges' questioning varies by their view of their role: lawyers present evidence vs. judge questions for fairness or fact-finding.”",
+      "supporting_excerpt": "Judges' questioning varies by their view of their role: lawyers present evidence vs. judge questions for fairness or fact-finding.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RD078pnidakfOC1UdhDigqn",
+          "label": "Judicial Lien",
+          "definition": "A judicial lien is a type of lien that is created by a court order to secure the payment of a debt or judgment.",
+          "score": 84.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ibFsNNncTIYF5AjKUDg7b",
+          "label": "Judicial Order",
+          "definition": "A judicial order is a written directive issued by a court, typically in response to a motion or petition, that directs a party to take or refrain from taking a particular action.",
+          "score": 81.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rwp7fcwpje8NEhX8IOCE2p",
+          "label": "Judicial Privilege",
+          "definition": "The concept of Judicial Privilege refers to the legal immunity granted to judges and other court officials from being compelled to testify in court about their official duties or decision-making processes.",
+          "score": 77.4
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8OsGCPOsihiJLtbFkIbRfx",
+          "label": "Res Judicata",
+          "definition": "Res Judicata refers to the legal principle that a matter that has been adjudicated by a competent court and a final judgment has been rendered, cannot be litigated again between the same parties or their privies.",
+          "score": 72.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-a557d1936498",
+      "proposed_label": "contract case",
+      "draft_definition": "Proposed class “contract case”. Surfaced from source: “Consider partial summary judgment on undisputed issues, e.g., liability in contract case, leaving damages for jury.”",
+      "supporting_excerpt": "Consider partial summary judgment on undisputed issues, e.g., liability in contract case, leaving damages for jury.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc",
+          "label": "Contractual Clause",
+          "definition": "A contract's clauses (e.g., choice of venue, force majeure, disclaimers).",
+          "score": 83.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R6W3NObOQqhpLqm7L2qGb0",
+          "label": "Contract Year Clause",
+          "definition": "A Contract Year Clause is a provision in a contract that specifies the duration of the agreement and the obligations of the parties for that period.",
+          "score": 78.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDLrWRGJSuF7G5IbJcLqe0a",
+          "label": "cl_contact",
+          "definition": "Contact Structure (See contact_info segment below).",
+          "score": 78.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7OF55qIq9P3iOXGnNfVTuP",
+          "label": "Counterpart Clause",
+          "definition": "A Counterpart Clause is a provision in a contract that allows for multiple identical copies of the contract to be signed by different parties, each copy being considered an original.",
+          "score": 77.4
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-aabcd9e718df",
+      "proposed_label": "administrative hearing officer",
+      "draft_definition": "Proposed class “administrative hearing officer”. Surfaced from source: “Address judges as \"Your Honor\" or \"Judge.\" Arbitrators can be \"Arbitrator Surname\" or \"Your Honor.\" Administrative hearing officers (non-ALJs) may be by surname. Other participants are addressed by last name to avoid improper familiarity.”",
+      "supporting_excerpt": "Address judges as \"Your Honor\" or \"Judge.\" Arbitrators can be \"Arbitrator Surname\" or \"Your Honor.\" Administrative hearing officers (non-ALJs) may be by surname. Other participants are addressed by last name to avoid improper familiarity.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RovTKAG0F3rXLYFz5np3hh",
+          "label": "Chief Administrative Officer",
+          "definition": "",
+          "score": 86.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RB5E68583Cf5dE51bb19F121",
+          "label": "Office of the Chief Administrative Hearing Officer",
+          "definition": "The Office of the Chief Administrative Hearing Officer (OCAHO) is a U.S. federal agency headed by a Chief Administrative Hearing Officer who is responsible for the general supervision and management of Administrative Law Judges who preside at hearings which are mandated by provisions of law enacted in the Immigration Reform and Control Act of 1986 (IRCA (PDF)) and the Immigration Act of 1990 (PDF). These acts, among others, amended the Immigration and Nationality Act of 1952 (INA).",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rp6HMd8Eea47JMlXfYvttU",
+          "label": "Administrative Discharge",
+          "definition": "An Administrative Discharge refers to the release of a service member from their military obligations without the involvement of a court-martial. It is based on administrative reasons rather than punitive ones. This type of discharge can be classified into various categories, such as honorable, other than honorable, or general, based on the circumstances and reasons for the separation. Administrative discharges can result from factors like medical conditions, patterns of misconduct, or other non-judicial reasons.",
+          "score": 74.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R59590a2E604337Ecb0C582c",
+          "label": "Office of Administrative Law Judges",
+          "definition": "The Office of Administrative Law Judges conducts rulemaking and adjudicatory hearings throughout the United States in proceedings subject to the Administrative Procedure Act. Approximately 50 statutes administered by agencies within the Department of Agriculture require APA hearings. The Judges issue initial decisions and orders in adjudicatory proceedings, approve of consent decisions entered into by parties, and decide appeals of debarments and suspensions.",
+          "score": 73.8
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-b62514b15276",
+      "proposed_label": "dismiss",
+      "draft_definition": "Proposed class “dismiss”. Surfaced from source: “Prioritize early discovery; pursue dispositive motions (dismiss, add parties, complete discovery, summary judgment) according to case readiness and trial schedule.”",
+      "supporting_excerpt": "Prioritize early discovery; pursue dispositive motions (dismiss, add parties, complete discovery, summary judgment) according to case readiness and trial schedule.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCKTvbBtse7f4CWyAp1iNdO",
+          "label": "Dismissal",
+          "definition": "Dismissal is a type of trial court created document that terminates a case without a decision on the merits, and can be either voluntary or involuntary, with or without prejudice, and for various reasons such as violation of rules or failure to prosecute.",
+          "score": 87.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R517ea039B1b26CD3f2749c9",
+          "label": "Timis",
+          "definition": "Timis is a region in Romania.",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCe54buOKlrH9gmmHD3Gmc6",
+          "label": "Mission Indians",
+          "definition": "",
+          "score": 63.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCz8DPELLjP7N6Q7zuPI9ys",
+          "label": "Admission",
+          "definition": "The concept of Admission refers to the act of acknowledging or accepting the truth or validity of a claim or allegation made by another party in a legal matter.",
+          "score": 62.5
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-b81933eafa55",
+      "proposed_label": "Electronic Information",
+      "draft_definition": "Proposed class “Electronic Information”. Surfaced from source: “Display digital evidence; preview with opposing counsel and decision-maker for admissibility; electronic information requires advance showing to fact-finder.”",
+      "supporting_excerpt": "Display digital evidence; preview with opposing counsel and decision-maker for admissibility; electronic information requires advance showing to fact-finder.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/Re6iIaFBYiUPt64JyRgsjd",
+          "label": "Genetic Information",
+          "definition": "Genetic information refers to data about an individual's genetic traits, which are inherited from their parents through DNA. This information can include details about an individual's genes, family medical history, and the presence or absence of specific genetic markers that may be associated with certain diseases or conditions. Genetic information is protected under various laws, such as the Genetic Information Nondiscrimination Act (GINA) in the United States, which prohibits discrimination in employment and health insurance based on genetic information.",
+          "score": 82.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8QBuMoK1uPFeLW0sg40CdA",
+          "label": "Contact Information",
+          "definition": "Contact Information refers to the details of an individual or entity that can be used to communicate with them, including their name, address, phone number, email, and other relevant information.",
+          "score": 78.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBPQXNYlLOe2ILlrQXwUo0M",
+          "label": "Contract Formation",
+          "definition": "Contract Formation is the event when a contract is formed and fully executed, meeting all legal requirements necessary for it to be binding and enforceable. This includes the elements of offer, acceptance, consideration, mutual assent, and legality of purpose.",
+          "score": 70.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/SGahJEz_Tfqwxxi7eSpqlA",
+          "label": "Electric Power Generation",
+          "definition": "This industry comprises establishments primarily engaged in operating electric power generation facilities. These facilities convert other forms of energy, such as water power (i.e., hydroelectric), fossil fuels, nuclear power, and solar power, into electrical energy. The establishments in this industry produce electric energy and provide electricity to transmission systems or to electric power distribution systems.",
+          "score": 68.1
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-bb4f884d6e70",
+      "proposed_label": "amended",
+      "draft_definition": "Proposed class “amended”. Surfaced from source: “Pleadings may be amended to conform to evidence on issues not originally pleaded if parties expressly or impliedly consent.”",
+      "supporting_excerpt": "Pleadings may be amended to conform to evidence on issues not originally pleaded if parties expressly or impliedly consent.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RBdX70w6s28eu8tEayKral",
+          "label": "Mende",
+          "definition": "Mende (Language) is a structured system of communication that belongs to the Niger-Congo language family and is primarily spoken in Sierra Leone and Liberia.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R1B0ae399Ab8d998f052Adc8",
+          "label": "Mubende",
+          "definition": "Mubende is a location in Uganda.",
+          "score": 71.4
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8Lb3TLCPJlBcfIcNlVc9mO",
+          "label": "Agender",
+          "definition": "Agender refers to a gender identity where an individual identifies as having no gender, or a gender that is neutral or undefined. This term falls within the broader spectrum of gender identities and is often acknowledged in legal discussions surrounding gender discrimination, rights, and protections",
+          "score": 71.4
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R0C1be30E0e341F39f79E650",
+          "label": "Kamwenge",
+          "definition": "Kamwenge is a district in Uganda.",
+          "score": 66.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-c262e5cc12b3",
+      "proposed_label": "Personal service",
+      "draft_definition": "Proposed class “Personal service”. Surfaced from source: “Personal service not required, except for orders to show cause or similar relief.”",
+      "supporting_excerpt": "Personal service not required, except for orders to show cause or similar relief.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/eh8Ay3ANTdWnlpqxVysRLw",
+          "label": "Personal Care Services",
+          "definition": "This industry group comprises establishments, such as barber and beauty shops, that provide appearance care services to individual consumers.",
+          "score": 84.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/jyg8Wy9PT0GG2JXlYvG_Ag",
+          "label": "Other Personal Services",
+          "definition": "This industry group comprises establishments primarily engaged in providing personal services (except personal care services, death care services, or drycleaning and laundry services).",
+          "score": 82.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/LKoj9LvARw-OtAbgpqXUhw",
+          "label": "Postal Service",
+          "definition": "This industry comprises establishments primarily engaged in providing mail services under a universal service obligation. Mail services include the carriage of letters, printed matter, or mailable packages, including acceptance, collection, processing, and delivery. Due to the infrastructure requirements of providing mail service under a universal service obligation, postal service establishments often provide parcel and express delivery services in addition to the mail service. Establishments primarily engaged in performing one or more parts of the basic mail service, such as sorting, routing and/or delivery (except bulk transportation of mail) are included in this industry.",
+          "score": 80.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7aujIepeuFUyfMEjLBqYza",
+          "label": "Service Open",
+          "definition": "The process is active.",
+          "score": 78.6
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-cd69713b7ae4",
+      "proposed_label": "evidence processing",
+      "draft_definition": "Proposed class “evidence processing”. Surfaced from source: “Arrange timely for evidence processing to prevent delays and ensure admissibility.”",
+      "supporting_excerpt": "Arrange timely for evidence processing to prevent delays and ensure admissibility.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RDJxZ2vqqnde5q8ti6PKfnF",
+          "label": "Impression Evidence",
+          "definition": "Impression evidence refers to marks, patterns, or imprints left on surfaces that can be studied and analyzed to derive information about the object or tool that made them. Examples include shoeprints, tire treads, and tool marks. Such evidence can be instrumental in criminal investigations, as it can link a particular object or individual to a crime scene. Detailed analysis of these impressions can reveal unique characteristics or wear patterns that can be matched to specific sources.",
+          "score": 84.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R4kWkG9m4DarQ45A7wBpJQ",
+          "label": "Forensic Evidence",
+          "definition": "Forensic evidence pertains to scientific findings or techniques used in the criminal justice system to aid in the investigation and resolution of crimes. This evidence can encompass a wide range of disciplines, including DNA analysis, fingerprint identification, ballistics, toxicology, and digital forensics. Forensic experts analyze, interpret, and present this evidence in court to support or refute assertions made by parties in a case, ensuring its accuracy and reliability is crucial for just outcomes.",
+          "score": 72.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R12krufVvRKi5Y5spFJ3MZ",
+          "label": "Word Processing Expense",
+          "definition": "The term \"Word Processing Expense\" refers to a type of expense that is incurred in relation to the creation or editing of electronic documents using word processing software.",
+          "score": 71.4
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDmOUUaUXvrBRDI0fdcrYSo",
+          "label": "Shoeprint Evidence",
+          "definition": "Shoeprint evidence consists of marks or impressions left by shoes on various surfaces. These impressions can reveal patterns, sizes, and unique characteristics or wear of the shoe. Forensic experts analyze shoeprints to determine the type and brand of shoe, and sometimes even link it back to a specific pair of shoes or individual.",
+          "score": 70.3
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-ce8a377bd814",
+      "proposed_label": "places",
+      "draft_definition": "Proposed class “places”. Surfaced from source: “Judicial notice may be taken of the location and existence of specific places, events, and things.”",
+      "supporting_excerpt": "Judicial notice may be taken of the location and existence of specific places, events, and things.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RMjVUkapXKFedjNxnlpN3c",
+          "label": "Laches",
+          "definition": "Laches is a legal defense that argues that a plaintiff has unreasonably delayed in bringing a claim, causing prejudice to the defendant.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDF6fb086Cb7050F730D61cf",
+          "label": "Lacs",
+          "definition": "A body of water surrounded by land, specifically referring to those located in Côte d'Ivoire.",
+          "score": 80.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDnEuJ1VsP5Slnusvfyyt5f",
+          "label": "Peaches",
+          "definition": "Peaches are juicy, sweet stone fruits from the Prunus persica species, characterized by their fuzzy skin and aromatic flesh. They are consumed fresh, canned, or used in culinary applications such as desserts, jams, and beverages, valued for their vitamins, antioxidants, and dietary fiber.",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RB3B2e5BFB592AC61dcD0bc1",
+          "label": "Lakes",
+          "definition": "A body of water surrounded by land, typically smaller than a sea and larger than a pond, located within the political boundaries of South Sudan.",
+          "score": 72.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-d1177f746f09",
+      "proposed_label": "Mistrial motions",
+      "draft_definition": "Proposed class “Mistrial motions”. Surfaced from source: “Mistrial motions arise from prejudicial conduct/statements during jury trial.”",
+      "supporting_excerpt": "Mistrial motions arise from prejudicial conduct/statements during jury trial.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R8OhdVjX930P6m8083GA6mL",
+          "label": "Motion for Mistrial",
+          "definition": "A Motion for Mistrial is a request made by a party during a trial asking the judge to declare the trial invalid and start over due to a significant error or misconduct that has occurred during the proceedings.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rqzu5ueieUpfDMa6wQZuZn",
+          "label": "Insurance Motion",
+          "definition": "A request made by an insurance company in a bankruptcy case, seeking permission to continue providing coverage to the debtor.",
+          "score": 68.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R0EU9KrLDwhmIAsBno5K4c",
+          "label": "Evidentiary Motions",
+          "definition": "A motion made during a trial requesting the admission or exclusion of evidence, including expert reports, based on its relevance, reliability, or legality.",
+          "score": 68.6
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RUM0A3dwvk0A2dp3WHxNrj",
+          "label": "Dispositive Motions",
+          "definition": "Dispositive Motions are requests made by a party in a trial court seeking a final resolution of a case or a particular issue, such as a motion for summary judgment or a motion to dismiss.",
+          "score": 68.6
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-d1b94f75c700",
+      "proposed_label": "positions",
+      "draft_definition": "Proposed class “positions”. Surfaced from source: “Consider emphasizing key words, phrases, or positions throughout your motion argument.”",
+      "supporting_excerpt": "Consider emphasizing key words, phrases, or positions throughout your motion argument.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCnTNVCQ1VndGxskbMoaLr8",
+          "label": "Deposition",
+          "definition": "A deposition is a legal discovery event where a witness is questioned under oath by attorneys from both sides of a case, and the testimony is recorded for use in court proceedings.",
+          "score": 84.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R98NBwfojmCq1Cx8A2uiP4C",
+          "label": "Prostitution",
+          "definition": "The act of engaging in sexual activity in exchange for money or other forms of compensation, which is considered a criminal offense under certain circumstances.",
+          "score": 76.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R79jXpStbWPIClnqZrLu4yP",
+          "label": "Motions",
+          "definition": "A motion is a written request made to a court asking for a specific action to be taken in a legal case, such as a request for a ruling or a request for evidence to be excluded.",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ThXbAhhJvDfLZDgWWqPJz",
+          "label": "Constitutions",
+          "definition": "A written instrument embodying the (usually foundational) rules of a political or social organization.",
+          "score": 72.7
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-d3be5c6b0e12",
+      "proposed_label": "judge assignment method",
+      "draft_definition": "Proposed class “judge assignment method”. Surfaced from source: “Removal timing varies based on judge assignment method.”",
+      "supporting_excerpt": "Removal timing varies based on judge assignment method.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCD2P79BJ2ELptWqgOQhbTF",
+          "label": "Assignment of Judge",
+          "definition": "The Assignment of Judge is the process of designating a judge to preside over a particular case, which falls under the broader category of Assignment.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RKU1YwvdEmNI3WiBCdBBRx",
+          "label": "Assignment of Magistrate Judge",
+          "definition": "The \"Assignment of Magistrate Judge\" concept refers to the process of assigning a magistrate judge to a case, which falls under the broader category of assigning judges to cases.",
+          "score": 75.5
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RUSb5QrMEDZ08KAseN2EA0",
+          "label": "No Assignment Clause",
+          "definition": "A No Assignment Clause is a provision in a contract that prohibits one party from transferring their rights or obligations under the contract to a third party without the consent of the other party.",
+          "score": 69.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBJNvhPmodYtKUv6xWzghh9",
+          "label": "Assignment of Case",
+          "definition": "The concept of \"Assignment of Case\" refers to the act of designating a specific case to a particular individual or group for handling.",
+          "score": 68.3
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-dae8be747d69",
+      "proposed_label": "non-evidentiary motion",
+      "draft_definition": "Proposed class “non-evidentiary motion”. Surfaced from source: “Court rules dictate hearing format: remote for non-dispositive/non-evidentiary motions, in-person for dispositive/evidentiary motions. Variance requests are possible.”",
+      "supporting_excerpt": "Court rules dictate hearing format: remote for non-dispositive/non-evidentiary motions, in-person for dispositive/evidentiary motions. Variance requests are possible.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R0EU9KrLDwhmIAsBno5K4c",
+          "label": "Evidentiary Motions",
+          "definition": "A motion made during a trial requesting the admission or exclusion of evidence, including expert reports, based on its relevance, reliability, or legality.",
+          "score": 87.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9Idcfy3k3uRwC4XohbcMAg",
+          "label": "Evidentiary Objection",
+          "definition": "An evidentiary objection is a formal protest raised by a party in a legal proceeding, challenging the admissibility of specific evidence. Common grounds for such objections include lack of foundation, hearsay, irrelevance, and prejudicial nature.",
+          "score": 79.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RrwKWn7PQLCSscgstTNLqf",
+          "label": "Evidentiary Objectives",
+          "definition": "Evidentiary Objectives refer to the goals or purposes of presenting and challenging evidence in a legal proceeding. These objectives include ensuring the relevance, reliability, and fairness of the evidence, as well as preventing undue prejudice or confusion.",
+          "score": 68.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ZfDTW9ZZuAvpJxvh75trh",
+          "label": "Motion to Introduce Evidence",
+          "definition": "A Motion to Introduce Evidence is a formal request made to a court to allow the presentation of evidence during a trial or hearing.",
+          "score": 68.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-dbe561fd8c87",
+      "proposed_label": "advisement",
+      "draft_definition": "Proposed class “advisement”. Surfaced from source: “Courts may rule on motions immediately or take the matter under advisement for a later ruling.”",
+      "supporting_excerpt": "Courts may rule on motions immediately or take the matter under advisement for a later ruling.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RYqnzVgHfUjot8PC4mJs0G",
+          "label": "Advertisement",
+          "definition": "An Advertisement, as a type of copyright asset, is a creative work designed to promote products, services, or ideas, protected under copyright law. This includes various forms of media such as print, digital, audio, and visual content, ensuring exclusive rights to the creator or owner against unauthorized use.",
+          "score": 87.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R93T7OEmCjkwufvhJAY4ScV",
+          "label": "Easement",
+          "definition": "An easement is a legal right to use someone else's property for a specific purpose, such as accessing a neighboring property or using a shared driveway.",
+          "score": 77.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R8NbbZM7ESWmrKMGuKGoGJx",
+          "label": "Disbursement",
+          "definition": "The concept of Disbursement (Distribution) refers to the act of distributing funds or assets to the intended recipients, often as part of a larger event or phase.",
+          "score": 72.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RszUiYFgocCPkuHr4IzSzr",
+          "label": "Payment Advices",
+          "definition": "Payment Advices (Employment Pay Stubs) are written or electronic documents provided by an employer to an employee that show the details of their pay, including deductions and taxes.",
+          "score": 72.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-ddb403c11a69",
+      "proposed_label": "object",
+      "draft_definition": "Proposed class “object”. Surfaced from source: “After judge questions, counsel may re-examine witnesses on judge's topics. Counsel may object to judge's questions, expert appointments, and witness calls. See § 4.5(F); Fed. R. Evid. 614(c).”",
+      "supporting_excerpt": "After judge questions, counsel may re-examine witnesses on judge's topics. Counsel may object to judge's questions, expert appointments, and witness calls. See § 4.5(F); Fed. R. Evid. 614(c).",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9tXbxvBd7zWklwn9RT7wkH",
+          "label": "Objector",
+          "definition": "A person, usually a nonparty, who objects to an aspect of the litigation.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E",
+          "label": "Objectives",
+          "definition": "Specific aims, goals, arguments, plans, intentions, designs, purposes, schemes, etc. that are constructed by a party in a legal matter, and the legal or other professional frameworks that support their execution.",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R08Eee670D7ba895b0c5754e",
+          "label": "Yobe",
+          "definition": "Yobe is a state in Nigeria.",
+          "score": 60.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-df34b76f2b17",
+      "proposed_label": "Motion Documents",
+      "draft_definition": "Proposed class “Motion Documents”. Surfaced from source: “Motion documents consist of specific categories.”",
+      "supporting_excerpt": "Motion documents consist of specific categories.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCAoq2beZ0XOXLHHyiXK032",
+          "label": "Document Location",
+          "definition": "Location of a document (e.g., physical location, virtual location within a system).",
+          "score": 84.8
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+          "label": "Objection Document",
+          "definition": "An objection is a formal statement made in a trial court or bankruptcy case challenging the validity or legality of a specific action or request, such as a confirmation of a plan, application for professional employment, professional fees, claim, debtor's claim of exemptions, or transfer of claim.",
+          "score": 82.4
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R99JujbzGglK0qr4dr8q6AB",
+          "label": "Motion to File Document",
+          "definition": "A Motion to File Document is a formal request made to a court or other legal authority to allow a written or recorded representation of thought or expression to be submitted as evidence or part of a legal proceeding.",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RC3HfYuaMiOV2nZz0KkiKX4",
+          "label": "Tax Documents",
+          "definition": "Tax Documents are official records that detail financial information used to calculate and report taxes owed by individuals or entities to tax authorities. These documents include tax returns, financial statements, receipts, and other supporting documentation required for tax compliance and auditing.",
+          "score": 75.9
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-dfad40a36f49",
+      "proposed_label": "main",
+      "draft_definition": "Proposed class “main”. Surfaced from source: “Trial judge assignment varies by court calendar type: main, individual, or a combination.”",
+      "supporting_excerpt": "Trial judge assignment varies by court calendar type: main, individual, or a combination.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RF0Ed48CCDeff3A690616f64",
+          "label": "Maine",
+          "definition": "",
+          "score": 88.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RF71b9d83B28dB16bbb107c8",
+          "label": "Mardin",
+          "definition": "Mardin is a city located in Turkey.",
+          "score": 80.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R1CF0b9356d38393d26FDaa0",
+          "label": "Oman",
+          "definition": "",
+          "score": 75.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R63E282B0832409456f719f6",
+          "label": "Maio",
+          "definition": "",
+          "score": 75.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-e61e9ed509a4",
+      "proposed_label": "judicial relief",
+      "draft_definition": "Proposed class “judicial relief”. Surfaced from source: “Any attorney request for judicial, arbitral, or administrative relief is a motion, regardless of formal title.”",
+      "supporting_excerpt": "Any attorney request for judicial, arbitral, or administrative relief is a motion, regardless of formal title.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RD078pnidakfOC1UdhDigqn",
+          "label": "Judicial Lien",
+          "definition": "A judicial lien is a type of lien that is created by a court order to secure the payment of a debt or judgment.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7ibFsNNncTIYF5AjKUDg7b",
+          "label": "Judicial Order",
+          "definition": "A judicial order is a written directive issued by a court, typically in response to a motion or petition, that directs a party to take or refrain from taking a particular action.",
+          "score": 75.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/Rwp7fcwpje8NEhX8IOCE2p",
+          "label": "Judicial Privilege",
+          "definition": "The concept of Judicial Privilege refers to the legal immunity granted to judges and other court officials from being compelled to testify in court about their official duties or decision-making processes.",
+          "score": 72.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9iUJ1YX0zK3V9D0RbQKTP4",
+          "label": "Equitable Relief",
+          "definition": "Equitable Relief refers to a type of legal remedy sought in civil cases that aims to provide fairness and justice to the parties involved, often through actions such as injunctions, specific performance, or rescission.",
+          "score": 71.0
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-e80e87b978d5",
+      "proposed_label": "presentation notes",
+      "draft_definition": "Proposed class “presentation notes”. Surfaced from source: “Use presentation notes/outlines as a guide for essential points.”",
+      "supporting_excerpt": "Use presentation notes/outlines as a guide for essential points.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R2Ia00TTWS8WPgDarLcwHgA",
+          "label": "L680 Presentation (NOS)",
+          "definition": "\"NOS\" = Not Otherwise Specified (catch-all, includes the subcategories). Activities and actions to prepare and display ESI before audiences (at depositions, hearings, trials, etc.), especially in native & near-native forms, to elicit further information, validate existing facts or positions, or persuade an audience. Primarily hourly charges.",
+          "score": 82.1
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RDCbopUcNJ7SCPPVAuRA4GO",
+          "label": "Presentation",
+          "definition": "A descriptive or persuasive account, usually made to a group (e.g., conference, committee).",
+          "score": 80.0
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7qFX8LI9LOwqdCbxrhdIys",
+          "label": "Knowledge Representation",
+          "definition": "Knowledge Representation is the method of encoding information about the world in a format that an AI system can use to solve complex tasks, including reasoning and inference. This involves using various symbolic or sub-symbolic techniques to model entities, relationships, and rules within a specific domain.",
+          "score": 76.2
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RRC3CmU6w2he0zPcqr6J7p",
+          "label": "Misrepresentation",
+          "definition": "A misrepresentation is a false statement made by one party to another, which induces the other party to enter into a contract or take some other action, and which causes harm or damages to the other party.",
+          "score": 74.3
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-efc2d62738d8",
+      "proposed_label": "Oral motion",
+      "draft_definition": "Proposed class “Oral motion”. Surfaced from source: “Oral motions are permitted during hearings or trials under FRCP 7(b) and similar state rules, usable in court or chambers.”",
+      "supporting_excerpt": "Oral motions are permitted during hearings or trials under FRCP 7(b) and similar state rules, usable in court or chambers.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R7SdenAJ4aI0wyuxBsP7c09",
+          "label": "Trial Motions",
+          "definition": "Trial Motions are requests made by parties during a trial to the judge for a specific action or ruling, such as a Motion for Judgment Notwithstanding the Verdict (JNOV) or a Motion for Mistrial.",
+          "score": 83.3
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RBqBxJEzhWW5x12JraZHgQd",
+          "label": "Oral Copulation",
+          "definition": "Oral copulation is a sexual act involving the stimulation of the genitals by the mouth, which is considered a sex offense under the law.",
+          "score": 76.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/RCOztyLvDeuEOO20jLp0Gi3",
+          "label": "Post-Trial Motions",
+          "definition": "Post-Trial Motions are requests made by a party after a trial has concluded, asking the court to take a specific action, such as granting a new trial or amending the findings, based on the evidence presented during the trial.",
+          "score": 75.9
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R97dkGlI7W9NcGXmVjUrlis",
+          "label": "Pretrial Motions",
+          "definition": "Pretrial Motions are requests made by a party in a legal case before the trial begins, seeking a ruling or order from the court on a specific issue related to the case.",
+          "score": 74.1
+        }
+      ]
+    },
+    {
+      "proposal_id": "PC-f6f71d500d6d",
+      "proposed_label": "CAT",
+      "draft_definition": "Proposed class “CAT”. Surfaced from source: “Alternatives to court reporters (electronic recordings, CAT, Gen AI) can capture and convert proceedings to text.”",
+      "supporting_excerpt": "Alternatives to court reporters (electronic recordings, CAT, Gen AI) can capture and convert proceedings to text.",
+      "candidates": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RZ4blzt2OCKNpzY64Fp7aw",
+          "label": "Cats",
+          "definition": "Cats are domesticated mammals belonging to the species Felis catus, known for their agility, independence, and hunting skills. They serve primarily as companions and pest controllers, and come in a wide variety of breeds with distinct physical and behavioral traits.",
+          "score": 85.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R135e477A55e134597041f71",
+          "label": "Cavite",
+          "definition": "Cavite is a province in the Philippines.",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R7qxVfcFITBa22T7miUZb0x",
+          "label": "Cattle",
+          "definition": "Cattle are domesticated bovine animals that belong to the species Bos taurus, commonly raised for their meat, milk, and hides, as well as for labor. This group includes both cows (females) and bulls (males), and they play a significant role in agriculture and human economies.",
+          "score": 66.7
+        },
+        {
+          "iri": "https://folio.openlegalstandard.org/R9eW4sfeFepDiQThY7iRxkq",
+          "label": "Car",
+          "definition": "A car is a motorized vehicle designed for the transportation of passengers or cargo. It comes in various body styles, including sedan, coupe, convertible, and hatchback, each with distinct features and configurations.",
+          "score": 66.7
+        }
+      ]
+    }
+  ]
+}
