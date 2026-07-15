@@ -20,6 +20,21 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
+def _to_concept_match(concept_match_cls: Any, c: dict[str, Any]) -> Any:
+    """Map a tagger concept dict to a ``folio_matching.ConceptMatch``.
+
+    Tagger dicts carry ``iri``/``label``/``concept_text``/``confidence``/``branch``; the pinned
+    ``ConceptMatch`` uses ``folio_iri``/``folio_label``/``concept_text``/``confidence``/``branch``.
+    """
+    return concept_match_cls(
+        concept_text=c.get("concept_text") or c.get("label", ""),
+        folio_iri=c.get("iri", ""),
+        folio_label=c.get("label", ""),
+        confidence=float(c.get("confidence", 0.0)),
+        branch=c.get("branch", ""),
+    )
+
+
 class ReconciledConcept(BaseModel):
     """A FOLIO concept reconciled across up to four extraction paths."""
 
@@ -157,38 +172,35 @@ class FourPathReconciler:
         ruler_concepts: list[dict[str, Any]],
         llm_concepts: list[dict[str, Any]],
     ) -> list[ReconciledConcept]:
-        """Use the imported base Reconciler for 2-path reconciliation."""
-        from folio_insights.services.bridge.folio_bridge import _ensure_folio_enrich_path
+        """Use the pinned ``folio_matching.Reconciler`` for 2-path reconciliation.
 
-        _ensure_folio_enrich_path()
-        from app.models.annotation import ConceptMatch
+        Migration item #1: this seam previously sys.path-imported folio-enrich's
+        ``Reconciler`` and ``ConceptMatch``. It now uses the pinned ``folio-matching``
+        package, so the reconciler no longer depends on a folio-enrich checkout.
+        """
+        from folio_matching import ConceptMatch
 
-        # Convert dicts to ConceptMatch objects
-        ruler_cm = [ConceptMatch(**c) for c in ruler_concepts]
-        llm_cm = [ConceptMatch(**c) for c in llm_concepts]
+        ruler_cm = [_to_concept_match(ConceptMatch, c) for c in ruler_concepts]
+        llm_cm = [_to_concept_match(ConceptMatch, c) for c in llm_concepts]
 
-        results = self._base_reconciler.reconcile_with_embedding_triage(ruler_cm, llm_cm)
+        # The pinned Reconciler is a folio_matching.Reconciler (see tagger._get_reconciler).
+        results = self._base_reconciler.reconcile(ruler_cm, llm_cm)
 
+        category_paths = {
+            "both_agree": ["entity_ruler", "llm"],
+            "ruler_only": ["entity_ruler"],
+            "llm_only": ["llm"],
+            "conflict_resolved": ["entity_ruler", "llm"],
+        }
         reconciled: list[ReconciledConcept] = []
         for r in results:
-            paths = []
-            cat = r.category
-            if "both_agree" in cat:
-                paths = ["entity_ruler", "llm"]
-            elif "ruler_only" in cat:
-                paths = ["entity_ruler"]
-            elif "llm_only" in cat:
-                paths = ["llm"]
-            elif "conflict_resolved" in cat:
-                paths = ["entity_ruler", "llm"]
-
             reconciled.append(
                 ReconciledConcept(
                     iri=r.concept.folio_iri or "",
                     label=r.concept.folio_label or r.concept.concept_text,
                     confidence=r.concept.confidence,
-                    contributing_paths=paths,
-                    branch=(r.concept.branches[0] if r.concept.branches else ""),
+                    contributing_paths=category_paths.get(r.category, []),
+                    branch=r.concept.branch or "",
                 )
             )
         return reconciled
