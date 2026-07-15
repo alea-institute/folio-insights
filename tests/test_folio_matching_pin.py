@@ -121,6 +121,60 @@ def test_decompose_falls_back_to_proposed_class_when_unresolvable() -> None:
     assert tags[0].iri == ""
 
 
+def test_entity_ruler_uses_pinned_folio_matching_ruler() -> None:
+    # Migration item #1 (continued): the entity-ruler path now runs on the pinned
+    # folio_matching.FOLIOEntityRuler, consuming folio_service.get_all_labels() directly.
+    # (folio-enrich moved its AhoCorasickMatcher module, which had silently disabled this path.)
+    from folio_matching import FOLIOEntityRuler
+    from folio_matching.ontology import Concept, LabelInfo
+
+    stage = FolioTaggerStage()
+
+    labels = {
+        "Cross-Examination": LabelInfo(
+            concept=Concept(iri="R-cross", label="Cross-Examination", branch="Service"),
+            label_type="preferred",
+        ),
+    }
+    folio_service = MagicMock()
+    folio_service.get_all_labels.return_value = labels
+
+    ruler = stage._get_aho_matcher(folio_service)
+    assert isinstance(ruler, FOLIOEntityRuler)
+    # The ruler actually finds the loaded label and emits its IRI as entity_id.
+    matches = ruler.find_matches("The Cross-Examination began.")
+    assert any(getattr(m, "entity_id", "") == "R-cross" for m in matches)
+
+
+def test_entity_ruler_duck_types_folio_enrich_labelinfo() -> None:
+    # folio-enrich's get_all_labels() returns its OWN LabelInfo (concept.iri + label_type).
+    # FOLIOEntityRuler must consume it via duck typing with no adapter — this is what makes the
+    # one-line migration valid on the live pipeline.
+    from dataclasses import dataclass
+
+    stage = FolioTaggerStage()
+
+    @dataclass
+    class _EnrichConcept:  # mirrors folio-enrich FOLIOConcept (only .iri is read)
+        iri: str
+
+    @dataclass
+    class _EnrichLabelInfo:  # mirrors folio-enrich LabelInfo shape
+        concept: _EnrichConcept
+        label_type: str
+        matched_label: str
+
+    labels = {
+        "Deposition": _EnrichLabelInfo(_EnrichConcept("R-depo"), "preferred", "Deposition"),
+    }
+    folio_service = MagicMock()
+    folio_service.get_all_labels.return_value = labels
+
+    ruler = stage._get_aho_matcher(folio_service)
+    matches = ruler.find_matches("Prepare for the Deposition.")
+    assert any(getattr(m, "entity_id", "") == "R-depo" for m in matches)
+
+
 def test_get_reconciler_uses_pinned_package() -> None:
     stage = FolioTaggerStage()
     embedding_service = MagicMock(index_size=0)
