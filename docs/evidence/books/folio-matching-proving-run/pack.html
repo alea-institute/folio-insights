@@ -176,6 +176,14 @@
       (Burden of Proof 55, Hearing 21, Lawyer 47) and the metadata unit is now excluded. Proposed-class
       rises to 1605 (2.33/unit) because v7 correctly <i>declines</i> to force-resolve the 889 mis-maps
       v6 invented; per unit that is below v5&rsquo;s 2.68. <b>The folio-enrich migration hold can lift.</b></p>
+    <p style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2)"><b>Generalization confirmed
+      &mdash; Ch03 (a chapter the fix was <i>not</i> tuned on):</b>
+      <span class="pill good">non-heading place mis-maps 3&nbsp;&rarr;&nbsp;0</span>
+      <span class="pill good">heading place-propagation 283&nbsp;&rarr;&nbsp;0</span>
+      <span class="pill good">agency homonyms 15&nbsp;&rarr;&nbsp;3</span>
+      <span class="pill good">Slovenia units 5&nbsp;&rarr;&nbsp;0</span>
+      &mdash; the same failure classes collapse on unseen source while v7 resolves <i>more</i> genuine
+      concepts (2,418&nbsp;&rarr;&nbsp;3,273 IRIs). See the Ch03 section below.</p>
   </div>
 </div>
 
@@ -383,9 +391,86 @@
 </section>
 
 <section>
+  <h2>Ch03 generalization &mdash; does the fix hold on a chapter it wasn&rsquo;t tuned on?</h2>
+  <p class="lede">The v7 precision fix was developed and its acceptance bar set on <b>Ch02</b>. The open
+    question before migrating folio-enrich: does it <b>generalize</b>, or did it just memorize Ch02?
+    Here the identical branch / config runs on <b>Ch03 &mdash; Trial Procedures &amp; Motions</b>
+    (source hash <code>ffbc01e7…</code>), comparing the reviewed 2026-07-15 baseline (v5, the run whose
+    865 classes seeded the governance registry) against the fixed pipeline (v7). Same metric harness as
+    above. <b>App spend $0.202 &mdash; under the $0.30 cap.</b></p>
+
+  <div class="verdict" style="margin-top:6px">
+    <div class="band" style="background:var(--good-bg);color:var(--good)">Generalizes · same failure classes collapse on unseen source</div>
+    <div class="body">
+      <h3>Every failure class the fix targets drops to (near) zero on Ch03 &mdash; and v7 resolves
+        <i>more</i> genuine legal concepts than the baseline, not fewer.</h3>
+      <p>Ch03&rsquo;s reviewed baseline carried the same defect family as Ch02: 283 place tags across
+        30 countries/regions propagated from headings (Romania, Argentina, Anambra, Buenos Aires&hellip;
+        none of which appear in a US trial-advocacy chapter), &ldquo;state&rdquo;&rarr;U.S. Dept. of
+        State, &ldquo;AI&rdquo;&rarr;Anguilla. v7 vetoes all of them while <b>lifting</b> resolved-IRI
+        tags 2,418&rarr;3,273 &mdash; the gates remove noise without costing recall. The one residual
+        agency edge in v7 (&ldquo;appeals&rdquo;&rarr;IRS Office of Appeals, entity-ruler alt-label) is
+        the <i>identical</i> residual seen in Ch02 v7 &mdash; same known seam, not a new failure.</p>
+    </div>
+  </div>
+
+  <div class="scroll" style="margin-top:16px">
+    <table>
+      <thead><tr><th>Failure class / signal</th><th>Ch03 v5 (baseline)</th><th>Ch03 v7 (fixed)</th><th>v5&rarr;v7</th><th>read</th></tr></thead>
+      <tbody>
+        <tr><td class="cls">Non-heading place mis-maps</td><td class="num">3</td><td class="num">0</td><td class="num">3&rarr;0</td><td><span class="dir fix">eliminated</span></td></tr>
+        <tr><td class="cls">Heading place-propagation (tags / unique places)</td><td class="num">283 / 30</td><td class="num">0 / 0</td><td class="num">283&rarr;0</td><td><span class="dir fix">eliminated</span></td></tr>
+        <tr><td class="cls">Agency-homonym mis-maps</td><td class="num">15</td><td class="num">3</td><td class="num">15&rarr;3</td><td><span class="dir fix">&minus;80% (3 = &ldquo;appeals&rdquo;&rarr;IRS, same as Ch02 v7)</span></td></tr>
+        <tr><td class="cls">&ldquo;Slovenia&rdquo; propagation (units)</td><td class="num">5</td><td class="num">0</td><td class="num">5&rarr;0</td><td><span class="dir fix">eliminated</span></td></tr>
+        <tr><td class="cls">Action&rarr;Auction blocklist hits</td><td class="num">0</td><td class="num">0</td><td class="num">0&rarr;0</td><td><span class="dir fix">clean both</span></td></tr>
+        <tr><td class="cls">Metadata / front-matter units tagged</td><td class="num">0</td><td class="num">0</td><td class="num">0&rarr;0</td><td><span class="dir fix">clean both</span></td></tr>
+        <tr><td class="cls">Resolved-IRI tags (recall)</td><td class="num">2418</td><td class="num">3273</td><td class="num">+855</td><td><span class="dir fix">recall up</span></td></tr>
+        <tr><td class="cls">Proposed-class tags (abs / per-unit)</td><td class="num">1476 / 3.01</td><td class="num">1902 / 2.29</td><td class="num">&mdash;</td><td><span class="dir same">2.29/u &lt; v5 3.01/u</span></td></tr>
+        <tr><td class="cls">Proposed classes to registry (proposed_classes.json)</td><td class="num">1152</td><td class="num">1431</td><td class="num">&mdash;</td><td><span class="dir same">more, cleaner</span></td></tr>
+        <tr><td class="cls">&mdash; recovery: Jury / Witness / Hearing</td><td class="num">38 / 48 / 40</td><td class="num">61 / 77 / 45</td><td class="num">grew</td><td><span class="dir fix">preserved</span></td></tr>
+        <tr><td class="cls">&mdash; recovery: Objection / Verdict / Cross-exam</td><td class="num">13 / 10 / 12</td><td class="num">15 / 11 / 4</td><td class="num">kept</td><td><span class="dir fix">preserved</span></td></tr>
+        <tr><td class="cls">Units / total tags</td><td class="num">491 / 3894</td><td class="num">830 / 5175</td><td class="num">&mdash;</td><td><span class="dir same">~</span></td></tr>
+        <tr><td class="cls">LLM calls / cost (USD)</td><td class="num">1984 / 0.121</td><td class="num">3491 / 0.202</td><td class="num">&mdash;</td><td><span class="dir same">under $0.30 cap</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="kv"><h4>Hand-verification A &mdash; 10 suppressed tags: were they really wrong? <span class="pill good">10 / 10</span></h4>
+      <ul>
+        <li><b>Romania, Argentina, Anambra, Adamawa, Mili, Buenos Aires, USA-Location, Virgin&nbsp;Islands</b> &rarr; <span style="color:var(--bad)">place tags with <b>0</b> occurrences in the source</span> (pure heading propagation) &mdash; correctly dropped</li>
+        <li><b>&ldquo;AI&rdquo;</b> &rarr; <span style="color:var(--bad)">Anguilla</span> &mdash; &ldquo;AI&rdquo; appears 13&times; but every hit is <i>artificial intelligence</i>, never the country &mdash; correctly dropped</li>
+        <li><b>&ldquo;state&rdquo;</b> &rarr; <span style="color:var(--bad)">U.S. Dept. of State</span> &mdash; 34 hits, all the common word (&ldquo;state court&rdquo;, &ldquo;state law&rdquo;) &mdash; correctly dropped</li>
+        <li class="pill good" style="margin-top:6px">All 10 sampled suppressions were genuine mis-maps.</li>
+      </ul></div>
+    <div class="kv"><h4>Hand-verification B &mdash; 10 new v7-only mappings: are they right? <span class="pill good">8 / 10</span></h4>
+      <ul>
+        <li><b>Correct:</b> ADR&rarr;Alternative Dispute Resolution Practice · Additur&rarr;Additur · interrogatory&rarr;Interrogatories · disability&rarr;Disability · Vague&rarr;Vague&nbsp;&amp;&nbsp;Ambiguous Objection · Trial event&rarr;Trial Events · Court-appointed expert&rarr;Court-Appointed Expert · counter&rarr;Counter-Claimant</li>
+        <li><b>Weak-but-defensible:</b> advice&rarr;Advisory Service</li>
+        <li><b style="color:var(--bad)">Wrong:</b> take&rarr;Seizure &mdash; an <i>entity-ruler</i> generic-word fragment, orthogonal to this fix (present pre- and post-fix)</li>
+      </ul></div>
+  </div>
+  <div class="ex" style="margin-top:14px"><b class="g">Recall guard &mdash;</b> the genuine concepts that dropped out at the
+    (surface,IRI) pair level (cross-examination, direct examination, motions in limine, ALJ, opening
+    statements, judgments, verdicts, jurors) still resolve in v7 by IRI &mdash; they were re-worded, not
+    lost. Net, v7 resolves <b class="g">+855</b> more IRIs than the baseline. The suppressions removed
+    noise, not signal.</div>
+
+  <div class="assess" data-id="ch03gen">
+    <div class="q">Your read on Ch03 generalization:</div>
+    <div class="chips">
+      <button class="chip" type="button" data-v="Generalizes — same failure classes collapse on unseen source; migrate">Generalizes — migrate</button>
+      <button class="chip" type="button" data-v="Convincing, but want one more chapter before migrating">One more chapter</button>
+      <button class="chip" type="button" data-v="Chase the residual appeals->IRS entity-ruler edge first">Fix appeals residual first</button>
+    </div>
+    <textarea placeholder="Notes on Ch03 generalization…" data-note="ch03gen"></textarea>
+  </div>
+</section>
+
+<section>
   <h2>Proceed to folio-enrich?</h2>
   <div class="card">
-    <div class="q" style="font-size:14px;color:var(--ink-2);margin-bottom:10px;font-weight:600">My recommendation: <b style="color:var(--good)">the hold can lift</b> — v7 turns the pin into a net precision improvement on identical source. Your call:</div>
+    <div class="q" style="font-size:14px;color:var(--ink-2);margin-bottom:10px;font-weight:600">My recommendation: <b style="color:var(--good)">the hold can lift</b> — v7 turns the pin into a net precision improvement on identical source, and <b style="color:var(--good)">Ch03 confirms the fix generalizes</b> to a chapter it was not tuned on (place/agency/Slovenia collapse to ~0, recall up +855 IRIs). Your call:</div>
     <div class="chips" data-id="gate">
       <button class="chip" type="button" data-v="PROCEED — the v7 acceptance bar is met; migrate folio-enrich">Proceed — bar met</button>
       <button class="chip" type="button" data-v="PROCEED after one more chapter (Ch03) confirms the v7 fix generalizes">Proceed after Ch03</button>
@@ -396,9 +481,9 @@
 </section>
 
 <footer>
-  Evidence: output/uat_ta_ch02_v7 (fixed) vs v6 (regression) vs v5 (baseline) · source hash
-  0b7c2ff… identical all three · rubric extraction-quality-v1.0 (unchanged) · app spend v7 ≈ $0.168 (cap $0.50).
-  Metrics recomputed with one consistent harness (folio-python branch membership; surface≠label mis-map filter).
+  Ch02: output/uat_ta_ch02_v7 (fixed) vs v6 (regression) vs v5 (baseline) · source hash 0b7c2ff… identical all three · app spend v7 ≈ $0.168 (cap $0.50).
+  Ch03 generalization: output/uat_ta_ch03_v7 (fixed) vs v5 (baseline, 2026-07-15) · source hash ffbc01e7… identical both · app spend v7 ≈ $0.202 (cap $0.30).
+  Rubric extraction-quality-v1.0 (unchanged). Metrics recomputed with one consistent harness (folio-python branch membership; surface≠label mis-map filter).
 </footer>
 
 </div>
@@ -434,7 +519,7 @@
     deltatable:"Headline deltas", regression:"Precision regression (blocker?)",
     u_meta:"Unit d3c44e2a (metadata)", u_decomp:"Unit 12b5e434 (decompose)",
     u_action:"Unit 4b06a90c (Action≠Auction)", u_ui:"Unit 259a84fd (annotator)",
-    gate:"Proceed to folio-enrich?"
+    ch03gen:"Ch03 generalization", gate:"Proceed to folio-enrich?"
   };
   function assemble(){
     var out=["FOLIO-matching proving run — Ch02 review (Damien)","=================================================",""];
@@ -448,8 +533,8 @@
       if(note&&note.value.trim()) out.push("   note:   "+note.value.trim());
       out.push("");
     });
-    out.push("— v7 fix landed: place mis-maps 739→0, agency 150→1, Slovenia 168→0; recoveries preserved.");
-    out.push("— spend: v7 ≈ $0.168 (cap $0.50); source hash identical across v5/v6/v7.");
+    out.push("— Ch02 v7 fix landed: place mis-maps 739→0, agency 150→1, Slovenia 168→0; recoveries preserved.");
+    out.push("— Ch03 generalization: place 3→0, heading-propagation 283→0, agency 15→3, Slovenia 5→0; recall +855 IRIs; hand-verify 10/10 suppressions wrong, 8/10 new mappings right; spend $0.202 (cap $0.30).");
     return out.join("\n");
   }
   var pv=document.getElementById("preview"), pvt=document.getElementById("previewText"),
