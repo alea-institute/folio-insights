@@ -1,0 +1,29 @@
+{
+  "campaign": "books",
+  "repo": "INSIGHTS",
+  "pack": "folio-matching-proving-run",
+  "title": "Ch02 before/after — does the folio-matching pin improve folio-insights?",
+  "rubric_version": "extraction-quality-v1.0 (unchanged; no rubric edits)",
+  "generated_at": "2026-07-15T20:12:00Z",
+  "branch": "feat/wire-decompose-tagger (off brainstorm/folio-matching-platform HEAD 16b3309)",
+  "artifact_url": "https://claude.ai/code/artifact/09b62147-9c83-481f-839e-51e6d7eb09d9",
+  "baseline_run": "output/uat_ta_ch02_v5 (pre-pin, 464 units, 3383 tags — the run Damien reviewed, fed a1954d6)",
+  "pinned_run": "output/uat_ta_ch02_v6 (pinned + gates + decompose + entity-ruler fix, 699 units, 4782 tags)",
+  "source_hash": "0b7c2fffc7e23b06cfd25c52575bad640dd3aef62cdba8886ab54ed3e2e0610e (identical both runs)",
+  "model": "gemini-2.5-flash-lite",
+  "spend": { "v6_usd": 0.183, "session_usd": 0.368, "cap_usd": 1.0 },
+  "verdict": "MIXED / net-negative on precision — HOLD folio-enrich migration",
+  "headline": {
+    "proposed_class_only_tags": { "v5": 1244, "v6": 0, "dir": "recall up (mixed)" },
+    "canonical_place_tags": { "v5": 276, "v6": 932, "dir": "regressed" },
+    "non_heading_place_mismaps": { "v5": 1, "v6": 572, "dir": "new failure" },
+    "agency_homonym_tags": { "v5": 2, "v6": 80, "dir": "regressed" },
+    "slovenia_heading_propagation_units": { "v5": 99, "v6": 118, "dir": "not fixed" },
+    "action_auction_blocklist_hits": { "v5": 0, "v6": 0, "dir": "no-op (synthetic seed)" },
+    "entity_ruler_tags": { "v5": 1002, "v6": 1705, "dir": "restored (import fix)" }
+  },
+  "wired": ["reconciler seam", "FOLIOEntityRuler (import repaired)", "decompose (rarely fires)", "alias blocklist (no-op)", "place/short-label gates (miss real vectors)"],
+  "not_wired": ["SourceClassifier (metadata exclusion)", "DomainPrior (disambiguation)", "ScoreCalibration (weak-band)", "Judge"],
+  "root_cause": "Aggressive whole-string label->IRI resolution (accept top match >=0.6) resolves generic terms to place/agency homonyms; gates key on branch, which is empty on resolved tags, so they cannot see them.",
+  "recommendation": "Wire gates + calibration + domain prior INTO the label-resolution path and tighten the 0.6 threshold before migrating folio-enrich."
+}
