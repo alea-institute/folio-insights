@@ -1,0 +1,874 @@
+Extracting from: /home/damienriehl/Coding Projects/folio-insights/staging/ta_ch01_slice
+Corpus: uat_ta_slice
+Output: /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/
+
+08:04:13 INFO     folio_insights.pipeline.orchestrator: Starting pipeline for corpus 'uat_ta_slice' from /home/damienriehl/Coding Projects/folio-insights/staging/ta_ch01_slice
+08:04:13 INFO     folio_insights.services.corpus_registry: No existing manifest at output/uat_ta_slice/corpus-uat_ta_slice.json, starting fresh
+08:04:13 INFO     folio_insights.pipeline.stages.ingestion: Ingesting 1 new files (1 total found) from /home/damienriehl/Coding Projects/folio-insights/staging/ta_ch01_slice
+08:04:13 INFO     folio_insights.services.bridge.folio_bridge: folio-enrich path ensured: /home/damienriehl/Coding Projects/folio-enrich/backend
+08:04:13 INFO     folio_insights.services.bridge.mapper_bridge: folio-mapper path resolved: /home/damienriehl/Coding Projects/folio-mapper/backend
+08:04:13 INFO     folio_insights.pipeline.stages.ingestion: Ingested: ch01_slice.md (markdown, 7000 chars)
+08:04:13 INFO     folio_insights.pipeline.orchestrator: Stage 'ingestion' completed in 0.0s (0 units)
+08:04:13 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: ingestion (0 units)
+08:04:13 INFO     folio_insights.pipeline.stages.structure_parser: Parsed structure: 104 elements across 1 files
+08:04:13 INFO     folio_insights.pipeline.orchestrator: Stage 'structure_parser' completed in 0.0s (0 units)
+08:04:13 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: structure_parser (0 units)
+08:04:15 INFO     sentence_transformers.base.model: No device provided, using cpu
+08:04:15 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+08:04:15 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+08:04:15 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+08:04:15 WARNING  huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+08:04:15 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+08:04:15 INFO     sentence_transformers.base.model: Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 19375.40it/s]
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/processor_config.json "HTTP/1.1 404 Not Found"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/preprocessor_config.json "HTTP/1.1 404 Not Found"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/video_preprocessor_config.json "HTTP/1.1 404 Not Found"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/preprocessor_config.json "HTTP/1.1 404 Not Found"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+08:04:16 INFO     httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
+08:04:16 INFO     httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+08:04:17 INFO     httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+08:04:17 INFO     folio_insights.services.boundary.semantic: Loaded sentence-transformers model: all-MiniLM-L6-v2
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.10it/s]
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     folio_insights.pipeline.stages.boundary_detection: Boundary detection: 103 units from 1 files (104 boundaries total)
+08:04:18 INFO     folio_insights.pipeline.orchestrator: Stage 'boundary_detection' completed in 4.7s (103 units)
+08:04:18 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: boundary_detection (103 units)
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:18 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:21 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:21 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:23 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:24 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:24 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:24 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:24 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:24 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:24 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:25 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:26 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:26 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:26 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:27 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:27 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:36 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:36 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:39 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:41 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:42 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:43 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:43 INFO     folio_insights.pipeline.stages.distiller: Distilled 103 knowledge units
+08:04:43 INFO     folio_insights.pipeline.orchestrator: Stage 'distiller' completed in 24.8s (103 units)
+08:04:43 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: distiller (103 units)
+08:04:43 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:43 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:43 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:44 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:44 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:44 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:47 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:49 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:51 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:53 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:53 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:54 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:04:55 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:04:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:02 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:02 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:02 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:02 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:02 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:04 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:04 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:04 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:04 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:04 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:08 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:08 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:09 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:09 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:09 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:09 WARNING  app.services.llm.google_provider: Google API 503, retrying in 2s (attempt 2/5)
+08:05:09 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:11 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:12 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:17 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:17 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:20 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:21 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:21 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:21 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:22 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:22 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:22 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:23 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:23 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:34 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:35 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:35 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:44 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:47 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:47 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:47 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:47 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:52 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:52 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:54 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:05:54 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:05:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:05:58 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:02 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:06:02 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:06:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:03 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:03 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:03 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 WARNING  app.services.individual.citation_extractor: eyecite not installed — skipping citation extraction
+08:06:04 WARNING  app.services.individual.citation_extractor: citeurl not installed — skipping citation normalization
+08:06:04 INFO     app.services.individual.citation_extractor: Citation extraction found 0 citations
+08:06:04 INFO     folio_insights.pipeline.stages.knowledge_classifier: Classified 103 units: {'advice': 57, 'principle': 38, 'citation': 0, 'procedural_rule': 1, 'pitfall': 7}
+08:06:04 INFO     folio_insights.pipeline.orchestrator: Stage 'knowledge_classifier' completed in 81.0s (103 units)
+08:06:04 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: knowledge_classifier (103 units)
+08:06:04 INFO     app.services.ontology.registry: Built ontology service 'folio' (FOLIO)
+08:06:04 WARNING  folio_insights.pipeline.stages.folio_tagger: AhoCorasickMatcher not available
+Traceback (most recent call last):
+  File "/home/damienriehl/Coding Projects/folio-insights/src/folio_insights/pipeline/stages/folio_tagger.py", line 328, in _get_aho_matcher
+    MatcherClass = get_aho_corasick_matcher()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/damienriehl/Coding Projects/folio-insights/src/folio_insights/services/bridge/folio_bridge.py", line 106, in get_aho_corasick_matcher
+    from app.services.concept.entity_ruler import AhoCorasickMatcher
+ModuleNotFoundError: No module named 'app.services.concept.entity_ruler'
+08:06:05 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+Disabling search functionality: alea_llm_client not found.
+08:06:05 WARNING  folio.graph: Disabling search functionality: alea_llm_client not found.
+08:06:06 INFO     app.services.folio.folio_service: Ontology 'folio' loaded with 18326 concepts
+08:06:08 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:06:08 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:06:09 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:10 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:12 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:12 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:13 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:13 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:15 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:17 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:06:17 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:06:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:28 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:29 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:31 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:32 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:33 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:34 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:47 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:48 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:51 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:52 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:52 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:53 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:54 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:58 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:06:59 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:01 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:02 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:05 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 503 Service Unavailable"
+08:07:05 WARNING  app.services.llm.google_provider: Google API 503, retrying in 1s (attempt 1/5)
+08:07:06 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:13 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:14 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:14 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:15 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:16 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:17 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:21 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:23 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:23 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:24 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:30 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:33 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:34 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:35 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:47 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:48 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:49 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:50 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:50 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:51 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:52 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:54 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:55 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:56 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:57 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:58 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:07:59 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:00 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:01 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:02 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:03 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:04 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:05 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:06 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:07 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:08 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:09 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:10 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:11 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:12 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:13 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:14 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:15 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:15 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:16 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:17 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:17 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:18 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:19 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:20 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:22 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:24 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:27 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:35 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:37 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:38 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:39 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:45 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:46 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:48 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:48 INFO     httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+08:08:49 INFO     folio_insights.pipeline.stages.folio_tagger: FOLIO tagger: 92/103 units tagged
+08:08:49 INFO     folio_insights.pipeline.orchestrator: Stage 'folio_tagger' completed in 165.5s (103 units)
+08:08:49 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: folio_tagger (103 units)
+Batches:   0%|          | 0/4 [00:00<?, ?it/s]Batches:  25%|██▌       | 1/4 [00:00<00:00,  6.79it/s]Batches:  50%|█████     | 2/4 [00:00<00:00,  8.21it/s]Batches: 100%|██████████| 4/4 [00:00<00:00, 13.54it/s]
+08:08:49 INFO     folio_insights.pipeline.stages.deduplicator: Deduplication: 103 -> 99 units (exact=3, near=1 removed)
+08:08:49 INFO     folio_insights.pipeline.orchestrator: Stage 'deduplicator' completed in 0.3s (99 units)
+08:08:49 INFO     folio_insights.pipeline.orchestrator: Saved checkpoint: deduplicator (99 units)
+08:08:49 INFO     folio_insights.quality.output_formatter: Wrote /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/extraction.json
+08:08:49 INFO     folio_insights.quality.output_formatter: Wrote /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/review.json
+08:08:49 INFO     folio_insights.quality.output_formatter: Wrote /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/proposed_classes.json
+08:08:49 INFO     folio_insights.services.corpus_registry: Saved corpus manifest: /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/corpus-uat_ta_slice.json
+08:08:49 INFO     folio_insights.pipeline.orchestrator: Pipeline complete for 'uat_ta_slice': 99 units in 276.2s
+--- Extraction Summary ---
+Files processed:  1
+Units extracted:  99
+  High confidence:   85
+  Medium confidence: 12
+  Low confidence:    2
+Output: /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/extraction.json

@@ -1,0 +1,26 @@
+{
+  "extraction": "./output/uat_ta_slice/extraction.json",
+  "anchors_RUB-05": {
+    "total_units": 99,
+    "anchor_verified_field": 99,
+    "anchor_verified_pct": 100.0,
+    "have_source_snippet": 99,
+    "independent_snippet_pass": 99,
+    "independent_pass_pct": 100.0,
+    "span_slices_nonempty": 99,
+    "mean_anchor_score": 1.0,
+    "min_anchor_score": 1.0,
+    "sample_fail_ids": [],
+    "RUB-EXTRACT-05_gate_units_failing": 0
+  },
+  "iris_RUB-03": {
+    "total_tags": 245,
+    "tags_with_iri": 245,
+    "distinct_iris": 120,
+    "iri_resolvable": 245,
+    "iri_resolvable_pct": 100.0,
+    "proposed_class_tags": 0,
+    "empty_iri_not_proposed (RUB-03 violation)": 0,
+    "sample_bad_iris": []
+  }
+}

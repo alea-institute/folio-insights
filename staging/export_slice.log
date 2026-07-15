@@ -1,0 +1,10 @@
+Exporting corpus: uat_ta_slice
+Formats: owl, ttl
+Tasks: 10 (all)
+
+--- Export Summary ---
+  folio-insights.owl (21168 bytes)
+  folio-insights.ttl (6200 bytes)
+  CHANGELOG.md
+  validation-report.md
+Output: /home/damienriehl/Coding Projects/folio-insights/output/uat_ta_slice/
