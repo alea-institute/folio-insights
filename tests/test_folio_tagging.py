@@ -12,7 +12,7 @@ Covers:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -374,3 +374,184 @@ def test_llm_path_low_score_routes_to_proposed_class():
     tags = stage._reconciled_to_tags(reconciled, folio_svc)
     assert tags[0].iri == ""
     assert tags[0].extraction_path == "proposed_class"
+
+
+# ---------- Judge stage + domain prior + metadata-as-signal (2026-07-16 wiring) ----------
+
+
+class _FakeJudgeProvider:
+    """A judge provider whose ``structured`` returns a fixed verdict payload."""
+
+    def __init__(self, payload: dict) -> None:
+        self._payload = payload
+        self.calls: list[str] = []
+
+    async def structured(self, prompt: str, *, schema=None, temperature=0) -> dict:  # noqa: ARG002
+        self.calls.append(prompt)
+        return self._payload
+
+
+@pytest.mark.asyncio
+async def test_judge_rejects_non_ruler_tag():
+    """A 'rejected' verdict drops the non-ruler tag; the judge cannot resurrect a gated tag."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+    fake = _FakeJudgeProvider({"judged": [{"iri_hash": "c0", "adjusted_score": 0, "verdict": "rejected"}]})
+    stage._judge_provider = fake
+
+    unit = KnowledgeUnit(
+        text="A charge to the jury on the burden of proof.",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.PRINCIPLE,
+        source_file="t.md",
+    )
+    tags = [
+        ConceptTag(iri="https://folio.test/encumbrance", label="charge", confidence=0.8,
+                   extraction_path="llm", branch="Asset"),
+    ]
+    folio_svc = _make_folio_mock([])  # definition lookup tolerated
+
+    out = await stage._run_judge(unit, tags, folio_service=folio_svc, prior_context="Litigation / Trial Practice")
+    assert out == []  # the definition-level judge rejected charge->Encumbrance in a litigation context
+    assert fake.calls and "Litigation / Trial Practice" in fake.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_judge_leaves_ruler_and_proposed_tags_untouched():
+    """Entity-ruler and proposed-class tags bypass the judge entirely."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+    stage._judge_provider = _FakeJudgeProvider({"judged": []})
+
+    unit = KnowledgeUnit(
+        text="Cross-examination technique.",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.ADVICE,
+        source_file="t.md",
+    )
+    tags = [
+        ConceptTag(iri="https://folio.test/xe", label="Cross-Examination", confidence=0.9,
+                   extraction_path="entity_ruler", branch="Service"),
+        ConceptTag(iri="", label="novel-thing", confidence=0.5,
+                   extraction_path="proposed_class", branch=""),
+    ]
+    out = await stage._run_judge(unit, tags, folio_service=_make_folio_mock([]), prior_context="")
+    assert len(out) == 2  # neither adjudicated
+
+
+@pytest.mark.asyncio
+async def test_judge_confirmed_records_calibration_sample():
+    """A confirmed verdict keeps the tag and records a 'correct' calibration sample."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+    stage._judge_provider = _FakeJudgeProvider(
+        {"judged": [{"iri_hash": "c0", "adjusted_score": 82, "verdict": "confirmed"}]}
+    )
+    unit = KnowledgeUnit(
+        text="Burden of proof.",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.PRINCIPLE,
+        source_file="t.md",
+    )
+    tags = [ConceptTag(iri="https://folio.test/bop", label="Burden of Proof", confidence=0.8,
+                       extraction_path="llm", branch="Litigation")]
+    out = await stage._run_judge(unit, tags, folio_service=_make_folio_mock([]), prior_context="")
+    assert len(out) == 1
+    assert stage._calibration_samples == [(80.0, "correct")]
+
+
+def test_build_domain_prior_has_base_subjects_and_harvests_metadata():
+    """The prior carries the base litigation subjects and folds in metadata-unit FOLIO mappings."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+
+    # A metadata (front-matter) unit and a body unit.
+    meta = KnowledgeUnit(
+        text="Table of Contents. Evidence and Objections.",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.PRINCIPLE,
+        source_file="t.md",
+        source_section=["Table of Contents"],
+    )
+    body = KnowledgeUnit(
+        text="An objection must be timely.",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.RULE,
+        source_file="t.md",
+        source_section=["Chapter 4", "Objections"],
+    )
+    job = InsightsJob(corpus_name="ch04-test", source_dir=Path("."), units=[meta, body])
+
+    # Fake aho-matcher: metadata text maps to one FOLIO concept (multi-word, so it clears the
+    # singleton noise filter).
+    match = MagicMock(entity_id="https://folio.test/evidence")
+    match.text = "Rules of Evidence"
+    aho = MagicMock()
+    aho.find_matches.return_value = [match]
+
+    folio_svc = _make_folio_mock([])  # base-subject IRI resolution returns nothing -> label-only
+
+    prior = stage._build_domain_prior(job, folio_svc, aho)
+    labels = [t.label for t in prior.active_tags()]
+    assert "Litigation" in labels and "Trial Practice" in labels
+    assert "Rules of Evidence" in labels  # harvested from the metadata unit
+    # The metadata unit recorded a metadata-signal lineage event (not an insight tag).
+    assert any(e.action == "metadata-signal" for e in meta.lineage)
+
+
+@pytest.mark.asyncio
+async def test_judge_normalizes_mixed_scale_confidence():
+    """A 0-100-scale confidence (e.g. 90.0) is normalized before the judge sees it (Ch04 seam)."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+    fake = _FakeJudgeProvider({"judged": [{"iri_hash": "c0", "adjusted_score": 88, "verdict": "confirmed"}]})
+    stage._judge_provider = fake
+
+    unit = KnowledgeUnit(
+        text="Document references can violate foundation rules.",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.RULE,
+        source_file="t.md",
+    )
+    tags = [ConceptTag(iri="https://folio.test/od", label="Objection Document", confidence=90.0,
+                       extraction_path="heading_context", branch="Document Artifact")]
+    out = await stage._run_judge(unit, tags, folio_service=_make_folio_mock([]), prior_context="")
+    # 90.0 normalized to 0.90 -> judge score 90.0 (not 9000); confirmed clamp keeps it near 90.
+    assert stage._calibration_samples[0][0] == 90.0
+    assert out[0].confidence <= 1.0
+
+
+def test_metadata_harvest_filters_one_word_singletons():
+    """Single-occurrence one-word ruler fragments ('non', 'rule') never enter the prior."""
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    stage = FolioTaggerStage()
+    meta = KnowledgeUnit(
+        text="Table of Contents. Fed. R. Evid. and objections. Fed. R. Evid. again. non rule",
+        original_span=Span(start=0, end=10, source_file="t.md"),
+        unit_type=KnowledgeType.PRINCIPLE,
+        source_file="t.md",
+        source_section=["Table of Contents"],
+    )
+    job = InsightsJob(corpus_name="c", source_dir=Path("."), units=[meta])
+
+    def _m(entity_id, text):
+        m = MagicMock(entity_id=entity_id)
+        m.text = text
+        return m
+
+    aho = MagicMock()
+    aho.find_matches.return_value = [
+        _m("https://folio.test/fre", "Fed. R. Evid."),  # multi-word singleton -> kept
+        _m("https://folio.test/non", "non"),            # 1-word singleton, <4 chars -> dropped
+        _m("https://folio.test/rule", "rule"),          # 1-word singleton -> dropped
+    ]
+    prior = stage._build_domain_prior(job, None, aho)
+    labels = [t.label for t in prior.active_tags()]
+    assert "Fed. R. Evid." in labels
+    assert "non" not in labels and "rule" not in labels
