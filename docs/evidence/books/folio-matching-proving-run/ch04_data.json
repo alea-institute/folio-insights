@@ -1,0 +1,124 @@
+{
+  "units": 1168,
+  "total_tags": 6579,
+  "metadata_units": 5,
+  "metadata_units_tagged": 0,
+  "proposed_class": 3095,
+  "proposed_per_unit": 2.65,
+  "path_counts": {
+    "entity_ruler": 2390,
+    "llm": 656,
+    "proposed_class": 3095,
+    "heading_context": 438
+  },
+  "deterministic_prejudge": {
+    "resolved_iri": 4948,
+    "place_nonheading_mismap": 0,
+    "agency_mismap": 0,
+    "slovenia_units": 0,
+    "auction_hits": 0,
+    "recoveries": {
+      "objection": 928,
+      "exhibit": 12,
+      "witness": 170,
+      "jury": 46,
+      "hearing": 14,
+      "evidence": 589,
+      "hearsay": 12,
+      "lawyer": 26,
+      "cross-examination": 2,
+      "foundation": 3
+    }
+  },
+  "fully_wired": {
+    "resolved_iri": 3484,
+    "place_nonheading_mismap": 0,
+    "agency_mismap": 0,
+    "slovenia_units": 0,
+    "auction_hits": 0,
+    "recoveries": {
+      "objection": 580,
+      "exhibit": 12,
+      "witness": 170,
+      "jury": 44,
+      "hearing": 14,
+      "evidence": 528,
+      "hearsay": 10,
+      "lawyer": 12,
+      "cross-examination": 2,
+      "foundation": 3
+    }
+  },
+  "judge": {
+    "sample_count": 2787,
+    "verdict_counts": {
+      "correct": 1029,
+      "weak": 294,
+      "wrong": 1464
+    },
+    "weak_band_bounds": [
+      9500.0,
+      10000.0
+    ],
+    "rejected": 1464,
+    "domain_prior": {
+      "corpus": "uat_ta_ch04_v8",
+      "active_subjects": [
+        "Litigation",
+        "Trial Practice",
+        "Fed. R. Evid.",
+        "objection",
+        "evidence",
+        "Expert opinion",
+        "Expert",
+        "information",
+        "non",
+        "rule"
+      ],
+      "judge_context": "Litigation / Trial Practice / Fed. R. Evid. / objection / evidence / Expert opinion / Expert / information / non / rule"
+    },
+    "metadata_mappings": [
+      {
+        "iri": "https://folio.openlegalstandard.org/RDqvTdg5IFDf2Oyf3zT3z50",
+        "label": "Fed. R. Evid.",
+        "count": 2
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+        "label": "objection",
+        "count": 2
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/R9HuNkpWm24qMFuntuug6RB",
+        "label": "evidence",
+        "count": 2
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/RUpb2bykLxJnhab3xVGHi5",
+        "label": "Expert opinion",
+        "count": 1
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/RgT3hiPFNllfpt00aHX6u7",
+        "label": "Expert",
+        "count": 1
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/RHwCmZ2yKrJobzC86GC6Ep",
+        "label": "information",
+        "count": 1
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/R7RmklJajQfttoW1GZraCq",
+        "label": "non",
+        "count": 1
+      },
+      {
+        "iri": "https://folio.openlegalstandard.org/RDmsvdtBrrw46UnCDJ0LKrJ",
+        "label": "rule",
+        "count": 1
+      }
+    ]
+  },
+  "spend": {}
+}
