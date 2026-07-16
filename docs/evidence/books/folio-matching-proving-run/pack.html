@@ -1,4 +1,4 @@
-<title>FOLIO-matching proving run — Ch02 before / after / fixed</title>
+<title>FOLIO-matching — full judge pipeline + Chapter 4 confirmation</title>
 <style>
   :root{
     --bg:#eef1f4; --panel:#ffffff; --panel-2:#f6f8fa; --ink:#1a222c; --ink-2:#48566a;
@@ -118,6 +118,20 @@
   .kv h4{margin:0 0 8px;font-family:var(--code);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
   .kv ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}
   .kv li{margin:4px 0} .kv li b{color:var(--ink)}
+  .tpf{margin-top:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow)}
+  .tpf-row{display:grid;grid-template-columns:170px 1fr;gap:0;border-bottom:1px solid var(--line-2)}
+  .tpf-row:last-child{border-bottom:none}
+  @media(max-width:560px){.tpf-row{grid-template-columns:1fr}}
+  .tpf-k{font-family:var(--code);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    font-weight:700;padding:14px 16px;background:var(--panel-2);color:var(--accent);
+    border-right:1px solid var(--line-2)}
+  @media(max-width:560px){.tpf-k{border-right:none;border-bottom:1px solid var(--line-2);padding-bottom:6px}}
+  .tpf-row.problem .tpf-k{color:var(--bad)} .tpf-row.solution .tpf-k{color:var(--good)}
+  .tpf-row.decision .tpf-k{color:var(--warn)}
+  .tpf-v{padding:14px 16px;font-size:14.5px} .tpf-v p{margin:0 0 8px} .tpf-v p:last-child{margin:0}
+  .tpf-v .none{font-family:var(--code);font-size:12.5px;color:var(--ink-2)}
+  .plainhdr{font-family:var(--code);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:600;margin:0 0 2px}
   .dock{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);
     box-shadow:0 -6px 24px rgba(20,30,45,.12);padding:12px clamp(14px,4vw,40px);z-index:20}
   .dock .row{max-width:1020px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -142,17 +156,19 @@
 <div class="wrap">
 
 <header class="masthead">
-  <div class="eyebrow">folio-matching · proving run · lane-2</div>
-  <h1>Does the folio-matching pin actually improve Ch02?</h1>
-  <p class="sub">Three runs of FOLIO concept tagging on the same litigation-treatise chapter: the
-    reviewed pre-pin baseline (v5), the first pinned run that regressed on precision (v6), and the
-    precision fix (v7) — shared branch-carrying resolution, decompose-first, a calibrated bar, and
-    deterministic gates. The v7 acceptance bar is met.</p>
+  <div class="eyebrow">folio-matching · full judge pipeline + Ch04 · lane-2</div>
+  <h1>The full judge pipeline, wired — and confirmed on Chapter 4</h1>
+  <p class="sub">Prior rounds fixed the fast matcher (branch-carrying resolution, decompose-first, a
+    calibrated bar, and deterministic guards). This round wires the two stages that were built but
+    unused: a <b>domain-prior + definition-level AI reviewer</b> that re-judges every non-exact tag,
+    and <b>metadata-as-signal</b> (front matter becomes context, never an insight). We then ran the
+    <b>fully-wired pipeline on a brand-new chapter — Ch04, Evidence &amp; Objections</b> — to confirm
+    it helps without hurting recall.</p>
   <div class="meta">
-    <span><b>Chapter</b> Ch02 · Planning &amp; Preparation</span>
-    <span><b>Source hash</b> 0b7c2ff… (identical v5/v6/v7)</span>
+    <span><b>New chapter</b> Ch04 · Evidence &amp; Objections</span>
+    <span><b>Source hash</b> 5c75b2a8…</span>
     <span><b>Model</b> gemini-2.5-flash-lite</span>
-    <span><b>App spend</b> v6 ≈ $0.18 · v7 ≈ $0.17</span>
+    <span><b>Ch04 spend</b> $0.514 (cap $0.60) · reviewer ≈ $0.17–0.23</span>
   </div>
 </header>
 
@@ -186,6 +202,69 @@
       concepts (2,418&nbsp;&rarr;&nbsp;3,273 IRIs). See the Ch03 section below.</p>
   </div>
 </div>
+
+<section>
+  <p class="plainhdr">This round · in plain language</p>
+  <h2>Two changes this round &mdash; a second-opinion reviewer, and using the front matter as a clue</h2>
+  <p class="lede">You flagged that the earlier write-ups were hard to follow. Here are the two things we
+    built this round, each stated as <b>the problem</b>, <b>the proposed solution</b>, and <b>the
+    decision (if any) we need from you</b> &mdash; no jargon.</p>
+
+  <div class="card">
+    <h3>1 &middot; A second-opinion reviewer for every tag <span class="uid">was: &ldquo;the judge / blocklist&rdquo; item</span></h3>
+    <div class="tpf">
+      <div class="tpf-row problem"><div class="tpf-k">The problem</div><div class="tpf-v">
+        <p>The fast automatic matcher sometimes attaches the <i>wrong sense</i> of a word. Example
+          from this very chapter: the word <b>&ldquo;charge&rdquo;</b> (as in <i>the judge&rsquo;s
+          charge to the jury</i>) can get matched to <b>&ldquo;Encumbrance&rdquo;</b> &mdash; a
+          property-law lien. Our rule-based guards catch obvious geography and agency slips
+          (&ldquo;law&rdquo;&rarr;Delaware), but they can&rsquo;t catch a wrong-<i>meaning</i> match
+          that otherwise looks plausible. A human reading it would say instantly: &ldquo;wrong
+          &lsquo;charge.&rsquo;&rdquo;</p></div></div>
+      <div class="tpf-row solution"><div class="tpf-k">Proposed solution</div><div class="tpf-v">
+        <p>After the fast matcher and the guards finish, a second AI step re-reads every surviving
+          tag holding two things the matcher never had: <b>(1) the book&rsquo;s subject</b> (&ldquo;this
+          is a litigation / trial-practice treatise&rdquo;) and <b>(2) the official FOLIO definition</b>
+          of the concept it&rsquo;s about to attach. If the concept doesn&rsquo;t fit the sentence in
+          that context, the reviewer drops it. Crucially, the guards keep the last word on the mistakes
+          they already catch &mdash; <b>the reviewer can only remove a tag, never revive one a guard
+          rejected.</b> It also records a &ldquo;was this score right?&rdquo; sample on every tag it
+          sees, which is the data that will auto-tune the thresholds later.</p></div></div>
+      <div class="tpf-row decision"><div class="tpf-k">Human decision</div><div class="tpf-v">
+        <p>Keep this reviewer switched on going forward? (It is the stage that costs money &mdash; see
+          the Ch04 cost line below.)</p>
+        <div class="assess" data-id="judge_policy" style="border:none;padding-top:6px">
+          <div class="chips">
+            <button class="chip" type="button" data-v="Keep the reviewer ON for all books">Keep it on (recommended)</button>
+            <button class="chip" type="button" data-v="Reviewer only on ambiguous / low-confidence tags to save cost">On, but only when unsure</button>
+            <button class="chip" type="button" data-v="Leave it off for now — deterministic gates are enough">Off for now</button>
+          </div>
+          <textarea placeholder="Notes on the reviewer / judge stage…" data-note="judge_policy"></textarea>
+        </div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>2 &middot; Front matter as a clue, not a teaching <span class="uid">unit d3c44e2a</span></h3>
+    <div class="tpf">
+      <div class="tpf-row problem"><div class="tpf-k">The problem</div><div class="tpf-v">
+        <p>A title page, copyright page, or table of contents is <i>not</i> a lesson &mdash; it is not
+          something an experienced lawyer teaches a junior one, so it must never become an insight
+          tag. Earlier we simply threw those pages away. But they <b>do</b> tell us what the whole book
+          is about, and that context would help us tag the real lessons more accurately.</p></div></div>
+      <div class="tpf-row solution"><div class="tpf-k">Proposed solution</div><div class="tpf-v">
+        <p>We now <b>read the front matter, map it to FOLIO, and feed those concepts in as background
+          context</b> (&ldquo;this whole book is about Evidence and Objections in a trial&rdquo;) when
+          the reviewer judges the real lessons &mdash; while <b>still never emitting the front matter
+          itself as an insight.</b> Metadata becomes a means to better insights, exactly as you
+          described, instead of being discarded.</p></div></div>
+      <div class="tpf-row decision"><div class="tpf-k">Human decision</div><div class="tpf-v">
+        <p class="none">None &mdash; informational. This implements your directive verbatim; the Ch04
+          numbers below show it working (metadata units emitted as insights: 0; front-matter concepts
+          folded into the book&rsquo;s subject prior).</p></div></div>
+    </div>
+  </div>
+</section>
 
 <section>
   <h2>Headline delta &mdash; per failure class</h2>
@@ -386,7 +465,9 @@
     <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>alias blocklist</b> &mdash; reseeded with <b>real FOLIO IRIs</b> (Action&rarr;Auction + justice/state/tax/arb agency homonyms); fires on live data. Action&rarr;Auction hits 1&rarr;0.</div></li>
     <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>place / agency gate + branch on every tag</b> &mdash; resolution now carries the branch, the gate governs Location <i>and</i> Governmental Body, heading context no longer exempts, and confidence no longer bypasses. Non-heading place mis-maps 739&rarr;0, agency 150&rarr;1, Slovenia 168&rarr;0.</div></li>
     <li><span class="mk pill good">wired&nbsp;·&nbsp;v7</span><div><b>SourceClassifier</b> (metadata / front-matter exclusion) &mdash; wired at the unit level; metadata units tagged 0 (unit d3c44e2a fixed).</div></li>
-    <li><span class="mk pill warn">deferred</span><div><b>DomainPrior</b>, <b>ScoreCalibration</b>, <b>Judge</b> &mdash; present in folio-matching, still not in the tagger path. Not needed for the precision bar; candidate recall/precision upside for a later pass.</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;2026-07-16</span><div><b>Judge</b> (the second-opinion reviewer) &mdash; every surviving non-ruler tag is adjudicated with the domain prior + FOLIO definitions; gates stay vetoes (the judge can remove but never revive). Proven on Ch04 below.</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;2026-07-16</span><div><b>DomainPrior</b> (multi-tag) &mdash; Litigation + Trial Practice base, plus front-matter mappings folded in per corpus (metadata-as-signal, your d3c44e2a directive).</div></li>
+    <li><span class="mk pill good">wired&nbsp;·&nbsp;2026-07-16</span><div><b>ScoreCalibration</b> &mdash; every judge verdict is recorded as a correct/weak/wrong sample at its score; Ch04 produced the first 2,787-sample dataset (and caught a live scale bug on day one).</div></li>
   </ul>
 </section>
 
@@ -468,19 +549,132 @@
 </section>
 
 <section>
-  <h2>Proceed to folio-enrich?</h2>
-  <div class="card">
-    <div class="q" style="font-size:14px;color:var(--ink-2);margin-bottom:10px;font-weight:600">My recommendation: <b style="color:var(--good)">the hold can lift</b> — v7 turns the pin into a net precision improvement on identical source, and <b style="color:var(--good)">Ch03 confirms the fix generalizes</b> to a chapter it was not tuned on (place/agency/Slovenia collapse to ~0, recall up +855 IRIs). Your call:</div>
-    <div class="chips" data-id="gate">
-      <button class="chip" type="button" data-v="PROCEED — the v7 acceptance bar is met; migrate folio-enrich">Proceed — bar met</button>
-      <button class="chip" type="button" data-v="PROCEED after one more chapter (Ch03) confirms the v7 fix generalizes">Proceed after Ch03</button>
-      <button class="chip" type="button" data-v="HOLD — want DomainPrior/Judge wired before migrating">Hold for judge/prior</button>
+  <p class="plainhdr">New this round · the confirmation run you asked for</p>
+  <h2>Chapter 4 &mdash; the fully-wired pipeline on a brand-new chapter</h2>
+  <p class="lede">Your Ch03 answer: <i>&ldquo;Convincing, but want one more chapter before
+    migrating.&rdquo;</i> This is that chapter &mdash; <b>Ch04, Evidence &amp; Objections</b>
+    (source hash <code>5c75b2a8&hellip;</code>), untouched by any tuning, run once through the
+    complete pipeline: fast matcher &rarr; deterministic guards &rarr; <b>front-matter prior</b>
+    &rarr; <b>second-opinion reviewer</b>. One run produced both columns below: &ldquo;guards
+    only&rdquo; is what the pipeline held <i>before</i> the reviewer ruled (kept tags + the tags the
+    reviewer removed); &ldquo;fully wired&rdquo; is the shipped result.</p>
+
+  <div class="verdict" style="margin-top:6px">
+    <div class="band" style="background:var(--good-bg);color:var(--good)">Ch04 verdict · guards hold on a third chapter · the reviewer removes a noise family the guards never covered</div>
+    <div class="body">
+      <h3>The guards stayed clean on their own turf (0 place / agency / Slovenia mis-maps) &mdash;
+        and the reviewer then removed 1,464 wrong-meaning tags the guards structurally cannot see.</h3>
+      <p>The deterministic guards only police <i>geography and agency</i>. Ch04&rsquo;s heading-path
+        noise lived elsewhere: <b>Argentine peso</b> (&times;160), <b>Educational Services
+        Industry</b> (&times;152), <b>Mississippi Supreme Court</b> (&times;81), <b>Site Preparation
+        Contractors</b> (&times;60), and a generic <b>&ldquo;Objection Document&rdquo;</b> stamp on
+        every objection-adjacent sentence (&times;275). The reviewer &mdash; reading each sentence
+        with the book&rsquo;s subject and each concept&rsquo;s official FOLIO definition &mdash;
+        rejected 1,453 heading-path tags and just <b>11</b> LLM-path tags: it cleaned the one noisy
+        path and left the healthy ones alone.</p>
+      <p><b>Recall guard:</b> the genuine concepts survive &mdash; Witness 170 (unchanged), Hearing 14
+        (unchanged), Exhibit 12 (unchanged), Cross-Examination and Foundation kept; Objections-family
+        tags drop 928&rarr;580 <i>because</i> 275 of the removals were the junk &ldquo;Objection
+        Document&rdquo; stamp, not real objection concepts. Front matter emitted <b>0</b> insight tags
+        while contributing Fed.&nbsp;R.&nbsp;Evid. / objection / evidence / expert-opinion context to
+        the book&rsquo;s subject prior.</p>
     </div>
-    <textarea placeholder="Any conditions, priorities, or scope…" data-note="gate"></textarea>
+  </div>
+
+  <div class="scroll" style="margin-top:16px">
+    <table>
+      <thead><tr><th>Signal</th><th>Guards only (pre-reviewer)</th><th>Fully wired (+ reviewer + prior)</th><th>read</th></tr></thead>
+      <tbody>
+        <tr><td class="cls">Non-heading place mis-maps</td><td class="num">0</td><td class="num">0</td><td><span class="dir fix">guards generalize (3rd chapter)</span></td></tr>
+        <tr><td class="cls">Agency-homonym mis-maps</td><td class="num">0</td><td class="num">0</td><td><span class="dir fix">clean — incl. the old &ldquo;appeals&rdquo; residual</span></td></tr>
+        <tr><td class="cls">&ldquo;Slovenia&rdquo; propagation / Action&rarr;Auction</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td><span class="dir fix">clean</span></td></tr>
+        <tr><td class="cls">Wrong-meaning tags outside the guards&rsquo; reach (currencies, industries, courts, generic doc types)</td><td class="num">&ge;1464 present</td><td class="num">removed by reviewer</td><td><span class="dir fix">new failure family caught</span></td></tr>
+        <tr><td class="cls">Resolved-IRI tags</td><td class="num">4948</td><td class="num">3484</td><td><span class="dir fix">&minus;1464 noise (hand-check A)</span></td></tr>
+        <tr><td class="cls">Reviewer verdicts (confirm / penalize / reject)</td><td class="num">&mdash;</td><td class="num">1029 / 294 / 1464</td><td><span class="dir same">2,787 candidates · ~1,300 batched calls</span></td></tr>
+        <tr><td class="cls">Rejections by path (heading / LLM)</td><td class="num">&mdash;</td><td class="num">1453 / 11</td><td><span class="dir fix">noise isolated to the heading path</span></td></tr>
+        <tr><td class="cls">Metadata units &rarr; insight tags</td><td class="num" colspan="2">5 &rarr; 0</td><td><span class="dir fix">metadata-as-signal live</span></td></tr>
+        <tr><td class="cls">Front-matter concepts folded into the prior</td><td class="num">&mdash;</td><td class="num">Fed. R. Evid. · objection · evidence · Expert opinion (+4)</td><td><span class="dir fix">context, not insights</span></td></tr>
+        <tr><td class="cls">Proposed-class tags (abs / per-unit)</td><td class="num" colspan="2">3095 / 2.65</td><td><span class="dir same">between Ch02 (2.33) and Ch03 v5 (3.01)</span></td></tr>
+        <tr><td class="cls">Units / total tags</td><td class="num" colspan="2">1168 / 6579</td><td><span class="dir same">bigger chapter than Ch02/Ch03</span></td></tr>
+        <tr><td class="cls">LLM calls / cost (USD)</td><td class="num" colspan="2">6,972 / $0.514 total (reviewer stage ≈ $0.17&ndash;0.23 est)</td><td><span class="dir same">under the $0.60 cap</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid2" style="margin-top:16px">
+    <div class="kv"><h4>Hand-check A &mdash; 10 reviewer-removed tags: were they really wrong? <span class="pill good">10 / 10</span></h4>
+      <ul>
+        <li><b>&ldquo;Site Preparation Contractors&rdquo;</b> on <i>&ldquo;Over-prepare to apply evidentiary rules&hellip;&rdquo;</i> &mdash; wrong, correctly removed</li>
+        <li><b>&ldquo;DOC&rdquo;</b> (the Word-file format) on <i>doctor/patient privilege</i> &mdash; wrong sense, correctly removed</li>
+        <li><b>&ldquo;Educational Services Industry&rdquo;</b> on objection practice (&times;3 in sample) &mdash; wrong, correctly removed</li>
+        <li><b>&ldquo;Objection Document&rdquo;</b> stamped on character-evidence / hearsay / impeachment sentences (&times;4 in sample) &mdash; generic stamp, correctly removed</li>
+        <li><b>&ldquo;Arbitration Practice&rdquo;</b> on <i>&ldquo;Federal Rules of Evidence are used throughout this chapter&rdquo;</i> &mdash; defensibly removed (the unit is about the FRE)</li>
+        <li class="pill good" style="margin-top:6px">All 10 sampled removals were genuine wrong-meaning tags.</li>
+      </ul></div>
+    <div class="kv"><h4>Hand-check B &mdash; 10 reviewer-kept tags: are they right? <span class="pill good">8 / 10</span></h4>
+      <ul>
+        <li><b>Right (8):</b> Objections · Facts not in evidence · closing argument · inadmissible evidence (&times;2) · Fed.&nbsp;R.&nbsp;Evid.&nbsp;611 · improper habit evidence · misstatement of evidence &mdash; each definition-correct against its sentence</li>
+        <li><b>Weak-but-defensible (1):</b> Privacy Law on doctor/patient privilege</li>
+        <li><b style="color:var(--bad)">Weak (1):</b> one &ldquo;Objection Document&rdquo; slipped through with a nonsense 8995 score &mdash; it exposed a real seam: two paths deliver confidence on different scales (0&ndash;1 vs 0&ndash;100). <b class="g">Fixed + tested the same day</b> (scores normalized before the reviewer; the noisy one-word front-matter fragments &ldquo;non&rdquo;/&ldquo;rule&rdquo; got a filter too). The calibration recording did exactly its job: its first dataset caught a live bug.</li>
+      </ul></div>
+  </div>
+
+  <div class="ex" style="margin-top:14px"><b class="g">Calibration data, first harvest &mdash;</b> 2,787
+    labeled samples (correct / weak / wrong at their scores) now exist for threshold auto-tuning.
+    First lesson: heading-path scores are uncalibrated (junk arrived scored 36&ndash;90), which is
+    precisely why the reviewer &mdash; not a higher threshold &mdash; is the right tool for that path.
+    <b class="g">Bonus check &mdash;</b> your queued &ldquo;Cease and Desist Letter&rdquo; question:
+    verified live, it resolves to the single FOLIO concept <i>Cease-and-Desist Letter</i> (100) &mdash;
+    whole-string concepts containing &ldquo;and&rdquo; survive, because a conjunct only wins if it
+    independently clears the 92 bar (&ldquo;Search and Seizure&rdquo; does split into Search + Seizure,
+    which is defensible: FOLIO has no single &ldquo;Search and Seizure&rdquo; concept).</div>
+
+  <div class="assess" data-id="ch04">
+    <div class="q">Your read on the Ch04 fully-wired confirmation:</div>
+    <div class="chips">
+      <button class="chip" type="button" data-v="Confirms it — guards + reviewer + prior work on an untouched chapter">Confirms it</button>
+      <button class="chip" type="button" data-v="Reviewer cut too deep — want a recall audit of the 1464 rejections first">Audit the rejections</button>
+      <button class="chip" type="button" data-v="Want the same run on a non-litigation book before trusting the prior">Try a different book</button>
+    </div>
+    <textarea placeholder="Notes on the Ch04 run…" data-note="ch04"></textarea>
+  </div>
+</section>
+
+<section>
+  <p class="plainhdr">The decision on the table</p>
+  <h2>Should we now migrate folio-enrich onto this shared engine?</h2>
+  <div class="tpf">
+    <div class="tpf-row problem"><div class="tpf-k">The problem</div><div class="tpf-v">
+      <p>The big production app (<b>folio-enrich</b>) still has its own older copy of this matching
+        logic. Keeping two copies is how they drifted apart in the first place. The open question you
+        parked: is the shared engine now good enough &mdash; the fast matcher <i>and</i> the reviewer
+        <i>and</i> the metadata-signal &mdash; to move folio-enrich onto it?</p></div></div>
+    <div class="tpf-row solution"><div class="tpf-k">Proposed solution</div><div class="tpf-v">
+      <p><b>My recommendation: proceed, staged.</b> The evidence is now three chapters deep: the
+        guards held on Ch02 (tuned), Ch03 (untuned), and Ch04 (untuned, fully wired); the reviewer
+        removed 1,464 wrong-meaning tags on Ch04 with 10/10 verified-correct removals and 8/10
+        verified-correct keeps; metadata-as-signal works as you specified. Stage one migrates the
+        deterministic core into folio-enrich (matcher, resolver, guards, blocklist, source
+        classifier) &mdash; zero LLM cost, pure precision win, provably identical logic. Stage two
+        turns on the reviewer + prior there once you have seen its per-book cost on folio-enrich
+        workloads (~$0.20 per Ch04-sized chapter at flash-lite prices). The only caution flag from
+        Ch04 is scale, not correctness: the reviewer is ~40% of run cost, which argues for the
+        &ldquo;only when unsure&rdquo; variant if budgets tighten.</p></div></div>
+    <div class="tpf-row decision"><div class="tpf-k">Human decision</div><div class="tpf-v">
+      <p>Your call &mdash; the migration is still gated on your go-ahead:</p>
+      <div class="assess" data-id="gate" style="border:none;padding-top:6px">
+        <div class="chips">
+          <button class="chip" type="button" data-v="PROCEED — migrate folio-enrich onto the shared engine now">Proceed — migrate now</button>
+          <button class="chip" type="button" data-v="PROCEED but stage it: migrate the matcher+gates first, judge second">Proceed, staged</button>
+          <button class="chip" type="button" data-v="HOLD — run one more book / chapter before migrating">Hold — one more book</button>
+        </div>
+        <textarea placeholder="Any conditions, priorities, or scope…" data-note="gate"></textarea>
+      </div></div></div>
   </div>
 </section>
 
 <footer>
+  Ch04 fully wired (2026-07-16): output/uat_ta_ch04_v8 · source hash 5c75b2a8… · 6,972 LLM calls / $0.514 (cap $0.60) · judge sidecar judge_calibration.json (2,787 samples).
   Ch02: output/uat_ta_ch02_v7 (fixed) vs v6 (regression) vs v5 (baseline) · source hash 0b7c2ff… identical all three · app spend v7 ≈ $0.168 (cap $0.50).
   Ch03 generalization: output/uat_ta_ch03_v7 (fixed) vs v5 (baseline, 2026-07-15) · source hash ffbc01e7… identical both · app spend v7 ≈ $0.202 (cap $0.30).
   Rubric extraction-quality-v1.0 (unchanged). Metrics recomputed with one consistent harness (folio-python branch membership; surface≠label mis-map filter).
@@ -516,13 +710,14 @@
     });
   });
   var LABELS={
-    deltatable:"Headline deltas", regression:"Precision regression (blocker?)",
+    judge_policy:"Second-opinion reviewer — keep on?", ch04:"Ch04 fully-wired confirmation",
+    deltatable:"Headline deltas (Ch02)", regression:"Precision regression (blocker?)",
     u_meta:"Unit d3c44e2a (metadata)", u_decomp:"Unit 12b5e434 (decompose)",
     u_action:"Unit 4b06a90c (Action≠Auction)", u_ui:"Unit 259a84fd (annotator)",
     ch03gen:"Ch03 generalization", gate:"Proceed to folio-enrich?"
   };
   function assemble(){
-    var out=["FOLIO-matching proving run — Ch02 review (Damien)","=================================================",""];
+    var out=["FOLIO-matching — full judge pipeline + Ch04 review (Damien)","===========================================================",""];
     Object.keys(LABELS).forEach(function(id){
       var g=document.querySelector('[data-id="'+id+'"]'); if(!g)return;
       var sel=g.querySelector('.chip[aria-pressed="true"]');
@@ -533,8 +728,8 @@
       if(note&&note.value.trim()) out.push("   note:   "+note.value.trim());
       out.push("");
     });
-    out.push("— Ch02 v7 fix landed: place mis-maps 739→0, agency 150→1, Slovenia 168→0; recoveries preserved.");
-    out.push("— Ch03 generalization: place 3→0, heading-propagation 283→0, agency 15→3, Slovenia 5→0; recall +855 IRIs; hand-verify 10/10 suppressions wrong, 8/10 new mappings right; spend $0.202 (cap $0.30).");
+    out.push("— Ch04 fully wired (2026-07-16): guards clean (0 place/agency/Slovenia); reviewer rejected 1464 (1453 heading-path, 11 llm); hand-check 10/10 removals wrong, 8/10 keeps right; metadata-as-signal live (5 meta units → 0 insight tags, prior fed); spend $0.514 (cap $0.60), reviewer ≈$0.17–0.23.");
+    out.push("— Ch02 v7 fix: place mis-maps 739→0, agency 150→1, Slovenia 168→0; recoveries preserved. Ch03 generalization: place 3→0, heading-propagation 283→0, agency 15→3; recall +855 IRIs.");
     return out.join("\n");
   }
   var pv=document.getElementById("preview"), pvt=document.getElementById("previewText"),

@@ -1,0 +1,220 @@
+{
+  "suppressed_sample": [
+    {
+      "label": "Objection Document",
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "branch": "Document / Artifact",
+      "path": "heading_context",
+      "score": 3600.0,
+      "reasoning": "The input discusses actions taken after an event, not the act of objecting itself. The concept of 'Objection Document' is too distant from the input's meaning, and the score was inappropriately high.",
+      "text": "Post-event actions that would have prevented the event if taken before."
+    },
+    {
+      "label": "Educational Services Industry",
+      "iri": "https://folio.openlegalstandard.org/RB7IaNyshrHiqug0LlmK6J2",
+      "branch": "Industry",
+      "path": "heading_context",
+      "score": 3600.0,
+      "reasoning": "The input text relates to legal practice and evidence, not educational services or instruction.",
+      "text": "Offering attorney may submit exact statement of proffered testimony."
+    },
+    {
+      "label": "Site Preparation Contractors",
+      "iri": "https://folio.openlegalstandard.org/Ojq6v7E4SpeQbRtwNfAqQQ",
+      "branch": "Industry",
+      "path": "heading_context",
+      "score": 6300.0,
+      "reasoning": "The input text is about legal practice and evidentiary rules. 'Site Preparation Contractors' is completely unrelated, likely a scoring artifact due to 'case' overlapping with 'site'.",
+      "text": "Over-prepare to apply evidentiary rules to case evidence."
+    },
+    {
+      "label": "DOC",
+      "iri": "https://folio.openlegalstandard.org/RCtbS6xiCv6ms49UDzfjCG2",
+      "branch": "Data Format",
+      "path": "heading_context",
+      "score": 9000.0,
+      "reasoning": "The term 'Doctor' in the input refers to a medical professional in the context of a legal privilege, not a Microsoft Word document.",
+      "text": "Doctor/patient privilege requires establishment."
+    },
+    {
+      "label": "Objection Document",
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "branch": "Document / Artifact",
+      "path": "heading_context",
+      "score": 3600.0,
+      "reasoning": "The candidate is a generic document type ('Objection Document') and lacks the specific semantic connection to character evidence required by the input text. The original score is completely unwarranted.",
+      "text": "Character evidence is inadmissible, absent an exception."
+    },
+    {
+      "label": "Objection Document",
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "branch": "Document / Artifact",
+      "path": "heading_context",
+      "score": 6300.0,
+      "reasoning": "The input text specifically refers to 'improper impeachment' and 'prior statements,' which are elements of trial practice. 'Objection Document' is too generic and does not capture the specific context of the input.",
+      "text": "Improper impeachment: attacking minor, irrelevant discrepancies in prior statements."
+    },
+    {
+      "label": "Educational Services Industry",
+      "iri": "https://folio.openlegalstandard.org/RB7IaNyshrHiqug0LlmK6J2",
+      "branch": "Industry",
+      "path": "heading_context",
+      "score": 6300.0,
+      "reasoning": "The label 'Educational Services Industry' has no semantic relation to the input text about legal objections. The score was excessively high, indicating a false positive.",
+      "text": "Object to leading/speculative questions."
+    },
+    {
+      "label": "Educational Services Industry",
+      "iri": "https://folio.openlegalstandard.org/RB7IaNyshrHiqug0LlmK6J2",
+      "branch": "Industry",
+      "path": "heading_context",
+      "score": 3600.0,
+      "reasoning": "Educational services are unrelated to summarizing evidence in a legal context.",
+      "text": "Summarize evidence in offer of proof."
+    },
+    {
+      "label": "Objection Document",
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "branch": "Document / Artifact",
+      "path": "heading_context",
+      "score": 3600.0,
+      "reasoning": "The input text discusses hearsay and non-propositions in evidence law, while the candidate refers to a general 'Objection Document' which is too broad and not semantically related to the specific legal concept discussed.",
+      "text": "Non-propositions are not hearsay; they are statements offered for purposes other than their truth."
+    },
+    {
+      "label": "Arbitration Practice",
+      "iri": "https://folio.openlegalstandard.org/RXO2u2WBkUUcEG1jczLIcA",
+      "branch": "Service",
+      "path": "heading_context",
+      "score": 9000.0,
+      "reasoning": "The document is about Federal Rules of Evidence and litigation practice, while the candidate is about Arbitration Practice. These are different legal domains.",
+      "text": "Federal Rules of Evidence are used throughout this chapter."
+    }
+  ],
+  "kept_sample": [
+    {
+      "label": "Objections",
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "The term 'Objections' is directly relevant to the core subject of the input text, which discusses the impropriety of objections to direct examination questions. The score is appropriate.",
+      "text": "Objections to direct examination questions are generally improper."
+    },
+    {
+      "label": "Facts not in evidence",
+      "iri": "https://folio.openlegalstandard.org/RCc5UaQRTagjPA2b0YSaSBi",
+      "verdict": "confirmed",
+      "adjusted": 90.0,
+      "reasoning": "The input text includes 'facts not in evidence'. This candidate directly matches this phrase and is semantically very close to the user's input.",
+      "text": "Object to cross-examination questions containing facts not in evidence or misstated/mischaracterized evidence."
+    },
+    {
+      "label": "closing argument",
+      "iri": "https://folio.openlegalstandard.org/RcR3bv1hvkJ6eLZsLcmaFY",
+      "verdict": "confirmed",
+      "adjusted": 85.0,
+      "reasoning": "The input text mentions arguing the lack of weight in closing, which is directly related to the concept of 'closing argument'. The original score was high and semantically relevant.",
+      "text": "If evidence is admissible, do not object; instead, minimize its effect via cross-examination/rebuttal and argue its lack of weight in closing."
+    },
+    {
+      "label": "inadmissible evidence",
+      "iri": "https://folio.openlegalstandard.org/R9Bk5v9AAJmhb4WcgIQjy29",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "The input text explicitly mentions 'inadmissible evidence', which directly matches the candidate's label and definition.",
+      "text": "Anticipate overruled objections and admitted inadmissible evidence; plan to overcome."
+    },
+    {
+      "label": "Fed. R. Evid. 611",
+      "iri": "https://folio.openlegalstandard.org/RDqvTdg5IFDf2Oyf3zT3z50",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "Directly references the specific rule mentioned in the input text, indicating a strong semantic match.",
+      "text": "Object to questions or answers calling for narrative, as per Fed. R. Evid. 611."
+    },
+    {
+      "label": "Inadmissible Evidence",
+      "iri": "https://folio.openlegalstandard.org/R9Bk5v9AAJmhb4WcgIQjy29",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "The input text directly discusses an aspect of inadmissible evidence, making this a very strong match.",
+      "text": "Offers of compromise are inadmissible."
+    },
+    {
+      "label": "Privacy Law",
+      "iri": "https://folio.openlegalstandard.org/R8hJCf4Ih6iuFXsxeK7e6zU",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "Doctor/patient privilege is a specific type of privacy law concerning sensitive personal information, making it directly related. The original score was too high for a general term.",
+      "text": "Doctor/patient privilege requires establishment."
+    },
+    {
+      "label": "Objection Document",
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "verdict": "confirmed",
+      "adjusted": 8995.0,
+      "reasoning": "The input text discusses violations of rules related to document references in litigation, specifically mentioning foundation, authenticity, or original writing rules. The candidate \"Objection Document\" is highly relevant as objections are a core part of trial practice and directly relate to evidence and rules of procedure. The high original score is justified.",
+      "text": "Document references can violate foundation, authenticity, or original writing rules."
+    },
+    {
+      "label": "improper habit evidence",
+      "iri": "https://folio.openlegalstandard.org/R72Y9BPx1wipL5w2AWiGaPx",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "Directly matches the input text's core concept and terminology.",
+      "text": "Exclude improper habit evidence, as it is irrelevant and prejudicial."
+    },
+    {
+      "label": "misstatement of evidence",
+      "iri": "https://folio.openlegalstandard.org/RDI5SwYpUkYU0PrqZjBXyUm",
+      "verdict": "confirmed",
+      "adjusted": 95.0,
+      "reasoning": "The input text directly discusses 'misstatements of evidence', which perfectly matches the label and definition of this candidate. The high original score reflects this strong overlap.",
+      "text": "Object to misstatements of evidence and request court order for correction."
+    }
+  ],
+  "metadata_mappings": [
+    {
+      "iri": "https://folio.openlegalstandard.org/RDqvTdg5IFDf2Oyf3zT3z50",
+      "label": "Fed. R. Evid.",
+      "count": 2
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RxqbetYhPzqR3tJ4vtTbi8",
+      "label": "objection",
+      "count": 2
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9HuNkpWm24qMFuntuug6RB",
+      "label": "evidence",
+      "count": 2
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RUpb2bykLxJnhab3xVGHi5",
+      "label": "Expert opinion",
+      "count": 1
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RgT3hiPFNllfpt00aHX6u7",
+      "label": "Expert",
+      "count": 1
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RHwCmZ2yKrJobzC86GC6Ep",
+      "label": "information",
+      "count": 1
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7RmklJajQfttoW1GZraCq",
+      "label": "non",
+      "count": 1
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDmsvdtBrrw46UnCDJ0LKrJ",
+      "label": "rule",
+      "count": 1
+    }
+  ],
+  "suppressed_total": 1464,
+  "kept_total": 1029
+}
