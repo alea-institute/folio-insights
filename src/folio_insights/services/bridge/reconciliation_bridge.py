@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def _to_concept_match(concept_match_cls: Any, c: dict[str, Any]) -> Any:
-    """Map a tagger concept dict to a ``folio_matching.ConceptMatch``.
+    """Map a tagger concept dict to a ``folio_resolve.ConceptMatch``.
 
     Tagger dicts carry ``iri``/``label``/``concept_text``/``confidence``/``branch``; the pinned
     ``ConceptMatch`` uses ``folio_iri``/``folio_label``/``concept_text``/``confidence``/``branch``.
@@ -172,18 +172,18 @@ class FourPathReconciler:
         ruler_concepts: list[dict[str, Any]],
         llm_concepts: list[dict[str, Any]],
     ) -> list[ReconciledConcept]:
-        """Use the pinned ``folio_matching.Reconciler`` for 2-path reconciliation.
+        """Use the pinned ``folio_resolve.Reconciler`` for 2-path reconciliation.
 
         Migration item #1: this seam previously sys.path-imported folio-enrich's
-        ``Reconciler`` and ``ConceptMatch``. It now uses the pinned ``folio-matching``
+        ``Reconciler`` and ``ConceptMatch``. It now uses the pinned ``folio-resolve``
         package, so the reconciler no longer depends on a folio-enrich checkout.
         """
-        from folio_matching import ConceptMatch
+        from folio_resolve import ConceptMatch
 
         ruler_cm = [_to_concept_match(ConceptMatch, c) for c in ruler_concepts]
         llm_cm = [_to_concept_match(ConceptMatch, c) for c in llm_concepts]
 
-        # The pinned Reconciler is a folio_matching.Reconciler (see tagger._get_reconciler).
+        # The pinned Reconciler is a folio_resolve.Reconciler (see tagger._get_reconciler).
         results = self._base_reconciler.reconcile(ruler_cm, llm_cm)
 
         category_paths = {
