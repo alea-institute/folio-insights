@@ -8,7 +8,7 @@ Four extraction paths run independently on each KnowledgeUnit:
 
 Results are reconciled via FourPathReconciler, resolved to IRIs, and vetoed by the deterministic
 gates (place/agency + alias blocklist). Every surviving **non-ruler** tag then goes through the
-LLM-as-judge stage (``folio_matching.build_judge_prompt`` / ``parse_judge_json``) with the corpus
+LLM-as-judge stage (``folio_resolve.build_judge_prompt`` / ``parse_judge_json``) with the corpus
 **domain prior** injected (this corpus is a litigation practice treatise -> multi-tag
 Litigation / Trial Practice) and each candidate's FOLIO **definition** shown to the judge (the
 charge->Encumbrance blind-spot fix). The gates remain vetoes: the judge only ever sees post-gate
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 # subjects are always active; metadata-as-signal harvest (below) appends corpus-specific ones.
 BASE_PRIOR_SUBJECTS: tuple[str, ...] = ("Litigation", "Trial Practice")
 
-# Structured-output schema for the judge (mirrors folio_matching.build_judge_prompt's contract).
+# Structured-output schema for the judge (mirrors folio_resolve.build_judge_prompt's contract).
 _JUDGE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -88,11 +88,11 @@ def _judge_enabled() -> bool:
 def _load_alias_blocklist() -> Any:
     """Load the shipped seed alias blocklist (Action != Auction + agency homonyms).
 
-    The seed now ships inside the pinned ``folio_matching`` package as recorded Ch01/Ch02 verdicts
+    The seed now ships inside the pinned ``folio_resolve`` package as recorded Ch01/Ch02 verdicts
     keyed on **real** FOLIO IRIs (the old placeholder used a synthetic ``EXAMPLE-Auction`` IRI that
     could never match live resolution — the Ch02 proving run's defect #3). Never raises.
     """
-    from folio_matching import load_seed_blocklist
+    from folio_resolve import load_seed_blocklist
 
     return load_seed_blocklist()
 
@@ -108,10 +108,10 @@ class FolioTaggerStage(InsightsPipelineStage):
     """
 
     # Label -> IRI resolution (the whole-string acceptance bar and decompose-first ordering) is
-    # owned by the pinned ``folio_matching.LabelResolver``. The old class-local ``0.6`` bar was a
+    # owned by the pinned ``folio_resolve.LabelResolver``. The old class-local ``0.6`` bar was a
     # latent scale bug: FolioService.search_by_label returns a 0-100 score, so 0.6 accepted every
     # top match and generic terms mis-mapped to short place/agency labels (the Ch02 proving-run
-    # regression). The calibrated bar (92.0) now lives in ``folio_matching.WHOLE_STRING_THRESHOLD``.
+    # regression). The calibrated bar (92.0) now lives in ``folio_resolve.WHOLE_STRING_THRESHOLD``.
 
     @property
     def name(self) -> str:
@@ -136,7 +136,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         # the judge on the body units that follow is context-aware.
         prior = self._build_domain_prior(job, folio_service, aho_matcher)
         prior_context = prior.as_judge_context()
-        job.metadata.setdefault("folio_matching", {})["domain_prior"] = {
+        job.metadata.setdefault("folio_resolve", {})["domain_prior"] = {
             "corpus": prior.corpus_name,
             "active_subjects": [t.label for t in prior.active_tags()],
             "judge_context": prior_context,
@@ -361,7 +361,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         the most frequent mappings are added to the prior as active context (Damien's d3c44e2a
         metadata-as-signal directive). Metadata units themselves emit no insight tags.
         """
-        from folio_matching import DomainPrior
+        from folio_resolve import DomainPrior
 
         # Base multi-tag prior, resolved to real IRIs where possible (label-only is a fine fallback
         # since the judge consumes only the rendered labels via ``as_judge_context``).
@@ -400,7 +400,7 @@ class FolioTaggerStage(InsightsPipelineStage):
                 break
             prior.add(iri, label, source="metadata")
             harvested_records.append({"iri": iri, "label": label, "count": count})
-        job.metadata.setdefault("folio_matching", {})["metadata_mappings"] = harvested_records
+        job.metadata.setdefault("folio_resolve", {})["metadata_mappings"] = harvested_records
         return prior
 
     def _ruler_mappings(self, text: str, aho_matcher: Any) -> list[tuple[str, str]]:
@@ -449,10 +449,10 @@ class FolioTaggerStage(InsightsPipelineStage):
         tags (exact Aho-Corasick matches) and proposed-class tags (no IRI) bypass the judge. The
         judge sees each candidate's FOLIO **definition** (the charge->Encumbrance blind-spot fix)
         and the corpus **domain prior** as document-type context. Verdicts are enforced by
-        ``folio_matching.parse_judge_json`` (rejected -> drop; confirmed clamped ±5; boost capped
+        ``folio_resolve.parse_judge_json`` (rejected -> drop; confirmed clamped ±5; boost capped
         +25) and recorded as calibration samples.
         """
-        from folio_matching import build_judge_prompt, parse_judge_json
+        from folio_resolve import build_judge_prompt, parse_judge_json
 
         candidates = [t for t in tags if t.iri and t.extraction_path != "entity_ruler"]
         if not candidates:
@@ -564,7 +564,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         samples = self._calibration_samples
         if not samples:
             return
-        from folio_matching import CalibrationSample, ScoreCalibration
+        from folio_resolve import CalibrationSample, ScoreCalibration
 
         calib = ScoreCalibration.fit(CalibrationSample(score=s, verdict=v) for s, v in samples)
         verdict_counts = Counter(v for _s, v in samples)
@@ -574,10 +574,10 @@ class FolioTaggerStage(InsightsPipelineStage):
             "weak_band_bounds": list(calib.weak_band_bounds()),
             "samples": [{"score": s, "verdict": v} for s, v in samples],
             "decisions": self._judge_decisions,
-            "metadata_mappings": job.metadata.get("folio_matching", {}).get("metadata_mappings", []),
-            "domain_prior": job.metadata.get("folio_matching", {}).get("domain_prior", {}),
+            "metadata_mappings": job.metadata.get("folio_resolve", {}).get("metadata_mappings", []),
+            "domain_prior": job.metadata.get("folio_resolve", {}).get("domain_prior", {}),
         }
-        job.metadata.setdefault("folio_matching", {})["calibration"] = {
+        job.metadata.setdefault("folio_resolve", {})["calibration"] = {
             k: payload[k] for k in ("sample_count", "verdict_counts", "weak_band_bounds")
         }
         out_path = os.environ.get("FOLIO_JUDGE_CALIBRATION_OUT", "").strip()
@@ -627,7 +627,7 @@ class FolioTaggerStage(InsightsPipelineStage):
     ) -> list[ConceptTag]:
         """Convert reconciled concepts to ConceptTag objects (Ch02 precision-fix path).
 
-        Resolution is delegated to the pinned ``folio_matching.LabelResolver`` so every consumer
+        Resolution is delegated to the pinned ``folio_resolve.LabelResolver`` so every consumer
         resolves identically (proving-run defects #1 and #2):
 
         * **Decompose-first for multi-head strings.** A conjoined heading such as "Proposed
@@ -645,7 +645,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         """
         resolver = None
         if folio_service is not None:
-            from folio_matching import LabelResolver
+            from folio_resolve import LabelResolver
 
             resolver = LabelResolver(folio_service.search_by_label)
 
@@ -726,7 +726,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         (Slovenia -> 118 units, the actual vector), is vetoed. The surface term is trusted only
         for non-heading paths (heading extraction stores the resolved label as its surface).
         """
-        from folio_matching import PlaceNameGate
+        from folio_resolve import PlaceNameGate
 
         if not tag.iri or not self._is_place_or_agency(tag.branch):
             return tag
@@ -812,7 +812,7 @@ class FolioTaggerStage(InsightsPipelineStage):
 
     def _is_taggable_source(self, unit: KnowledgeUnit) -> bool:
         """Whether a unit's source is eligible for tagging (metadata/front-matter excluded)."""
-        from folio_matching import SourceClassifier
+        from folio_resolve import SourceClassifier
 
         classifier = getattr(self, "_source_classifier", None)
         if classifier is None:
@@ -823,7 +823,7 @@ class FolioTaggerStage(InsightsPipelineStage):
 
     @staticmethod
     def _is_place_or_agency(branch: str) -> bool:
-        from folio_matching.gates import _PLACE_BRANCH_MARKERS
+        from folio_resolve.gates import _PLACE_BRANCH_MARKERS
 
         b = (branch or "").lower()
         return any(marker in b for marker in _PLACE_BRANCH_MARKERS)
@@ -852,7 +852,7 @@ class FolioTaggerStage(InsightsPipelineStage):
             return None
 
     def _get_aho_matcher(self, folio_service: Any) -> Any:
-        """Get the entity ruler backed by the pinned ``folio_matching.FOLIOEntityRuler``.
+        """Get the entity ruler backed by the pinned ``folio_resolve.FOLIOEntityRuler``.
 
         Migration item #1 (continued): the ruler previously sys.path-imported folio-enrich's
         ``AhoCorasickMatcher`` from ``app.services.concept.entity_ruler``. That module moved in
@@ -864,7 +864,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         ``.concept.iri`` + ``.label_type``). This removes the fragile folio-enrich matcher import.
         """
         try:
-            from folio_matching import FOLIOEntityRuler
+            from folio_resolve import FOLIOEntityRuler
 
             ruler = FOLIOEntityRuler()
             if folio_service:
@@ -877,14 +877,14 @@ class FolioTaggerStage(InsightsPipelineStage):
             return None
 
     def _get_reconciler(self, embedding_service: Any) -> FourPathReconciler:
-        """Get FourPathReconciler backed by the pinned ``folio_matching.Reconciler``.
+        """Get FourPathReconciler backed by the pinned ``folio_resolve.Reconciler``.
 
         Migration item #1: replaces the sys.path import of folio-enrich's Reconciler with
         the pinned package. If ``embedding_service`` exposes ``similarity_batch`` the triage
         path is wired; otherwise the deterministic 2-pass reconcile is used.
         """
         try:
-            from folio_matching import Reconciler
+            from folio_resolve import Reconciler
 
             sim = getattr(embedding_service, "similarity_batch", None)
             index_size = int(getattr(embedding_service, "index_size", 0) or 0)

@@ -1,6 +1,6 @@
-"""Migration item #1: folio-insights pinned to the folio-matching package.
+"""Migration item #1: folio-insights pinned to the folio-resolve package.
 
-Proves (a) the FourPathReconciler base path now runs on ``folio_matching.Reconciler`` (no
+Proves (a) the FourPathReconciler base path now runs on ``folio_resolve.Reconciler`` (no
 folio-enrich checkout needed) and (b) the new gates are ON in the tagger — the alias blocklist
 drops Action->Auction and the place-name gate drops uncorroborated Slovenia-style place hits.
 All fully mocked; no folio-enrich, no network.
@@ -16,7 +16,7 @@ from folio_insights.services.bridge.reconciliation_bridge import FourPathReconci
 
 
 def test_base_reconciler_runs_on_pinned_package() -> None:
-    from folio_matching import Reconciler
+    from folio_resolve import Reconciler
 
     reconciler = FourPathReconciler(base_reconciler=Reconciler())
     ruler = [{"iri": "R1", "label": "Cross-Examination", "concept_text": "cross-examination", "confidence": 0.72, "branch": "Service"}]
@@ -218,12 +218,12 @@ def test_decompose_falls_back_to_proposed_class_when_unresolvable() -> None:
     assert tags[0].iri == ""
 
 
-def test_entity_ruler_uses_pinned_folio_matching_ruler() -> None:
+def test_entity_ruler_uses_pinned_folio_resolve_ruler() -> None:
     # Migration item #1 (continued): the entity-ruler path now runs on the pinned
-    # folio_matching.FOLIOEntityRuler, consuming folio_service.get_all_labels() directly.
+    # folio_resolve.FOLIOEntityRuler, consuming folio_service.get_all_labels() directly.
     # (folio-enrich moved its AhoCorasickMatcher module, which had silently disabled this path.)
-    from folio_matching import FOLIOEntityRuler
-    from folio_matching.ontology import Concept, LabelInfo
+    from folio_resolve import FOLIOEntityRuler
+    from folio_resolve.ontology import Concept, LabelInfo
 
     stage = FolioTaggerStage()
 
@@ -277,7 +277,7 @@ def test_get_reconciler_uses_pinned_package() -> None:
     embedding_service = MagicMock(index_size=0)
     reconciler = stage._get_reconciler(embedding_service)
     assert isinstance(reconciler, FourPathReconciler)
-    # The base is a folio_matching.Reconciler, not a folio-enrich import.
-    from folio_matching import Reconciler as PinnedReconciler
+    # The base is a folio_resolve.Reconciler, not a folio-enrich import.
+    from folio_resolve import Reconciler as PinnedReconciler
 
     assert isinstance(reconciler._base_reconciler, PinnedReconciler)
