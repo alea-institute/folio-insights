@@ -14,6 +14,10 @@ dependencies = [
     "click>=8.0.0",
     "aiosqlite>=0.20.0",
     "folio-python>=0.1.5",
+    # Pinned shared matching engine. Replaces the fragile sys.path bridges to
+    # folio-enrich/folio-mapper for the reconciler + gate seams (migration item #1).
+    # Resolved from PyPI; for local library dev: uv pip install -e ../folio-resolve
+    "folio-resolve>=0.1.0",
     # Bridge-tier runtime deps. folio-insights imports folio-enrich's code via a
     # sys.path bridge (config.folio_enrich_path), so folio-enrich's own runtime deps
     # are NOT pulled transitively and must be declared here. Their silent absence
