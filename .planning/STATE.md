@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-05-31T16:45:41.988Z"
-last_activity: 2026-05-31 -- Phase 08 execution started
+status: dormant
+stopped_at: Phase 8 complete; Phase 9 never opened
+last_updated: "2026-07-24T00:00:00.000Z"
+last_activity: 2026-05-31 -- Phase 08 completed (dormant since)
 progress:
   total_phases: 24
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 41
-  completed_plans: 38
-  percent: 38
+  completed_plans: 41
+  percent: 42
 ---
 
 # Project State
@@ -26,14 +26,40 @@ See: .planning/PROJECT.md (updated 2026-04-24 after Phase 02)
 ## Current Position
 
 Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
-Phase: 08 (folio-v2-vocab-mini-bfo-spine-7) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 08
-Last activity: 2026-05-31 -- Phase 08 execution started
+Phase: 08 (folio-v2-vocab-mini-bfo-spine-7) — **COMPLETE** (all 4 plans have SUMMARYs;
+`ROADMAP.md` marks it "completed 2026-05-31")
+Plan: 4 of 4
+Status: **DORMANT since 2026-05-31** — awaiting an explicit resume-or-archive decision
+Last activity: 2026-05-31 -- Phase 08 completed
 
-Progress: [██████████] 100%
+Progress: 10 of 24 phases (Phases 0–8 + 3.5). Next unstarted phase: **09 — Seven Design
+Principles (§8)**, followed by Phases 10–20 (pipeline refactor, SHACL hybrid, observability,
+Oxigraph storage, private corpora, UI design contract, review UI, public SPARQL endpoint,
+testing consolidation, community artifacts, corpus fork, security audit, release cut).
 
 Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
+
+## ⚠ Reconciliation — 2026-07-24 (housekeeping sweep)
+
+This file had drifted and was overstating both progress and activity:
+
+- It said "Phase 08 EXECUTING, Plan 1 of 4" and "Progress 100%". Phase 08 in fact
+  **finished**: all four plans (08-01…08-04) have SUMMARY files and `ROADMAP.md` lists
+  Phase 8 as completed 2026-05-31. Corrected above.
+- **Nothing has moved on this milestone in ~8 weeks.** The last v2.0 commit is
+  2026-05-31; every commit since then belongs to a different track — the FOLIO
+  tagger / judge pipeline and the `folio-resolve` migration (`feat/wire-decompose-tagger`,
+  active through 2026-07-24). The repo is busy; *this milestone* is not.
+- **14 phases remain** (09–20), including the Oxigraph storage layer, the 7-surface review
+  UI, the public SPARQL endpoint, a pre-release security audit and the release cut. That is
+  a multi-week commitment, not a resumable afternoon.
+
+Standing policy is GSD-for-in-flight-plans-only, CE for new work — so this milestone sits
+exactly on the seam and needs an owner decision rather than another silent quarter:
+**resume Phase 09 under GSD, archive v2.0 as partially-shipped and re-plan the wanted
+scope under CE, or explicitly park it with a review date.** Posted as an ask
+(`briefs/qa/housekeeping-2026-07-24.json`). Until that is answered, treat v2.0 as dormant,
+not in-flight.
 
 ## Performance Metrics
 
