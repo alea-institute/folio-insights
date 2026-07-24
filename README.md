@@ -32,9 +32,21 @@ an expert deposition"* gets back a hierarchical set of techniques, principles,
 warnings, and authorities — each one traceable back to its source, each one
 mapped to a formal FOLIO concept.
 
-The system is **extractive, not generative**: it distills what the source says,
-it does not evaluate legal merit and it does not rewrite the text. Ideas, not
-expressions.
+The system is **meant to be extractive, not generative**: it distills what the
+source says, it does not evaluate legal merit and it does not rewrite the text.
+Ideas, not expressions.
+
+> **Known gap (2026-07).** A books-UAT de-risk run showed the v1.0 pipeline does
+> **not** yet honor that contract: units were fabricated rather than grounded in
+> the ingested text, and ~90% of 2,226 FOLIO tags pointed at the wrong concept
+> because the LLM path emitted IRIs directly while the deterministic paths never
+> ran (*Rule 26(a)(1)* → *Russian Federation*). Findings, gold set, and the locked
+> extraction-quality rubric are in
+> [`docs/evidence/books/`](docs/evidence/books/) and
+> [`docs/rubrics/`](docs/rubrics/). The remediation is source-grounded extraction
+> plus deterministic IRI resolution (the LLM never emits an IRI) via
+> [folio-resolve](https://github.com/damienriehl/folio-resolve). Treat v1.0
+> tagging output as unvalidated until that lands.
 
 **Who it's for:**
 
@@ -76,8 +88,35 @@ resolution, and one-click export in any of the five formats.
 **Corpus tracking** — Incremental processing by content hash. Add documents,
 re-run the pipeline, and only the new material gets re-processed.
 
-**Scale:** 26,198 LOC (17,510 Python + 8,688 Svelte/TS), 255 source files, 197
-tests passing, v1.0 shipped 2026-04-04.
+**Scale at v1.0 (2026-04-04):** 26,198 LOC (17,510 Python + 8,688 Svelte/TS),
+255 source files, 197 tests passing. On `master` today: ~25,400 Python LOC plus
+~8,900 Svelte/TS, and 691 tests across 123 test files.
+
+---
+
+## What v2.0 Is Adding (in progress)
+
+v2.0 — **shards-as-axioms** — reworks the knowledge unit into a signed,
+versioned, governable *shard* so a corpus can be published, forked, and
+attributed rather than merely exported. Phases 0–8 are complete; 9–20 are not
+started (roadmap and per-phase detail in [`.planning/ROADMAP.md`](.planning/ROADMAP.md)):
+
+- **Foundations / polysemy** — pyoxigraph chosen as the triple store at a 1M-triple
+  hard gate; `distinguo` polysemy detection and review (`folio-insights polysemy
+  detect|review`).
+- **Shard envelope + IRI scheme + content versioning** — a stable IRI per shard,
+  RFC 8785 canonical content hashing, and valid-time supersession queryable via
+  `query_as_of` ([`docs/query-as-of.md`](docs/query-as-of.md)).
+- **DID substrate** — ed25519 reviewer identities as `did:key`, `did:web` and
+  `did:plc` resolution, and signed attestations (`folio-insights did
+  generate|sign|verify|bind`).
+- **Governance model** — proposal/attestation lifecycle with SHACL-enforced
+  shapes (`folio-insights governance …`, `folio-insights corpus …`).
+- **FOLIO v2 vocab + mini-BFO spine** — project vocabulary (`vocab/*.ttl`) aligned
+  to Basic Formal Ontology, with a predicate drift audit that fails the build when
+  emitted `fi:*` predicates diverge from the PRD.
+- **Bench harness** — a deterministic 1M-triple corpus generator (`folio-insights
+  bench gen`) behind the Phase 0 performance gate.
 
 ---
 
@@ -152,7 +191,7 @@ cp .env.example .env
 
 ```bash
 folio-insights --version
-pytest                       # 197 tests should pass
+pytest                       # 691 tests across 123 files
 ```
 
 **Benchmark fixture (not committed).** The 1M-triple corpus `fixtures/bench.nq`
@@ -184,6 +223,12 @@ folio-insights export advocacy --format owl,ttl,jsonld,html,md
 # 4. Launch the web review viewer
 folio-insights serve --port 8742
 ```
+
+Plus `folio-insights verify-iris` (audits stored tags against the live FOLIO
+catalogue — the check that surfaced the hallucinated-IRI defect) and the v2.0
+subgroups: `bench`, `polysemy`, `did`, `governance`, `corpus`. Each subgroup
+imports its heavy dependencies lazily, so `folio-insights --help` never pulls
+pyoxigraph, rdflib, or the crypto stack.
 
 Each command is resumable: re-run with `--resume` (the default) and it picks
 up from the last checkpoint. Each command also prints a summary when it
@@ -219,10 +264,18 @@ Everything the CLI does, the UI does — backed by the same pipeline code.
 
 ## Dependencies
 
-**Python (runtime):** FastAPI, rdflib, pyshacl, sentence-transformers,
-instructor (for LLM calls), aiosqlite, Click, httpx, lxml, folio-python.
+**Python (runtime):** pydantic + pydantic-settings, FastAPI, uvicorn,
+sse-starlette, rdflib, pyshacl, pyoxigraph + oxrdflib, sentence-transformers,
+instructor (for LLM calls), aiosqlite, Click, httpx, lxml, folio-python, and the
+bridge-tier deps folio-enrich needs but does not export (python-docx, rapidfuzz,
+marisa-trie). The v2.0 DID substrate adds cryptography, PyNaCl, base58, jcs,
+atproto, dag-cbor, joserfc, and Authlib.
 
-**Python (dev):** pytest, pytest-asyncio, pytest-timeout.
+**Python (optional):** `.[reasoning]` pulls owlready2 (HermiT, needs a JVM) — the
+web tier deliberately omits it; only the worker and the CLI reasoning paths use it.
+
+**Python (dev):** pytest, pytest-asyncio, pytest-timeout, pytest-benchmark,
+hypothesis, ruff, dagger-io.
 
 **Frontend:** SvelteKit 2, Svelte 5, Vite 7, TypeScript 5, `@keenmate/svelte-treeview`.
 The viewer uses `@sveltejs/adapter-static` so FastAPI serves the built assets
@@ -232,9 +285,11 @@ directly — no separate Node runtime in production.
 EntityRuler, reconciler, 27K+ FOLIO labels), folio-mapper.
 
 **External ontology:** [FOLIO](https://github.com/alea-institute/FOLIO) —
-fetched once and cached locally.
+fetched once and cached locally. The v2.0 vocab spine also incorporates
+[BFO](https://basic-formal-ontology.org/). Both are CC-BY 4.0.
 
-See [`pyproject.toml`](pyproject.toml) for pinned versions.
+See [`pyproject.toml`](pyproject.toml) for pinned versions and
+[`THIRD-PARTY.md`](THIRD-PARTY.md) for the per-component license inventory.
 
 ---
 
@@ -245,13 +300,28 @@ folio-insights/
 ├── src/folio_insights/     # Core pipeline, config, CLI, orchestration
 │   ├── pipeline/           # 4-stage batch pipeline (extract, discover, ...)
 │   ├── services/           # OWL serializer, task exporter, validators
+│   │   └── bridge/         # sys.path adapters onto folio-enrich / folio-mapper
 │   ├── quality/            # Confidence gate, scoring
+│   ├── export/             # OWL / TTL / JSON-LD / HTML / Markdown writers
+│   ├── vocab/              # v2.0 FOLIO-v2 vocabulary + mini-BFO spine (TTL)
+│   ├── shards/             # Shard envelope, subtypes, IRI scheme
+│   ├── temporal/           # Valid-time supersession + query_as_of
+│   ├── revision/           # Content versioning + canonical content hashing
+│   ├── identity/           # DID substrate (did:key / did:web / did:plc, signing)
+│   ├── governance/         # Proposal + attestation lifecycle, SHACL shapes
+│   ├── corpus/             # Corpus tracking + incremental processing
+│   ├── polysemy/           # distinguo sense-splitting detection and review
+│   ├── reason/             # OWL reasoning (owlready2 / HermiT, optional extra)
+│   ├── store/              # pyoxigraph-backed triple store layer
+│   ├── bench/              # 1M-triple deterministic corpus generator + gate
+│   ├── worker.py           # Worker tier entry point (idle stub until Phase 10)
 │   └── cli.py              # `folio-insights` CLI entry point
 ├── api/                    # FastAPI backend for the review viewer
 │   ├── routes/             # upload, processing, discovery, review, export, ...
 │   ├── services/           # Backend-specific services
 │   └── main.py             # FastAPI app factory + `serve()` entry
 ├── viewer/                 # SvelteKit review viewer
+├── docs/                   # Evidence packs, rubrics, campaigns, solutions
 ├── tests/                  # pytest suite (unit + integration markers)
 └── .planning/              # GSD planning artifacts (kept in-repo on purpose)
 ```
@@ -270,8 +340,8 @@ Contributions are welcome. A few things to know first:
   version control — it holds phase plans, research notes, decisions, and
   architecture docs. That's the project's memory; contributions that change
   architecture should update it too.
-- **Tests must pass.** 197 tests at v1.0. Integration tests require the
-  sibling repos; unit tests do not.
+- **Tests must pass.** 691 tests on `master` (197 at v1.0). Integration tests
+  require the sibling repos; unit tests do not.
 - **Confidence scoring and FOLIO tagging are load-bearing.** Changes to
   thresholds, gating, or the four extraction paths need a clear rationale —
   downstream consumers depend on the confidence contract.
