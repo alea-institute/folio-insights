@@ -57,6 +57,8 @@ fixtures/bench.nq
 # branch swept a book chapter + 280KB of run logs in here before this guard).
 staging/
 
-# Generated FOLIO lexicon/governance caches (regenerable, ~11MB, no consumer in
-# the tree). Build artifacts, not source.
-data/governance/
+# Generated FOLIO lexicon cache (regenerable, ~11MB, no consumer anywhere in the
+# tree). A build artifact, not source. Scoped to the one file rather than the
+# whole directory: feat/proposed-class-governance deliberately tracks other
+# data/governance/ content, and a blanket ignore would fight that branch.
+data/governance/folio_lexicon_cache.json
