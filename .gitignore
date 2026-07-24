@@ -50,3 +50,13 @@ ci/__pycache__/
 #     --profile phase-0-gate --out fixtures/bench.nq
 fixtures/bench.nq
 
+
+# Local pipeline scratch. `staging/` holds ingest inputs and run logs for ad-hoc
+# UAT slices — including third-party source manuscripts. This repo is PUBLIC, so
+# nothing under staging/ may ever be committed (the feat/wire-decompose-tagger
+# branch swept a book chapter + 280KB of run logs in here before this guard).
+staging/
+
+# Generated FOLIO lexicon/governance caches (regenerable, ~11MB, no consumer in
+# the tree). Build artifacts, not source.
+data/governance/
