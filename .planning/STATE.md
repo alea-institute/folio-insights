@@ -49,7 +49,7 @@ This file had drifted and was overstating both progress and activity:
 - **Nothing has moved on this milestone in ~8 weeks.** The last v2.0 commit is
   2026-05-31; every commit since then belongs to a different track — the FOLIO
   tagger / judge pipeline and the `folio-resolve` migration (`feat/wire-decompose-tagger`,
-  active through 2026-07-24). The repo is busy; *this milestone* is not.
+  active through 2026-07-24 — **merged to master 2026-07-24**, branch retired). The repo is busy; *this milestone* is not.
 - **14 phases remain** (09–20), including the Oxigraph storage layer, the 7-surface review
   UI, the public SPARQL endpoint, a pre-release security audit and the release cut. That is
   a multi-week commitment, not a resumable afternoon.
