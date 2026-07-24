@@ -45,8 +45,18 @@ Ideas, not expressions.
 > [`docs/evidence/books/`](docs/evidence/books/) and
 > [`docs/rubrics/`](docs/rubrics/). The remediation is source-grounded extraction
 > plus deterministic IRI resolution (the LLM never emits an IRI) via
-> [folio-resolve](https://github.com/damienriehl/folio-resolve). Treat v1.0
-> tagging output as unvalidated until that lands.
+> [folio-resolve](https://github.com/damienriehl/folio-resolve).
+>
+> **Half of that remediation has now landed (2026-07-24).** The deterministic
+> resolution side is merged: the tagger delegates every label→IRI decision to
+> the pinned `folio-resolve` package — `LabelResolver` (decompose-first, with a
+> calibrated 0–100 whole-string bar that closes the old `0.6` no-op),
+> `FOLIOEntityRuler`, `Reconciler`, `PlaceNameGate`, the seed alias blocklist,
+> `SourceClassifier`, and an LLM-as-judge pass that can only reject or clamp,
+> never mint an IRI. Chapter-level before/after evidence is in
+> [`docs/evidence/books/folio-matching-proving-run/`](docs/evidence/books/folio-matching-proving-run/).
+> **Source-grounded extraction is still outstanding**, so v1.0 corpus output
+> remains unvalidated until that half lands too.
 
 **Who it's for:**
 

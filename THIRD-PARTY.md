@@ -26,6 +26,7 @@ Project-authored vocab/SHACL (`vocab/classes.ttl`, `predicates.ttl`,
 | pydantic, pydantic-settings | MIT | models + settings |
 | instructor | MIT | structured LLM calls |
 | folio-python | MIT | FOLIO ontology access |
+| folio-resolve | MIT | deterministic label→IRI resolution, entity ruler, reconciler, match gates |
 | fastapi, python-multipart | MIT / Apache-2.0 | web tier + uploads |
 | uvicorn, sse-starlette | BSD-3-Clause | ASGI server + progress streaming |
 | httpx, click, lxml, rdflib | BSD-3-Clause | HTTP, CLI, XML, RDF graph |
