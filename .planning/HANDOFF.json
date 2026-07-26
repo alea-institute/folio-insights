@@ -9,5 +9,7 @@
     "head": "b594824",
     "modified_files": 3
   },
-  "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session."
+  "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session.",
+  "stale": true,
+  "stale_note": "SUPERSEDED 2026-07-26 — DO NOT RESUME FROM THIS HANDOFF. It was auto-saved mid-Phase-07 on 2026-05-30; Phase 07 completed that same day and Phase 08 completed 2026-05-31. The v2.0 milestone is now PARKED (2026-07-26; review 2026-08-23, provisional) per cockpit ask housekeeping-2026-07-24 q4-folio-insights-v2. Read .planning/STATE.md instead."
 }

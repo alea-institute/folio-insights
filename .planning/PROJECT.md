@@ -32,7 +32,17 @@ Every piece of actionable legal advocacy knowledge from these texts must be disc
 - Task hierarchy discovery with NLI contradiction detection
 - SHACL-validated OWL output with Turtle, JSON-LD RAG chunks, browsable HTML, changelog
 
-## Current Milestone: v2.0 shards-as-axioms
+## Current Milestone: v2.0 shards-as-axioms — ⛔ PARKED 2026-07-26
+
+> **Parked 2026-07-26** by Damien (cockpit ask `housekeeping-2026-07-24`, `q4-folio-insights-v2`).
+> **Review 2026-08-23** *(provisional — 4-week window set by Fable, not yet confirmed by Damien).*
+> Phases 0–8 + 3.5 are shipped and verified; Phases 9–20 are not started. Do not open a phase
+> without an explicit un-park. Terms, the 2026-07-26 reality audit and the remaining-work brief
+> are in `.planning/STATE.md`; per-phase annotations (incl. what the July `folio-resolve` work
+> made obsolete) are in `.planning/ROADMAP.md`.
+>
+> Note: repo activity continues on a **separate CE track** (folio-resolve migration / tagger /
+> in-app annotator). That track is also called "v2" and is **not** this milestone.
 
 **Goal:** Refactor FOLIO Insights from enrichment pipeline into a federated, shard-based knowledge graph grounded in PHILOSOPHY.md — where every 15-field shard is a provenance-hashed micro-axiom queryable via SPARQL, reviewable by DID-signed attestations, and composable across a federated community.
 
