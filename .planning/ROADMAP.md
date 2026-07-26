@@ -2,8 +2,14 @@
 milestone: v2.0
 milestone_name: shards-as-axioms
 generated_at: 2026-04-22
+status: parked
+parked_at: 2026-07-26
+review_date: 2026-08-23
+review_date_status: PROVISIONAL -- awaiting Damien's confirmation
+reconciled_at: 2026-07-26
 phase_numbering: reset (Phase 0/1+)
 total_phases: 24
+phases_complete: 10
 critical_path_phases: 16
 parallel_track_phases: 5
 sources:
@@ -16,6 +22,20 @@ sources:
 ---
 
 # FOLIO Insights v2.0 — Roadmap (shards-as-axioms)
+
+> ## ⛔ PARKED 2026-07-26 — review 2026-08-23 *(provisional)*
+>
+> Parked by Damien via cockpit ask `housekeeping-2026-07-24` (`q4-folio-insights-v2`).
+> **Read `.planning/STATE.md` first** — it carries the parking terms, the 2026-07-26 reality
+> audit, the reconciled remaining-work list, and the four risks to re-verify at review.
+>
+> **Phases 0–8 + 3.5 are DONE and verified against code on 2026-07-26.** Phases 9–20 are
+> untouched — no phase directories, no plans, no code. Three items below are **annotated
+> OBSOLETE or AT RISK** where 2026-06/07 work overtook them; those annotations are inline
+> in §3 and in the §4 progress table. Do not open a phase against an un-annotated April plan
+> without checking those first.
+>
+> Nothing in this file has been deleted. Everything superseded is marked, not erased.
 
 ## 1. Milestone Overview
 
@@ -40,27 +60,30 @@ v2.0 is a **refactor-in-place** on the v1.1 FastAPI + SvelteKit + aiosqlite base
 - [x] **Phase 0: Foundations / HARD GATE** — Validate stack; decide `keep=pyoxigraph` vs `pivot=fuseki` — **CLOSED 2026-04-23 with verdict `keep=pyoxigraph`** (see `.planning/phases/00-foundations-hard-gate/00-DECISION.md`)
 - [x] **Phase 1: Polysemy / distinguo Spike** (parallel) — Canonical *consideration* fixture validates §16 R2 — **COMPLETE 2026-04-24** (6/6 plans; 49/49 tests; Wilson FP lower-bound 2.53% vs 10% gate; security: 35/35 threats closed)
 - [x] **Phase 2: Shard Envelope (§6.1)** — 15-field Pydantic `Shard` — **COMPLETE 2026-04-24** (3/3 plans; 47 shard tests + 96 combined pass; 1000-example hypothesis determinism; security: 25/25 threats closed)
-- [x] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes — **COMPLETE** (2/2 plans; 03-VERIFICATION.md status: passed; REVIEW + REVIEW-FIX done)
-- [x] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22) (completed 2026-05-22)
+- [x] **Phase 3: Shard Subtypes (§6.2)** — 5 discriminated-union subtypes — **COMPLETE 2026-04-25** (2/2 plans; 03-VERIFICATION.md status: passed 12/12; REVIEW + REVIEW-FIX done; code re-verified 2026-07-26 at `shards/subtypes.py` + 6 test modules)
+- [x] **Phase 3.5: Railway Dev/Testing Server** (parallel) — Diagnose 502, restore dev deploy of `master`, wire auto-deploy on push (INSERTED 2026-05-22) (completed 2026-05-22) — ⚠ **AT RISK 2026-07-26:** live and returning 200 today, but the portfolio Railway→Hetzner drain (cockpit ask `housekeeping-2026-07-24` `q1-railway-finish`, unanswered) proposes deleting this service
 - [x] **Phase 4: IRI Scheme (§6.3)** — Provenance-hash IRIs with canonicalization + collision detector (completed 2026-05-27)
 - [x] **Phase 5: Content Versioning (§6.4)** — `ContentEdit` chain + bitemporal time-scoping (completed 2026-05-27)
 - [x] **Phase 6: DID Substrate (§6.5)** — did:key/web/plc signing; includes 6.1 core, 6.2 hardware-key (P2), 6.3 multi-sig (P2) (completed 2026-05-28)
 - [x] **Phase 7: Governance Model (§3.1)** — 4-tier roles, PROV-O log, RFC process (completed 2026-05-30)
 - [x] **Phase 8: FOLIO v2 Vocab + Mini-BFO (§7)** — `fi:*` TTL, `bfo_mapping.ttl`, version pinning (completed 2026-05-31)
-- [ ] **Phase 9: Seven Design Principles (§8)** — Sub-phased 9.P1–9.P7
-- [ ] **Phase 10: Pipeline + LLM-Agnostic Refactor (§9)** — Stage 8 Shard Minter, instructor matrix, Arq migration
-- [ ] **Phase 11: SHACL Hybrid (§10)** — 6 hand-written shapes + Pydantic-to-SHACL generator
-- [ ] **Phase 12: Observability** (parallel) — structlog + OTel + Prometheus + cost tracking
-- [ ] **Phase 13: Storage Layer (§11)** — Oxigraph, named graphs, TTL dump, export formats
-- [ ] **Phase 13.5: Private Corpora** — Envelope encryption + access control (promoted P1)
-- [ ] **Phase 14: UI Design Contract** (parallel) — SvelteKit adapter-node swap + design system
-- [ ] **Phase 15: Review UI (§12)** — Sub-phased per surface (7 sub-phases)
-- [ ] **Phase 16: Public SPARQL Endpoint + Write API** — Read `/sparql` + DID-gated REST writes + "Explain query" LLM helper
-- [ ] **Phase 17: Testing Consolidation (§13)** — 203 v1 + ~425 new tests; golden-set harness
-- [ ] **Phase 18: Community Artifacts + Docs** (parallel) — CONTRIBUTING, CoC, GOVERNANCE, RFC, mkdocs
-- [ ] **Phase 18.5: Corpus Fork + Genealogy** (P2) — Fork capability + genealogy viz
-- [ ] **Phase 19: Pre-Release Security Audit** — BLOCKS RELEASE
-- [ ] **Phase 20: Release Cut** — v2.0.0 CalVer + Railway deploy + public SPARQL announce
+**Phases 9–20 — ALL NOT STARTED as of 2026-07-26** (verified: no `.planning/phases/09*`–`20*`
+directories exist; no plans, no code). Annotations show where reality moved under the April plan.
+
+- [ ] **Phase 9: Seven Design Principles (§8)** — Sub-phased 9.P1–9.P7 — *valid as written; the natural resume point*
+- [ ] **Phase 10: Pipeline + LLM-Agnostic Refactor (§9)** — Stage 8 Shard Minter, instructor matrix, Arq migration — 🔶 **OBSOLETE AS PLANNED (2026-07-26): re-plan, do not resume.** §9 describes the v1 7-stage tagger; that tagger was rewritten in Jul 2026 around `folio-resolve` (deterministic resolution + judge + domain prior + calibration). Goal survives, plan does not. Read `docs/evidence/books/` + `docs/rubrics/` before replanning.
+- [ ] **Phase 11: SHACL Hybrid (§10)** — 6 hand-written shapes + Pydantic-to-SHACL generator — *valid as written*
+- [ ] **Phase 12: Observability** (parallel) — structlog + OTel + Prometheus + cost tracking — *valid as written; nothing observability-related has landed (no structlog/OTel/Prometheus in `src/`)*
+- [ ] **Phase 13: Storage Layer (§11)** — Oxigraph, named graphs, TTL dump, export formats — *valid as written; **highest-leverage remaining phase** — Phases 5, 7 and the governance CLI all hold explicit in-memory stubs waiting on it (`governance/log.py`, `governance/cli/retract.py:199` raises `NotImplementedError`, `revision/` ShardStore)*
+- [ ] **Phase 13.5: Private Corpora** — Envelope encryption + access control (promoted P1) — *valid as written*
+- [ ] **Phase 14: UI Design Contract** (parallel) — SvelteKit adapter-node swap + design system — ⚠ **COLLISION RISK (2026-07-26):** the CE "v2 in-app annotator" track (`docs/brainstorms/2026-07-15-…`) targets the same `viewer/` with a different design. Re-scope before planning. Note also Phase 3.5 reverted adapter-node → adapter-static, so the swap is a re-do.
+- [ ] **Phase 15: Review UI (§12)** — Sub-phased per surface (7 sub-phases) — ⚠ **COLLISION RISK (2026-07-26):** same viewer as the CE annotator; per-tag verdict UI vs shard-page UI must be reconciled into one design system before either ships.
+- [ ] **Phase 16: Public SPARQL Endpoint + Write API** — Read `/sparql` + DID-gated REST writes + "Explain query" LLM helper — *valid as written*
+- [ ] **Phase 17: Testing Consolidation (§13)** — 203 v1 + ~425 new tests; golden-set harness — *valid; baseline moved: **1010 passing** as of 2026-07-26, not 203*
+- [ ] **Phase 18: Community Artifacts + Docs** (parallel) — CONTRIBUTING, CoC, GOVERNANCE, RFC, mkdocs — *valid; partial credit exists — `RFC-TEMPLATE.md` + the RFC lifecycle linter shipped in Phase 7; `THIRD-PARTY.md` shipped 2026-07-05*
+- [ ] **Phase 18.5: Corpus Fork + Genealogy** (P2) — Fork capability + genealogy viz — *valid as written; P2 stretch*
+- [ ] **Phase 19: Pre-Release Security Audit** — BLOCKS RELEASE — *valid as written*
+- [ ] **Phase 20: Release Cut** — v2.0.0 CalVer + Railway deploy + public SPARQL announce — 🔶 **PARTLY OBSOLETE (2026-07-26):** the "Railway multi-service (web + worker + Redis + Oxigraph)" exit criterion no longer matches the portfolio, which is draining Railway → Hetzner/Coolify. Retarget the deploy criterion at review time; the rest of the phase stands.
 
 ---
 
@@ -405,6 +428,22 @@ Plans:
 
 ### Phase 10: Pipeline + LLM-Agnostic Refactor (§9)
 
+> 🔶 **OBSOLETE AS PLANNED — 2026-07-26. Re-plan; do not resume this text.**
+> This phase was written in April 2026 against the v1 seven-stage pipeline. Between 2026-07-15
+> and 2026-07-24 that pipeline's tagging stage was substantially rewritten around the pinned
+> `folio-resolve` library (`pipeline/stages/folio_tagger.py`): deterministic label→IRI resolution,
+> `FOLIOEntityRuler`, `Reconciler`, `PlaceNameGate`, seed alias blocklist, `SourceClassifier`,
+> a domain-prior LLM judge that can only reject/clamp (never mint an IRI), and calibration
+> recording. "Append Stage 8 to the existing 7 stages" no longer describes what it would be
+> appended to, and the §9 LLM-agnostic story now has to reconcile with `folio-resolve`'s own
+> provider handling rather than the `instructor`-only design below.
+> **Before replanning, read:** `docs/evidence/books/` (books-UAT de-risk findings — the pipeline
+> was found *generative, not extractive*), `docs/rubrics/` (locked extraction-quality rubric v1.0),
+> and `docs/brainstorms/2026-07-15-folio-matching-platform-brainstorm.md`.
+> Still true and still unbuilt: Arq/Redis (worker.py is an idle stub), the cost meter, and the
+> lazy-fill field split. The `extractor_model` / `extraction_prompt_hash` envelope fields exist
+> (Phase 2) but nothing populates them.
+
 **Goal**: Ship Stage 8 Shard Minter appended to the v1 7-stage pipeline, with provider-agnostic LLM access and Arq-backed async orchestration.
 **Depends on**: Phase 9 (principles feed framework detector + BFO classifier + polysemy hooks).
 **REQ-IDs covered**: LLM-01, LLM-02, LLM-03, LLM-04, LLM-05, LLM-06
@@ -468,6 +507,15 @@ Plans:
 
 ### Phase 13: Storage Layer (§11)
 
+> ⭐ **HIGHEST-LEVERAGE REMAINING PHASE — 2026-07-26.** Three *completed* phases deliberately
+> left in-memory seams for this one, and each is a visible functionality gap today:
+> `governance/log.py` (dict behind the `GovernanceLog` Protocol; the SQLite `BEFORE UPDATE/DELETE
+> → RAISE FAIL` trigger was explicitly travelled here from Phase 7 D-05),
+> `governance/cli/retract.py:199` (`retract --apply` raises `NotImplementedError` until a
+> persistent ShardStore exists), and `revision/`'s in-memory `ShardStore`. If v2.0 resumes at
+> reduced scope, promoting Phase 13 ahead of 10/11 converts three stubs into working features
+> for less effort than any other single phase.
+
 **Goal**: Ship pyoxigraph as canonical RDF 1.2 store with named-graph organization, rdflib bridge for pyshacl/JSON-LD, nightly TTL dumps, and export formats.
 **Depends on**: Phase 0 (keep-vs-pivot decision), Phase 11 (SHACL hooks into store writes).
 **REQ-IDs covered**: STORAGE-01, STORAGE-02, STORAGE-03, STORAGE-04, STORAGE-05, STORAGE-06, STORAGE-07, CORPUS-01, CORPUS-02, CORPUS-03, CORPUS-04
@@ -511,6 +559,18 @@ Plans:
 
 ### Phase 14: UI Design Contract
 
+> ⚠ **COLLISION RISK — 2026-07-26. Re-scope before planning.**
+> A parallel CE track ("folio-insights **v2 in-app annotator**", see
+> `docs/brainstorms/2026-07-15-folio-matching-platform-brainstorm.md` §6) proposes a first-class
+> annotator view **in this same `viewer/`**: span-anchored full-text rendering, per-tag
+> correct/weak/wrong verdict chips, a new `tag_verdicts` SQLite table, domain-prior on the corpus
+> manifest. Two design contracts for one SvelteKit app will conflict. Whichever track lands in
+> `viewer/` first owns the design system; the other adopts it.
+> Also note: Phase 3.5 **reverted** adapter-node → adapter-static (SPA served by FastAPI
+> StaticFiles) for deployability, so the adapter-node swap below is now a *re-do* of a
+> deliberate reversal, not a fresh step — re-justify it (or drop it) at replan time.
+> Naming hazard: "v2" means two different things in this repo. Say which one in every commit.
+
 **Goal**: Swap SvelteKit adapter-static → adapter-node, establish component library skeleton, and land the "shards-as-axioms" bold aesthetic before any Phase 15 UI plan opens.
 **Depends on**: Phase 0 (SSR prototype), Phase 8 (vocab gives component taxonomy).
 **REQ-IDs covered**: UI-01, UI-18, UI-19, QUALITY-02
@@ -531,6 +591,12 @@ Plans:
 ---
 
 ### Phase 15: Review UI (§12)
+
+> ⚠ **COLLISION RISK — 2026-07-26.** Same `viewer/` as the CE in-app annotator track (see the
+> Phase 14 note). The annotator's per-tag verdict surface and this phase's shard/polysemy/
+> supersession surfaces are different answers to "what is the review UI". Reconcile into one
+> before opening any 15.* sub-phase; the Phase 14 design-contract gate below is the right place
+> to force that reconciliation.
 
 **Goal**: Ship all 7 review UI surfaces with per-surface sub-phases, mandatory UX discussion artifacts for novel surfaces, and a WCAG 2.1 AA quality gate.
 **Depends on**: Phase 14 (design contract), Phase 13 (storage), Phase 10 (Stage 8 output), Phase 7 (governance events).
@@ -687,6 +753,14 @@ Plans:
 
 ### Phase 20: Release Cut
 
+> 🔶 **PARTLY OBSOLETE — 2026-07-26.** Exit criterion 2 ("Railway multi-service (web + worker +
+> Redis + Oxigraph) deploy green") no longer matches the portfolio: it is mid-migration from
+> Railway to Hetzner/Coolify, and cockpit ask `housekeeping-2026-07-24` (`q1-railway-finish`,
+> unanswered at parking time) proposes deleting the remaining Railway services — including
+> `folio-insights`. Retarget the deploy criterion at whatever the hosting story is at review
+> time. Criteria 1, 3 and 4 (CalVer tag, public SPARQL announce, benchmark corpora live) stand.
+> Also inherited here: full SSR + Gate 4 (QUALITY-04), deferred into this phase by Phase 3.5.
+
 **Goal**: Cut v2.0.0 CalVer, deploy Railway multi-service, announce the public SPARQL endpoint, and confirm benchmark corpora are live.
 **Depends on**: Phase 19.
 **REQ-IDs covered**: None new (integration milestone; validates all prior REQs end-to-end).
@@ -707,32 +781,36 @@ Plans:
 
 ## 4. Progress Table
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 0. Foundations / HARD GATE | 8/8 | **COMPLETE** (verdict: keep=pyoxigraph) | 2026-04-23 |
-| 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 |
-| 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 |
-| 3. Shard Subtypes | 0/? | Not started | - |
-| 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete   | 2026-05-22 |
-| 4. IRI Scheme | 2/2 | Complete   | 2026-05-27 |
-| 5. Content Versioning | 3/3 | Complete   | 2026-05-27 |
-| 6. DID Substrate | 3/3 | Complete    | 2026-05-29 |
-| 7. Governance Model | 7/7 | Complete   | 2026-05-30 |
-| 8. FOLIO v2 Vocab + Mini-BFO | 4/4 | Complete   | 2026-05-31 |
-| 9. Seven Design Principles | 0/? | Not started | - |
-| 10. Pipeline + LLM-Agnostic | 0/? | Not started | - |
-| 11. SHACL Hybrid | 0/? | Not started | - |
-| 12. Observability | 0/? | Not started | - |
-| 13. Storage Layer | 0/? | Not started | - |
-| 13.5. Private Corpora | 0/? | Not started | - |
-| 14. UI Design Contract | 0/? | Not started | - |
-| 15. Review UI | 0/? | Not started | - |
-| 16. Public SPARQL + Write API | 0/? | Not started | - |
-| 17. Testing Consolidation | 0/? | Not started | - |
-| 18. Community Artifacts + Docs | 0/? | Not started | - |
-| 18.5. Corpus Fork + Genealogy (P2) | 0/? | Not started | - |
-| 19. Pre-Release Security Audit | 0/? | Not started | - |
-| 20. Release Cut | 0/? | Not started | - |
+**Reconciled against code, git and a full test run on 2026-07-26.** Every "Complete" row below was
+confirmed by locating the shipped module(s), not by trusting the prior table. `10 of 24 phases
+complete; 41 of 41 planned plans in those phases complete.`
+
+| Phase | Plans Complete | Status | Completed | Evidence / 2026-07-26 note |
+|-------|----------------|--------|-----------|----------------------------|
+| 0. Foundations / HARD GATE | 8/8 | **COMPLETE** (verdict: keep=pyoxigraph) | 2026-04-23 | `store/pyoxigraph_store.py`, `bench/`, `ci/`, `fixtures/bench.nq`, `00-DECISION.md`. Gate 2 re-ran green today (worst warm median ≈109 ms vs 500 ms gate). Gates 4 + D-11 still deferred per `00-07-D6`. Gate-5 Dagger test currently fails on **environment** (`FileNotFoundError: 'python'`), not code. |
+| 1. Polysemy / distinguo Spike | 6/6 | **COMPLETE** | 2026-04-24 | `polysemy/`, `tests/polysemy/`, `fp-labeling-audit.md` |
+| 2. Shard Envelope | 3/3 | **COMPLETE** | 2026-04-24 | `shards/envelope.py`, `minting.py`, `audit.py`, `tests/shards/` |
+| 3. Shard Subtypes | **2/2** | **COMPLETE** | **2026-04-25** | ⚠ **Was wrongly listed "0/? Not started" until 2026-07-26.** Real: `shards/subtypes.py` (5 subtypes + 3 nested models), 6 test modules, `03-VERIFICATION.md` passed 12/12, REVIEW + REVIEW-FIX closed. |
+| 3.5. Railway Dev/Testing Server (parallel) | 3/3 | Complete | 2026-05-22 | Live probe 2026-07-26: `/health` **200**, `/` **200**. ⚠ At risk from the Railway→Hetzner drain (`housekeeping-2026-07-24` `q1`). |
+| 4. IRI Scheme | 2/2 | Complete | 2026-05-27 | `shards/iri_registry.py`, hex32 minting, 3 test modules |
+| 5. Content Versioning | 3/3 | Complete | 2026-05-27 | `revision/` + `content_edit_shape.ttl`; ShardStore is in-memory by design — Phase 13 fills it |
+| 6. DID Substrate | 3/3 | Complete | 2026-05-28 | `identity/` (9 modules), `tests/identity/`, `06-SECURITY.md` 15/15. *(Prior table said 2026-05-29; `06-VERIFICATION` + commits say 28th, security addendum 29th.)* |
+| 7. Governance Model | 7/7 | Complete | 2026-05-30 | `governance/` (10 modules + CLI + 8 SHACL shapes), `rfc/` linter. `retract --apply` deliberately raises `NotImplementedError` pending Phase 13. |
+| 8. FOLIO v2 Vocab + Mini-BFO | 4/4 | Complete | 2026-05-31 | `vocab/` (5 TTLs), `temporal/as_of.py`, `docs/query-as-of.md`, `08-DRIFT-AUDIT.md` clean |
+| 9. Seven Design Principles | 0/? | Not started | - | valid as written — resume point |
+| 10. Pipeline + LLM-Agnostic | 0/? | Not started — 🔶 **OBSOLETE AS PLANNED** | - | tagger rewritten around `folio-resolve` Jul 2026; re-plan from current code |
+| 11. SHACL Hybrid | 0/? | Not started | - | valid |
+| 12. Observability | 0/? | Not started | - | valid — no structlog/OTel/Prometheus anywhere in `src/` |
+| 13. Storage Layer | 0/? | Not started | - | valid — **unblocks 3 stubs left by Phases 5/7**; consider promoting it |
+| 13.5. Private Corpora | 0/? | Not started | - | valid |
+| 14. UI Design Contract | 0/? | Not started — ⚠ collision risk | - | CE annotator targets the same `viewer/` |
+| 15. Review UI | 0/? | Not started — ⚠ collision risk | - | CE annotator targets the same `viewer/` |
+| 16. Public SPARQL + Write API | 0/? | Not started | - | valid |
+| 17. Testing Consolidation | 0/? | Not started | - | valid — baseline is now 1010 passing, not 203 |
+| 18. Community Artifacts + Docs | 0/? | Not started | - | valid — RFC template/linter + THIRD-PARTY.md already exist |
+| 18.5. Corpus Fork + Genealogy (P2) | 0/? | Not started | - | valid, P2 |
+| 19. Pre-Release Security Audit | 0/? | Not started | - | valid |
+| 20. Release Cut | 0/? | Not started — 🔶 **partly obsolete** | - | Railway multi-service deploy criterion needs retargeting |
 
 ---
 
@@ -882,4 +960,18 @@ All P1 REQ-IDs mapped to at least one phase. P2 REQ-IDs marked with `(P2)`.
 
 *Roadmap drafted: 2026-04-22*
 *Source-of-truth requirements: `.planning/REQUIREMENTS.md`*
-*Next: orchestrator review → commit → `/gsd-discuss-phase 0` (HARD GATE) → `/gsd-plan-phase 0`*
+*~~Next: orchestrator review → commit → `/gsd-discuss-phase 0` (HARD GATE) → `/gsd-plan-phase 0`~~ — done 2026-04-23.*
+
+---
+
+## 7. Reconciliation Log
+
+**2026-07-26 — reality reconciliation + park.** Claims in this file were re-verified against the
+working tree, `git log` and a full local test run (1010 passed / 10 skipped; one environment-only
+failure in the Dagger Gate-5 test). Changes made: Phase 3 corrected from "0/? Not started" to
+"2/2 Complete 2026-04-25"; Phase 6 completion date corrected 05-29 → 05-28; evidence pointers
+added to every completed row; Phases 10 and 20 annotated **obsolete/partly-obsolete**; Phases 14
+and 15 annotated **collision risk** against the CE in-app-annotator track; Phase 13 annotated as
+the highest-leverage remaining phase; Phase 3.5 annotated **at risk** from the Railway drain.
+Milestone status set to **parked** (review 2026-08-23, provisional).
+Nothing was deleted. Full audit, remaining-work brief and park terms live in `.planning/STATE.md`.
