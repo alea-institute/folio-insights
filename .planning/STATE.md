@@ -8,9 +8,10 @@ parked_by: "Damien — cockpit ask housekeeping-2026-07-24, q4-folio-insights-v2
 review_date: 2026-08-23
 review_date_status: PROVISIONAL -- 4 weeks, set by Fable; awaiting Damien's confirmation
 stopped_at: Phase 8 complete; Phase 9 never opened
-last_updated: "2026-07-26T00:00:00.000Z"
+last_updated: "2026-07-27T16:45:00.000Z"
 last_activity: 2026-05-31 -- Phase 08 completed (dormant since; formally parked 2026-07-26)
 reality_audit: "2026-07-26 -- claims re-verified against code, git log and a full test run; see 'Reality Audit'"
+platform_update: "2026-07-27 -- Railway account EMPTIED (Damien approved q1-railway-finish). Phase 3.5's running deliverable is gone; Phase 20 retargeted at Hetzner/Coolify; Park Risk 1 CLOSED. No other park finding changed."
 progress:
   total_phases: 24
   completed_phases: 10
@@ -69,7 +70,7 @@ those phases complete and verified. Next unstarted phase: **09 — Seven Design 
 followed by Phases 10–20. See "Remaining Work" below for the reconciled, evidence-checked list —
 it is shorter and differently shaped than the raw ROADMAP suggests.
 
-Previous milestone: v1.1 — SHIPPED 2026-04-20 — https://folio-insights-production.up.railway.app
+Previous milestone: v1.1 — SHIPPED 2026-04-20 — was https://folio-insights-production.up.railway.app (**dead since 2026-07-27**, Railway account emptied; the live equivalent is https://folio-insights.dev.openlegalstandard.org)
 
 ## Reality Audit — 2026-07-26
 
@@ -97,7 +98,7 @@ tested code; the drift was in the tracking tables, not the work.
 | 1 Polysemy spike | **DONE** | `src/folio_insights/polysemy/{detector,distinguo,similarity_query,cli}.py`, `tests/polysemy/`, `01-VERIFICATION.md`, `fp-labeling-audit.md` (Wilson FP lower bound 2.53% vs 10% gate). |
 | 2 Shard Envelope | **DONE** | `shards/envelope.py` (15 fields incl. `extractor_model`, `extraction_prompt_hash`), `shards/minting.py`, `shards/audit.py`, `tests/shards/` (envelope round-trip, discriminated union, 1000-example minting determinism). |
 | 3 Shard Subtypes | **DONE** | `shards/subtypes.py` (5 subtypes + Objection/Reply/AuthorityPosition), 5 `tests/shards/test_subtype_*.py` + `test_discriminated_union.py`; `03-VERIFICATION.md` status `passed`, 12/12. **The ROADMAP progress table said "0/? Not started" — that was the single worst piece of drift in the planning set; corrected 2026-07-26.** |
-| 3.5 Railway dev server | **DONE — but see Park Risks** | Flat `railway.toml`, `Dockerfile.web`; live probe 2026-07-26: `https://folio-insights-production.up.railway.app/health` → **200**, `/` → **200**. Still up 2 months later. |
+| 3.5 Railway dev server | **DONE — but its deliverable is now RETIRED** | Flat `railway.toml`, `Dockerfile.web`. The Railway dev server it delivered was **deleted 2026-07-27** with the rest of the account (Damien approved `q1-railway-finish`); `https://folio-insights-production.up.railway.app/` → **404**. The phase's *work* still counts as done — but its running artifact is gone and the config it produced (`railway.toml`, `ci/railway.py`) now describes a platform this project no longer uses. **Superseded by Coolify on Hetzner:** `https://folio-insights.dev.openlegalstandard.org/health` → **200** (verified 2026-07-27; Coolify app `folio-insights`, `k4k4pd2koxs06gre4row7n78`, `running:healthy`). |
 | 4 IRI Scheme | **DONE** | `shards/iri_registry.py` (fail-closed collision halt), hex32 minting, `tests/shards/{test_minting_determinism,test_iri_collision,test_verify_iris_cli}.py`. |
 | 5 Content Versioning | **DONE** | `revision/` package (`edit_shard_content`, in-memory `ShardStore` Protocol, `get_shard_at` reverse replay), `revision/content_edit_shape.ttl`, `tests/shards/test_content_edit_audit_append_only.py`. |
 | 6 DID Substrate | **DONE (P1 + P2 core)** | `identity/{keys,signer,verifier,resolver,cache,binding,preview,cli,_b64}.py`, `tests/identity/`, `06-SECURITY.md` 15/15 threats closed. Web OAuth surface deferred per D-02 (correctly recorded). |
@@ -148,7 +149,7 @@ None of Phases 0–8 is obsolete. These **unstarted** items are:
 | Item | Status | Why |
 |------|--------|-----|
 | **Phase 10 — Pipeline + LLM-Agnostic Refactor (§9)** | **OBSOLETE AS PLANNED** (goal survives, plan does not) | It was written in April against the v1 7-stage tagger. That tagger was substantially rewritten in July around `folio-resolve` (judge pipeline, domain prior, calibration recording, deterministic resolution). "Append Stage 8 to the existing 7 stages" no longer describes the thing being appended to. Re-plan from the current `pipeline/stages/folio_tagger.py`, not from §9. |
-| **Phase 20 — "Railway multi-service deploy"** | **OBSOLETE (target platform)** | The portfolio is mid-drain from Railway to Hetzner/Coolify (cockpit ask `housekeeping-2026-07-24`, `q1-railway-finish` — still unanswered at parking). Whatever v2.0 ships on, it will not be a new Railway multi-service topology. |
+| **Phase 20 — "Railway multi-service deploy"** | **OBSOLETE — settled 2026-07-27, no longer "decide at review"** | The drain is **complete**: Damien approved `q1-railway-finish`, and the Railway account was emptied 2026-07-27 (2 projects / 8 services deleted; every project id returns *Project not found*). There is no Railway to deploy to. **Retarget the exit criterion at Hetzner/Coolify now** — that is where the working replacement already runs. See `railway-to-hetzner/docs/teardown-snapshots/2026-07-27/TEARDOWN-LOG.md`. |
 | **Phase 14 + 15 — UI Design Contract + 7-surface Review UI** | **AT RISK OF COLLISION — re-scope before planning** | The CE annotator track targets the *same* SvelteKit viewer with a different design (per-tag verdict chips, span-anchored full-text rendering, `tag_verdicts` table). Two design contracts for one viewer is a guaranteed conflict. Whichever lands first owns the viewer's design system. |
 | Phase 0 Gate 4 (SSR <200 ms) + D-11 full-1M reasoner run | **STILL DEFERRED** (not obsolete) | Deferred at Phase 0 close by decision `00-07-D6`, and the adapter-node→adapter-static reversal in Phase 3.5 pushed full SSR to Phase 20. Both are harness-ready; neither is a pivot trigger (`00-08-D2`). |
 
@@ -170,19 +171,21 @@ invalidates them. The deltas are:
    `revision/`'s in-memory `ShardStore`. Doing 13 early would convert three "seams" into working
    features. Consider re-ordering 13 ahead of 10/11 if the milestone resumes at reduced scope.
 4. **Phases 14/15** — re-scope against the CE annotator first (see collision note above).
-5. **Phase 20** — retarget from Railway to whatever the portfolio's dev/prod story is at review time.
+5. **Phase 20** — **answered 2026-07-27: the target is Hetzner/Coolify.** Railway is gone account-wide, and `folio-insights` already runs healthy at `folio-insights.dev.openlegalstandard.org` under Coolify. This is no longer a review-time question; rewrite the exit criterion against Coolify when the phase opens. `railway.toml` and `ci/railway.py` should be deleted or archived at the same time.
 6. **Environment chore (5 min, do it whenever):** Gate 5's Dagger harness needs a `python` on
    PATH (currently only `python3`). Until then `tests/bench/test_gate5_digest.py` fails locally
    and misleads anyone re-auditing.
 
 ## Park Risks — the four things to re-verify at review (2026-08-23), not before
 
-1. **The Railway dev server may be deleted underneath Phase 3.5.** Cockpit ask
-   `housekeeping-2026-07-24` `q1-railway-finish` proposes deleting all remaining Railway
-   services, `folio-insights` among them. It was still unanswered when this milestone was
-   parked, and it is the *only* one of these risks with an external clock. If it's approved,
-   Phase 3.5's deliverable is gone and Phase 20 needs a new home. **Verify the live URL first
-   thing at review.**
+1. ~~**The Railway dev server may be deleted underneath Phase 3.5.**~~ **RESOLVED — it
+   happened. 2026-07-27.** Damien approved `q1-railway-finish` ("Approve the whole drain"),
+   and the Railway account was emptied the same day. Phase 3.5's running deliverable is gone
+   and Phase 20 has its new home: **Hetzner/Coolify**, where `folio-insights` is already
+   healthy. Nothing to verify at review — this risk is closed, and the two rows above are
+   updated. The remaining chore is cleanup: `railway.toml` and `ci/railway.py` are now dead
+   config. **This was the only one of the four risks with an external clock; the other three
+   still stand.**
 2. **Viewer-design collision** — has the CE annotator shipped UI into `viewer/`? If yes,
    Phases 14/15 must be re-scoped, not resumed.
 3. **`folio-resolve` drift** — the pin is `>=0.1.0`, open-ended. If that library moved fast
