@@ -83,7 +83,7 @@ directories exist; no plans, no code). Annotations show where reality moved unde
 - [ ] **Phase 18: Community Artifacts + Docs** (parallel) — CONTRIBUTING, CoC, GOVERNANCE, RFC, mkdocs — *valid; partial credit exists — `RFC-TEMPLATE.md` + the RFC lifecycle linter shipped in Phase 7; `THIRD-PARTY.md` shipped 2026-07-05*
 - [ ] **Phase 18.5: Corpus Fork + Genealogy** (P2) — Fork capability + genealogy viz — *valid as written; P2 stretch*
 - [ ] **Phase 19: Pre-Release Security Audit** — BLOCKS RELEASE — *valid as written*
-- [ ] **Phase 20: Release Cut** — v2.0.0 CalVer + Railway deploy + public SPARQL announce — 🔶 **PARTLY OBSOLETE (2026-07-26):** the "Railway multi-service (web + worker + Redis + Oxigraph)" exit criterion no longer matches the portfolio, which is draining Railway → Hetzner/Coolify. Retarget the deploy criterion at review time; the rest of the phase stands.
+- [ ] **Phase 20: Release Cut** — v2.0.0 CalVer + deploy + public SPARQL announce — 🔶 **PARTLY OBSOLETE — SETTLED 2026-07-27:** the "Railway multi-service (web + worker + Redis + Oxigraph)" exit criterion is dead, not merely drifting. Damien approved the drain (`q1-railway-finish`) and **the Railway account was emptied 2026-07-27** — 2 projects / 8 services deleted, `folio-insights` among them. **Retarget at Hetzner/Coolify**, where the replacement already runs healthy (`folio-insights.dev.openlegalstandard.org`). The rest of the phase stands. Delete/archive `railway.toml` + `ci/railway.py` when this opens.
 
 ---
 
