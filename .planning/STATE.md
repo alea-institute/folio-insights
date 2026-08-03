@@ -6,9 +6,9 @@ status: parked
 parked_at: 2026-07-26
 parked_by: "Damien — cockpit ask housekeeping-2026-07-24, q4-folio-insights-v2 ('Park with an explicit review date')"
 review_date: 2026-08-23
-review_date_status: PROVISIONAL -- 4 weeks, set by Fable; awaiting Damien's confirmation
+review_date_status: CONFIRMED by Damien 2026-08-02 (ask coding-projects-2026-07-27-post-drain-loose-ends q2; reconfirmed via coding-projects-2026-08-02-2016-open-question-inventory q2)
 stopped_at: Phase 8 complete; Phase 9 never opened
-last_updated: "2026-07-27T16:45:00.000Z"
+last_updated: "2026-08-03T02:20:00.000Z"
 last_activity: 2026-05-31 -- Phase 08 completed (dormant since; formally parked 2026-07-26)
 reality_audit: "2026-07-26 -- claims re-verified against code, git log and a full test run; see 'Reality Audit'"
 platform_update: "2026-07-27 -- Railway account EMPTIED (Damien approved q1-railway-finish). Phase 3.5's running deliverable is gone; Phase 20 retargeted at Hetzner/Coolify; Park Risk 1 CLOSED. No other park finding changed."
@@ -30,9 +30,11 @@ progress:
 > done / needs to be done … refactor the GSD plans to reflect that."* — this file is that
 > refactor.
 >
-> **Review date: 2026-08-23** (4 weeks). ⚠ **PROVISIONAL** — the 4-week window was chosen by
-> Fable, not by Damien; the ask recorded no interval. Confirm or change it with him at the
-> first opportunity, then drop this warning.
+> **Review date: 2026-08-23** — **CONFIRMED by Damien 2026-08-02** ("2026-08-23 is fine —
+> confirm it", ask `coding-projects-2026-07-27-post-drain-loose-ends` q2; reconfirmed the same
+> day on `coding-projects-2026-08-02-2016-open-question-inventory` q2 with this note:
+> *"I'll probably want to convert the GSD to a CE plan. Let's plan on that migration."*
+> The review sitting should therefore open with a ce-plan for migrating this GSD state to CE.
 >
 > **What "parked" means here:**
 >
@@ -62,7 +64,7 @@ Milestone: v2.0 shards-as-axioms — STARTED 2026-04-20, INITIALIZED 2026-04-22
 Phase: 08 (folio-v2-vocab-mini-bfo-spine-7) — **COMPLETE** (4/4 plans have SUMMARYs;
 `08-VERIFICATION.md` status `passed`, 25/25 must-haves)
 Plan: 4 of 4
-Status: **PARKED 2026-07-26** (dormant since 2026-05-31) — review **2026-08-23** *(provisional)*
+Status: **PARKED 2026-07-26** (dormant since 2026-05-31) — review **2026-08-23** *(confirmed 2026-08-02)*
 Last activity: 2026-05-31 -- Phase 08 completed
 
 Progress: 10 of 24 phases (Phases 0, 1, 2, 3, 3.5, 4, 5, 6, 7, 8) — all 41 planned plans in
@@ -453,7 +455,7 @@ Items acknowledged and deferred at v1.1 milestone close on 2026-04-20. All are v
 ## Session Continuity
 
 **Milestone PARKED 2026-07-26 — there is no session to resume.** Do not act on this block until
-Damien un-parks v2.0 (review due 2026-08-23, provisional).
+Damien un-parks v2.0 (review due 2026-08-23, confirmed).
 
 Last session: 2026-05-31T15:46:30.304Z
 Stopped at: Phase 08 COMPLETE (4/4 plans, verified) — Phase 09 never opened
