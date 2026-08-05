@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from folio_insights.models.knowledge_unit import ConceptTag
 from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
 from folio_insights.services.bridge.reconciliation_bridge import FourPathReconciler
@@ -137,24 +139,124 @@ def test_whole_string_bar_rejects_place_mismap_on_real_scale() -> None:
     assert tags and tags[0].extraction_path == "proposed_class"
 
 
-def test_metadata_source_excluded_from_tagging() -> None:
-    # Ch02 unit d3c44e2a: a metadata/front-matter unit must never be tagged.
+def _unit(text: str, section: list[str]):
+    """A minimal KnowledgeUnit for the source-classification gate."""
     from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit, Span
 
-    def _unit(text: str, section: list[str]) -> KnowledgeUnit:
-        return KnowledgeUnit(
-            text=text,
-            original_span=Span(start=0, end=len(text), source_file="ch.md"),
-            unit_type=KnowledgeType.PRINCIPLE,
-            source_file="ch.md",
-            source_section=section,
-        )
+    return KnowledgeUnit(
+        text=text,
+        original_span=Span(start=0, end=len(text), source_file="ch.md"),
+        unit_type=KnowledgeType.PRINCIPLE,
+        source_file="ch.md",
+        source_section=section,
+    )
 
+
+def test_metadata_source_excluded_from_tagging_by_section_label() -> None:
+    # Ch02 unit d3c44e2a: a metadata/front-matter unit must never be tagged.
+    #
+    # SCOPE (renamed 2026-08-05): this case is decided ENTIRELY by the section label.
+    # "Copyright" is a front-matter marker that folio_resolve.sources.classify_source
+    # short-circuits on, so the ISBN text heuristic is never reached. It is a real
+    # test of the label rules and it stays — but it is NOT coverage of the text path,
+    # and reading it as such is what let folio-resolve F1 live undetected for weeks
+    # (see the two tests below). Keep the assertions label-driven here on purpose.
     stage = FolioTaggerStage()
     front = _unit("ISBN 978-0-13-468599-1", ["Front Matter", "Copyright"])
     body = _unit("The plaintiff filed a motion.", ["Chapter 2", "Discovery"])
     assert stage._is_taggable_source(front) is False
     assert stage._is_taggable_source(body) is True
+
+
+def test_isbn_block_under_marker_free_label_is_still_metadata() -> None:
+    # The TEXT heuristic, genuinely exercised. "Publication Data" carries no
+    # front-matter / back-matter / metadata section marker, so classify_source falls
+    # THROUGH the label rules and the ISBN regex is the only thing that can decide the
+    # outcome. A real 13-digit ISBN block must stay excluded.
+    #
+    # The control assertion is load-bearing: the same label with ordinary prose must be
+    # taggable. If it ever stops being, this test has silently reverted to a label test
+    # and no longer guards the regex at all.
+    stage = FolioTaggerStage()
+    control = _unit("The witness identified the exhibit.", ["Publication Data"])
+    assert stage._is_taggable_source(control) is True, (
+        "'Publication Data' must not be a section marker, or this test proves nothing "
+        "about the ISBN regex"
+    )
+
+    isbn_only = _unit("ISBN 978-0-13-468599-1", ["Publication Data"])
+    isbn_block = _unit(
+        "First edition. ISBN 978-0-13-468599-1. Printed in the United States.",
+        ["Publication Data"],
+    )
+    assert stage._is_taggable_source(isbn_only) is False
+    assert stage._is_taggable_source(isbn_block) is False
+
+
+# ---------------------------------------------------------------------------
+# EXPECTED FAILURE UNTIL THE folio-resolve PIN IS BUMPED — READ BEFORE BUMPING
+#
+# folio-resolve is pinned to ==0.3.0 in pyproject.toml. Its SourceClassifier ISBN
+# regex is `\b(?:97[89][- ]?)?\d{1,5}[- ]?\d{1,7}[- ]?\d{1,7}[- ]?[\dxX]\b`, which
+# needs only FOUR digits — so essentially any legal citation with a rule or statute
+# number in a sub-200-char unit classifies as METADATA. In this repo that is not a
+# cosmetic misclassification: FolioTaggerStage._is_taggable_source gates BOTH passes,
+# so such a unit is emitted with folio_tags == [] AND harvested into the corpus
+# domain prior as if it were front matter.
+#
+# This is confirmed in this repo's own committed output: in
+# output/uat_ta_ch04_v8/extraction.json (1,168 units) all 5 units the metadata gate
+# excluded were false positives — every one a Federal Rules of Evidence citation, in
+# a chapter titled "Evidence and Objections". Full evidence and file:line citations:
+# folio-resolve docs/migration/2026-08-05-v0.3.1-consumer-impact.md §4.1 / §4.1a.
+#
+# The fix (a 10-digit regex) is on folio-resolve main and is UNPUBLISHED — it is in
+# NEITHER the installed 0.1.0 wheel NOR the pinned 0.3.0. So these cases pin the
+# DESIRED behavior and legitimately fail today. strict=True means the day the pin is
+# bumped to a release carrying the fix, the suite goes RED with XPASS. That is the
+# intended signal, not a breakage:
+#
+#     WHEN YOU BUMP folio-resolve IN pyproject.toml, DELETE THIS xfail MARKER.
+#
+# Do not weaken the assertion to make the suite green — a green assertion here is
+# exactly the blindness this test was written to remove.
+# ---------------------------------------------------------------------------
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "folio-resolve is pinned to ==0.3.0, whose SourceClassifier ISBN regex matches "
+        "any 4+ digit run, so citation-dense body units are misclassified as METADATA "
+        "and silently never tagged. Fixed on folio-resolve main, unpublished. Delete "
+        "this marker when the pin is bumped."
+    ),
+)
+@pytest.mark.parametrize(
+    ("text", "section"),
+    [
+        (
+            "A party must authenticate a document under Fed. R. Evid. 901-902 before it "
+            "may be received in evidence.",
+            ["Chapter 4", "Objections", "Authentication"],
+        ),
+        (
+            "Object under FRE 1002 when the proponent offers a duplicate in place of the "
+            "original.",
+            ["Chapter 4", "Objections", "Original Writings"],
+        ),
+        (
+            "A claim brought under 42 U.S.C. 1983 requires state action.",
+            ["Chapter 3", "Civil Rights"],
+        ),
+    ],
+    ids=["fed-r-evid-901-902", "fre-1002", "usc-1983"],
+)
+def test_citation_dense_body_unit_stays_taggable(text: str, section: list[str]) -> None:
+    # The assertion §4.1b of the impact doc says was missing: a must-STAY-taggable
+    # case whose section label is marker-free, so the outcome is decided by the text
+    # heuristic and nothing else. These are synthetic statements of law written for
+    # this test — no manuscript prose.
+    stage = FolioTaggerStage()
+    assert stage._is_taggable_source(_unit(text, section)) is True
 
 
 def test_decompose_splits_compound_heading_into_two_tags() -> None:
