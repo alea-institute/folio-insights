@@ -194,42 +194,34 @@ def test_isbn_block_under_marker_free_label_is_still_metadata() -> None:
 
 
 # ---------------------------------------------------------------------------
-# EXPECTED FAILURE UNTIL THE folio-resolve PIN IS BUMPED — READ BEFORE BUMPING
+# THE REGRESSION GUARD FOR F1 — a citation is not metadata.
 #
-# folio-resolve is pinned to ==0.3.0 in pyproject.toml. Its SourceClassifier ISBN
-# regex is `\b(?:97[89][- ]?)?\d{1,5}[- ]?\d{1,7}[- ]?\d{1,7}[- ]?[\dxX]\b`, which
-# needs only FOUR digits — so essentially any legal citation with a rule or statute
-# number in a sub-200-char unit classifies as METADATA. In this repo that is not a
-# cosmetic misclassification: FolioTaggerStage._is_taggable_source gates BOTH passes,
-# so such a unit is emitted with folio_tags == [] AND harvested into the corpus
-# domain prior as if it were front matter.
+# History, because a green assertion looks like it was always green: under
+# folio-resolve <=0.3.0 the SourceClassifier ISBN regex was
+# `\b(?:97[89][- ]?)?\d{1,5}[- ]?\d{1,7}[- ]?\d{1,7}[- ]?[\dxX]\b`, which needed only
+# FOUR digits — so essentially any legal citation carrying a rule or statute number in
+# a sub-200-char unit classified as METADATA. In this repo that was not a cosmetic
+# misclassification: FolioTaggerStage._is_taggable_source gates BOTH passes, so such a
+# unit was emitted with folio_tags == [] AND harvested into the corpus domain prior as
+# if it were front matter — the treatise's most substantive prose steering the prior
+# that steers the judge.
 #
-# This is confirmed in this repo's own committed output: in
-# output/uat_ta_ch04_v8/extraction.json (1,168 units) all 5 units the metadata gate
-# excluded were false positives — every one a Federal Rules of Evidence citation, in
-# a chapter titled "Evidence and Objections". Full evidence and file:line citations:
-# folio-resolve docs/migration/2026-08-05-v0.3.1-consumer-impact.md §4.1 / §4.1a.
+# Confirmed in this repo's own committed output: in output/uat_ta_ch04_v8/extraction.json
+# (1,168 units) all 5 units the metadata gate excluded were false positives — every one
+# a Federal Rules of Evidence citation, in a chapter titled "Evidence and Objections".
+# Full evidence and file:line citations: folio-resolve
+# docs/migration/2026-08-05-v0.3.1-consumer-impact.md §4.1 / §4.1a.
 #
-# The fix (a 10-digit regex) is on folio-resolve main and is UNPUBLISHED — it is in
-# NEITHER the installed 0.1.0 wheel NOR the pinned 0.3.0. So these cases pin the
-# DESIRED behavior and legitimately fail today. strict=True means the day the pin is
-# bumped to a release carrying the fix, the suite goes RED with XPASS. That is the
-# intended signal, not a breakage:
+# These three cases were committed as xfail(strict=True) against the 0.3.0 pin so that
+# bumping to the release carrying the 10-digit regex would turn the suite RED with XPASS
+# — a deliberate flip trigger. It fired on 2026-08-05 at ==0.3.1 (all three XPASS), and
+# the markers came off in the same commit. From here they are an ordinary guard: they
+# fail if the permissive regex ever comes back, or if a future pin regresses below
+# 0.3.1.
 #
-#     WHEN YOU BUMP folio-resolve IN pyproject.toml, DELETE THIS xfail MARKER.
-#
-# Do not weaken the assertion to make the suite green — a green assertion here is
+# Do not weaken these assertions to make the suite green — a weakened assertion here is
 # exactly the blindness this test was written to remove.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "folio-resolve is pinned to ==0.3.0, whose SourceClassifier ISBN regex matches "
-        "any 4+ digit run, so citation-dense body units are misclassified as METADATA "
-        "and silently never tagged. Fixed on folio-resolve main, unpublished. Delete "
-        "this marker when the pin is bumped."
-    ),
-)
 @pytest.mark.parametrize(
     ("text", "section"),
     [

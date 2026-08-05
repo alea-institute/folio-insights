@@ -20,16 +20,21 @@ dependencies = [
     #
     # EXACT PIN, deliberately (2026-08-05). The old `>=0.1.0` range was resolved at
     # image-build time by `uv pip install .` (Dockerfile L43, Dockerfile.web L59), so
-    # the containers were already running whatever PyPI called latest — 0.3.0 — while
-    # uv.lock and the local .venv said 0.1.0. `==0.3.0` freezes CURRENT PRODUCTION
-    # behavior; it is not an upgrade. Every future library release now needs a
-    # deliberate bump here, which is the review gate that was missing.
-    # Bumping it is a behavior change, not a chore: see folio-resolve
-    # docs/migration/2026-08-05-v0.3.1-consumer-impact.md (F1 — the SourceClassifier
-    # ISBN regex — lands on THIS repo and nowhere else), and flip the xfail in
-    # tests/test_folio_resolve_pin.py::test_citation_dense_body_unit_stays_taggable
-    # when you do.
-    "folio-resolve==0.3.0",
+    # the containers were already running whatever PyPI called latest while uv.lock
+    # and the local .venv said 0.1.0. The exact pin is the review gate that was
+    # missing; every library release needs a deliberate bump here.
+    #
+    # 0.3.1 (2026-08-05) is a BEHAVIOR CHANGE for this repo, not a chore. F1 — the
+    # SourceClassifier ISBN regex, which needed only four digits and so read any
+    # citation-dense sub-200-char unit as METADATA — lands on THIS repo and nowhere
+    # else, in both directions: units that emitted folio_tags == [] now get tagged,
+    # AND the corpus domain prior is now harvested from genuinely-metadata units
+    # instead of from the treatise's most substantive prose. Expect tag yield to rise
+    # and judged scores to move on units that were never misclassified. Evidence,
+    # with file:line: folio-resolve docs/migration/2026-08-05-v0.3.1-consumer-impact.md
+    # §4.1 / §4.1a. The committed evidence packs under docs/evidence/books/ record
+    # pre-fix numbers (metadata_units: 5, all five false positives) and are now stale.
+    "folio-resolve==0.3.1",
     # Bridge-tier runtime deps. folio-insights imports folio-enrich's code via a
     # sys.path bridge (config.folio_enrich_path), so folio-enrich's own runtime deps
     # are NOT pulled transitively and must be declared here. Their silent absence
