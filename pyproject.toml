@@ -34,7 +34,8 @@ dependencies = [
     # with file:line: folio-resolve docs/migration/2026-08-05-v0.3.1-consumer-impact.md
     # §4.1 / §4.1a. The committed evidence packs under docs/evidence/books/ record
     # pre-fix numbers (metadata_units: 5, all five false positives) and are now stale.
-    "folio-resolve==0.3.1",
+    # 0.4.0 adds deterministic recall as an opt-in capability; existing default behavior remains.
+    "folio-resolve==0.4.0",
     # Bridge-tier runtime deps. folio-insights imports folio-enrich's code via a
     # sys.path bridge (config.folio_enrich_path), so folio-enrich's own runtime deps
     # are NOT pulled transitively and must be declared here. Their silent absence
