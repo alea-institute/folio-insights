@@ -377,82 +377,40 @@ By design, FOLIO Insights does **not**:
 
 ---
 
-## Deploying to Railway
+## Deploying (Coolify on Hetzner)
 
-A dev environment is deployed on Railway at **https://folio-insights-production.up.railway.app**
-as a **single web service** built from [`Dockerfile.web`](Dockerfile.web): a FastAPI backend
-that also serves the built SvelteKit viewer (a static SPA) at `/`, on one port. The flat
-[`railway.toml`](railway.toml) pins the builder and healthcheck as config-as-code:
+The dev environment runs at **https://folio-insights.dev.openlegalstandard.org** as a Coolify
+application on the Hetzner dev box. Coolify builds [`Dockerfile.web`](Dockerfile.web) from this
+repository: a single web service, a FastAPI backend that also serves the built SvelteKit viewer
+(a static SPA) at `/`, on one port, with `/health` as its healthcheck. (Railway hosted it until
+2026-07-27; that account is gone and its config was removed from this repo.)
 
-```toml
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.web"
-
-[deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 120
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
-```
-
-> **Web-only by design.** The `worker` tier (OWL reasoning) is an idle stub until Phase 10 and
-> is **not** deployed in this dev environment — there is no worker service, no Redis, no Oxigraph.
-> The full multi-service GA cut (web + worker + Redis + Oxigraph, full SSR) is owned by Phase 20.
-> Use a **flat** `railway.toml`, never nested `[services.*]` tables — Railway silently ignores the
-> nested schema (which caused a prior HTTP 502: it fell back to building the stale `/Dockerfile`).
-
-### One-time setup
-
-The project already exists on Railway — **link** to it, do not create a new one:
-
-```bash
-npm i -g @railway/cli
-railway login
-railway link -p folio-insights -e production -s folio-insights   # link to the EXISTING project
-```
-
-Runtime variables are set as **masked** Railway variables. Non-secrets inline; secrets via stdin
-(never on argv / shell history):
-
-```bash
-railway variable set LLM_PROVIDER=anthropic LLM_MODEL=claude-sonnet-4-6 -s folio-insights --skip-deploys
-# Secrets (if/when needed) — paste the value at the prompt, then Ctrl-D:
-# railway variable set SOME_SECRET --stdin -s folio-insights --skip-deploys
-```
+> **Web-only by design.** The `worker` tier (OWL reasoning) is an idle stub and is **not**
+> deployed — no worker service, no Redis, no Oxigraph. The full multi-service release cut is a
+> gated candidate in `docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`.
 
 > **No shared LLM key is baked into the server.** LLM-backed features use Bring-Your-Own-Key
 > (each user supplies their own key); the dev server intentionally has no `ANTHROPIC_API_KEY`.
 
-### Auto-deploy on push to `master`
-
-In the Railway dashboard: **Service → Settings → Source** → connect `alea-institute/folio-insights`
-and set the trigger branch to `master`. Every push to `master` then triggers an automatic rebuild
-and redeploy. To deploy manually instead: `railway up -s folio-insights`.
-
 ### Verify
 
 ```bash
-URL="https://folio-insights-production.up.railway.app"
+URL="https://folio-insights.dev.openlegalstandard.org"
 curl -sf "$URL/health"                  # {"status":"ok"}
-curl -sI "$URL/" | head -1              # HTTP/2 200 (SPA shell; no x-railway-fallback header)
 curl -sf "$URL/api/v1/corpora"          # JSON list of bundled corpora
 ```
 
 ### Notes
 
-- **Data:** the baseline corpora `output/default/`, `output/demo/`, and `output/test1/` are
-  whitelisted in `.gitignore` **and** re-included in `.dockerignore`, so `Dockerfile.web`'s
-  `COPY output/` bundles them into the image and the viewer renders real data. Other generated
-  output stays git-ignored. (SQLite `*.db-wal`/`*.db-shm` sidecars are excluded for build determinism.)
+- **Data:** the baseline corpora `output/default/` and `output/demo/` are whitelisted in
+  `.gitignore` **and** re-included in `.dockerignore`, so `Dockerfile.web`'s `COPY output/`
+  bundles them into the image and the viewer renders real data. Other generated output stays
+  git-ignored. Never whitelist a corpus built from copyrighted sources. (SQLite
+  `*.db-wal`/`*.db-shm` sidecars are excluded for build determinism.)
+- **Source viewer:** `/api/v1/source` reads only files inside the configured output directory.
 - **SPA viewer:** the viewer is built with `@sveltejs/adapter-static` and served by FastAPI
   (`StaticFiles` with an `index.html` fallback for client-side routes, so deep links / refreshes
-  work). Full server-side rendering returns with the Phase 20 GA cut.
-- **Image size** is large (~8.7 GB) because `sentence-transformers` pulls torch + CUDA libs.
-  If you need a slimmer image, pin CPU-only torch in `Dockerfile.web`.
-- **Reproducible builds:** `Dockerfile.web` defaults `SOURCE_DATE_EPOCH=0` so plain Railway builds
-  (which pass no build-arg) succeed; the Dagger/CI path overrides it with the real commit epoch.
-- First build on Railway takes ~8-15 minutes; subsequent builds reuse cached layers.
+  work).
 
 ---
 

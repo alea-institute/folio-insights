@@ -1,16 +1,9 @@
 """Gate 5 — bit-identical digest (REQ-OBS-04, D-08).
 
-Two assertion modes:
-
-  (1) LOCAL: two back-to-back Dagger builds with the same
-      SOURCE_DATE_EPOCH must produce identical digests. This proves the
-      local pipeline itself is deterministic. Always runs (when Docker +
-      Dagger are available).
-
-  (2) RAILWAY: the deployed image digest (pulled from Railway's registry)
-      must equal the locally-built digest. This proves the end-to-end
-      deploy preserves reproducibility. Skipped when RAILWAY_TOKEN is
-      absent.
+Two back-to-back Dagger builds with the same SOURCE_DATE_EPOCH must produce
+identical digests, which proves the local pipeline is deterministic. Runs when
+Docker and the Dagger SDK are available. (A second mode compared against the
+Railway-deployed digest; Railway was retired 2026-07-27 and that mode removed.)
 
 Plan 00-05 renamed the CI driver package from ``dagger/`` to ``ci/`` to
 avoid shadowing the dagger-io SDK. The subprocess invocation here runs
@@ -41,21 +34,6 @@ import pytest
 _DIGEST_LINE_RE = re.compile(r"@sha256:([0-9a-f]{64})")
 
 
-def _inspect_digest(image_ref: str) -> str | None:
-    """Run ``docker inspect --format '{{.Id}}'``.
-
-    Returns the image ID (``sha256:...``) or ``None`` if the image is absent
-    locally.
-    """
-    result = subprocess.run(
-        ["docker", "inspect", "--format", "{{.Id}}", image_ref],
-        capture_output=True, text=True, check=False,
-    )
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip()
-
-
 # Two back-to-back Dagger image builds far exceed the suite-wide 30 s
 # pytest timeout; each subprocess is itself capped at 1200 s.
 _LOCAL_BUILD_TIMEOUT_SECS = 2700
@@ -70,7 +48,7 @@ def _require_build_tooling() -> None:
 
 
 def _dagger_build(tag: str, which: str = "web") -> str:
-    """Invoke ``<sys.executable> -m ci.build --no-deploy --no-lint --no-test --tag <tag>``.
+    """Invoke ``<sys.executable> -m ci.build --no-lint --no-test --tag <tag>``.
 
     Parses ``WEB:``/``WORKER:`` line from stdout and returns the digest for
     ``which`` (one of ``"web"``, ``"worker"``). Raises ``AssertionError`` if
@@ -88,13 +66,11 @@ def _dagger_build(tag: str, which: str = "web") -> str:
         "OTEL_TRACES_EXPORTER": "none",
         "OTEL_METRICS_EXPORTER": "none",
         "OTEL_LOGS_EXPORTER": "none",
-        # Force --no-deploy even if the caller's shell has a RAILWAY_TOKEN set.
-        "RAILWAY_TOKEN": "",
     }
     result = subprocess.run(
         [
             sys.executable, "-m", "ci.build",
-            "--no-deploy", "--no-lint", "--no-test",
+            "--no-lint", "--no-test",
             "--tag", tag,
         ],
         capture_output=True, text=True, check=True, timeout=1200, env=env,
@@ -147,43 +123,4 @@ def test_local_dagger_builds_bit_identical_worker() -> None:
         "RESEARCH.md §Gate 5). Worker-specific suspects: jlink output path "
         "timestamps, owlready2 sdist compile timestamps (SOURCE_DATE_EPOCH "
         "must reach gcc/musl-dev via pip build-time env)."
-    )
-
-
-@pytest.mark.gate5
-@pytest.mark.slow
-@pytest.mark.skipif(
-    not os.environ.get("RAILWAY_TOKEN"),
-    reason="RAILWAY_TOKEN not set — Railway deploy not available",
-)
-@pytest.mark.parametrize("image", ["fi-web", "fi-worker"])
-def test_local_matches_railway_deployed_digest(image: str) -> None:
-    """Mode 2 (Railway available): local-build digest == Railway-pulled digest.
-
-    Assumes a previous Dagger run published to ``ttl.sh/{image}:gate5-a``
-    (Mode 1 runs this). The Railway side pulls from the project's registry
-    URL (``$RAILWAY_REGISTRY``, defaults to ``registry.railway.app``).
-    """
-    which = "web" if image == "fi-web" else "worker"
-    local_tag = f"ttl.sh/{image}:gate5-{which}-a"
-    local_digest = _inspect_digest(local_tag)
-    if not local_digest:
-        pytest.skip(
-            f"Local {image} image not present at {local_tag}; "
-            f"run Mode 1 tests first to populate it."
-        )
-
-    railway_registry = os.environ.get("RAILWAY_REGISTRY", "registry.railway.app")
-    subprocess.run(
-        ["docker", "pull", f"{railway_registry}/{image}:latest"],
-        capture_output=True, text=True, check=True, timeout=300,
-    )
-    railway_digest = _inspect_digest(f"{railway_registry}/{image}:latest")
-
-    assert local_digest == railway_digest, (
-        f"Gate 5 RAILWAY FAIL: {image} drift between local and Railway.\n"
-        f"  local:   {local_digest}\n  railway: {railway_digest}\n"
-        "Record delta in 00-DECISION.md per D-08 (pivot triggers: "
-        "investigate SDK version mismatch, registry-side mutation, or "
-        "BuildKit variant)."
     )

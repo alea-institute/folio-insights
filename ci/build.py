@@ -1,15 +1,14 @@
 """folio-insights Dagger build pipeline.
 
-D-10: full CI (build + lint + test + publish + deploy-trigger).
+D-10: full CI (build + lint + test + publish). Deploys happen in Coolify, not here.
 D-08: bit-identical digest via SOURCE_DATE_EPOCH + ``--require-hashes``.
 
 Stage ordering (Claude's discretion per CONTEXT.md line 64):
   Parallel: build-web | build-worker | lint
   Serial:   test (needs python runtime image from build-web)
   Serial:   publish (after all above)
-  Serial:   deploy (only on ``$CI`` + main branch + ``$RAILWAY_TOKEN``)
 
-Invoke: ``python -m ci.build [--no-deploy] [--tag <tag>]``
+Invoke: ``python -m ci.build [--tag <tag>]``
 
 Gate 5 discipline (10 techniques):
   1. ``@sha256:`` base pins            — sourced via ``.env.docker(.example)``
@@ -27,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -212,29 +210,16 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
 
 
 async def main(args: argparse.Namespace) -> None:
-    """Pipeline driver with deploy post-step."""
+    """Pipeline driver: build, publish, and print digests."""
     sde, web_ref, worker_ref = await _run_pipeline(args)
 
     print(f"SOURCE_DATE_EPOCH={sde}")
     print(f"WEB: ttl.sh/fi-web:{args.tag or sde} @ {web_ref}")
     print(f"WORKER: ttl.sh/fi-worker:{args.tag or sde} @ {worker_ref}")
 
-    # Deploy (serial, post-success) — skipped on --no-deploy or absent RAILWAY_TOKEN
-    if args.no_deploy or not os.environ.get("RAILWAY_TOKEN"):
-        print("Skipping Railway deploy (--no-deploy or RAILWAY_TOKEN missing)")
-        return
-
-    # Lazy import to avoid pulling subprocess/logging when the pipeline runs in
-    # --no-deploy mode (common for smoke + Gate 5 determinism runs).
-    from ci.railway import deploy_service
-
-    deploy_service("web", image=web_ref)
-    deploy_service("worker", image=worker_ref)
-
 
 def cli() -> None:
     parser = argparse.ArgumentParser(description="folio-insights CI pipeline (Dagger)")
-    parser.add_argument("--no-deploy", action="store_true", help="Skip Railway deploy stage")
     parser.add_argument("--no-lint", action="store_true", help="Skip ruff lint stage")
     parser.add_argument("--no-test", action="store_true", help="Skip pytest stage")
     parser.add_argument(
