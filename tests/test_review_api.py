@@ -446,6 +446,7 @@ def test_source_relative_path_resolves_inside_output_dir(client: TestClient, tmp
         "/etc/hostname",
         "../../../../../../etc/hostname",
         "default/../../../../../../etc/hostname",
+        "chapter\x00.md",
     ],
 )
 def test_source_rejects_paths_outside_output_dir(client: TestClient, outside: str):
