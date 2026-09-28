@@ -13,8 +13,9 @@ Two assertion modes:
       absent.
 
 Plan 00-05 renamed the CI driver package from ``dagger/`` to ``ci/`` to
-avoid shadowing the dagger-io SDK. The subprocess invocation here uses
-``python -m ci.build`` accordingly.
+avoid shadowing the dagger-io SDK. The subprocess invocation here runs
+``ci.build`` as a module under the current interpreter (``sys.executable``),
+so a box with only ``python3`` on PATH still works.
 
 Diagnostic: if Mode 1 fails (back-to-back local builds drift), the culprit
 is one of the 10 Gate 5 techniques in RESEARCH.md — most commonly:
@@ -25,9 +26,12 @@ is one of the 10 Gate 5 techniques in RESEARCH.md — most commonly:
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import re
+import shutil
 import subprocess
+import sys
 
 import pytest
 
@@ -52,8 +56,21 @@ def _inspect_digest(image_ref: str) -> str | None:
     return result.stdout.strip()
 
 
+# Two back-to-back Dagger image builds far exceed the suite-wide 30 s
+# pytest timeout; each subprocess is itself capped at 1200 s.
+_LOCAL_BUILD_TIMEOUT_SECS = 2700
+
+
+def _require_build_tooling() -> None:
+    """Skip with a clear reason when Docker or the Dagger SDK is unavailable."""
+    if shutil.which("docker") is None:
+        pytest.skip("docker not on PATH — Gate 5 needs Docker to build images")
+    if importlib.util.find_spec("dagger") is None:
+        pytest.skip("dagger-io SDK not installed — Gate 5 needs Dagger")
+
+
 def _dagger_build(tag: str, which: str = "web") -> str:
-    """Invoke ``python -m ci.build --no-deploy --no-lint --no-test --tag <tag>``.
+    """Invoke ``<sys.executable> -m ci.build --no-deploy --no-lint --no-test --tag <tag>``.
 
     Parses ``WEB:``/``WORKER:`` line from stdout and returns the digest for
     ``which`` (one of ``"web"``, ``"worker"``). Raises ``AssertionError`` if
@@ -76,7 +93,7 @@ def _dagger_build(tag: str, which: str = "web") -> str:
     }
     result = subprocess.run(
         [
-            "python", "-m", "ci.build",
+            sys.executable, "-m", "ci.build",
             "--no-deploy", "--no-lint", "--no-test",
             "--tag", tag,
         ],
@@ -96,8 +113,10 @@ def _dagger_build(tag: str, which: str = "web") -> str:
 
 @pytest.mark.gate5
 @pytest.mark.slow
+@pytest.mark.timeout(_LOCAL_BUILD_TIMEOUT_SECS)
 def test_local_dagger_builds_bit_identical_web() -> None:
     """Mode 1 (always): two local Dagger builds produce identical web digests."""
+    _require_build_tooling()
     digest_a = _dagger_build("gate5-web-a", which="web")
     digest_b = _dagger_build("gate5-web-b", which="web")
     assert digest_a == digest_b, (
@@ -114,8 +133,10 @@ def test_local_dagger_builds_bit_identical_web() -> None:
 
 @pytest.mark.gate5
 @pytest.mark.slow
+@pytest.mark.timeout(_LOCAL_BUILD_TIMEOUT_SECS)
 def test_local_dagger_builds_bit_identical_worker() -> None:
     """Mode 1 (always): two local Dagger builds produce identical worker digests."""
+    _require_build_tooling()
     digest_a = _dagger_build("gate5-worker-a", which="worker")
     digest_b = _dagger_build("gate5-worker-b", which="worker")
     assert digest_a == digest_b, (
