@@ -92,6 +92,33 @@ BUILD_CTX_EXCLUDE = [
     "ci/__pycache__",
 ]
 
+# Corpora re-included above and bundled into the web image (Dockerfile.web
+# COPY output/). Images publish to the public ttl.sh registry.
+BUNDLED_CORPORA = ("output/default", "output/demo")
+_BUILD_CTX_SIDECARS = (".db-wal", ".db-shm")
+
+
+def assert_bundled_corpora_tracked(repo_root: Path = REPO_ROOT) -> None:
+    """Refuse to build when a bundled corpus holds files git does not track.
+
+    The Dagger context is the host directory, not a clean checkout, so an
+    untracked or ignored file dropped into a bundled corpus would ship in a
+    public image. Only SQLite sidecars are allowed; the exclude list drops them.
+    """
+    result = subprocess.run(
+        ["git", "ls-files", "--others", "-z", "--", *BUNDLED_CORPORA],
+        cwd=repo_root, capture_output=True, text=True, check=True,
+    )
+    stray = sorted(
+        path for path in result.stdout.split("\0")
+        if path and not path.endswith(_BUILD_CTX_SIDECARS)
+    )
+    if stray:
+        raise SystemExit(
+            "Refusing to build: bundled corpora contain files git does not track, "
+            "and they would ship in a public image:\n  " + "\n  ".join(stray)
+        )
+
 
 async def _build_image(
     client: dagger.Client,
@@ -178,6 +205,7 @@ async def _test(client: dagger.Client, sde: str) -> None:
 async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
     """Core pipeline driver — returns (sde, web_ref, worker_ref)."""
     sde = _source_date_epoch()
+    assert_bundled_corpora_tracked()
     _load_digests()  # Fail-fast if .env.docker(.example) absent
     tag_suffix = args.tag or sde
 
