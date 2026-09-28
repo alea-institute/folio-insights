@@ -1,5 +1,19 @@
 # Milestones
 
+## v2.0 Shards-as-Axioms (Archived, partially shipped: 2026-09-27)
+
+**Phases completed:** 10 of 24 (Phases 0, 1, 2, 3, 3.5, 4, 5, 6, 7, 8), 41 plans, all verified
+**Deferred verification:** Phase 0 Gate 4 (SSR <200 ms) and D-11 (full-1M reasoner run)
+**Not started:** Phases 9–20 — moved to gated CE candidates in [`docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`](../docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md)
+**Decision:** cockpit ask `folio-insights-2026-09-28-0024-audit-exposure-and-v2-review`, q2 — "Archive GSD, re-plan in CE" (parked 2026-07-26; the 2026-08-23 review never ran)
+
+**Key accomplishments:**
+
+- Foundations hard gate (keep=pyoxigraph), polysemy spike, shard envelope + subtypes, IRI scheme, content versioning, DID substrate, governance model, FOLIO v2 vocab + mini-BFO spine
+- Evidence and per-phase verdicts: `.planning/STATE.md` "Reality Audit — 2026-07-26"
+
+---
+
 ## v1.1 Railway Dev Deploy + UAT Gap Closure (Shipped: 2026-04-20)
 
 **Phases completed:** 2 phases, 8 plans, ~17 tasks
