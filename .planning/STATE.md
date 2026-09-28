@@ -198,6 +198,12 @@ invalidates them. The deltas are:
 
 ## Park Risks — the four things to re-verify at review (2026-08-23), not before
 
+**Re-verified 2026-09-27 (U15 of the CE successor plan):**
+
+- **Viewer collision — still prospective.** `git log --since=2026-05-31 master -- viewer/` → 0 commits. Phases 14/15 still need re-scoping before planning, but nothing has landed in `viewer/`.
+- **folio-resolve drift — bounded.** `pyproject.toml` pins `folio-resolve==0.4.0` (exact, hash-pinned in the locks); the venv has 0.4.0. The open-ended `>=0.1.0` risk no longer exists.
+- **Stack drift — none.** Installed pins match STACK.md (`pyoxigraph 0.5.7`, `atproto 0.0.65`, `pynacl 1.6.2`, `jcs 0.2.1`). Full suite `pytest -m "not gate5"`: 1034 passed, 10 skipped, 1 failed — `tests/test_bridge.py::test_normalizer_import`, `ModuleNotFoundError: folio_propositions`, raised inside `../folio-enrich/backend/app/models/job.py` through the legacy `sys.path` bridge (a sibling-repo change, not stack drift). Gate-2 worst case `q13_confidence_histogram` warm median ≈ **131 ms** (was ≈109 ms on 2026-07-26), still under the 500 ms hard gate.
+
 1. ~~**The Railway dev server may be deleted underneath Phase 3.5.**~~ **RESOLVED — it
    happened. 2026-07-27.** Damien approved `q1-railway-finish` ("Approve the whole drain"),
    and the Railway account was emptied the same day. Phase 3.5's running deliverable is gone
