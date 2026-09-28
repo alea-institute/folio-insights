@@ -72,7 +72,15 @@ BUILD_CTX_EXCLUDE = [
     ".github",
     ".planning",
     ".claude",
+    # Mirror .dockerignore: exclude generated output, re-include only the two
+    # demo corpora Dockerfile.web bundles (COPY output/), then re-exclude
+    # SQLite sidecars and the jobs scratch dir. Order matters for "!" patterns.
     "output",
+    "!output/default",
+    "!output/demo",
+    "output/**/*.db-wal",
+    "output/**/*.db-shm",
+    "output/.jobs",
     "fixtures/bench.nq",
     "fixtures/bench-*.nq",
     "node_modules",
