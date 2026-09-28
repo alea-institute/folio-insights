@@ -425,6 +425,52 @@ def test_source_missing(client: TestClient):
     assert "not available" in data["message"]
 
 
+def test_source_relative_path_resolves_inside_output_dir(client: TestClient, tmp_output: Path):
+    """A path relative to the output dir (how extraction records cite sources) is served."""
+    sources = tmp_output / "default" / "sources"
+    sources.mkdir()
+    (sources / "chapter.md").write_text("a" * 50 + "SPAN" + "b" * 50)
+
+    resp = client.get(
+        "/api/v1/source",
+        params={"file": "default/sources/chapter.md", "start": 50, "end": 54},
+    )
+    data = resp.json()
+    assert data["found"] is True
+    assert "SPAN" in data["text"]
+
+
+@pytest.mark.parametrize(
+    "outside",
+    [
+        "/etc/hostname",
+        "../../../../../../etc/hostname",
+        "default/../../../../../../etc/hostname",
+    ],
+)
+def test_source_rejects_paths_outside_output_dir(client: TestClient, outside: str):
+    """Absolute or traversing paths outside the output dir are never read."""
+    resp = client.get("/api/v1/source", params={"file": outside, "start": 0, "end": 10})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["found"] is False
+    assert data["text"] == ""
+
+
+def test_source_rejects_symlink_escaping_output_dir(
+    client: TestClient, tmp_output: Path, tmp_path_factory: pytest.TempPathFactory
+):
+    """A symlink inside the output dir that points outside it is not followed."""
+    secret = tmp_path_factory.mktemp("outside") / "secret.txt"
+    secret.write_text("TOP SECRET")
+    (tmp_output / "link.md").symlink_to(secret)
+
+    resp = client.get("/api/v1/source", params={"file": "link.md", "start": 0, "end": 10})
+    data = resp.json()
+    assert data["found"] is False
+    assert "TOP SECRET" not in data["text"]
+
+
 def test_confidence_filter(client: TestClient):
     """GET /api/v1/units with confidence=high returns only high-confidence units."""
     resp = client.get(
