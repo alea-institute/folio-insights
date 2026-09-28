@@ -39,12 +39,33 @@ _DIGEST_LINE_RE = re.compile(r"@sha256:([0-9a-f]{64})")
 _LOCAL_BUILD_TIMEOUT_SECS = 2700
 
 
-def _require_build_tooling() -> None:
-    """Skip with a clear reason when Docker or the Dagger SDK is unavailable."""
+def _missing_build_tooling() -> str | None:
+    """Return why Gate 5 cannot build here, or None when it can."""
     if shutil.which("docker") is None:
-        pytest.skip("docker not on PATH — Gate 5 needs Docker to build images")
+        return "docker not on PATH"
     if importlib.util.find_spec("dagger") is None:
-        pytest.skip("dagger-io SDK not installed — Gate 5 needs Dagger")
+        return "dagger-io SDK not installed"
+    probe = subprocess.run(
+        ["docker", "info", "--format", "{{.ServerVersion}}"],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    if probe.returncode != 0:
+        return "docker daemon not reachable"
+    return None
+
+
+def _require_build_tooling() -> None:
+    """Skip when Docker or Dagger is unavailable, unless the gate is required.
+
+    Set ``GATE5_REQUIRED=1`` for a dedicated Gate 5 run: missing tooling then
+    fails instead of skipping, so the gate cannot pass without building.
+    """
+    reason = _missing_build_tooling()
+    if reason is None:
+        return
+    if os.environ.get("GATE5_REQUIRED") == "1":
+        pytest.fail(f"Gate 5 required but cannot build: {reason}")
+    pytest.skip(f"{reason} — Gate 5 needs Docker and Dagger to build images")
 
 
 def _dagger_build(tag: str, which: str = "web") -> str:
