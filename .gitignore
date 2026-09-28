@@ -62,3 +62,6 @@ staging/
 # whole directory: feat/proposed-class-governance deliberately tracks other
 # data/governance/ content, and a blanket ignore would fight that branch.
 data/governance/folio_lexicon_cache.json
+
+# Harness-managed agent worktrees are never tracked
+.claude/worktrees/
