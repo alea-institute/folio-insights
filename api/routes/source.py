@@ -13,7 +13,7 @@ _CONTEXT_CHARS = 500
 
 
 def _output_dir() -> Path:
-    """Late import to avoid a circular import with api.main."""
+    """Lazy import to avoid circular dependency with api.main."""
     from api.main import _output_dir
 
     return _output_dir
