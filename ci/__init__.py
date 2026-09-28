@@ -9,6 +9,4 @@ would resolve to our own package, not the SDK. ``ci/`` keeps the intent
 
 Entry points:
   - ``python -m ci.build`` — build web+worker, lint, test, publish, record digests
-  - ``python -m ci.railway`` — deploy pushed images to Railway (invoked by
-    ``ci/build.py`` after publish on main branch)
 """
