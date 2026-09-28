@@ -30,7 +30,11 @@ def _confine(file: str) -> Path | None:
     candidate = Path(file)
     if not candidate.is_absolute():
         candidate = root / candidate
-    resolved = candidate.resolve()
+    try:
+        resolved = candidate.resolve()
+    except (OSError, ValueError):
+        # ValueError: embedded NUL byte; OSError: unresolvable path.
+        return None
     if not resolved.is_relative_to(root):
         return None
     return resolved
