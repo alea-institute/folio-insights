@@ -2,7 +2,9 @@
 milestone: v2.0
 milestone_name: shards-as-axioms
 generated_at: 2026-04-22
-status: parked
+status: archived
+archived_at: 2026-09-27
+successor_plan: docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md
 parked_at: 2026-07-26
 review_date: 2026-08-23
 review_date_status: PROVISIONAL -- awaiting Damien's confirmation
@@ -22,6 +24,12 @@ sources:
 ---
 
 # FOLIO Insights v2.0 — Roadmap (shards-as-axioms)
+
+> ## 🗄 ARCHIVED 2026-09-27 — partially shipped (Phases 0–8)
+>
+> Archived by Damien via cockpit ask `folio-insights-2026-09-28-0024-audit-exposure-and-v2-review` (`q2-v2-disposition`). Phases 9–20 below are
+> **not** a live queue: they are gated candidate units in **`docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`**. Phase text here is
+> unchanged history.
 
 > ## ⛔ PARKED 2026-07-26 — review 2026-08-23 *(provisional)*
 >

@@ -2,7 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: shards-as-axioms
-status: parked
+status: archived
+archived_at: 2026-09-27
+archived_by: "Damien — cockpit ask folio-insights-2026-09-28-0024-audit-exposure-and-v2-review, q2-v2-disposition ('Archive GSD, re-plan in CE')"
+successor_plan: docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md
 parked_at: 2026-07-26
 parked_by: "Damien — cockpit ask housekeeping-2026-07-24, q4-folio-insights-v2 ('Park with an explicit review date')"
 review_date: 2026-08-23
@@ -22,7 +25,22 @@ progress:
 
 # Project State
 
-> # ⛔ PARKED — v2.0 (shards-as-axioms)
+> # 🗄 ARCHIVED — v2.0 (shards-as-axioms), partially shipped
+>
+> **Archived 2026-09-27** by Damien via cockpit ask **`folio-insights-2026-09-28-0024-audit-exposure-and-v2-review`**, question
+> `q2-v2-disposition` → *"Archive GSD, re-plan in CE."* The 2026-08-23 review never ran;
+> this decision replaces it.
+>
+> - **Shipped:** Phases 0–8 (41 plans, verified). Phase 0 **Gate 4** (SSR <200 ms) and
+>   **D-11** (full-1M reasoner run) remain **deferred verification exceptions**.
+> - **Not started:** Phases 9–20. They now live as gated candidate units in the CE plan
+>   **`docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`** — the successor to this file. Open no GSD phase.
+> - **This directory is read-only history.** Nothing under `.planning/phases/` is deleted or
+>   moved; the audit sections below stay as the evidence the CE plan cites.
+>
+> *Superseded parking banner (history):*
+>
+> ## ⛔ PARKED — v2.0 (shards-as-axioms)
 >
 > **Parked 2026-07-26** by Damien via cockpit ask **`housekeeping-2026-07-24`**, question
 > `q4-folio-insights-v2` → *"Park with an explicit review date."*
