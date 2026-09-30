@@ -1,15 +1,14 @@
 """folio-insights Dagger build pipeline.
 
-D-10: full CI (build + lint + test + publish + deploy-trigger).
+D-10: full CI (build + lint + test + publish). Deploys happen in Coolify, not here.
 D-08: bit-identical digest via SOURCE_DATE_EPOCH + ``--require-hashes``.
 
 Stage ordering (Claude's discretion per CONTEXT.md line 64):
   Parallel: build-web | build-worker | lint
   Serial:   test (needs python runtime image from build-web)
   Serial:   publish (after all above)
-  Serial:   deploy (only on ``$CI`` + main branch + ``$RAILWAY_TOKEN``)
 
-Invoke: ``python -m ci.build [--no-deploy] [--tag <tag>]``
+Invoke: ``python -m ci.build [--tag <tag>]``
 
 Gate 5 discipline (10 techniques):
   1. ``@sha256:`` base pins            — sourced via ``.env.docker(.example)``
@@ -27,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -72,7 +70,15 @@ BUILD_CTX_EXCLUDE = [
     ".github",
     ".planning",
     ".claude",
+    # Mirror .dockerignore: exclude generated output, re-include only the two
+    # demo corpora Dockerfile.web bundles (COPY output/), then re-exclude
+    # SQLite sidecars and the jobs scratch dir. Order matters for "!" patterns.
     "output",
+    "!output/default",
+    "!output/demo",
+    "output/**/*.db-wal",
+    "output/**/*.db-shm",
+    "output/.jobs",
     "fixtures/bench.nq",
     "fixtures/bench-*.nq",
     "node_modules",
@@ -85,6 +91,33 @@ BUILD_CTX_EXCLUDE = [
     "ci/.venv",
     "ci/__pycache__",
 ]
+
+# Corpora re-included above and bundled into the web image (Dockerfile.web
+# COPY output/). Images publish to the public ttl.sh registry.
+BUNDLED_CORPORA = ("output/default", "output/demo")
+_BUILD_CTX_SIDECARS = (".db-wal", ".db-shm")
+
+
+def assert_bundled_corpora_tracked(repo_root: Path = REPO_ROOT) -> None:
+    """Refuse to build when a bundled corpus holds files git does not track.
+
+    The Dagger context is the host directory, not a clean checkout, so an
+    untracked or ignored file dropped into a bundled corpus would ship in a
+    public image. Only SQLite sidecars are allowed; the exclude list drops them.
+    """
+    result = subprocess.run(
+        ["git", "ls-files", "--others", "-z", "--", *BUNDLED_CORPORA],
+        cwd=repo_root, capture_output=True, text=True, check=True,
+    )
+    stray = sorted(
+        path for path in result.stdout.split("\0")
+        if path and not path.endswith(_BUILD_CTX_SIDECARS)
+    )
+    if stray:
+        raise SystemExit(
+            "Refusing to build: bundled corpora contain files git does not track, "
+            "and they would ship in a public image:\n  " + "\n  ".join(stray)
+        )
 
 
 async def _build_image(
@@ -172,6 +205,7 @@ async def _test(client: dagger.Client, sde: str) -> None:
 async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
     """Core pipeline driver — returns (sde, web_ref, worker_ref)."""
     sde = _source_date_epoch()
+    assert_bundled_corpora_tracked()
     _load_digests()  # Fail-fast if .env.docker(.example) absent
     tag_suffix = args.tag or sde
 
@@ -204,29 +238,16 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
 
 
 async def main(args: argparse.Namespace) -> None:
-    """Pipeline driver with deploy post-step."""
+    """Pipeline driver: build, publish, and print digests."""
     sde, web_ref, worker_ref = await _run_pipeline(args)
 
     print(f"SOURCE_DATE_EPOCH={sde}")
     print(f"WEB: ttl.sh/fi-web:{args.tag or sde} @ {web_ref}")
     print(f"WORKER: ttl.sh/fi-worker:{args.tag or sde} @ {worker_ref}")
 
-    # Deploy (serial, post-success) — skipped on --no-deploy or absent RAILWAY_TOKEN
-    if args.no_deploy or not os.environ.get("RAILWAY_TOKEN"):
-        print("Skipping Railway deploy (--no-deploy or RAILWAY_TOKEN missing)")
-        return
-
-    # Lazy import to avoid pulling subprocess/logging when the pipeline runs in
-    # --no-deploy mode (common for smoke + Gate 5 determinism runs).
-    from ci.railway import deploy_service
-
-    deploy_service("web", image=web_ref)
-    deploy_service("worker", image=worker_ref)
-
 
 def cli() -> None:
     parser = argparse.ArgumentParser(description="folio-insights CI pipeline (Dagger)")
-    parser.add_argument("--no-deploy", action="store_true", help="Skip Railway deploy stage")
     parser.add_argument("--no-lint", action="store_true", help="Skip ruff lint stage")
     parser.add_argument("--no-test", action="store_true", help="Skip pytest stage")
     parser.add_argument(

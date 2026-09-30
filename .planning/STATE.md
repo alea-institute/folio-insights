@@ -2,7 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: shards-as-axioms
-status: parked
+status: archived
+archived_at: 2026-09-27
+archived_by: "Damien — cockpit ask folio-insights-2026-09-28-0024-audit-exposure-and-v2-review, q2-v2-disposition ('Archive GSD, re-plan in CE')"
+successor_plan: docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md
 parked_at: 2026-07-26
 parked_by: "Damien — cockpit ask housekeeping-2026-07-24, q4-folio-insights-v2 ('Park with an explicit review date')"
 review_date: 2026-08-23
@@ -22,7 +25,22 @@ progress:
 
 # Project State
 
-> # ⛔ PARKED — v2.0 (shards-as-axioms)
+> # 🗄 ARCHIVED — v2.0 (shards-as-axioms), partially shipped
+>
+> **Archived 2026-09-27** by Damien via cockpit ask **`folio-insights-2026-09-28-0024-audit-exposure-and-v2-review`**, question
+> `q2-v2-disposition` → *"Archive GSD, re-plan in CE."* The 2026-08-23 review never ran;
+> this decision replaces it.
+>
+> - **Shipped:** Phases 0–8 (41 plans, verified). Phase 0 **Gate 4** (SSR <200 ms) and
+>   **D-11** (full-1M reasoner run) remain **deferred verification exceptions**.
+> - **Not started:** Phases 9–20. They now live as gated candidate units in the CE plan
+>   **`docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`** — the successor to this file. Open no GSD phase.
+> - **This directory is read-only history.** Nothing under `.planning/phases/` is deleted or
+>   moved; the audit sections below stay as the evidence the CE plan cites.
+>
+> *Superseded parking banner (history):*
+>
+> ## ⛔ PARKED — v2.0 (shards-as-axioms)
 >
 > **Parked 2026-07-26** by Damien via cockpit ask **`housekeeping-2026-07-24`**, question
 > `q4-folio-insights-v2` → *"Park with an explicit review date."*
@@ -179,6 +197,12 @@ invalidates them. The deltas are:
    and misleads anyone re-auditing.
 
 ## Park Risks — the four things to re-verify at review (2026-08-23), not before
+
+**Re-verified 2026-09-27 (U15 of the CE successor plan):**
+
+- **Viewer collision — still prospective.** `git log --since=2026-05-31 master -- viewer/` → 0 commits. Phases 14/15 still need re-scoping before planning, but nothing has landed in `viewer/`.
+- **folio-resolve drift — bounded.** `pyproject.toml` pins `folio-resolve==0.4.0` (exact, hash-pinned in the locks); the venv has 0.4.0. The open-ended `>=0.1.0` risk no longer exists.
+- **Stack drift — none.** Installed pins match STACK.md (`pyoxigraph 0.5.7`, `atproto 0.0.65`, `pynacl 1.6.2`, `jcs 0.2.1`). Full suite `pytest -m "not gate5"`: 1034 passed, 10 skipped, 1 failed — `tests/test_bridge.py::test_normalizer_import`, `ModuleNotFoundError: folio_propositions`, raised inside `../folio-enrich/backend/app/models/job.py` through the legacy `sys.path` bridge (a sibling-repo change, not stack drift). Gate-2 worst case `q13_confidence_histogram` warm median ≈ **131 ms** (was ≈109 ms on 2026-07-26), still under the 500 ms hard gate.
 
 1. ~~**The Railway dev server may be deleted underneath Phase 3.5.**~~ **RESOLVED — it
    happened. 2026-07-27.** Damien approved `q1-railway-finish` ("Approve the whole drain"),
