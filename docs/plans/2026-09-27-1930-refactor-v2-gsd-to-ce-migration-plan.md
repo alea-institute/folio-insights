@@ -14,8 +14,8 @@ execution: code
 - **Objective:** Anyone opening folio-insights can see, from one CE plan, exactly what v2.0 shipped, what is still wanted, and what is waiting on Damien — with no dormant GSD milestone pretending to be in flight.
 - **Means:** Archive the GSD milestone as partially shipped, clear the known chores, re-verify the park risks, and queue every remaining v2.0 phase as a gated candidate unit (KTD1, KTD2).
 - **Authority:** Damien's answers on cockpit ask `folio-insights-2026-09-28-0024-audit-exposure-and-v2-review` (q2, q3) > this plan > `.planning/STATE.md` "Remaining Work" > `.planning/ROADMAP.md`.
-- **Stop conditions:** Stop a unit and ask when it would open a gated candidate phase without Damien's yes, record the R18 disposition (the folio-propositions v2.0 review record, per that repo's `docs/review-disposition.md` template, labeled R18) on his behalf, or remove the PRD HOLD banner before R18 is recorded.
-- **Execution profile:** U1–U4, U15, and U16 are agent-doable now. U5 needs Damien's review pass. U6–U14 and U17 are gated candidates.
+- **Stop conditions:** Stop a unit and ask when it would open a gated candidate phase without Damien's yes, change Damien’s confirmed R18 disposition or implement candidates beyond the authorized planning scope.
+- **Execution profile:** U1–U4, U15, and U16 are agent-doable now. U5 is confirmed locally in `docs/reviews/2026-09-30-r18-disposition.md`. Damien authorized U6 planning after R18 and U14 planning after Phase 13; implementation and the remaining candidates retain their separate gates.
 - **Finishes and ships:** ce-work in this repo; merges and pushes follow the standing 2026-09-20 authorization.
 
 ---
@@ -86,7 +86,7 @@ v2.0 was parked on 2026-07-26 with a confirmed review date of 2026-08-23. The re
 
 ### Sequencing
 
-U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/test_gate5_digest.py`. U5 depends on nothing in this repo but needs Damien. U6 (Phase 13) is the first candidate once gated in and once U5's disposition is recorded. U14 (governance) may run in parallel with U6 once approved.
+U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/test_gate5_digest.py`. U5 depends on nothing in this repo but needs Damien. U6 (Phase 13) is the first candidate once gated in and once U5's disposition is recorded. U14 (governance) follows U6, per Damien’s 2026-09-30 answer; it no longer runs in parallel.
 
 ### Assumptions
 
