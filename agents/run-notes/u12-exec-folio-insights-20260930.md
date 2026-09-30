@@ -27,7 +27,7 @@ Use the existing Python 3.12 dependency environment read-only, with `-B` to prev
 T1 (final security verification):
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 '/home/damienriehl/Coding Projects/folio-insights/.venv/bin/python' -B agents/run-notes/u12-folio-offline-tests.py tests/test_upload_api.py tests/test_source_confinement_async.py tests/test_ci_bundled_corpora.py -q --disable-warnings --basetemp=/tmp/u12-folio-security-receipt
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -B agents/run-notes/u12-folio-offline-tests.py tests/test_upload_api.py tests/test_source_confinement_async.py tests/test_ci_bundled_corpora.py -q --disable-warnings --basetemp=/tmp/u12-folio-security-receipt
 ```
 
 ```text
@@ -49,7 +49,7 @@ FAILED test_upload_rejects_symlink_destination
 T2 (bridge revalidation; same harness was at `/tmp/u12-folio-offline-tests.py` for this run):
 
 ```bash
-FOLIO_INSIGHTS_FOLIO_ENRICH_PATH='/home/damienriehl/Coding Projects/folio-enrich/backend' PYTHONDONTWRITEBYTECODE=1 '/home/damienriehl/Coding Projects/folio-insights/.venv/bin/python' -B agents/run-notes/u12-folio-offline-tests.py tests/test_bridge.py::test_normalizer_import -q --disable-warnings --basetemp=/tmp/u12-folio-bridge
+FOLIO_INSIGHTS_FOLIO_ENRICH_PATH=../folio-enrich/backend PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -B agents/run-notes/u12-folio-offline-tests.py tests/test_bridge.py::test_normalizer_import -q --disable-warnings --basetemp=/tmp/u12-folio-bridge
 ```
 
 ```text
