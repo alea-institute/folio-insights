@@ -1,4 +1,4 @@
-> **HOLD (2026-08-17): shard-envelope implementation (§6–§7) is on hold.** The Proposition schema for v2.0 is being authored as the shared `folio-propositions` library under folio-enrich's Phase A plan (`folio-enrich/docs/plans/2026-08-16-2234-feat-proposition-system-phase-a-plan.md`). Do not implement the envelope or subtype vocabulary from this PRD until that review packet lands and the v2.0 review records a disposition. Fallback under timeline pressure: freeze only the six identity fields; defer subtype vocabulary to the packet.
+> **R18 confirmed (2026-09-30):** [Recorded disposition](docs/reviews/2026-09-30-r18-disposition.md). This record supersedes conflicting §6–§7 envelope/subtype details. Identity boundaries are frozen; accepted vocabularies remain revisable. Phase 13 planning follows R18, with envelope migration scoped before persistence; governance follows Phase 13. The former HOLD is lifted; this does not authorize all candidate implementation phases.
 
 # FOLIO Insights v2.0 — Product Requirements Document
 
