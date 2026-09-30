@@ -229,3 +229,42 @@ async def test_zip_skips_macosx_entries(client: AsyncClient, configure_tmp_outpu
     # __MACOSX directory should not be created
     sources = configure_tmp_output / corpus_id / "sources"
     assert not (sources / "__MACOSX").exists()
+
+
+async def test_zip_rejects_sibling_prefix_escape(client: AsyncClient, configure_tmp_output: Path):
+    corpus_id = await _create_corpus(client)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w') as zf:
+        zf.writestr('../sources-escape/evil.txt', 'synthetic escape')
+    resp = await client.post(
+        f'/api/v1/corpus/{corpus_id}/upload',
+        files=[('files', ('escape.zip', buf.getvalue(), 'application/zip'))],
+    )
+    assert resp.status_code == 400
+    assert not (configure_tmp_output / corpus_id / 'sources-escape' / 'evil.txt').exists()
+
+
+@pytest.mark.parametrize('filename', ['../escaped.txt', 'nested/escaped.txt', r'..\escaped.txt'])
+async def test_upload_rejects_path_filenames(client: AsyncClient, configure_tmp_output: Path, filename: str):
+    corpus_id = await _create_corpus(client)
+    resp = await client.post(
+        f'/api/v1/corpus/{corpus_id}/upload',
+        files=[('files', (filename, b'synthetic escape', 'text/plain'))],
+    )
+    assert resp.status_code == 400
+    assert not (configure_tmp_output / corpus_id / 'escaped.txt').exists()
+
+
+async def test_upload_rejects_symlink_destination(client: AsyncClient, configure_tmp_output: Path):
+    corpus_id = await _create_corpus(client)
+    outside = configure_tmp_output / 'outside.txt'
+    outside.write_text('original')
+    sources = configure_tmp_output / corpus_id / 'sources'
+    sources.mkdir(exist_ok=True)
+    (sources / 'link.txt').symlink_to(outside)
+    resp = await client.post(
+        f'/api/v1/corpus/{corpus_id}/upload',
+        files=[('files', ('link.txt', b'overwrite', 'text/plain'))],
+    )
+    assert resp.status_code == 400
+    assert outside.read_text() == 'original'
