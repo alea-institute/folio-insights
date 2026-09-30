@@ -45,6 +45,9 @@ dependencies = [
     "python-docx>=1.1.0",
     "rapidfuzz>=3.9.0",
     "marisa-trie>=1.2.0",
+    # folio-enrich PR #36 made folio-propositions a hard import (app/models/job.py);
+    # the sys.path bridge does not pull it transitively. Pinned to a release tag.
+    "folio-propositions @ git+https://github.com/alea-institute/folio-propositions@v0.3.0",
     # Web tier (api/main.py) — FastAPI serving the SvelteKit static SPA + /api.
     # Previously installed ad-hoc in Dockerfile.web (never declared here), which
     # left local dev/CI unable to collect the 7 api/ test suites. Declared as core
@@ -105,6 +108,10 @@ folio-insights = "folio_insights.cli:cli"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# Needed for the folio-propositions git+https direct reference.
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/folio_insights"]
