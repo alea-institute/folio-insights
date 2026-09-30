@@ -62,7 +62,7 @@ RUN uv pip install --system --no-cache-dir . \
 
 COPY api/ ./api/
 # Phase 03.5: bundle the demo corpora so the dev viewer renders data, not an
-# empty list. .dockerignore re-includes output/{default,demo,test1} (mirrors the
+# empty list. .dockerignore re-includes output/{default,demo} (mirrors the
 # .gitignore whitelist). Default _output_dir is ./output (api/main.py), and
 # WORKDIR is /app, so this lands at /app/output with no env var needed.
 # Web dev tier only — worker/GA reproducibility (Gate 5) is unaffected.

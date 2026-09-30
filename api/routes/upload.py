@@ -50,7 +50,7 @@ def _extract_zip_safely(zip_path: Path, target_dir: Path) -> list[dict]:
     Raises HTTPException(400) if any entry attempts path traversal.
     """
     extracted: list[dict] = []
-    target_resolved = str(target_dir.resolve())
+    target_resolved = target_dir.resolve()
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         for info in zf.infolist():
@@ -59,10 +59,10 @@ def _extract_zip_safely(zip_path: Path, target_dir: Path) -> list[dict]:
                 continue
 
             target = target_dir / info.filename
-            resolved = str(target.resolve())
+            resolved = target.resolve()
 
             # Zip Slip protection
-            if not resolved.startswith(target_resolved):
+            if Path(info.filename).is_absolute() or not resolved.is_relative_to(target_resolved):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Zip entry escapes target directory: {info.filename}",
@@ -136,8 +136,12 @@ async def upload_files(
             finally:
                 tmp_path.unlink(missing_ok=True)
         else:
-            # Write individual file directly to sources
+            # Multipart filenames are names, not caller-controlled paths.
+            if filename in {".", ".."} or "/" in filename or "\\" in filename:
+                raise HTTPException(status_code=400, detail="Invalid upload filename")
             dest = sources / filename
+            if not dest.resolve().is_relative_to(sources.resolve()):
+                raise HTTPException(status_code=400, detail="Upload escapes sources directory")
             with open(dest, "wb") as out:
                 shutil.copyfileobj(f.file, out)
             uploaded.append({

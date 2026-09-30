@@ -19,11 +19,11 @@ build/
 *.swp
 *.swo
 
-# Output — ignore generated corpora by default, but ship the two baseline corpora
-# used by the Railway dev deploy so the image has data to render.
+# Output — ignore generated corpora by default, but ship the baseline corpora
+# the dev viewer bundles so the image has data to render. Never whitelist a
+# corpus built from copyrighted sources (test1 held a full book until 2026-09-27).
 output/*
 !output/default/
-!output/test1/
 !output/demo/
 
 # Dagger CI driver (Plan 00-05 — package renamed ci/ to avoid dagger-io shadow)
@@ -62,3 +62,6 @@ staging/
 # whole directory: feat/proposed-class-governance deliberately tracks other
 # data/governance/ content, and a blanket ignore would fight that branch.
 data/governance/folio_lexicon_cache.json
+
+# Harness-managed agent worktrees are never tracked
+.claude/worktrees/
