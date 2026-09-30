@@ -86,7 +86,7 @@ v2.0 was parked on 2026-07-26 with a confirmed review date of 2026-08-23. The re
 
 ### Sequencing
 
-U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/test_gate5_digest.py`. U5 depends on nothing in this repo but needs Damien. U6 (Phase 13) is the first candidate once gated in and once U5's disposition is recorded. U14 (governance) follows U6, per Damien’s 2026-09-30 answer; it no longer runs in parallel.
+U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/test_gate5_digest.py`. U5’s local confirmation is recorded in `docs/reviews/2026-09-30-r18-disposition.md`; synchronization of the upstream record belongs to the orchestrator. U6 (Phase 13) is the first candidate once gated in and once U5's disposition is recorded. U14 (governance) follows U6, per Damien’s 2026-09-30 answer; it no longer runs in parallel.
 
 ### Assumptions
 
@@ -149,12 +149,12 @@ U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/tes
 
 **Goal:** Damien can complete the v2.0 review as a confirmation pass.
 **Requirements:** R5, R6
-**Dependencies:** none (Damien confirms)
-**Files:** `../folio-propositions/docs/review-disposition-v2.0.md` (new record in target repo folio-propositions, created from the unchanged `docs/review-disposition.md` template), `PRD-v2.0-draft-2.md`
+**Dependencies:** Damien’s confirmation supplied on 2026-09-30; upstream synchronization remains outside this repo
+**Files:** `docs/reviews/2026-09-30-r18-disposition.md`, `PRD-v2.0-draft-2.md`; upstream system of record remains `folio-propositions/docs/review-disposition-v2.0.md`
 **Approach:**
 1. Draft a recommended disposition for each of the ten packet element groups from `docs/exit-record-phase-a.md`, `docs/review-disposition.md`, and `docs/migration-0.3.0.md` in folio-propositions, marking each line as a recommendation.
-2. File it as a Decision Sheet through `cockpit-decide`, one question per element group that is not already settled (the taxonomy was confirmed on 2026-08-17).
-3. After Damien answers, record the disposition and replace the PRD HOLD banner with a pointer to it (R6).
+2. Use Damien’s 2026-09-30 “confirm as drafted” answer for all ten groups; do not file duplicate confirmation questions.
+3. Record the supplied answer locally and replace the PRD HOLD banner with that pointer (R6). The orchestrator synchronizes the upstream draft without treating local confirmation as an upstream merge receipt.
 **Test expectation:** none -- review record.
 **Verification:** The v2.0 record file has no bracketed placeholders, the template is unchanged, and the PRD banner cites the record.
 
@@ -162,7 +162,7 @@ U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/tes
 
 **Goal:** Replace the in-memory `GovernanceLog`, `ShardStore`, and the `retract --apply` `NotImplementedError` with a persistent store.
 **Requirements:** R7
-**Dependencies:** Damien's gate yes; U5's disposition recorded; U17 when R18 revises the envelope; then its own ce-plan
+**Dependencies:** U5 recorded locally; U6 planning authorized on 2026-09-30; separately dispatched U17 before implementation. Plan: `docs/plans/2026-09-30-0913-feat-phase13-storage-plan.md`
 **Files:** `src/folio_insights/governance/log.py`, `src/folio_insights/governance/cli/retract.py`, `src/folio_insights/revision/`
 **Approach:** Re-plan from ROADMAP §Phase 13 (KTD2). Deltas: the store schema follows the accepted R18 identity and ledger field groups; and Phase 13 now runs ahead of Phase 11, so the SHACL-on-write hook and the SHACL part of its exit criterion 7 become an explicit seam that Phase 11 (U9) closes. Re-run the Gate-2 SPARQL benchmark first as the stack-drift canary.
 **Test expectation:** defined by its own plan.
@@ -242,7 +242,7 @@ U1, U2, and U4 are independent; U3 follows U2 because both edit `tests/bench/tes
 
 **Goal:** Land collect → judge → approve → export for proposed FOLIO classes.
 **Requirements:** R8
-**Dependencies:** Damien's gate yes
+**Dependencies:** Phase 13 complete before implementation; planning authorized on 2026-09-30. Plan: `docs/plans/2026-09-30-0914-feat-proposed-class-governance-plan.md`
 **Files:** from local branch `feat/proposed-class-governance` (15 commits, none patch-equivalent on master): `src/folio_insights/proposals/`, `scripts/judge_proposals.py`, `tests/proposals/`, `docs/plans/2026-07-15-001-feat-proposed-class-governance-plan.md`, plus the branch's B4–B9 tagger and discovery fixes, `persistence/review_db.py`, the anchoring and substance services, `api/db/models.py`, and boundary-detection changes with their tests
 **Approach:** Build the fresh branch per KTD5 and resolve the known conflicts against the folio-resolve 0.4.0 tagger. All non-evidence code and tests on the branch come across, so Damien's gate covers everything that lands. Bring the July 15 plan across as its origin.
 **Execution note:** Characterize the current tagger's proposed-class output before resolving the `folio_tagger.py` conflict.
