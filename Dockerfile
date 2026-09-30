@@ -18,16 +18,17 @@ COPY viewer/ ./
 RUN npm run build
 
 # =========================================================================
-# Stage 2: Python runtime with FastAPI + built viewer + bundled data
+# Stage 2: Build Python dependencies (including git-based dependencies)
 # =========================================================================
-FROM python:3.11-slim
+FROM python:3.11-slim AS python-builder
 
 # Bring in uv for fast, deterministic Python installs (matches folio-mapper)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# System deps: build-essential for any C extensions (sentence-transformers etc.)
+# Build tools stay in this stage; git is required for folio-propositions.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -40,8 +41,19 @@ COPY src/ ./src/
 # the project deps chain (sse-starlette -> starlette -> (fastapi via pyproject)).
 # If the runtime fails with "fastapi not found", add fastapi + uvicorn[standard]
 # explicitly to pyproject.toml dependencies and rebuild.
-RUN uv pip install --system --no-cache . \
-    && uv pip install --system --no-cache fastapi "uvicorn[standard]" python-multipart
+RUN uv venv /opt/venv \
+    && uv pip install --python /opt/venv/bin/python --no-cache . \
+    && uv pip install --python /opt/venv/bin/python --no-cache fastapi "uvicorn[standard]" python-multipart
+
+# =========================================================================
+# Stage 3: Python runtime with FastAPI + built viewer + bundled data
+# =========================================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY --from=python-builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy backend application code
 COPY api/ ./api/
