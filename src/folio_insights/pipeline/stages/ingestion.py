@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import shutil
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-from folio_insights.config import get_settings
+from folio_insights.config import Settings, get_settings
 from folio_insights.models.corpus import CorpusDocument
 from folio_insights.pipeline.stages.base import InsightsJob, InsightsPipelineStage
 from folio_insights.services.bridge.ingestion_bridge import IngestionBridge
@@ -231,6 +232,9 @@ async def _ingest_wpd(file_path: Path, doctor_url: str) -> tuple[str, list[dict[
 class IngestionStage(InsightsPipelineStage):
     """Walk source directory and ingest all supported file formats."""
 
+    def __init__(self, settings: Settings | None = None) -> None:
+        self.settings = settings
+
     @property
     def name(self) -> str:
         return "ingestion"
@@ -243,24 +247,54 @@ class IngestionStage(InsightsPipelineStage):
         2. Route to the appropriate ingestor
         3. Create CorpusDocument and store ingested data in job.metadata
         """
-        settings = get_settings()
-        source_dir = Path(job.source_dir)
+        settings = self.settings or get_settings()
+        source_dir = Path(job.source_dir).resolve()
+        output_root = settings.output_dir.resolve()
 
         if not source_dir.exists():
             raise FileNotFoundError(f"Source directory not found: {source_dir}")
 
         # Load existing registry from corpus output dir so re-runs skip already-processed files
-        corpus_dir = settings.output_dir / job.corpus_name
+        corpus_dir = (output_root / job.corpus_name).resolve()
+        if not corpus_dir.is_relative_to(output_root):
+            raise ValueError("Corpus path is outside the output directory")
         registry = CorpusRegistry.load(corpus_dir, job.corpus_name)
 
         # Collect all supported files
         all_files = sorted(
             f for f in source_dir.rglob("*")
             if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+            and not (
+                output_root.is_relative_to(source_dir)
+                and output_root != source_dir
+                and f.is_relative_to(output_root)
+            )
         )
 
-        # Filter to files that need processing
-        new_files = [f for f in all_files if registry.needs_processing(f)]
+        # Validate paths before registry hashing, ingestion reads or copying.
+        source_paths: dict[Path, Path] = {}
+        for file_path in all_files:
+            resolved = file_path.resolve()
+            if not resolved.is_relative_to(source_dir):
+                raise ValueError("Input source path is outside the source directory")
+            if resolved.is_relative_to(output_root):
+                source_paths[file_path] = resolved
+                continue
+            sources_dir = (corpus_dir / "sources").resolve()
+            if not sources_dir.is_relative_to(corpus_dir):
+                raise ValueError("Sources path is outside the corpus directory")
+            destination = (sources_dir / file_path.relative_to(source_dir)).resolve()
+            if not destination.is_relative_to(sources_dir):
+                raise ValueError("Source destination is outside the sources directory")
+            source_paths[file_path] = destination
+
+        # Hash original inputs while looking up their recorded output-relative paths.
+        new_files = [
+            f for f in all_files
+            if registry.needs_processing(
+                f, recorded_path=source_paths[f].relative_to(output_root).as_posix()
+            )
+        ]
 
         if not new_files:
             logger.info("No new files to process in %s", source_dir)
@@ -279,6 +313,13 @@ class IngestionStage(InsightsPipelineStage):
         for file_path in new_files:
             ext = file_path.suffix.lower()
             format_name = _FORMAT_NAMES.get(ext, "unknown")
+
+            # Copy errors fail the job rather than being swallowed as format errors.
+            source_path = source_paths[file_path]
+            if not file_path.resolve().is_relative_to(output_root):
+                source_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(file_path, source_path)
+            file_key = source_path.relative_to(output_root).as_posix()
 
             try:
                 if ext in _BRIDGE_EXTENSIONS:
@@ -326,7 +367,6 @@ class IngestionStage(InsightsPipelineStage):
                     continue
 
                 # Store ingested data
-                file_key = str(file_path.resolve())
                 ingested[file_key] = {
                     "text": text,
                     "elements": elements,
