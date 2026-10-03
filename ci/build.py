@@ -12,22 +12,29 @@ Invoke: ``python -m ci.build [--tag <tag>]``
 
 Gate 5 discipline (10 techniques):
   1. ``@sha256:`` base pins            — sourced via ``.env.docker(.example)``
-  2. SOURCE_DATE_EPOCH env+arg         — ``with_env_variable`` AND ``with_build_arg`` (Pitfall 4)
-  3. BuildKit rewrite-timestamp        — Dockerfiles set ``ENV SOURCE_DATE_EPOCH``; jlink stage uses it
+  2. SOURCE_DATE_EPOCH env+arg         — process env AND ``--build-arg`` (Pitfall 4)
+  3. BuildKit rewrite-timestamp        — ``docker buildx`` exporter clamps layer mtimes and
+                                         config/history timestamps (see ``_build_image``)
   4. Fixed UID 1001                    — Dockerfiles set numeric UID
   5. Hash-pinned pip                   — ``requirements.lock`` (web) + ``requirements.worker.lock``
   6. ``--no-install-recommends``       — Dockerfiles already set
   7. ``PYTHONDONTWRITEBYTECODE=1``     — Dockerfiles already set
   8. Ordered explicit COPY             — Dockerfiles already follow
-  9. ``.dockerignore`` excludes        — plus ``BUILD_CTX_EXCLUDE`` defence-in-depth
- 10. Dagger SDE both env AND build_arg — see ``_build_image`` below
+  9. ``.dockerignore`` excludes        — image context; ``BUILD_CTX_EXCLUDE`` for Dagger lint/test
+ 10. No attestations                   — provenance stamps build times, so it is disabled
+
+Images build with ``docker buildx`` (BuildKit's reproducible exporter); lint and
+test stages run in Dagger.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import dagger  # from dagger-io site-package (see ci/__init__.py for shadow note)
@@ -121,35 +128,53 @@ def assert_bundled_corpora_tracked(repo_root: Path = REPO_ROOT) -> None:
 
 
 async def _build_image(
-    client: dagger.Client,
     *,
     dockerfile: str,
     tag: str,
     sde: str,
+    metadata_dir: Path,
 ) -> tuple[str, str]:
-    """Build an image via Dagger's Dockerfile compat and publish.
+    """Build an image with BuildKit's native reproducible export and publish it.
 
     Returns: ``(requested_tag, published_ref_with_digest)``.
 
-    Gate 5 pitfall 4: SOURCE_DATE_EPOCH MUST be passed as BOTH a build_arg AND
-    an env variable. The build_arg reaches ``ARG SOURCE_DATE_EPOCH`` inside the
-    Dockerfile (compile-time); the env variable reaches the container runtime
-    (so any downstream stage that ``with_exec()``s inherits the pinned epoch).
+    Why ``docker buildx`` and not Dagger's ``Directory.docker_build``: Dagger's
+    Dockerfile compat ignores SOURCE_DATE_EPOCH at export time, so the image
+    config ``created``/``history`` stamps and every file BuildKit writes carry
+    the wall clock. Back-to-back Dagger builds only matched while the second
+    build hit the engine cache; any cache miss or eviction produced a new
+    digest. BuildKit's ``rewrite-timestamp=true`` exporter (BuildKit >= 0.13)
+    clamps layer file mtimes and config timestamps to SOURCE_DATE_EPOCH, so a
+    cold rebuild is bit-identical. Provenance/SBOM attestations are disabled
+    because provenance records build start/finish times.
+
+    SOURCE_DATE_EPOCH reaches the Dockerfile as a build arg (``ARG``/``ENV``)
+    and BuildKit itself through the process environment (Gate 5 pitfall 4).
     """
-    src = client.host().directory(str(REPO_ROOT), exclude=BUILD_CTX_EXCLUDE)
-
-    container = src.docker_build(
-        dockerfile=dockerfile,
-        build_args=[
-            dagger.BuildArg(name="SOURCE_DATE_EPOCH", value=sde),
-        ],
+    safe_name = tag.rsplit("/", 1)[-1].replace(":", "_")
+    metadata_file = metadata_dir / f"{safe_name}.json"
+    cmd = [
+        "docker", "buildx", "build",
+        "--file", dockerfile,
+        "--build-arg", f"SOURCE_DATE_EPOCH={sde}",
+        "--provenance=false",
+        "--sbom=false",
+        "--output", f"type=registry,name={tag},rewrite-timestamp=true",
+        "--metadata-file", str(metadata_file),
+        str(REPO_ROOT),
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        cwd=REPO_ROOT,
+        env={**os.environ, "SOURCE_DATE_EPOCH": sde},
+        stdout=sys.stderr,
+        stderr=sys.stderr,
     )
-    # Belt-and-braces: also set the env var on the resulting container so any
-    # downstream with_exec() calls see the same epoch (Gate 5 step 10).
-    container = container.with_env_variable("SOURCE_DATE_EPOCH", sde)
-
-    published = await container.publish(tag)
-    return tag, published
+    returncode = await proc.wait()
+    if returncode != 0:
+        raise SystemExit(f"docker buildx build failed for {dockerfile} (exit {returncode})")
+    digest = json.loads(metadata_file.read_text())["containerimage.digest"]
+    return tag, f"{tag}@{digest}"
 
 
 async def _lint(client: dagger.Client, sde: str) -> None:
@@ -209,30 +234,32 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
     _load_digests()  # Fail-fast if .env.docker(.example) absent
     tag_suffix = args.tag or sde
 
-    async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
-        # Parallelizable stages
-        web_task = _build_image(
-            client,
-            dockerfile="Dockerfile.web",
-            tag=f"ttl.sh/fi-web:{tag_suffix}",
-            sde=sde,
-        )
-        worker_task = _build_image(
-            client,
-            dockerfile="Dockerfile.worker",
-            tag=f"ttl.sh/fi-worker:{tag_suffix}",
-            sde=sde,
-        )
-        # Keep lint optional on --no-lint; test always runs.
-        tasks = [web_task, worker_task]
-        if not args.no_lint:
-            tasks.append(_lint(client, sde))
-        results = await asyncio.gather(*tasks)
-        web_result = results[0]
-        worker_result = results[1]
+    with tempfile.TemporaryDirectory(prefix="fi-ci-build-") as metadata_root:
+        metadata_dir = Path(metadata_root)
+        async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
+            # Parallelizable stages: both image builds (BuildKit) and lint (Dagger)
+            web_task = _build_image(
+                dockerfile="Dockerfile.web",
+                tag=f"ttl.sh/fi-web:{tag_suffix}",
+                sde=sde,
+                metadata_dir=metadata_dir,
+            )
+            worker_task = _build_image(
+                dockerfile="Dockerfile.worker",
+                tag=f"ttl.sh/fi-worker:{tag_suffix}",
+                sde=sde,
+                metadata_dir=metadata_dir,
+            )
+            # Keep lint optional on --no-lint; test always runs.
+            tasks = [web_task, worker_task]
+            if not args.no_lint:
+                tasks.append(_lint(client, sde))
+            results = await asyncio.gather(*tasks)
+            web_result = results[0]
+            worker_result = results[1]
 
-        if not args.no_test:
-            await _test(client, sde)
+            if not args.no_test:
+                await _test(client, sde)
 
     return sde, web_result[1], worker_result[1]
 

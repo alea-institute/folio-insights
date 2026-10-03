@@ -42,7 +42,12 @@ ARG SOURCE_DATE_EPOCH
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_ROOT_USER_ACTION=ignore
+    PIP_ROOT_USER_ACTION=ignore \
+    CFLAGS="-g0"
+# Gate 5: CFLAGS=-g0 drops DWARF debug info from compiled extensions. pip builds
+# owlready2's C optimizer in a random /tmp/pip-install-XXXX dir, and the debug
+# info (DW_AT_comp_dir) embedded that path, so each build produced a different
+# owlready2_optimized*.so and owlready2 RECORD hash.
 
 RUN apk add --no-cache \
         gcc \
@@ -89,16 +94,20 @@ COPY --from=jre-builder /opt/java-custom /opt/java-custom
 ENV JAVA_HOME=/opt/java-custom \
     PATH="/opt/java-custom/bin:${PATH}"
 
+# Gate 5: /var/log/apk.log records the wall-clock install time, so it is removed.
 # Minimal native runtime deps for pyoxigraph wheel (RocksDB C++ lib) + owlready2 SQLite
 RUN apk add --no-cache \
         libgcc \
         libstdc++ \
         sqlite-libs \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/cache/apk/* /var/log/apk.log
 
 # Gate 5 step 4: fixed UID/GID (Alpine syntax — numeric, deterministic)
 RUN addgroup -g 1001 appuser \
-    && adduser -D -u 1001 -G appuser -s /bin/sh appuser
+    && adduser -D -u 1001 -G appuser -s /bin/sh appuser \
+    && sed -i "s/^\(appuser:[^:]*:\)[0-9]*:/\1$(( ${SOURCE_DATE_EPOCH:-0} / 86400 )):/" /etc/shadow
+# Gate 5: busybox adduser stamps today's date into /etc/shadow (last password
+# change, in days); pin it to SOURCE_DATE_EPOCH so the layer is date-independent.
 
 # Copy pre-installed Python packages from the deps-builder stage.
 # This keeps gcc/g++/musl-dev/python3-dev/libffi-dev out of the runtime image
