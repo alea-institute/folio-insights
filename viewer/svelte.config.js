@@ -9,7 +9,11 @@ import adapter from '@sveltejs/adapter-static';
 const config = {
 	kit: {
 		adapter: adapter({ fallback: 'index.html' }),
-		paths: { base: '' }
+		paths: { base: '' },
+		// Gate 5 (reproducible images): SvelteKit's default version name is
+		// Date.now(), which lands in version.json and changes every chunk hash.
+		// Pin it to SOURCE_DATE_EPOCH (the commit time) when the build sets it.
+		version: { name: process.env.SOURCE_DATE_EPOCH || Date.now().toString() }
 	},
 	vitePlugin: {
 		dynamicCompileOptions: ({ filename }) =>
