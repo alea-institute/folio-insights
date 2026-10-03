@@ -1,19 +1,16 @@
-# Handoff — /source security fix, book scrub, v2.0 GSD→CE migration (2026-09-27)
+# Handoff — /source security fix, book scrub, v2.0 GSD→CE migration (2026-09-27; refreshed 2026-10-03)
 
-## Where it stands
-- PR #2 (branch `refactor/v2-gsd-to-ce-migration`) is reviewed and merge-ready: `/api/v1/source` confined to the output dir, the copyrighted `test1` corpus untracked, a build guard against shipping untracked corpus files, Gate 5 runnable, Railway config removed, GSD v2.0 archived.
-- The public dev app is stopped until the patched code deploys. Do not restart the old container; its image has the file-read hole.
-- Plan: `docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`. Done: U1–U4, U15, U16. U5 drafted as folio-propositions PR #2, awaiting Damien. U6–U14 and U17 are gated candidates.
+## Done (verified 2026-10-03)
+- PR #2 merged on 2026-09-30: `/api/v1/source` confined to the output dir, the `test1` corpus untracked, build guard against untracked corpus files, Gate 5 runnable, Railway config removed, GSD v2.0 archived.
+- Dev app redeployed. `/health` returns 200, `/api/v1/source?file=/nonexistent-probe` returns `found: false`, and `/api/v1/corpora` lists only `demo`.
+- R18 disposition confirmed 2026-09-30 (folio-propositions); the PRD §6–§7 HOLD banner now points to the recorded disposition.
+- The v2.0 candidate gates moved into the 2026-09-30 backlog-review decision sheet.
 
-## Next, in order (each needs Damien's go; the agent's merge and force-push were blocked by permissions)
-1. Merge PR #2.
-2. Scrub `output/test1/sources/` (and the Ch01 manuscript paths) from `master` history with `git filter-repo --invert-paths`, then force-push. A verified mirror backup exists; the rehearsal kept all commits and removed every book path. Other refs that still carry the book: tag `v1.1`, the `backup*`, `build/folio-resolve-0.4.0`, and two `archive/*` branches. GitHub-owned PR refs need GitHub Support.
-3. Redeploy on Coolify and verify: `/health` 200, `/api/v1/source?file=/etc/hostname` → `found: false`, no `test1` in `/api/v1/corpora`.
-4. Answer the filed decision sheets: v2.0 candidate gates, and the R18 disposition confirmation.
+## Still open
+1. **History scrub (needs Damien's explicit go).** The copyrighted book is still in public git history: `git log origin/master --name-only` shows 28 hits for `output/test1/sources` or the Ch01 manuscript paths. Removing them means a `git filter-repo --invert-paths` rewrite and a force-push. The 2026-09-30 standing rule says never force-push, which supersedes the 2026-09-27 approval, so an explicit go is needed. A verified pre-scrub mirror backup exists (machine-local). Refs that also carry the book: tag `v1.1`, `backup-pre-split-*`, `backup/pre-bench-strip-*`, `build/folio-resolve-0.4.0`, and the two `archive/*` branches (which also hold the Ch01 `.docx`). GitHub-owned PR refs need a GitHub Support purge request.
+2. **Delete the two public `archive/*` branches**, which still hold the manuscript `.docx`. The agent's delete was blocked by the permission classifier.
+3. **Gate 5 reports real digest drift** for web and worker: a reproducibility regression to investigate.
+4. **Review P2:** the source panel is blank for CLI-extracted corpora whose inputs live outside the output dir.
+5. **`api/routes/upload.py` zip guard** uses `str.startswith`; `is_relative_to` is the stronger check.
 
-## Follow-ups
-- Gate 5 now reports real digest drift for web and worker: a reproducibility regression.
-- The source panel is blank for CLI-extracted corpora whose inputs live outside the output dir (review P2, listed on PR #2).
-- `tests/test_bridge.py::test_normalizer_import` fails because sibling folio-enrich now imports `folio_propositions`.
-- `api/routes/upload.py`'s zip guard uses `str.startswith`; `is_relative_to` is the stronger check.
-- Lesson recorded: `docs/solutions/git-commit-pathspec-re-adds-untracked-files.md`.
+Lesson recorded: `docs/solutions/git-commit-pathspec-re-adds-untracked-files.md`.
