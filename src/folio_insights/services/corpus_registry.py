@@ -44,7 +44,7 @@ class CorpusRegistry:
     def manifest(self) -> CorpusManifest:
         return self._manifest
 
-    def needs_processing(self, file_path: Path) -> bool:
+    def needs_processing(self, file_path: Path, recorded_path: str | None = None) -> bool:
         """Check whether a file needs (re-)processing.
 
         Returns True if the file has not been processed or its content
@@ -52,7 +52,9 @@ class CorpusRegistry:
         """
         file_path = Path(file_path).resolve()
         current_hash = _compute_hash(file_path)
-        key = str(file_path)
+        # CLI manifests record output-relative paths; hash the original input
+        # so edits are detected before refreshing its source copy.
+        key = recorded_path if recorded_path is not None else str(file_path)
 
         if key in self._hash_index:
             return self._hash_index[key].content_hash != current_hash

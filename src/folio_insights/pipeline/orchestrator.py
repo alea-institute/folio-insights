@@ -21,7 +21,6 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from folio_insights.config import Settings
 from folio_insights.models.corpus import CorpusManifest
@@ -135,7 +134,7 @@ class PipelineOrchestrator:
         )
 
         return [
-            IngestionStage(),
+            IngestionStage(self.settings),
             StructureParserStage(),
             BoundaryDetectionStage(),
             DistillerStage(),
@@ -161,7 +160,10 @@ class PipelineOrchestrator:
             The completed InsightsJob with all extracted knowledge units.
         """
         corpus_name = corpus_name or self.settings.corpus_name
-        corpus_dir = self.settings.output_dir / corpus_name
+        output_root = self.settings.output_dir.resolve()
+        corpus_dir = (output_root / corpus_name).resolve()
+        if not corpus_dir.is_relative_to(output_root):
+            raise ValueError("Corpus path is outside the output directory")
 
         # Create initial job
         job = InsightsJob(
