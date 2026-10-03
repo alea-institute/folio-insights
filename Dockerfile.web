@@ -28,18 +28,25 @@ COPY viewer/ ./
 RUN npm run build
 
 # -------------------------------------------------------------------------
-# Stage 2: Python runtime — FastAPI serving the static SPA build + /api
+# Stage 2: Python dependency builder — toolchain + git stay in this stage.
+# folio-propositions is a git+https direct reference (pyproject.toml), so the
+# install needs a git executable; build-essential compiles sdists. Neither
+# ships in the runtime image (mirrors Dockerfile, fea2497): the runtime copies
+# only the finished virtual environment.
 # -------------------------------------------------------------------------
-FROM ${PYTHON_IMAGE}
-ARG SOURCE_DATE_EPOCH=0  # Phase 03.5: default 0 so Railway (no build-arg) gets a valid int; hatchling int(SOURCE_DATE_EPOCH) crashed on "". Dagger/CI still overrides with the real commit epoch.
+FROM ${PYTHON_IMAGE} AS python-builder
+ARG SOURCE_DATE_EPOCH=0
+# CFLAGS=-g0: sdists compile in random temp dirs; debug info would embed those
+# paths in the built extensions and break Gate 5 (see Dockerfile.worker).
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    CFLAGS="-g0"
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
+    && apt-get install -y --no-install-recommends build-essential git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -54,11 +61,37 @@ WORKDIR /app
 # ModuleNotFoundError at boot; never caught because Dockerfile.web was never
 # deployed). Trade-off: src/ changes invalidate the dep layer until Plan 05's lock.
 # Ordered explicit COPY (Gate 5 step 8) — NEVER `COPY . .`.
+# Gate 5: uv writes <dist>.dist-info/uv_cache.json (source mtimes, a cache key)
+# for the local folio-insights install; it and its RECORD line are dropped so
+# the venv does not depend on checkout timestamps.
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
-RUN uv pip install --system --no-cache-dir . \
-    && uv pip install --system --no-cache-dir fastapi "uvicorn[standard]" python-multipart \
+RUN uv venv /opt/venv \
+    && uv pip install --python /opt/venv/bin/python --no-cache . \
+    && uv pip install --python /opt/venv/bin/python --no-cache \
+        fastapi "uvicorn[standard]" python-multipart \
+    && for f in /opt/venv/lib/python3.11/site-packages/*.dist-info/uv_cache.json; do \
+        [ -e "$f" ] || continue; \
+        rm "$f"; sed -i '/\/uv_cache\.json,/d' "$(dirname "$f")/RECORD"; \
+    done \
+    && find /opt/venv -type d -name __pycache__ -prune -exec rm -rf {} + \
+    && find /opt/venv -name "*.pyc" -delete \
     && rm -rf /root/.cache
+
+# -------------------------------------------------------------------------
+# Stage 3: Python runtime — FastAPI serving the static SPA build + /api
+# -------------------------------------------------------------------------
+FROM ${PYTHON_IMAGE}
+ARG SOURCE_DATE_EPOCH=0  # Phase 03.5: default 0 so Railway (no build-arg) gets a valid int; hatchling int(SOURCE_DATE_EPOCH) crashed on "". Dagger/CI still overrides with the real commit epoch.
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+# Finished virtual environment only — no compiler, no git (fea2497 goal).
+COPY --from=python-builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY api/ ./api/
 # Phase 03.5: bundle the demo corpora so the dev viewer renders data, not an
