@@ -15,6 +15,21 @@ from folio_insights.models.knowledge_unit import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolated_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Keep default-settings pipeline runs out of the repo's real ./output dir.
+
+    IngestionStage copies inputs into <output_dir>/<corpus>/sources, so tests
+    that rely on the default Settings would otherwise write into the checkout.
+    """
+    from folio_insights.config import get_settings
+
+    monkeypatch.setenv("FOLIO_INSIGHTS_OUTPUT_DIR", str(tmp_path / "output"))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def sample_text_elements() -> list[dict]:
     """Return a list of TextElement-like dicts with various element types."""
