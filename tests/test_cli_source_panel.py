@@ -76,7 +76,10 @@ def test_nested_sources_with_same_name_are_preserved(tmp_path, extraction_stages
     input_dir = tmp_path / "input"
     output_dir = tmp_path / "output"
     for folder in ("a", "b"):
-        _write_input(input_dir / folder / "chapter.xml", f"Review evidence from {folder}.")
+        _write_input(
+            input_dir / folder / "chapter.xml",
+            f"Always review the evidence from folder {folder} before trial.",
+        )
     result = _extract(input_dir, output_dir)
     assert result.exit_code == 0, result.output
     data = json.loads((output_dir / "legal" / "extraction.json").read_text())

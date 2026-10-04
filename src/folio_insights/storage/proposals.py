@@ -48,7 +48,8 @@ if TYPE_CHECKING:
 _KIND = re.compile(r"[a-z][a-z0-9_]{0,63}")
 MAX_OP_ID_CHARS = 200
 FORBIDDEN_PAYLOAD_KEYS = frozenset({
-    "excerpt", "source_text", "source_text_excerpt", "supporting_excerpt", "text",
+    "excerpt", "source_snippet", "source_text", "source_text_excerpt", "supporting_excerpt",
+    "text",
 })
 
 

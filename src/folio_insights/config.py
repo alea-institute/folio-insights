@@ -45,6 +45,18 @@ class Settings(BaseSettings):
     # is recorded in output metadata (``metadata.folio_tagger``).
     require_deterministic_iri: bool = True
 
+    # Boundary detection performance (B7). Ambiguous (long) paragraphs are refined
+    # concurrently, at most ``boundary_tier_concurrency`` at a time. The Tier-3 LLM refiner is
+    # off by default: a deterministic sentence-group split handles long paragraphs with no
+    # network dependency and no dropped content. ``boundary_max_unit_chars`` caps a split unit.
+    boundary_llm_refine: bool = False
+    boundary_tier_concurrency: int = 8
+    boundary_max_unit_chars: int = 600
+
+    # Substantive-input floor (B6): a boundary with fewer substantive characters than this, or
+    # shaped like a heading, contents entry or attribution, is not unit-ized or distilled.
+    min_substantive_chars: int = 40
+
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 
 
