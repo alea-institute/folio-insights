@@ -40,7 +40,8 @@ keeps it that way:
     third-party package with all its hashes, installed ``--only-binary :all:`` so
     nothing compiles. The ``folio-propositions`` git dependency cannot carry a
     hash, so ``requirements.vcs.lock`` pins it to the full commit SHA and it
-    installs ``--no-deps``.
+    installs ``--no-deps``. The same script exports ``requirements.dev.lock``
+    (that closure plus the ``dev`` extra) for the ``_test`` stage below.
   * Build backends — sdist and local builds (hatchling for folio-insights and
     folio-propositions; setuptools/wheel/Cython for owlready2) run under
     ``--build-constraints requirements.build.lock``, which uv hash-verifies.
@@ -314,18 +315,26 @@ async def _test(client: dagger.Client, sde: str) -> None:
     ``gate5`` and ``slow`` are excluded (``-m "not gate5 and not slow"``) so
     the slow Gate 5 determinism test does not run inside the pipeline it is
     measuring (would recurse forever).
+
+    The dependency install sees only ``requirements.dev.lock`` (exported from
+    ``uv.lock`` by ``scripts/export_image_locks.py``), so its multi-GB layer stays
+    cached until the lock changes rather than on every commit. The project is
+    not pip-installed; ``PYTHONPATH`` puts ``src/`` (and the repo root, for the
+    ``tests``/``ci``/``scripts`` imports) on the path, as local runs do.
     """
     src = client.host().directory(str(REPO_ROOT), exclude=BUILD_CTX_EXCLUDE)
     await (
         client.container()
         .from_("python:3.11-slim")
-        .with_env_variable("SOURCE_DATE_EPOCH", sde)
-        .with_directory("/app", src)
         .with_workdir("/app")
+        .with_file("/app/requirements.dev.lock", src.file("requirements.dev.lock"))
         .with_exec([
             "pip", "install", "--no-cache-dir",
             "--require-hashes", "-r", "requirements.dev.lock",
         ])
+        .with_env_variable("SOURCE_DATE_EPOCH", sde)
+        .with_env_variable("PYTHONPATH", "/app/src:/app")
+        .with_directory("/app", src)
         .with_exec([
             "pytest", "-x", "--ff", "-q",
             "--benchmark-skip",

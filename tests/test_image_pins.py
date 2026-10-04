@@ -7,6 +7,7 @@ locks that match uv.lock, hash-verified build backends, and exact apk versions.
 """
 from __future__ import annotations
 
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -98,7 +99,10 @@ def _lock_entries(name: str) -> dict[str, str]:
 
 @pytest.mark.parametrize(
     "lock",
-    ["requirements.lock", "requirements.worker.lock", "requirements.build.lock"],
+    [
+        "requirements.lock", "requirements.worker.lock", "requirements.build.lock",
+        "requirements.dev.lock",
+    ],
 )
 def test_python_locks_hash_every_entry(lock: str) -> None:
     entries = _lock_entries(lock)
@@ -146,6 +150,43 @@ def test_web_locks_match_uv_lock() -> None:
         cwd=REPO_ROOT, capture_output=True, text=True, check=False, timeout=60,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _load_export_script():
+    spec = importlib.util.spec_from_file_location(
+        "export_image_locks", REPO_ROOT / "scripts" / "export_image_locks.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.skipif(shutil.which("uv") is None, reason="uv not on PATH")
+def test_dev_lock_matches_uv_lock() -> None:
+    """The CI test container (ci/build.py ``_test``) installs requirements.dev.lock
+    with --require-hashes; it must be the uv.lock closure plus the dev extra, not a
+    stale one-off compile (it once still pinned folio-resolve 0.3.1, no fastapi)."""
+    export = _load_export_script()
+    expected = export.render(REPO_ROOT)[export.DEV_LOCK]
+    assert _read("requirements.dev.lock") == expected, (
+        "requirements.dev.lock is stale; run scripts/export_image_locks.py"
+    )
+
+
+def test_dev_lock_covers_runtime_and_dev_extra() -> None:
+    dev = _lock_entries("requirements.dev.lock")
+    runtime = _lock_entries("requirements.lock")
+    assert set(runtime) <= set(dev), sorted(set(runtime) - set(dev))
+    for name, body in runtime.items():
+        hashes = set(re.findall(r"--hash=sha256:[0-9a-f]{64}", body))
+        assert hashes == set(re.findall(r"--hash=sha256:[0-9a-f]{64}", dev[name])), (
+            f"{name}: dev lock pins a different artifact set than requirements.lock"
+        )
+    project = tomllib.loads(_read("pyproject.toml"))["project"]
+    for req in project["optional-dependencies"]["dev"]:
+        name = re.split(r"[\s<>=!~;\[]", req, maxsplit=1)[0].lower()
+        assert name in dev, f"dev extra {name} missing from requirements.dev.lock"
 
 
 def test_env_example_mirrors_dockerfile_digests() -> None:
