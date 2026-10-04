@@ -63,6 +63,24 @@ class GovernanceEventReplayed(ValueError):
     """
 
 
+class JournalStateChanged(ValueError):
+    """A guarded write named the journal state it was prepared against, and
+    the corpus journal has moved on since (another shard revision or
+    governance event committed in between). Nothing was appended.
+
+    Raised inside the serialized write transaction, so the comparison and the
+    append are atomic with respect to every other writer.
+    """
+
+    def __init__(self, *, expected: int, actual: int) -> None:
+        super().__init__(
+            f"corpus journal is at position {actual}, not the position {expected} "
+            "this write was prepared against; nothing was appended"
+        )
+        self.expected = expected
+        self.actual = actual
+
+
 class ShardRecordInvalid(ValueError):
     """A shard record failed model validation.
 
@@ -94,6 +112,7 @@ class PiiRejected(ValueError):
 __all__ = [
     "CorpusIsolationError",
     "GovernanceEventReplayed",
+    "JournalStateChanged",
     "OperationIdConflict",
     "PiiRejected",
     "ProjectionLockTimeout",

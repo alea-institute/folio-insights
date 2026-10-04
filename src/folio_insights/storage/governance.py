@@ -36,12 +36,23 @@ class PersistentGovernanceLog:
         self._ctx = ctx
 
     async def append(
-        self, event: GovernanceEvent, *, op_id: str | None = None
+        self,
+        event: GovernanceEvent,
+        *,
+        op_id: str | None = None,
+        expected_head: int | None = None,
     ) -> GovernanceEvent:
         """Single write entry (D-06). Returns the persisted event with its
         position. Retrying the same ``op_id`` (or, by default, the identical
-        signed event) returns the committed event instead of appending."""
-        return await self._ctx._append_governance(event, op_id=op_id)
+        signed event) returns the committed event instead of appending.
+
+        ``expected_head`` makes the append conditional: inside the write
+        transaction the corpus journal head must still equal it (the state a
+        saved preview was built against), else ``JournalStateChanged`` and
+        nothing is appended."""
+        return await self._ctx._append_governance(
+            event, op_id=op_id, expected_head=expected_head
+        )
 
     async def query_active_roles_at(
         self, corpus: str, asof: datetime

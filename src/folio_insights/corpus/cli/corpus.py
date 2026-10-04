@@ -19,15 +19,15 @@ RoleAssertion bound to ``--admin-did``. Order (D-19 — no CLI exemption):
      the signer-must-be-admin gate (defense in depth — 07-04a).
   6. Emit the persisted event as JSON.
 
-Phase 7 caveat: the governance log this CLI writes into is the process-local
-``InMemoryGovernanceLog`` singleton at
-``folio_insights.governance.cli._state.GOVERNANCE_LOG``. Phase 13 wires
-``<corpus>/.governance.sqlite`` behind the GovernanceLog Protocol per D-07
-without touching this command's source.
+Phase 13 (U3): the governance log is the persistent journal of the corpus
+under the corpus root (``--corpus-root`` / ``$FOLIO_INSIGHTS_CORPUS_ROOT`` /
+``~/.folio-insights/corpora``), opened once per invocation through
+``governance.cli._state.corpus_storage``. The genesis row is appended under
+the explicit operation ID ``genesis:<corpus>``, so a racing second
+``corpus init`` can never commit a second genesis.
 """
 from __future__ import annotations
 
-import asyncio
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,6 +41,7 @@ from folio_insights.governance.authorize import (
     authorize,
 )
 from folio_insights.governance.events import RoleAssertionEvent
+from folio_insights.governance.cli._state import corpus_root_option
 from folio_insights.identity.keys import KEY_PATH
 
 
@@ -61,19 +62,22 @@ from folio_insights.identity.keys import KEY_PATH
     show_default=True,
     help="Local ed25519 keystore JWK (DID-06). MUST derive --admin-did.",
 )
+@corpus_root_option
 def corpus_init_cmd(
     corpus_name: str,
     admin_did: str,
     key_path: Path,
+    corpus_root: Path | None,
 ) -> None:
     """Bootstrap a corpus: write the genesis self-signed corpus_admin row 0."""
-    from folio_insights.governance.cli._state import GOVERNANCE_LOG
+    from folio_insights.governance.cli._state import corpus_storage, run_cli
+    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
     from folio_insights.identity.signer import sign_attestation
     from folio_insights.shards.envelope import AttestedSignature
 
-    log = GOVERNANCE_LOG
+    cache = InMemoryDidDocCache()
 
     try:
         sk = load_signing_key(key_path)
@@ -102,60 +106,64 @@ def corpus_init_cmd(
         sys.exit(1)
 
     async def _run() -> None:
-        # ── D-19 FIRST STEP — Issue #3 closure: NO CLI exemption ──
-        decision = await authorize(
-            signer_did,
-            action=GENESIS_ACTION,
-            corpus=corpus_name,
-            log=log,
-            admin_did=admin_did,
-        )
-        if isinstance(decision, Deny):
-            click.echo(f"unauthorized (denied: {decision.reason})", err=True)
-            sys.exit(1)
-        assert isinstance(decision, Allow)
-
-        now = datetime.now(UTC)
-        # Build the genesis event with a placeholder signature so we can
-        # compute the canonical payload hash, then re-sign + attach.
-        placeholder_sig = AttestedSignature(
-            did=signer_did,
-            action="role_assertion",
-            signed_at=now,
-            signature="",
-            over_content_hash="0" * 64,
-            signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
-            did_doc_snapshot_at=None,
-            verified=None,
-        )
-        genesis = RoleAssertionEvent(
-            corpus=corpus_name,
-            position=0,
-            signature=placeholder_sig,
-            subject_did=admin_did,
-            role="corpus_admin",
-        )
-        payload_hash = genesis.signature_payload().decode("utf-8")
-        real_sig = sign_attestation(
-            content_hash=payload_hash,
-            signing_key=sk,
-            did=signer_did,
-            action="role_assertion",
-            signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
-            did_doc_snapshot_at=None,
-            now=now,
-        )
-        signed_genesis = genesis.model_copy(update={"signature": real_sig})
-        try:
-            persisted = await log.append(signed_genesis)
-        except Exception as exc:
-            click.echo(
-                f"log.append refused: {type(exc).__name__}: {exc}", err=True
+        async with corpus_storage(corpus_root, corpus_name, cache=cache) as ctx:
+            log = ctx.governance
+            # ── D-19 FIRST STEP — Issue #3 closure: NO CLI exemption ──
+            decision = await authorize(
+                signer_did,
+                action=GENESIS_ACTION,
+                corpus=corpus_name,
+                log=log,
+                admin_did=admin_did,
             )
-            sys.exit(1)
-        click.echo(persisted.model_dump_json(indent=2))
+            if isinstance(decision, Deny):
+                click.echo(f"unauthorized (denied: {decision.reason})", err=True)
+                sys.exit(1)
+            assert isinstance(decision, Allow)
 
-    asyncio.run(_run())
+            now = datetime.now(UTC)
+            # Build the genesis event with a placeholder signature so we can
+            # compute the canonical payload hash, then re-sign + attach.
+            placeholder_sig = AttestedSignature(
+                did=signer_did,
+                action="role_assertion",
+                signed_at=now,
+                signature="",
+                over_content_hash="0" * 64,
+                signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
+                did_doc_snapshot_at=None,
+                verified=None,
+            )
+            genesis = RoleAssertionEvent(
+                corpus=corpus_name,
+                position=0,
+                signature=placeholder_sig,
+                subject_did=admin_did,
+                role="corpus_admin",
+            )
+            payload_hash = genesis.signature_payload().decode("utf-8")
+            real_sig = sign_attestation(
+                content_hash=payload_hash,
+                signing_key=sk,
+                did=signer_did,
+                action="role_assertion",
+                signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
+                did_doc_snapshot_at=None,
+                now=now,
+            )
+            signed_genesis = genesis.model_copy(update={"signature": real_sig})
+            try:
+                persisted = await log.append(
+                    signed_genesis, op_id=f"genesis:{corpus_name}"
+                )
+            except Exception as exc:
+                click.echo(
+                    f"log.append refused: {type(exc).__name__}: {exc}", err=True
+                )
+                sys.exit(1)
+            click.echo(persisted.model_dump_json(indent=2))
+
+    run_cli(_run())
 
 
 __all__ = ["corpus_init_cmd"]

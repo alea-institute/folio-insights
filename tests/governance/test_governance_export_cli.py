@@ -37,9 +37,10 @@ from rdflib.namespace import RDF as RDF_NS  # noqa: F401 — explicit alias
 from folio_insights.governance.cli import _state as _cli_state
 from folio_insights.governance.events import (
     ExtractEvent,
+    GovernanceEvent,
     RoleAssertionEvent,
 )
-from folio_insights.governance.log import InMemoryGovernanceLog
+from folio_insights.identity.signer import sign_attestation
 from folio_insights.shards.envelope import AttestedSignature
 
 pytestmark = pytest.mark.governance
@@ -58,8 +59,8 @@ def _sig(did: str, action: str, signed_at: datetime) -> AttestedSignature:
         signed_at=signed_at,
         signature="",
         over_content_hash="0" * 64,
-        signing_key_id=f"{did}#key-1",
-        did_doc_snapshot_at=signed_at,
+        signing_key_id=f"{did}#{did.removeprefix('did:key:')}",
+        did_doc_snapshot_at=None,
         verified=None,
     )
 
@@ -70,47 +71,63 @@ def _derive_did(sk: Ed25519PrivateKey) -> str:
     return _derive_didkey_from_signing_key(sk)
 
 
-def _reset_log() -> None:
-    """Reset the process-local governance log between tests (CliRunner shares it).
+def _signed(event: GovernanceEvent, sk: Ed25519PrivateKey) -> GovernanceEvent:
+    """Sign ``event`` over its canonical (v2) payload with a generated key."""
+    sig = event.signature
+    real = sign_attestation(
+        content_hash=event.signature_payload().decode("utf-8"),
+        signing_key=sk,
+        did=sig.did,
+        action=sig.action,
+        signing_key_id=sig.signing_key_id,
+        did_doc_snapshot_at=None,
+        now=sig.signed_at,
+    )
+    return event.model_copy(update={"signature": real})
 
-    Replaces the singleton (mirrors ``tests/corpus/test_corpus_init_genesis.py``)
-    so the CLI's late-binding ``from ._state import GOVERNANCE_LOG`` always
-    sees a fresh instance — clearing ``_by_corpus`` on the prior instance
-    would only work if the singleton hadn't been replaced by an
-    earlier-running test fixture (corpus tests DO replace it).
-    """
-    _cli_state.GOVERNANCE_LOG = InMemoryGovernanceLog()
 
-
-async def _seed_admin_and_events(
-    corpus: str, admin_did: str
-) -> None:
-    """Seed a corpus with a genesis admin + 3 ExtractEvents.
+async def _seed_admin_and_events(corpus: str, admin_sk: Ed25519PrivateKey) -> None:
+    """Seed the persistent corpus (the CLI's corpus root) with a genesis
+    admin + 3 ExtractEvents, all signed by a generated test key.
 
     The admin RoleAssertion at position 0 satisfies the authorize() gate
     for subsequent reads (export is an admin-permitted action per the
     extended D-19 action-permission table in 07-05b).
     """
-    log = _cli_state.GOVERNANCE_LOG
-    genesis_sig = _sig(admin_did, "role_assertion", datetime(2026, 1, 1, tzinfo=UTC))
-    await log.append(
-        RoleAssertionEvent(
-            corpus=corpus,
-            signature=genesis_sig,
-            subject_did=admin_did,
-            role="corpus_admin",
-        )
-    )
-    for i, day in enumerate([2, 3, 4]):
-        await log.append(
-            ExtractEvent(
-                corpus=corpus,
-                signature=_sig(
-                    admin_did, "extract", datetime(2026, 1, day, tzinfo=UTC)
+    from folio_insights.identity.cache import InMemoryDidDocCache
+
+    admin_did = _derive_did(admin_sk)
+    async with _cli_state.corpus_storage(
+        None, corpus, cache=InMemoryDidDocCache()
+    ) as ctx:
+        genesis_sig = _sig(admin_did, "role_assertion", datetime(2026, 1, 1, tzinfo=UTC))
+        await ctx.governance.append(
+            _signed(
+                RoleAssertionEvent(
+                    corpus=corpus,
+                    position=0,
+                    signature=genesis_sig,
+                    subject_did=admin_did,
+                    role="corpus_admin",
                 ),
-                shard_iri=f"fi:shard:seed-{i}",
-            )
+                admin_sk,
+            ),
+            op_id=f"seed:{corpus}:genesis",
         )
+        for i, day in enumerate([2, 3, 4]):
+            await ctx.governance.append(
+                _signed(
+                    ExtractEvent(
+                        corpus=corpus,
+                        signature=_sig(
+                            admin_did, "extract", datetime(2026, 1, day, tzinfo=UTC)
+                        ),
+                        shard_iri=f"fi:shard:seed-{i}",
+                    ),
+                    admin_sk,
+                ),
+                op_id=f"seed:{corpus}:extract-{i}",
+            )
 
 
 # ── (a) Positive round-trip ────────────────────────────────────────────────
@@ -120,16 +137,15 @@ def test_export_turtle_round_trip(tmp_path: pathlib.Path) -> None:
     """End-to-end: seed 3 events → invoke export → parse Turtle → assert
     ≥3 prov:Activity + prov:wasAttributedTo predicates.
     """
-    _reset_log()
     # Generate a fresh key + DID for the operator. Persist to a tempfile so
     # the CLI's --key-path can load it (the CLI does Ed25519PrivateKey via
     # load_signing_key from JWK on disk).
-    from folio_insights.identity.keys import generate_keypair
+    from folio_insights.identity.keys import generate_keypair, load_signing_key
 
     key_path = tmp_path / "test-fi-key.jwk"
-    admin_did = generate_keypair(key_path=key_path)
+    generate_keypair(key_path=key_path)
 
-    asyncio.run(_seed_admin_and_events("export-test", admin_did))
+    asyncio.run(_seed_admin_and_events("export-test", load_signing_key(key_path)))
 
     from folio_insights.cli import cli
 
@@ -181,12 +197,9 @@ def test_export_unauthorized_did_exits_nonzero(tmp_path: pathlib.Path) -> None:
     DID has no role, so ``authorize(caller_did, "export", ...)`` returns
     ``Deny(reason="no_active_role")`` and the CLI exits non-zero.
     """
-    _reset_log()
-
     # Genesis admin (NOT the caller).
     admin_sk = Ed25519PrivateKey.generate()
-    admin_did = _derive_did(admin_sk)
-    asyncio.run(_seed_admin_and_events("unauthorized-test", admin_did))
+    asyncio.run(_seed_admin_and_events("unauthorized-test", admin_sk))
 
     # Caller — a different DID with no active role.
     from folio_insights.identity.keys import generate_keypair

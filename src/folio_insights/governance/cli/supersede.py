@@ -14,7 +14,6 @@ resolve_contest.py.
 """
 from __future__ import annotations
 
-import asyncio
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,6 +25,7 @@ from folio_insights.governance.supersede import (
     SupersessionEvent,
     validate_supersession,
 )
+from folio_insights.governance.cli._state import corpus_root_option
 from folio_insights.identity.keys import KEY_PATH
 
 
@@ -50,25 +50,31 @@ from folio_insights.identity.keys import KEY_PATH
     default=False,
     help="Skip the post-preview confirmation (scripted use).",
 )
+@corpus_root_option
 def supersede_cmd(
     old_shard_iri: str,
     new_shard_iri: str,
     corpus: str,
     key_path: Path,
     yes: bool,
+    corpus_root: Path | None,
 ) -> None:
     """Supersede an old shard with a new shard (PRD §21.9 — distinct from retraction; valid-time semantics)."""
     from folio_insights.governance.cli._signing import sign_and_verify_event
-    from folio_insights.governance.cli._state import GOVERNANCE_LOG
+    from folio_insights.governance.cli._state import (
+        corpus_storage,
+        new_op_id,
+        run_cli,
+    )
     from folio_insights.governance.log import InvalidSignature
     from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
-    from folio_insights.revision.store import InMemoryShardStore
     from folio_insights.shards.envelope import AttestedSignature
 
-    log = GOVERNANCE_LOG
-    store = InMemoryShardStore()  # Phase 13 wires the persistent backend.
+    # One DidDocCache for signing AND the storage append-time verifier
+    # (pre-populate it for did:web / did:plc signers).
+    cache = InMemoryDidDocCache()
 
     try:
         sk = load_signing_key(key_path)
@@ -84,60 +90,65 @@ def supersede_cmd(
     signer_did = _derive_didkey_from_signing_key(sk)
 
     async def _run() -> None:
-        # ── D-19 FIRST STEP ──
-        decision = await authorize(signer_did, "supersede", corpus, log=log)
-        if isinstance(decision, Deny):
-            click.echo(f"unauthorized (denied: {decision.reason})", err=True)
-            sys.exit(1)
-        assert isinstance(decision, Allow)
+        async with corpus_storage(corpus_root, corpus, cache=cache) as ctx:
+            log = ctx.governance
+            store = ctx.shards
+            # ── D-19 FIRST STEP ──
+            decision = await authorize(signer_did, "supersede", corpus, log=log)
+            if isinstance(decision, Deny):
+                click.echo(f"unauthorized (denied: {decision.reason})", err=True)
+                sys.exit(1)
+            assert isinstance(decision, Allow)
 
-        now = datetime.now(UTC)
-        placeholder_sig = AttestedSignature(
-            did=signer_did,
-            action="supersede",
-            signed_at=now,
-            signature="",
-            over_content_hash="0" * 64,
-            signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
-            did_doc_snapshot_at=None,
-            verified=None,
-        )
-        event = SupersessionEvent(
-            corpus=corpus,
-            signature=placeholder_sig,
-            old_shard_iri=old_shard_iri,
-            new_shard_iri=new_shard_iri,
-        )
-        try:
-            await validate_supersession(event, store=store)
-        except ValueError as exc:
-            click.echo(f"validate_supersession refused: {exc}", err=True)
-            sys.exit(1)
-
-        # CR-01: sign + verify-attestation round-trip via the shared helper.
-        try:
-            sig = await sign_and_verify_event(
-                event,
-                signing_key=sk,
+            now = datetime.now(UTC)
+            placeholder_sig = AttestedSignature(
                 did=signer_did,
                 action="supersede",
+                signed_at=now,
+                signature="",
+                over_content_hash="0" * 64,
                 signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
                 did_doc_snapshot_at=None,
-                now=now,
-                cache=InMemoryDidDocCache(),
+                verified=None,
             )
-        except InvalidSignature as exc:
-            click.echo(f"verify_attestation refused: {exc}", err=True)
-            sys.exit(1)
-        signed_event = event.model_copy(update={"signature": sig})
-        try:
-            persisted = await log.append(signed_event)
-        except Exception as exc:
-            click.echo(f"log.append refused: {type(exc).__name__}: {exc}", err=True)
-            sys.exit(1)
-        click.echo(persisted.model_dump_json(indent=2))
+            event = SupersessionEvent(
+                corpus=corpus,
+                signature=placeholder_sig,
+                old_shard_iri=old_shard_iri,
+                new_shard_iri=new_shard_iri,
+            )
+            try:
+                await validate_supersession(event, store=store)
+            except ValueError as exc:
+                click.echo(f"validate_supersession refused: {exc}", err=True)
+                sys.exit(1)
 
-    asyncio.run(_run())
+            # CR-01: sign + verify-attestation round-trip via the shared helper.
+            try:
+                sig = await sign_and_verify_event(
+                    event,
+                    signing_key=sk,
+                    did=signer_did,
+                    action="supersede",
+                    signing_key_id=f"{signer_did}#{signer_did.removeprefix('did:key:')}",
+                    did_doc_snapshot_at=None,
+                    now=now,
+                    cache=cache,
+                )
+            except InvalidSignature as exc:
+                click.echo(f"verify_attestation refused: {exc}", err=True)
+                sys.exit(1)
+            signed_event = event.model_copy(update={"signature": sig})
+            try:
+                persisted = await log.append(
+                    signed_event, op_id=new_op_id("supersede")
+                )
+            except Exception as exc:
+                click.echo(f"log.append refused: {type(exc).__name__}: {exc}", err=True)
+                sys.exit(1)
+            click.echo(persisted.model_dump_json(indent=2))
+
+    run_cli(_run())
 
 
 __all__ = ["supersede_cmd"]

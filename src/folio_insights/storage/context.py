@@ -26,13 +26,16 @@ barrier failure closes the context rather than serve a mixed revision.
 Two databases are never committed atomically together and this module never
 claims they are; the watermark is what makes the pair coherent.
 
-Seams left for later units:
+Seams for the CLI (U3, wired) and later units:
 
-* U3 — CLI wiring: construct one context per command from the corpus root and
-  pass ``ctx.shards`` / ``ctx.governance`` where the CLI now builds in-memory
-  doubles. ``retract`` should use ``ShardStore.dependents_of`` instead of
-  ``store._d``, and pass an explicit ``op_id`` (stored in the saved preview)
-  so a retried ``--apply`` commits at most once.
+* U3 — every governance / corpus CLI command opens one context per
+  invocation (``governance.cli._state.corpus_storage``). ``journal_head``
+  is the state position a saved retraction preview records;
+  ``PersistentGovernanceLog.append(..., op_id=, expected_head=)`` commits it
+  only if the journal has not moved (checked inside the write transaction);
+  ``committed_governance_op`` returns an already-committed operation so a
+  retried ``--apply`` commits at most once. ``cached_event_verifier`` lets a
+  caller verify did:web / did:plc signers from a pre-populated cache.
 * U4 — exports, bulk load, dumps and restore: ``ctx.query`` (corpus-scoped,
   read-only SPARQL), ``PersistentShardStore.get_record`` (original bytes and
   source version), ``journal_path`` / ``projection_path`` for snapshots, and
@@ -50,7 +53,7 @@ import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import jcs
 from pydantic import TypeAdapter, ValidationError
@@ -67,6 +70,7 @@ from folio_insights.shards.records import IDENTITY_FIELDS
 from folio_insights.storage.errors import (
     CorpusIsolationError,
     GovernanceEventReplayed,
+    JournalStateChanged,
     OperationIdConflict,
     ProjectionRecoveryFailed,
     ProjectionRecoveryPending,
@@ -94,6 +98,9 @@ from folio_insights.storage.projection import (
     ProjectionLock,
 )
 
+if TYPE_CHECKING:
+    from folio_insights.identity.cache import DidDocCache
+
 T = TypeVar("T")
 
 FULL_SHACL_STATUS = "deferred-to-phase-11"
@@ -103,30 +110,42 @@ _EVENT_ADAPTER: TypeAdapter = TypeAdapter(GovernanceEvent)
 EventVerifier = Callable[[GovernanceEvent], Awaitable[bool]]
 
 
-async def verify_event_signature_offline(event: GovernanceEvent) -> bool:
-    """Phase 6 ``verify_attestation`` over the event payload, with no network.
+def cached_event_verifier(cache: DidDocCache) -> EventVerifier:
+    """An ``EventVerifier`` that resolves signer keys from ``cache`` only.
 
-    did:key signers verify offline. Any resolver that would need the network
-    (did:web, did:plc) is refused, so the event fails closed until U3 supplies
-    a pre-populated ``DidDocCache``.
+    did:key signers verify offline. A did:web or did:plc signer verifies only
+    when ``cache`` already holds its DID-document snapshot (pre-populated by
+    the caller, e.g. the CLI); any resolver that would need the network is
+    refused, so an uncached rotatable DID fails closed.
     """
-    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.verifier import verify_attestation
-
-    if not event.signature.signature:
-        return False
 
     async def _no_network(*_args: Any) -> dict:
         raise ConnectionRefusedError("storage signature verification is offline")
 
-    payload = event.signature_payload().decode("utf-8")
-    return await verify_attestation(
-        payload,
-        event.signature,
-        cache=InMemoryDidDocCache(),
-        http=_no_network,
-        plc_resolver=_no_network,
-    )
+    async def _verify(event: GovernanceEvent) -> bool:
+        if not event.signature.signature:
+            return False
+        payload = event.signature_payload().decode("utf-8")
+        return await verify_attestation(
+            payload,
+            event.signature,
+            cache=cache,
+            http=_no_network,
+            plc_resolver=_no_network,
+        )
+
+    return _verify
+
+
+async def verify_event_signature_offline(event: GovernanceEvent) -> bool:
+    """Phase 6 ``verify_attestation`` over the event payload, with no network
+    and an empty DID-document cache: did:key signers verify; did:web and
+    did:plc signers fail closed unless a caller supplies
+    ``cached_event_verifier`` with a pre-populated cache."""
+    from folio_insights.identity.cache import InMemoryDidDocCache
+
+    return await cached_event_verifier(InMemoryDidDocCache())(event)
 
 
 @dataclass(frozen=True)
@@ -205,6 +224,40 @@ def _refuse_replayed_event(event: GovernanceEvent, history: list[GovernanceEvent
                 f"is already journaled at governance position {prior.position}; "
                 "a committed signed event cannot be appended again"
             )
+
+
+async def _authorize_in_transaction(
+    event: GovernanceEvent, snapshot: InMemoryGovernanceLog, corpus: str
+) -> None:
+    """Re-run the central ``authorize()`` decision against the committed
+    history read inside the write transaction (KTD3).
+
+    A CLI command authorizes before it builds and signs; a revocation
+    committed in between would otherwise still let the revoked signer
+    append. Every event goes through the same policy the CLI uses: the
+    first event of a corpus as the genesis carve-out (``corpus_init``), any
+    other as its own action, with roles resolved at commit time.
+    """
+    from folio_insights.governance.authorize import GENESIS_ACTION, Allow, authorize
+    from folio_insights.governance.log import NotAuthorized
+
+    signer = event.signature.did
+    if await snapshot.latest_position(corpus) < 0:
+        decision = await authorize(
+            signer,
+            GENESIS_ACTION,
+            corpus,
+            log=snapshot,
+            admin_did=getattr(event, "subject_did", None),
+        )
+    else:
+        decision = await authorize(signer, event.action, corpus, log=snapshot)
+    if not isinstance(decision, Allow):
+        raise NotAuthorized(
+            f"governance {event.action} event refused: signer {signer!r} is not "
+            f"authorized in corpus {corpus!r} at commit time "
+            f"({getattr(decision, 'reason', decision)}); nothing was appended"
+        )
 
 
 _SAFE_LOC_PART = re.compile(r"[a-z_][a-z0-9_]*")
@@ -459,6 +512,28 @@ class CorpusStorageContext:
             full_shacl=FULL_SHACL_STATUS,
         )
 
+    async def journal_head(self) -> int:
+        """The corpus journal head after the barrier: the committed state
+        position a saved preview records and a guarded write compares."""
+        return await self._barrier()
+
+    async def committed_governance_op(self, op_id: str) -> GovernanceEvent | None:
+        """The governance event committed under ``op_id``, or ``None``.
+
+        Lets a caller that retries a saved operation (``retract --apply``)
+        return the committed result instead of signing a second event.
+        """
+        upto = await self._barrier()
+        row = await self._journal.find_op(self.corpus, op_id)
+        if row is None or row.position > upto:
+            return None
+        if row.kind != KIND_GOVERNANCE:
+            raise OperationIdConflict(
+                f"operation ID {op_id!r} was committed as a {row.kind} write, "
+                "not a governance event"
+            )
+        return _event_from_row(row)
+
     async def query(self, sparql: str) -> Any:
         """Read-only SPARQL over this corpus's named graphs at the committed
         watermark. SERVICE clauses are refused. Results are materialized."""
@@ -480,7 +555,11 @@ class CorpusStorageContext:
     # ── governance writes ─────────────────────────────────────────────────
 
     async def _append_governance(
-        self, event: GovernanceEvent, *, op_id: str | None
+        self,
+        event: GovernanceEvent,
+        *,
+        op_id: str | None,
+        expected_head: int | None = None,
     ) -> GovernanceEvent:
         self._ensure_open()
         self._check_corpus(event.corpus)
@@ -501,9 +580,19 @@ class CorpusStorageContext:
                 if existing is not None:
                     row = check_replay(existing, request_sha)
                 else:
+                    if expected_head is not None:
+                        # Saved-preview freshness (KTD3, R4): compared inside
+                        # the serialized transaction, so no writer can land
+                        # between this check and the append.
+                        actual = await tx.head()
+                        if actual != expected_head:
+                            raise JournalStateChanged(
+                                expected=expected_head, actual=actual
+                            )
                     history = [_event_from_row(r) for r in await tx.governance_rows()]
                     _refuse_replayed_event(event, history)
                     snapshot = InMemoryGovernanceLog._from_history(self.corpus, history)
+                    await _authorize_in_transaction(event, snapshot, self.corpus)
                     persisted = await snapshot.append(event)
                     row = await tx.append(
                         PendingRow(
@@ -730,6 +819,7 @@ __all__ = [
     "StorageConfig",
     "StorageStatus",
     "StoredShardRecord",
+    "cached_event_verifier",
     "open_corpus_storage",
     "verify_event_signature_offline",
 ]

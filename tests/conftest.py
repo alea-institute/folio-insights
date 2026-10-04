@@ -30,6 +30,14 @@ def _isolated_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     get_settings.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _isolated_corpus_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Point the governance/corpus CLI's persistent corpus root at a per-test
+    temporary directory (Phase 13 U3), never ``~/.folio-insights/corpora``."""
+    monkeypatch.setenv("FOLIO_INSIGHTS_CORPUS_ROOT", str(tmp_path / "corpora"))
+    yield
+
+
 @pytest.fixture
 def sample_text_elements() -> list[dict]:
     """Return a list of TextElement-like dicts with various element types."""
