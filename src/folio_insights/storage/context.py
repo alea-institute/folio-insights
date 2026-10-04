@@ -45,6 +45,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -52,7 +53,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 import jcs
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from folio_insights.governance.events import GovernanceEvent
 from folio_insights.governance.log import InMemoryGovernanceLog, InvalidSignature
@@ -65,9 +66,12 @@ from folio_insights.shards import (
 from folio_insights.shards.records import IDENTITY_FIELDS
 from folio_insights.storage.errors import (
     CorpusIsolationError,
+    GovernanceEventReplayed,
+    OperationIdConflict,
     ProjectionRecoveryFailed,
     ProjectionRecoveryPending,
     ShardIdentityViolation,
+    ShardRecordInvalid,
     StorageClosed,
 )
 from folio_insights.storage.journal import (
@@ -171,6 +175,78 @@ def _event_from_row(row: JournalRow) -> GovernanceEvent:
 
 def _canonical_sha(data: Any) -> str:
     return hashlib.sha256(jcs.canonicalize(data)).hexdigest()
+
+
+def _replay_keys(event: GovernanceEvent) -> tuple[str | None, tuple[str, str]]:
+    """What identifies a signed governance event independent of the unsigned
+    ``signed_at`` and the operation ID: the signature value, and the
+    (signer DID, signed payload hash) pair."""
+    payload_sha = hashlib.sha256(event.signature_payload()).hexdigest()
+    return (event.signature.signature or None), (event.signature.did, payload_sha)
+
+
+def _refuse_replayed_event(event: GovernanceEvent, history: list[GovernanceEvent]) -> None:
+    """Refuse ``event`` if its signature, or its (signer, signed payload),
+    already appears in committed ``history``.
+
+    The ed25519 signature covers the event body only; ``signed_at`` and the
+    operation ID are not bound to it, so without this check an old signed
+    event could be journaled again (a replayed revocation reverting a later
+    re-grant). Binding those fields into the signed payload is a cross-phase
+    follow-up recorded in the Phase 13 plan.
+    """
+    signature, signed = _replay_keys(event)
+    for prior in history:
+        prior_signature, prior_signed = _replay_keys(prior)
+        if (signature is not None and signature == prior_signature) or signed == prior_signed:
+            raise GovernanceEventReplayed(
+                f"governance {event.action} event signed by {event.signature.did!r} "
+                f"is already journaled at governance position {prior.position}; "
+                "a committed signed event cannot be appended again"
+            )
+
+
+_SAFE_LOC_PART = re.compile(r"[a-z_][a-z0-9_]*")
+
+
+def _safe_loc(err: Mapping[str, Any]) -> str:
+    """An error location with input-derived parts masked: an extra key is
+    input text, and so is any part that is not a plain snake_case name."""
+    loc = list(err["loc"])
+    parts: list[str] = []
+    for index, part in enumerate(loc):
+        if isinstance(part, int):
+            parts.append(str(part))
+        elif err["type"] == "extra_forbidden" and index == len(loc) - 1:
+            parts.append("<extra key>")
+        elif isinstance(part, str) and _SAFE_LOC_PART.fullmatch(part):
+            parts.append(part)
+        else:
+            parts.append("<key>")
+    return ".".join(parts) or "<root>"
+
+
+def _sanitized_validation_error(exc: ValidationError) -> ShardRecordInvalid:
+    """Re-state a pydantic error with masked locations and error types only;
+    no input values, messages or keys."""
+    problems = "; ".join(
+        f"{_safe_loc(err)}: {err['type']}"
+        for err in exc.errors(include_url=False, include_input=False, include_context=False)
+    )
+    return ShardRecordInvalid(
+        f"shard record failed validation ({exc.error_count()} error(s)): {problems}"
+    )
+
+
+def _parse_raw_json(raw: bytes | str | Mapping[str, Any]) -> Any:
+    """The raw record as parsed JSON for the pre-validation PII gate, or
+    ``None`` when it does not parse (the adapter then refuses it)."""
+    if isinstance(raw, Mapping):
+        return raw
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 class CorpusStorageContext:
@@ -279,6 +355,10 @@ class CorpusStorageContext:
         """Under the projection lock: replay journal rows past the watermark,
         then (optionally) run ``read`` against the caught-up projection.
 
+        Journal reads here go through the journal's read-only connection, so
+        they see committed rows only, never an open write transaction. A
+        projection watermark past the committed head is rebuilt.
+
         Catch-up failures propagate as-is (callers decide to fail closed);
         an exception from ``read`` is wrapped in ``_ReadError`` so it does not
         close the context.
@@ -324,8 +404,11 @@ class CorpusStorageContext:
         every read in this call must stay at or below."""
         self._ensure_open()
         head = await self._journal.head(self.corpus)
-        if head <= self._confirmed:
+        if head == self._confirmed:
             return self._confirmed
+        # head > confirmed: catch up. head < confirmed: the projection is past
+        # the committed journal (e.g. it applied rows that were later rolled
+        # back, or the journal was restored); _catch_up rebuilds it.
         try:
             await self._catch_up()
         except Exception as exc:
@@ -418,6 +501,7 @@ class CorpusStorageContext:
                     row = check_replay(existing, request_sha)
                 else:
                     history = [_event_from_row(r) for r in await tx.governance_rows()]
+                    _refuse_replayed_event(event, history)
                     snapshot = InMemoryGovernanceLog._from_history(self.corpus, history)
                     persisted = await snapshot.append(event)
                     row = await tx.append(
@@ -435,6 +519,18 @@ class CorpusStorageContext:
         return _event_from_row(row)
 
     # ── shard writes ──────────────────────────────────────────────────────
+
+    def _load_gated(self, raw: bytes | str | Mapping[str, Any]) -> LoadedShardRecord:
+        """PII gate over the parsed raw input BEFORE model validation, then the
+        U17 adapter. A validation failure is re-raised as ``ShardRecordInvalid``
+        without input values, so refused text never reaches an error message."""
+        parsed = _parse_raw_json(raw)
+        if parsed is not None:
+            self.config.pii_gate.check(parsed)
+        try:
+            return load_shard_record(raw)
+        except ValidationError as exc:
+            raise _sanitized_validation_error(exc) from None
 
     def _gate(self, loaded: LoadedShardRecord, payload: bytes) -> None:
         """PII gate over the raw input AND the migrated payload, then the
@@ -492,26 +588,36 @@ class CorpusStorageContext:
                 f"put key {shard_iri!r} does not match shard_iri {shard.shard_iri!r}"
             )
         payload = dump_shard_record(shard)
-        loaded = load_shard_record(payload)  # full model validation on write
+        loaded = self._load_gated(payload)  # full model validation on write
         self._gate(loaded, payload)
         payload_sha = sha256_hex(payload)
+        request_sha = sha256_hex(f"{shard_iri}\n{payload_sha}".encode("utf-8"))
 
         async with self._write_lock:
             self._ensure_open()
             async with self._journal.write(self.corpus) as tx:
-                prior_position = await self._check_revision(tx, loaded.shard)
-                op = op_id or (
-                    f"shard:{sha256_hex(shard_iri.encode('utf-8'))}:"
-                    f"{prior_position}:{payload_sha}"
-                )
-                request_sha = sha256_hex(f"{shard_iri}\n{payload_sha}".encode("utf-8"))
-                existing = await tx.find_op(op)
+                # An explicit op_id is looked up first, so retrying it after a
+                # later revision returns the committed result instead of
+                # tripping the revision check against the newer row.
+                existing = await tx.find_op(op_id) if op_id is not None else None
                 if existing is not None:
+                    op = op_id
                     row = check_replay(existing, request_sha)
                 else:
-                    row = await tx.append(
-                        self._pending_shard(loaded, payload, op_id=op, request_sha=request_sha)
+                    prior_position = await self._check_revision(tx, loaded.shard)
+                    op = op_id or (
+                        f"shard:{sha256_hex(shard_iri.encode('utf-8'))}:"
+                        f"{prior_position}:{payload_sha}"
                     )
+                    existing = None if op_id is not None else await tx.find_op(op)
+                    if existing is not None:
+                        row = check_replay(existing, request_sha)
+                    else:
+                        row = await tx.append(
+                            self._pending_shard(
+                                loaded, payload, op_id=op, request_sha=request_sha
+                            )
+                        )
         await self._after_commit(op, row.position)
         return load_shard_record(row.payload).shard
 
@@ -530,7 +636,7 @@ class CorpusStorageContext:
         prepared: list[tuple[LoadedShardRecord, bytes]] = []
         for record in records:
             raw = dump_shard_record(record) if isinstance(record, ShardEnvelope) else record
-            loaded = load_shard_record(raw)
+            loaded = self._load_gated(raw)
             payload = dump_shard_record(loaded.shard)
             self._gate(loaded, payload)
             prepared.append((loaded, payload))
@@ -549,8 +655,18 @@ class CorpusStorageContext:
             async with self._journal.write(self.corpus) as tx:
                 first = await tx.find_op(f"{op}#0")
                 if first is not None:
-                    check_replay(first, request_sha)
-                    rows = [r for r in await tx.ops_with_prefix(op) if r.op_id != op]
+                    # Exact-ID lookups: rows <op>#0 .. <op>#N-1 of THIS batch
+                    # only (a prefix match would also return other operations
+                    # such as "<op>#0#..." or a different-case op_id).
+                    rows = []
+                    for index in range(len(prepared)):
+                        committed = await tx.find_op(f"{op}#{index}")
+                        if committed is None:
+                            raise OperationIdConflict(
+                                f"operation ID {op!r} was already committed with "
+                                f"{index} row(s), not {len(prepared)}"
+                            )
+                        rows.append(check_replay(committed, request_sha))
                 else:
                     rows = []
                     for index, (loaded, payload) in enumerate(prepared):

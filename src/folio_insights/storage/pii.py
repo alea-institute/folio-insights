@@ -14,9 +14,11 @@ Defaults cover three US patterns:
 * ``us_phone`` — a NANP number written with separators or a parenthesized
   area code (``(212) 555-0142``, ``212-555-0142``, ``+1 212.555.0142``).
 
-Scope: every string leaf of the record is scanned, including IRIs and raw
-input that a migration would drop. Machine-generated cryptographic material
-(``signatures`` subtrees, ``*_hash`` fields and edit signatures) is skipped.
+Scope: every string leaf of the record is scanned, including IRIs, mapping
+keys, and raw input that a migration would drop. Machine-generated
+cryptographic material is skipped: ``signatures`` subtrees and edit
+signatures, and a ``*_hash`` field only when its value is exactly a 64-char
+lowercase hex digest (anything else under a ``*_hash`` key is scanned).
 """
 from __future__ import annotations
 
@@ -85,8 +87,17 @@ DEFAULT_PII_PATTERNS: tuple[PiiPattern, ...] = (
 _SKIP_KEYS = frozenset({"signatures", "signature", "cosigners"})
 
 
-def _is_skipped_key(key: str) -> bool:
-    return key in _SKIP_KEYS or key.endswith("_hash")
+_HEX_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+
+def _is_skipped(key: str, value: Any) -> bool:
+    if key in _SKIP_KEYS:
+        return True
+    return (
+        key.endswith("_hash")
+        and isinstance(value, str)
+        and _HEX_DIGEST.fullmatch(value) is not None
+    )
 
 
 def _string_leaves(value: Any, path: str) -> Iterator[tuple[str, str]]:
@@ -94,8 +105,12 @@ def _string_leaves(value: Any, path: str) -> Iterator[tuple[str, str]]:
         yield path, value
     elif isinstance(value, Mapping):
         for key, item in value.items():
-            if isinstance(key, str) and _is_skipped_key(key):
-                continue
+            if isinstance(key, str):
+                # The key itself is input text (never echoed: the path below
+                # names the parent, not the key).
+                yield (f"{path}.<key>" if path else "<key>"), key
+                if _is_skipped(key, item):
+                    continue
             yield from _string_leaves(item, f"{path}.{key}" if path else str(key))
     elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):

@@ -53,6 +53,23 @@ class OperationIdConflict(ValueError):
     """An operation ID was reused for a different request."""
 
 
+class GovernanceEventReplayed(ValueError):
+    """A governance event whose signature is already in the committed history.
+
+    The signature covers only the event body, so a journaled event re-sent
+    with a moved ``signature.signed_at`` or under a fresh operation ID would
+    otherwise be accepted again (a replayed revocation, for instance).
+    """
+
+
+class ShardRecordInvalid(ValueError):
+    """A shard record failed model validation.
+
+    The message lists field locations and error types only; input values are
+    never included, so refused text does not reach logs or tracebacks.
+    """
+
+
 class ShardIdentityViolation(ValueError):
     """A shard write would change frozen identity or shrink an append-only list."""
 
@@ -75,12 +92,14 @@ class PiiRejected(ValueError):
 
 __all__ = [
     "CorpusIsolationError",
+    "GovernanceEventReplayed",
     "OperationIdConflict",
     "PiiRejected",
     "ProjectionLockTimeout",
     "ProjectionRecoveryFailed",
     "ProjectionRecoveryPending",
     "ShardIdentityViolation",
+    "ShardRecordInvalid",
     "StorageClosed",
     "StorageError",
     "UnsupportedStorageSchema",

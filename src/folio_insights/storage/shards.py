@@ -46,6 +46,14 @@ class PersistentShardStore:
     async def put(
         self, shard_iri: str, shard: ShardEnvelope, *, op_id: str | None = None
     ) -> None:
+        """Append a new revision of ``shard_iri``.
+
+        Retry safety needs an explicit ``op_id``: retrying it returns the
+        committed result even after later revisions of the same shard. The
+        default op_id is derived from the prior revision's position, so it is
+        NOT retry-safe once another revision lands; callers (U3) must pass an
+        explicit op_id for any write they may retry.
+        """
         await self._ctx._put_shard(shard_iri, shard, op_id=op_id)
 
     async def iter_shards(self) -> AsyncIterator[ShardEnvelope]:

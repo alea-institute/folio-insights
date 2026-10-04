@@ -9,8 +9,23 @@ One append-only table holds every committed operation for every corpus:
 * ``(corpus, governance_position)`` is unique and contiguous for governance
   events, so the governance log keeps its own 0-based positions.
 * ``BEFORE UPDATE`` / ``BEFORE DELETE`` triggers refuse any mutation of a
-  committed row (the D-05 third defense-in-depth layer). An insert trigger
-  refuses non-contiguous positions.
+  committed row (the D-05 third defense-in-depth layer). Insert triggers
+  refuse non-contiguous positions and any insert whose ``(corpus, position)``,
+  ``(corpus, op_id)`` or ``(corpus, governance_position)`` already exists, so
+  ``INSERT OR REPLACE`` cannot delete a committed row through its conflict
+  resolution. ``storage_meta`` refuses an insert over an existing key for the
+  same reason.
+
+The triggers are created with ``IF NOT EXISTS`` on every open, so a journal
+written before a trigger existed gains it on its next open without a schema
+version change (no table or column changed). A future
+``JOURNAL_SCHEMA_VERSION`` bump must drop and recreate the ``storage_meta``
+guards inside its migration transaction, since they refuse every rewrite of
+the version row.
+
+Reads outside a write transaction use a separate read-only connection, so they
+see only committed rows even while this process holds an open
+``BEGIN IMMEDIATE`` on the write connection.
 
 Shard rows keep the U17 adapter's ``original_bytes`` and
 ``source_schema_version`` next to the current-version ``payload`` written by
@@ -107,6 +122,29 @@ _DDL: tuple[str, ...] = (
     END
     """,
     """
+    CREATE TRIGGER IF NOT EXISTS journal_refuse_replace
+    BEFORE INSERT ON journal
+    WHEN EXISTS (
+        SELECT 1 FROM journal WHERE corpus = NEW.corpus AND (
+            position = NEW.position
+            OR op_id = NEW.op_id
+            OR (NEW.governance_position IS NOT NULL
+                AND governance_position = NEW.governance_position)
+        )
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'journal is append-only: insert over a committed row refused');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS storage_meta_refuse_replace
+    BEFORE INSERT ON storage_meta
+    WHEN EXISTS (SELECT 1 FROM storage_meta WHERE key = NEW.key)
+    BEGIN
+        SELECT RAISE(ABORT, 'storage_meta is append-only: insert over an existing key refused');
+    END
+    """,
+    """
     CREATE TRIGGER IF NOT EXISTS storage_meta_refuse_update
     BEFORE UPDATE ON storage_meta
     BEGIN
@@ -186,15 +224,6 @@ class JournalTransaction:
         rows = list(rows)
         return _row(tuple(rows[0])) if rows else None
 
-    async def ops_with_prefix(self, op_id: str) -> list[JournalRow]:
-        """Rows of a multi-row operation (bulk ingest uses ``<op_id>#<n>``)."""
-        rows = await self._conn.execute_fetchall(
-            f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND "
-            "(op_id = ? OR op_id LIKE ? ESCAPE '\\') ORDER BY position",
-            (self.corpus, op_id, _like_prefix(op_id) + "#%"),
-        )
-        return [_row(tuple(r)) for r in rows]
-
     async def head(self) -> int:
         return await _head(self._conn, self.corpus)
 
@@ -227,10 +256,6 @@ class JournalTransaction:
             values,
         )
         return _row(values)
-
-
-def _like_prefix(text: str) -> str:
-    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 async def _head(conn: aiosqlite.Connection, corpus: str) -> int:
@@ -277,12 +302,22 @@ class Journal:
         self.path = path
         self._busy_timeout_s = busy_timeout_s
         self._conn: aiosqlite.Connection | None = None
+        self._read_conn: aiosqlite.Connection | None = None
 
     @property
     def conn(self) -> aiosqlite.Connection:
+        """The write connection (``BEGIN IMMEDIATE`` transactions only)."""
         if self._conn is None:
             raise RuntimeError("journal is not open")
         return self._conn
+
+    @property
+    def read_conn(self) -> aiosqlite.Connection:
+        """The read-only connection: sees committed rows only, never this
+        process's open write transaction."""
+        if self._read_conn is None:
+            raise RuntimeError("journal is not open")
+        return self._read_conn
 
     async def open(self) -> None:
         conn = await aiosqlite.connect(
@@ -319,30 +354,53 @@ class Journal:
         except BaseException:
             await conn.close()
             raise
+        try:
+            read_conn = await aiosqlite.connect(
+                self.path, isolation_level=None, timeout=self._busy_timeout_s
+            )
+        except BaseException:
+            await conn.close()
+            raise
+        try:
+            await read_conn.execute(
+                f"PRAGMA busy_timeout = {int(self._busy_timeout_s * 1000)}"
+            )
+            await read_conn.execute("PRAGMA query_only = ON")
+        except BaseException:
+            await read_conn.close()
+            await conn.close()
+            raise
         self._conn = conn
+        self._read_conn = read_conn
 
     async def close(self) -> None:
+        if self._read_conn is not None:
+            read_conn, self._read_conn = self._read_conn, None
+            await read_conn.close()
         if self._conn is not None:
             conn, self._conn = self._conn, None
             await conn.close()
 
     @asynccontextmanager
     async def write(self, corpus: str) -> AsyncIterator[JournalTransaction]:
-        """``BEGIN IMMEDIATE`` ... ``COMMIT``; any exception rolls back."""
+        """``BEGIN IMMEDIATE`` ... ``COMMIT``; any exception, including a
+        failed ``COMMIT``, rolls back so the connection is never left inside
+        an open transaction."""
         conn = self.conn
         await conn.execute("BEGIN IMMEDIATE")
         try:
             yield JournalTransaction(conn, corpus)
+            await conn.execute("COMMIT")
         except BaseException:
-            await conn.execute("ROLLBACK")
+            if conn.in_transaction:
+                await conn.execute("ROLLBACK")
             raise
-        await conn.execute("COMMIT")
 
     async def head(self, corpus: str) -> int:
-        return await _head(self.conn, corpus)
+        return await _head(self.read_conn, corpus)
 
     async def rows_after(self, corpus: str, after: int, *, limit: int) -> list[JournalRow]:
-        rows = await self.conn.execute_fetchall(
+        rows = await self.read_conn.execute_fetchall(
             f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND position > ? "
             "ORDER BY position LIMIT ?",
             (corpus, after, limit),
@@ -350,7 +408,7 @@ class Journal:
         return [_row(tuple(r)) for r in rows]
 
     async def governance_rows(self, corpus: str, *, upto: int | None) -> list[JournalRow]:
-        return await _governance_rows(self.conn, corpus, upto)
+        return await _governance_rows(self.read_conn, corpus, upto)
 
     async def governance_row_at(
         self, corpus: str, governance_position: int, *, upto: int | None
@@ -362,7 +420,7 @@ class Journal:
             else (corpus, governance_position, upto)
         )
         rows = list(
-            await self.conn.execute_fetchall(
+            await self.read_conn.execute_fetchall(
                 f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND kind = 'governance' "
                 f"AND governance_position = ?{bound}",
                 params,
@@ -374,7 +432,7 @@ class Journal:
         bound = "" if upto is None else " AND position <= ?"
         params: tuple = (corpus,) if upto is None else (corpus, upto)
         rows = list(
-            await self.conn.execute_fetchall(
+            await self.read_conn.execute_fetchall(
                 "SELECT COALESCE(MAX(governance_position), -1) FROM journal "
                 f"WHERE corpus = ? AND kind = 'governance'{bound}",
                 params,
@@ -385,11 +443,11 @@ class Journal:
     async def latest_shard(
         self, corpus: str, shard_iri: str, *, upto: int | None
     ) -> JournalRow | None:
-        return await _latest_shard(self.conn, corpus, shard_iri, upto)
+        return await _latest_shard(self.read_conn, corpus, shard_iri, upto)
 
     async def latest_shards(self, corpus: str, *, upto: int) -> list[JournalRow]:
         """The newest revision of every shard in ``corpus`` at ``position <= upto``."""
-        rows = await self.conn.execute_fetchall(
+        rows = await self.read_conn.execute_fetchall(
             f"SELECT {_COLUMNS} FROM journal AS j WHERE corpus = ? AND kind = 'shard' "
             "AND position = (SELECT MAX(position) FROM journal WHERE corpus = j.corpus "
             "AND kind = 'shard' AND subject = j.subject AND position <= ?) "
