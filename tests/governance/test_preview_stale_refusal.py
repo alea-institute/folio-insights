@@ -118,11 +118,13 @@ async def test_underlying_state_hash_is_deterministic() -> None:
     """
     store, log = await seed_cascade_corpus(superseded=True)
 
+    # The saved-preview op_id is bound into the hash (Phase 13 U3), so
+    # determinism is over the same state AND the same op_id.
     preview_1 = await build_cascade_preview(
-        RETRACTED_IRI, CORPUS, store=store, log=log
+        RETRACTED_IRI, CORPUS, store=store, log=log, op_id="retract:fixed"
     )
     preview_2 = await build_cascade_preview(
-        RETRACTED_IRI, CORPUS, store=store, log=log
+        RETRACTED_IRI, CORPUS, store=store, log=log, op_id="retract:fixed"
     )
     assert preview_1.underlying_state_hash == preview_2.underlying_state_hash, (
         "build_cascade_preview must produce a deterministic "

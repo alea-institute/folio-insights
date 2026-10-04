@@ -251,8 +251,15 @@ async def _hash_underlying_state(
     store: "ShardStore",
     log: "GovernanceLog",
     corpus: str,
+    *,
+    op_id: str | None,
+    state_position: int | None,
 ) -> str:
     """Deterministic SHA-256 over the cascade-relevant state (D-17, RESEARCH Q6).
+
+    The saved preview's ``op_id`` and ``state_position`` are bound into the
+    hash, so editing either in a saved file (without rebuilding the preview)
+    no longer matches the rebuilt preview and the commit refuses.
 
     Hashes the set of (dep_iri, epistemic_status, reconciliation_strategy,
     valid_time_end, superseded_by, log_position_at_signing) tuples — these
@@ -310,6 +317,8 @@ async def _hash_underlying_state(
         "retracted_record_sha256": _record_sha256(retracted),
         "corpus": corpus,
         "log_latest_position": latest_pos,
+        "op_id": op_id,
+        "state_position": state_position,
         "dependents": items,
     }
     canonical = jcs.canonicalize(payload)
@@ -370,8 +379,15 @@ async def build_cascade_preview(
     for key in classified:
         classified[key].sort()
 
+    op_id = op_id or f"retract:{uuid.uuid4().hex}"
     state_hash = await _hash_underlying_state(
-        retracted_iri, classified, store, log, corpus
+        retracted_iri,
+        classified,
+        store,
+        log,
+        corpus,
+        op_id=op_id,
+        state_position=state_position,
     )
 
     return CascadePreview(
@@ -382,7 +398,7 @@ async def build_cascade_preview(
         auto_rederive=classified["auto_rederive"],
         aporetic=classified["aporetic"],
         review_needed=classified["review_needed"],
-        op_id=op_id or f"retract:{uuid.uuid4().hex}",
+        op_id=op_id,
         state_position=state_position,
     )
 
@@ -420,17 +436,23 @@ async def commit_cascade(
     """Commit a previously-built cascade preview (D-17).
 
     Order of operations:
-      1. RE-RUN ``build_cascade_preview`` on the current store + log state.
-      2. Compare ``current.underlying_state_hash`` to
-         ``preview.underlying_state_hash``. If different, raise
+      1. RE-RUN ``build_cascade_preview`` on the current store + log state
+         (with the saved ``op_id`` and ``state_position``).
+      2. Compare the rebuilt preview to the saved one, everything except
+         ``taken_at``/``op_id``/``state_position`` (those two are bound
+         into ``underlying_state_hash``). If different, raise
          ``PreviewStale`` with a message referencing ``--preview`` so the
          operator knows the remediation.
       3. Build the ``RetractionEvent`` committing the preview hash, sign
          over the canonical payload, and append to the governance log.
          A preview carrying ``state_position`` (persistent store) is
-         appended under ``preview.op_id`` with ``expected_head`` set, so the
-         log refuses it if anything committed since the preview was built;
-         the log's own signature, authorization and SHACL gates run first.
+         appended under ``preview.op_id`` with ``expected_head`` set. The
+         persistent log verifies the signature before its write
+         transaction; inside it, it checks the journal head, re-runs
+         ``authorize()`` for the signer against the committed history, and
+         runs the log's SHACL gates, so a revocation committed after the
+         CLI's own authorize() call still refuses. The in-memory log runs
+         its own gates only (no in-transaction authorize()).
 
     Returns the persisted RetractionEvent (with ``position`` assigned by
     ``log.append``).
@@ -441,11 +463,18 @@ async def commit_cascade(
         store=store,
         log=log,
         op_id=preview.op_id,
+        state_position=preview.state_position,
     )
-    if current.underlying_state_hash != preview.underlying_state_hash:
+    # The whole rebuilt preview (buckets, target, corpus, state hash) must
+    # equal the saved one; only the capture time and the two bound saved-
+    # preview fields (already inside the state hash) are excluded. An edited
+    # file therefore never commits a hash of a cascade that never existed.
+    excluded = {"taken_at", "op_id", "state_position"}
+    if current.model_dump(exclude=excluded) != preview.model_dump(exclude=excluded):
         raise PreviewStale(
             f"underlying state changed since preview taken at "
-            f"{preview.taken_at.isoformat()}; re-run --preview"
+            f"{preview.taken_at.isoformat()} (or the saved preview does not "
+            "match the cascade rebuilt from the corpus); re-run --preview"
         )
 
     # Build, sign, verify, append.

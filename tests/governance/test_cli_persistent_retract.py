@@ -224,9 +224,10 @@ def test_nonempty_cascade_survives_restart(corpus: Corpus, tmp_path: Path) -> No
         assert preview["op_id"].startswith("retract:")
         assert isinstance(preview["state_position"], int)
 
-    assert first["underlying_state_hash"] == second["underlying_state_hash"]
+    # Same state, same cascade; each preview binds its own op_id into the hash.
     assert first["state_position"] == second["state_position"]
     assert first["op_id"] != second["op_id"]
+    assert first["underlying_state_hash"] != second["underlying_state_hash"]
 
 
 # ── stale previews refuse ──────────────────────────────────────────────────
@@ -476,3 +477,103 @@ async def test_builder_uses_typed_dependents_seam() -> None:
     source = (REPO_ROOT / "src/folio_insights/governance/retract.py").read_text(encoding="utf-8")
     assert "_d" not in {tok.strip(".,()") for tok in source.replace("\"", " ").split()}
     assert "dependents_of" in source
+
+
+# ── U3 review findings (regressions) ───────────────────────────────────────
+
+
+def test_forged_buckets_in_saved_preview_refuse(corpus: Corpus, tmp_path: Path) -> None:
+    """P1: an edited preview whose buckets name a cascade that never existed
+    must not commit a hash of that forged cascade."""
+    path = tmp_path / "p.json"
+    honest = _preview(corpus, path)
+    forged = dict(honest, aporetic=[], review_needed=[], auto_rederive=["urn:fabricated:x"])
+    forged_path = tmp_path / "forged.json"
+    forged_path.write_text(json.dumps(forged), encoding="utf-8")
+    _assert_stale(corpus, forged_path)
+
+
+def test_edited_state_position_does_not_bypass_guard(corpus: Corpus, tmp_path: Path) -> None:
+    """P2: state_position is bound into the state hash, so bumping it in the
+    file after a corpus change refuses instead of committing."""
+    path = tmp_path / "p.json"
+    preview = _preview(corpus, path)
+
+    async def _edit(ctx: CorpusStorageContext) -> None:
+        other = await ctx.shards.get(corpus.unrelated)
+        assert other is not None
+        await ctx.shards.put(
+            other.shard_iri, other.model_copy(update={"sense": "unrelated edit"}), op_id="edit-u"
+        )
+
+    _in_ctx(corpus.root, _edit)
+    preview["state_position"] = _in_ctx(corpus.root, _snapshot)["head"]
+    bumped = tmp_path / "bumped.json"
+    bumped.write_text(json.dumps(preview), encoding="utf-8")
+    _assert_stale(corpus, bumped)
+
+
+def test_revocation_after_cli_authorize_refuses_in_transaction(
+    corpus: Corpus, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2: a revocation committed between the CLI's authorize() and the
+    append still refuses: storage re-authorizes against committed history."""
+    from click.testing import CliRunner
+
+    import folio_insights.governance.cli.retract as retract_cli
+    from folio_insights.cli import cli
+
+    b_key = tmp_path / "b.jwk"
+    b_did = generate_keypair(b_key)
+    common = ("--corpus", CORPUS, "--key-path", str(corpus.admin_key))
+    ok(run_cli(corpus.root, "governance", "assert-role", b_did, "--role", "corpus_admin", *common))
+
+    real = retract_cli.authorize
+
+    async def _racing(did: str, action: str, corp: str, **kw: Any) -> Any:
+        decision = await real(did, action, corp, **kw)
+        ok(run_cli(corpus.root, "governance", "revoke-role", b_did, "--revoked-role", "corpus_admin", *common))
+        return decision
+
+    monkeypatch.setattr(retract_cli, "authorize", _racing)
+    monkeypatch.setenv("FOLIO_INSIGHTS_CORPUS_ROOT", str(corpus.root))
+    result = CliRunner().invoke(
+        cli,
+        ["governance", "retract", corpus.target, "--yes", "--corpus", CORPUS, "--key-path", str(b_key)],
+    )
+    assert result.exit_code == 1, result.output
+    assert "NotAuthorized" in result.output
+    assert _in_ctx(corpus.root, _snapshot)["retractions"] == []
+
+
+def test_op_id_of_shard_write_refuses_cleanly(corpus: Corpus, tmp_path: Path) -> None:
+    """Nit: an op_id naming a committed shard write exits 1 without a traceback."""
+    path = tmp_path / "p.json"
+    preview = _preview(corpus, path)
+    preview["op_id"] = f"seed:{corpus.unrelated}"
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(preview), encoding="utf-8")
+    before = _in_ctx(corpus.root, _snapshot)
+    result = _apply(corpus, bad)
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert "shard write" in result.stderr
+    assert _in_ctx(corpus.root, _snapshot) == before
+
+
+def test_retry_by_other_signer_names_original_committer(corpus: Corpus, tmp_path: Path) -> None:
+    """Nit: re-applying a preview someone else committed returns their event
+    and says who committed it."""
+    path = tmp_path / "p.json"
+    _preview(corpus, path)
+    first = json.loads(ok(_apply(corpus, path)).stdout)
+    member_key = tmp_path / "member.jwk"
+    result = ok(
+        run_cli(
+            corpus.root, "governance", "retract", corpus.target, "--apply", str(path),
+            "--corpus", CORPUS, "--key-path", str(member_key),
+        )
+    )
+    assert json.loads(result.stdout) == first
+    assert f"already committed by {corpus.admin_did}" in result.stderr
+    assert len(_in_ctx(corpus.root, _snapshot)["retractions"]) == 1

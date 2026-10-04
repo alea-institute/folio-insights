@@ -97,16 +97,17 @@ def new_op_id(command: str) -> str:
 
 
 def run_cli(coro: Coroutine[Any, Any, None]) -> None:
-    """``asyncio.run`` with storage failures reported as a clean exit 1.
+    """``asyncio.run`` with storage failures and operation-ID conflicts
+    reported as a clean exit 1 (never a traceback).
 
     A ``ProjectionRecoveryPending`` message names the committed operation ID
     and position, so the operator knows the write is durable.
     """
-    from folio_insights.storage import StorageError
+    from folio_insights.storage import OperationIdConflict, StorageError
 
     try:
         asyncio.run(coro)
-    except StorageError as exc:
+    except (StorageError, OperationIdConflict) as exc:
         click.echo(f"storage error: {type(exc).__name__}: {exc}", err=True)
         sys.exit(1)
 

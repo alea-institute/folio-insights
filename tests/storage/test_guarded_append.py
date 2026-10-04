@@ -160,3 +160,35 @@ async def test_did_web_signer_verifies_from_prepopulated_cli_cache(storage_root:
             await ctx.governance.append(event, op_id="web-genesis")
     finally:
         await ctx.close()
+
+
+async def test_revoked_signer_refused_in_transaction(ctx: CorpusStorageContext, admin) -> None:
+    """P2: every non-genesis event is re-authorized against the committed
+    history inside the write transaction, not only role events."""
+    from folio_insights.governance.events import ExtractEvent
+    from folio_insights.governance.log import NotAuthorized
+
+    from tests.storage.conftest import role_revocation, sign_event
+
+    reviewer = new_identity()
+    await ctx.governance.append(genesis(CORPUS, admin), op_id="g")
+    await ctx.governance.append(
+        role_assertion(CORPUS, admin, reviewer.did, "reviewer", at(1)), op_id="grant"
+    )
+
+    def extract(n: int) -> ExtractEvent:
+        unsigned = ExtractEvent(
+            corpus=CORPUS,
+            signature=AttestedSignature(did=reviewer.did, action="extract", signed_at=at(100 * n)),
+            shard_iri=shard(n).shard_iri,
+        )
+        return sign_event(unsigned, reviewer, at(100 * n))  # type: ignore[return-value]
+
+    assert (await ctx.governance.append(extract(1), op_id="x1")).position == 2
+    await ctx.governance.append(
+        role_revocation(CORPUS, admin, reviewer.did, "reviewer", at(150)), op_id="revoke"
+    )
+    head = await ctx.journal_head()
+    with pytest.raises(NotAuthorized):
+        await ctx.governance.append(extract(2), op_id="x2")
+    assert await ctx.journal_head() == head

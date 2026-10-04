@@ -148,7 +148,11 @@ def retract_cmd(
     from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
-    from folio_insights.storage import JournalStateChanged, StorageError
+    from folio_insights.storage import (
+        JournalStateChanged,
+        OperationIdConflict,
+        StorageError,
+    )
 
     # One DidDocCache for signing AND the storage append-time verifier.
     cache = InMemoryDidDocCache()
@@ -213,7 +217,11 @@ def retract_cmd(
                 """The event already committed under this preview's op_id,
                 or None. A different request under the same op_id refuses."""
                 assert preview.op_id is not None
-                event = await ctx.committed_governance_op(preview.op_id)
+                try:
+                    event = await ctx.committed_governance_op(preview.op_id)
+                except OperationIdConflict as exc:
+                    click.echo(f"retraction refused: {exc}", err=True)
+                    sys.exit(1)
                 if event is None:
                     return None
                 if (
@@ -228,6 +236,13 @@ def retract_cmd(
                         err=True,
                     )
                     sys.exit(1)
+                if event.signature.did != signer_did:
+                    click.echo(
+                        f"retraction {preview.op_id!r} already committed by "
+                        f"{event.signature.did} at governance position "
+                        f"{event.position}; returning that event.",
+                        err=True,
+                    )
                 return event
 
             async def _commit(preview: CascadePreview) -> None:

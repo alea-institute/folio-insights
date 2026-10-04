@@ -226,6 +226,40 @@ def _refuse_replayed_event(event: GovernanceEvent, history: list[GovernanceEvent
             )
 
 
+async def _authorize_in_transaction(
+    event: GovernanceEvent, snapshot: InMemoryGovernanceLog, corpus: str
+) -> None:
+    """Re-run the central ``authorize()`` decision against the committed
+    history read inside the write transaction (KTD3).
+
+    A CLI command authorizes before it builds and signs; a revocation
+    committed in between would otherwise still let the revoked signer
+    append. Every event goes through the same policy the CLI uses: the
+    first event of a corpus as the genesis carve-out (``corpus_init``), any
+    other as its own action, with roles resolved at commit time.
+    """
+    from folio_insights.governance.authorize import GENESIS_ACTION, Allow, authorize
+    from folio_insights.governance.log import NotAuthorized
+
+    signer = event.signature.did
+    if await snapshot.latest_position(corpus) < 0:
+        decision = await authorize(
+            signer,
+            GENESIS_ACTION,
+            corpus,
+            log=snapshot,
+            admin_did=getattr(event, "subject_did", None),
+        )
+    else:
+        decision = await authorize(signer, event.action, corpus, log=snapshot)
+    if not isinstance(decision, Allow):
+        raise NotAuthorized(
+            f"governance {event.action} event refused: signer {signer!r} is not "
+            f"authorized in corpus {corpus!r} at commit time "
+            f"({getattr(decision, 'reason', decision)}); nothing was appended"
+        )
+
+
 _SAFE_LOC_PART = re.compile(r"[a-z_][a-z0-9_]*")
 
 
@@ -558,6 +592,7 @@ class CorpusStorageContext:
                     history = [_event_from_row(r) for r in await tx.governance_rows()]
                     _refuse_replayed_event(event, history)
                     snapshot = InMemoryGovernanceLog._from_history(self.corpus, history)
+                    await _authorize_in_transaction(event, snapshot, self.corpus)
                     persisted = await snapshot.append(event)
                     row = await tx.append(
                         PendingRow(
