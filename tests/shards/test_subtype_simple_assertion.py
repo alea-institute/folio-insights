@@ -12,6 +12,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from folio_insights.shards import (
+    ENVELOPE_SCHEMA_VERSION,
     Shard,
     SimpleAssertionShard,
 )
@@ -32,7 +33,10 @@ def test_a1_fixture_round_trips() -> None:
     # Bidirectional round-trip via mode='json' so datetime → ISO string aligns
     # with the JSON fixture representation.
     redumped = parsed.model_dump(mode="json")
-    assert redumped == payload
+    # The fixture is a legacy (unstamped, v1) record; the current model adds
+    # the U17 schema_version stamp and changes nothing else.
+    assert "schema_version" not in payload
+    assert redumped == {**payload, "schema_version": ENVELOPE_SCHEMA_VERSION}
 
 
 def test_simple_assertion_constructs_via_sample_shard() -> None:

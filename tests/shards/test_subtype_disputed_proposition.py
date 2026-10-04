@@ -16,6 +16,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from folio_insights.shards import (
+    ENVELOPE_SCHEMA_VERSION,
     DISPUTED_EPISTEMIC_STATUS_SUBSET,
     DisputedPropositionShard,
     Objection,
@@ -52,7 +53,10 @@ def test_a3_fixture_round_trips() -> None:
     assert parsed.utrum == payload["utrum"]
     assert len(parsed.objections) == len(payload["objections"])
     redumped = parsed.model_dump(mode="json")
-    assert redumped == payload
+    # The fixture is a legacy (unstamped, v1) record; the current model adds
+    # the U17 schema_version stamp and changes nothing else.
+    assert "schema_version" not in payload
+    assert redumped == {**payload, "schema_version": ENVELOPE_SCHEMA_VERSION}
 
 
 @pytest.mark.parametrize("status", _DISPUTED_EPISTEMIC_STATUS)

@@ -14,6 +14,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from folio_insights.shards import (
+    ENVELOPE_SCHEMA_VERSION,
     AuthorityPosition,
     ConflictingAuthoritiesShard,
     ReconciliationStrategy,
@@ -43,7 +44,10 @@ def test_a2_fixture_round_trips() -> None:
     assert parsed.shard_type == "conflicting_authorities"
     assert parsed.reconciliation_strategy == payload["reconciliation_strategy"]
     redumped = parsed.model_dump(mode="json")
-    assert redumped == payload
+    # The fixture is a legacy (unstamped, v1) record; the current model adds
+    # the U17 schema_version stamp and changes nothing else.
+    assert "schema_version" not in payload
+    assert redumped == {**payload, "schema_version": ENVELOPE_SCHEMA_VERSION}
 
 
 @pytest.mark.parametrize("strategy", _RECONCILIATION_STRATEGIES)

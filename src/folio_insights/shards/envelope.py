@@ -42,6 +42,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # constant, owned by ``folio_insights.vocab`` (Plan 08-01).
 from folio_insights.vocab._constants import VOCAB_VERSION  # WR-01: avoid pyoxigraph import via vocab/__init__
 
+# ── U17 envelope schema version (R18 identity boundary) ────────────────────
+#
+# The integer schema version of the stored envelope shape. Version 1 is the
+# unstamped shape shipped through Phase 8; version 2 adds this stamp. R18
+# freezes ``schema_version`` stamps as part of the identity boundary while the
+# controlled vocabularies stay revisable "with a schema version and migration".
+# In-memory models accept ONLY the current version; legacy records reach the
+# current version solely through ``shards.records.load_shard_record``.
+# Distinct from ``vocab_version`` (the CalVer RDF vocabulary pin).
+ENVELOPE_SCHEMA_VERSION: int = 2
+
+
 # D-05: canonical discriminator alias (5 values, ordered per CONTEXT D-05).
 ShardType = Literal[
     "simple_assertion",
@@ -212,6 +224,11 @@ class ShardEnvelope(BaseModel):
     extracted_at: datetime = Field(frozen=True)
     first_extractor_did: str = Field(frozen=True)
 
+    # ── U17 envelope schema version (frozen; R18 identity boundary) ──
+    # Excluded from ``canonical_content_hash`` (representation, not content) and
+    # listed in ``IMMUTABLE_FIELD_PATHS``. See ``shards/records.py``.
+    schema_version: int = Field(default=ENVELOPE_SCHEMA_VERSION, frozen=True)
+
     # ── Discriminator (D-05 / D-06 — pinned by each subtype's Literal default) ──
     shard_type: ShardType
 
@@ -343,6 +360,27 @@ class ShardEnvelope(BaseModel):
     # "refuse-mismatched-value" gates should prefer ``field_validator``; the
     # existing ``model_validator`` precedents stay because they assert
     # cross-field invariants that ``field_validator`` cannot express.
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def _check_schema_version(cls, v: object) -> int:
+        """U17: in-memory envelopes carry ONLY the current schema version.
+
+        Refuses booleans and non-integers outright (no coercion of ``"2"`` or
+        ``True``) and any integer other than ``ENVELOPE_SCHEMA_VERSION``.
+        Legacy records migrate through ``shards.records.load_shard_record``.
+        """
+        if isinstance(v, bool) or not isinstance(v, int):
+            raise ValueError(
+                f"schema_version must be an integer; got {v!r} (U17)."
+            )
+        if v != ENVELOPE_SCHEMA_VERSION:
+            raise ValueError(
+                f"schema_version must equal {ENVELOPE_SCHEMA_VERSION}; got {v!r}. "
+                "Load stored records through shards.records.load_shard_record, "
+                "which migrates supported legacy versions (U17)."
+            )
+        return v
+
     @field_validator("vocab_version")
     @classmethod
     def _check_vocab_pin(cls, v: str) -> str:
@@ -400,6 +438,7 @@ AttestedSignature.model_rebuild()
 
 
 __all__ = [
+    "ENVELOPE_SCHEMA_VERSION",
     "AttestedSignature",
     "ShardEnvelope",
     "ShardType",

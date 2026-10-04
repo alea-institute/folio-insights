@@ -197,6 +197,8 @@ Read `PHILOSOPHY.md` for the full treatment. The patterns v2.0 imports from the 
 
 ### 6.1 The 15-field shard envelope
 
+> **Envelope schema version (U17, 2026-10-03):** The shipped envelope carries a frozen integer `schema_version`, currently `2`. Unstamped records written through Phase 8 are legacy version `1`. Stored records load only through `folio_insights.shards.records.load_shard_record`, which migrates supported versions forward on copies and rejects unsupported versions. It preserves identity fields, explicit nulls and the original bytes. `schema_version` is excluded from the signed content hash, so a content-preserving migration keeps signatures verifiable and a content-changing one does not. Plan: [`docs/plans/2026-10-03-2046-feat-u17-envelope-r18-plan.md`](docs/plans/2026-10-03-2046-feat-u17-envelope-r18-plan.md).
+
 Every shard in v2.0 carries the following fields. Missing fields fail validation; empty fields must be explicit null with a documented reason.
 
 ```python

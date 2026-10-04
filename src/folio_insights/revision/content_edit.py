@@ -66,6 +66,8 @@ IMMUTABLE_FIELD_PATHS: frozenset[str] = frozenset(
         "source_span",
         "extracted_at",
         "first_extractor_did",
+        # U17 envelope schema version (Pydantic-frozen; R18 identity boundary)
+        "schema_version",
         # identity-defining triple parts (Triple submodel is mutable — gate-only)
         "triple.subject",
         "triple.predicate",
@@ -170,6 +172,11 @@ def set_field(shard: ShardEnvelope, path: str, value: Any) -> None:
 #     ``over_content_hash`` slot records).
 #   * ``signatures`` — attestations OVER the content, not the content itself
 #     (including them would be circular once Phase 6 signs the content hash).
+#   * ``schema_version`` — U17 representation stamp, not content. Excluding it
+#     keeps a content-preserving migration (legacy v1 -> v2) hash-neutral, so
+#     existing signatures stay verifiable. A content-changing migration changes
+#     the hashed bytes themselves, so old signatures fail verification and
+#     transformed content never inherits them (U17 KTD2).
 #
 # Phase 6 (D-12 / DID-03) swapped RFC-8785 JCS into the canonical_content_hash
 # line. The exclusion set is unchanged — content remains the bound surface.
@@ -180,6 +187,7 @@ _HASH_EXCLUDED_FIELDS: frozenset[str] = frozenset(
         "valid_time_end",
         "content_edits",
         "signatures",
+        "schema_version",
     }
 )
 

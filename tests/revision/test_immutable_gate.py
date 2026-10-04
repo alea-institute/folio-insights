@@ -26,13 +26,15 @@ _IDENTITY_FIELDS = {
 
 
 def test_immutable_set_contents() -> None:
-    """The set is exactly the 6 identity fields + 2 triple parts + 2 lists (10)."""
+    """The set is the 6 identity fields + schema_version (U17) + 2 triple parts
+    + 2 lists (11)."""
     assert _IDENTITY_FIELDS <= IMMUTABLE_FIELD_PATHS
     assert "triple.subject" in IMMUTABLE_FIELD_PATHS
     assert "triple.predicate" in IMMUTABLE_FIELD_PATHS
     assert "content_edits" in IMMUTABLE_FIELD_PATHS
     assert "signatures" in IMMUTABLE_FIELD_PATHS
-    assert len(IMMUTABLE_FIELD_PATHS) == 10
+    assert "schema_version" in IMMUTABLE_FIELD_PATHS
+    assert len(IMMUTABLE_FIELD_PATHS) == 11
 
 
 def test_triple_object_not_immutable() -> None:
@@ -42,7 +44,16 @@ def test_triple_object_not_immutable() -> None:
 
 @pytest.mark.parametrize(
     "path",
-    sorted(_IDENTITY_FIELDS | {"triple.subject", "triple.predicate", "content_edits", "signatures"}),
+    sorted(
+        _IDENTITY_FIELDS
+        | {
+            "schema_version",
+            "triple.subject",
+            "triple.predicate",
+            "content_edits",
+            "signatures",
+        }
+    ),
 )
 async def test_gate_raises_before_mutation(stored_shard, store, path: str) -> None:
     """Editing any immutable path raises ValueError and appends NO edit."""
