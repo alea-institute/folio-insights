@@ -1,18 +1,19 @@
-"""Tests for the ingestion and structure parser stages."""
+"""Tests for the ingestion and structure parser stages.
+
+Ingestion runs folio-enrich's document readers, so the tests that ingest are
+marked ``integration`` (folio-enrich on disk), like ``tests/test_bridge.py``.
+"""
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 import pytest
 
-from folio_insights.models.corpus import CorpusDocument
 from folio_insights.pipeline.stages.base import InsightsJob
 from folio_insights.pipeline.stages.ingestion import IngestionStage
 from folio_insights.pipeline.stages.structure_parser import (
     StructureParserStage,
-    StructuredElement,
     _build_structured_elements,
 )
 from folio_insights.services.corpus_registry import CorpusRegistry
@@ -32,6 +33,7 @@ def _make_md_file(path: Path, content: str) -> Path:
     return path
 
 
+@pytest.mark.integration
 async def test_ingest_directory(tmp_path: Path):
     """Create temp dir with 2 .md files and 1 .txt file, verify all ingested."""
     (tmp_path / "chapter1.md").write_text(
@@ -61,6 +63,7 @@ async def test_ingest_directory(tmp_path: Path):
     assert len(ingested) == 3
 
 
+@pytest.mark.integration
 async def test_preserve_structure(tmp_path: Path):
     """Verify heading hierarchy is preserved through ingestion + structure parsing."""
     md_content = (
@@ -106,6 +109,7 @@ async def test_preserve_structure(tmp_path: Path):
     assert len(section_path) >= 1, f"Expected heading context, got: {section_path}"
 
 
+@pytest.mark.integration
 async def test_variable_length(tmp_path: Path):
     """Files of 50 chars and 50K chars both ingest without error."""
     # Short file
@@ -132,6 +136,7 @@ async def test_variable_length(tmp_path: Path):
     assert lengths[1] > 10000
 
 
+@pytest.mark.integration
 async def test_skip_processed(tmp_path: Path):
     """Process a file, then re-run -- verify it is skipped on second run."""
     (tmp_path / "once.md").write_text("# Once\n\nProcess me once.\n", encoding="utf-8")
@@ -157,6 +162,7 @@ async def test_skip_processed(tmp_path: Path):
     assert registry.needs_processing(file_path) is False
 
 
+@pytest.mark.integration
 async def test_xml_ingestion(tmp_path: Path):
     """Create a simple XML file and verify text content is extracted."""
     xml_content = (

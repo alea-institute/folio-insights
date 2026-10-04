@@ -26,8 +26,12 @@ Gate 5 discipline (10 techniques):
   9. Normalized context               — images build from ``git archive HEAD`` of the COPY'd
                                          paths (``export_build_context``): every mtime is
                                          the commit time, modes are 0644/0755; then
-                                         ``.dockerignore`` applies. ``BUILD_CTX_EXCLUDE``
-                                         filters the Dagger lint/test context
+                                         ``.dockerignore`` applies. Each image gets its own
+                                         freshly named context directory
+                                         (``export_image_contexts``), so BuildKit never
+                                         reuses a stale incremental context transfer.
+                                         ``BUILD_CTX_EXCLUDE`` filters the Dagger lint/test
+                                         context
  10. No attestations                   — provenance stamps build times, so it is disabled
 
 Reproducible over time, not just back to back. Gate 5's two builds run minutes
@@ -117,6 +121,9 @@ BUILD_CTX_EXCLUDE = [
     ".git",
     ".github",
     ".planning",
+    # Test-only re-include: tests/polysemy reads these tracked fixtures. The
+    # images never COPY .planning (they build from export_build_context).
+    "!.planning/phases/01-polysemy-distinguo-spike/fixtures",
     ".claude",
     # Mirror .dockerignore: exclude generated output, re-include only the two
     # demo corpora Dockerfile.web bundles (COPY output/), then re-exclude
@@ -235,6 +242,38 @@ def export_build_context(
         raise SystemExit(f"git archive failed (exit {archive.returncode})")
 
 
+def export_image_contexts(
+    work_root: Path,
+    repo_root: Path = REPO_ROOT,
+    dockerfiles: tuple[str, ...] = IMAGE_DOCKERFILES,
+) -> dict[str, Path]:
+    """Export a separate, uniquely named build context for each Dockerfile.
+
+    BuildKit keeps each local build context it receives and, on the next build
+    that sends a context with the same directory BASENAME (buildx's shared key
+    ignores the parent path), transfers only the difference. That diff never
+    updates a directory whose children did not change, even when the
+    directory's own mtime did. The old fixed ``<tmp>/context`` path therefore
+    let a build inherit directory mtimes from an earlier run, often an earlier
+    commit. Those predate SOURCE_DATE_EPOCH, ``rewrite-timestamp`` only clamps
+    newer times, and the image differed from a cold rebuild (seen as the
+    ``/app/src`` mtime in the worker). It was intermittent because the web and
+    worker builds raced for the one cached transfer: the build that lost the
+    race got a fresh, full copy.
+
+    A basename no earlier build used forces a full transfer, so the image sees
+    exactly the exported mtimes. One directory per image keeps the two
+    parallel builds from sharing a transfer at all.
+    """
+    contexts: dict[str, Path] = {}
+    for dockerfile in dockerfiles:
+        stem = dockerfile.lower().replace(".", "-")
+        context_dir = Path(tempfile.mkdtemp(prefix=f"ctx-{stem}-", dir=work_root))
+        export_build_context(context_dir, repo_root, dockerfiles)
+        contexts[dockerfile] = context_dir
+    return contexts
+
+
 async def _build_image(
     *,
     dockerfile: str,
@@ -307,38 +346,88 @@ async def _lint(client: dagger.Client, sde: str) -> None:
     )
 
 
+# The in-container suite cannot reach a sibling folio-enrich checkout, so tests
+# that need one (marker ``integration``) are deselected; ``gate5``/``slow`` too.
+TEST_MARKER_EXPR = "not gate5 and not slow and not integration"
+
+
+def _image_arg(name: str, dockerfile: str = "Dockerfile.web") -> str:
+    """The pinned ``tag@sha256`` default of ``ARG <name>=`` in a Dockerfile."""
+    text = (REPO_ROOT / dockerfile).read_text(encoding="utf-8")
+    match = re.search(rf"^ARG {name}=(\S+)", text, re.M)
+    if match is None:
+        raise SystemExit(f"{dockerfile} has no ARG {name}=")
+    return match.group(1)
+
+
+def _test_container(client: dagger.Client, sde: str) -> dagger.Container:
+    """The quick-suite container: dependencies installed, source mounted at /app.
+
+    The dependency install sees only the three locks (exported from ``uv.lock``
+    by ``scripts/export_image_locks.py``), so its multi-GB layer stays cached
+    until a lock changes rather than on every commit:
+
+      * ``requirements.dev.lock`` — the uv.lock closure plus the ``dev`` extra,
+        ``--require-hashes``.
+      * ``requirements.vcs.lock`` — folio-propositions at its pinned commit,
+        ``--no-deps`` (its requirements are in the dev lock), built under the
+        hash-verified ``requirements.build.lock``, exactly as Dockerfile.web does.
+
+    ``git`` serves that checkout and the tests that create throwaway
+    repositories; ``uv`` (the pinned ``UV_IMAGE`` binary) serves the lock
+    freshness tests. The project is not pip-installed; ``PYTHONPATH`` puts
+    ``src/`` (and the repo root, for the ``tests``/``ci``/``scripts`` imports)
+    on the path, as local runs do.
+    """
+    src = client.host().directory(str(REPO_ROOT), exclude=BUILD_CTX_EXCLUDE)
+    uv_binary = client.container().from_(_image_arg("UV_IMAGE")).file("/uv")
+    locks = ("requirements.dev.lock", "requirements.vcs.lock", "requirements.build.lock")
+    container = (
+        client.container()
+        .from_("python:3.11-slim")
+        .with_exec([
+            "sh", "-c",
+            "apt-get update"
+            " && apt-get install -y --no-install-recommends git"
+            " && rm -rf /var/lib/apt/lists/*",
+        ])
+        .with_file("/usr/local/bin/uv", uv_binary)
+        .with_workdir("/app")
+    )
+    for lock in locks:
+        container = container.with_file(f"/app/{lock}", src.file(lock))
+    return (
+        container
+        .with_exec([
+            "pip", "install", "--no-cache-dir",
+            "--require-hashes", "-r", "requirements.dev.lock",
+        ])
+        .with_exec([
+            "uv", "pip", "install", "--system", "--no-cache", "--no-deps",
+            "--build-constraints", "requirements.build.lock",
+            "-r", "requirements.vcs.lock",
+        ])
+        .with_env_variable("SOURCE_DATE_EPOCH", sde)
+        .with_env_variable("PYTHONPATH", "/app/src:/app")
+        .with_directory("/app", src)
+    )
+
+
 async def _test(client: dagger.Client, sde: str) -> None:
     """Run pytest quick-suite.
 
     Gates 2/3/4 (benchmarks) run separately in Plan 07; this stage is the fast
     regression pass that must stay green on every pipeline run. Markers
-    ``gate5`` and ``slow`` are excluded (``-m "not gate5 and not slow"``) so
-    the slow Gate 5 determinism test does not run inside the pipeline it is
-    measuring (would recurse forever).
-
-    The dependency install sees only ``requirements.dev.lock`` (exported from
-    ``uv.lock`` by ``scripts/export_image_locks.py``), so its multi-GB layer stays
-    cached until the lock changes rather than on every commit. The project is
-    not pip-installed; ``PYTHONPATH`` puts ``src/`` (and the repo root, for the
-    ``tests``/``ci``/``scripts`` imports) on the path, as local runs do.
+    ``gate5`` and ``slow`` are excluded so the slow Gate 5 determinism test does
+    not run inside the pipeline it is measuring (would recurse forever), and
+    ``integration`` because the container has no folio-enrich checkout.
     """
-    src = client.host().directory(str(REPO_ROOT), exclude=BUILD_CTX_EXCLUDE)
     await (
-        client.container()
-        .from_("python:3.11-slim")
-        .with_workdir("/app")
-        .with_file("/app/requirements.dev.lock", src.file("requirements.dev.lock"))
-        .with_exec([
-            "pip", "install", "--no-cache-dir",
-            "--require-hashes", "-r", "requirements.dev.lock",
-        ])
-        .with_env_variable("SOURCE_DATE_EPOCH", sde)
-        .with_env_variable("PYTHONPATH", "/app/src:/app")
-        .with_directory("/app", src)
+        _test_container(client, sde)
         .with_exec([
             "pytest", "-x", "--ff", "-q",
             "--benchmark-skip",
-            "-m", "not gate5 and not slow",
+            "-m", TEST_MARKER_EXPR,
         ])
         .sync()
     )
@@ -353,10 +442,8 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
 
     with tempfile.TemporaryDirectory(prefix="fi-ci-build-") as work_root:
         metadata_dir = Path(work_root) / "metadata"
-        context_dir = Path(work_root) / "context"
         metadata_dir.mkdir()
-        context_dir.mkdir()
-        export_build_context(context_dir)
+        contexts = export_image_contexts(Path(work_root))
         async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
             # Parallelizable stages: both image builds (BuildKit) and lint (Dagger)
             web_task = _build_image(
@@ -364,14 +451,14 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
                 tag=f"ttl.sh/fi-web:{tag_suffix}",
                 sde=sde,
                 metadata_dir=metadata_dir,
-                context_dir=context_dir,
+                context_dir=contexts["Dockerfile.web"],
             )
             worker_task = _build_image(
                 dockerfile="Dockerfile.worker",
                 tag=f"ttl.sh/fi-worker:{tag_suffix}",
                 sde=sde,
                 metadata_dir=metadata_dir,
-                context_dir=context_dir,
+                context_dir=contexts["Dockerfile.worker"],
             )
             # Keep lint optional on --no-lint; test always runs.
             tasks = [web_task, worker_task]
