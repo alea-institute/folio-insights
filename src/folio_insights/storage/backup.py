@@ -289,10 +289,10 @@ async def restore_storage(
         config = StorageConfig(event_verifier=None)
         heads: dict[str, int] = {}
         for corpus, expected in summary.items():
+            # Without a copied projection this open IS the rebuild: the empty
+            # projection replays the whole journal (bulk path when large).
             ctx = await CorpusStorageContext.open(tmp, corpus, config=config)
             try:
-                if rebuild_projection:
-                    await ctx.rebuild_projection()
                 status = await ctx.status()
             finally:
                 await ctx.close()
