@@ -60,12 +60,7 @@ class DeterministicDeduper:
         if hits:
             primary = sorted(h for h in hits if h[2] == PRIMARY)
             iri, label, form = primary[0] if primary else sorted(hits)[0]
-            nearest = [{
-                "iri": iri,
-                "label": label,
-                "definition": self.lex.definition(iri),
-                "match_form": form,
-            }]
+            nearest = [{"iri": iri, "label": label, "match_form": form, "score": None}]
             if form == PRIMARY:
                 return {
                     "verdict": VERDICT_DUPLICATE,
@@ -73,8 +68,8 @@ class DeterministicDeduper:
                     "target_proposal_id": None,
                     "nearest": nearest,
                     "reasoning": (
-                        f"Normalized label '{norm}' equals the primary label of FOLIO "
-                        f"concept '{label}' ({iri})."
+                        "The normalized label equals the primary label of the FOLIO "
+                        "concept target_iri."
                     ),
                     "judged_by": DETERMINISTIC,
                 }
@@ -84,9 +79,9 @@ class DeterministicDeduper:
                 "target_proposal_id": None,
                 "nearest": nearest,
                 "reasoning": (
-                    f"Normalized label '{norm}' equals only the {form} label of FOLIO "
-                    f"concept '{label}' ({iri}). An alias collision is not a duplicate "
-                    "until the definitions are compared."
+                    f"The normalized label equals only a {form} label of the FOLIO "
+                    "concept target_iri. An alias collision is not a duplicate until "
+                    "the definitions are compared."
                 ),
                 "guardrail": ALIAS_GUARDRAIL,
                 "judged_by": DETERMINISTIC,
@@ -99,8 +94,8 @@ class DeterministicDeduper:
                 "target_proposal_id": canonical,
                 "nearest": [],
                 "reasoning": (
-                    f"Plural stem '{stem_label(norm)}' collides with proposal {canonical} "
-                    "(an inflection variant collected earlier)."
+                    "The plural stem collides with target_proposal_id (an inflection "
+                    "variant collected earlier)."
                 ),
                 "judged_by": DETERMINISTIC,
             }

@@ -16,6 +16,12 @@ Operation IDs are explicit and deterministic:
   same computation is a replay. A concurrent writer makes it refuse
   (``JournalStateChanged``) rather than apply stale verdicts.
 * ``record_judgments``: an op_id from the caller, who owns the judgment.
+  Caller op_ids may not use the reserved ``proposals:`` prefix.
+
+Every judgment, deterministic or recorded, passes ``judgments.validate_judgment``
+before it is appended, and ``apply_dedupe`` refuses a lexicon smaller than
+``MIN_LEXICON_CONCEPTS`` (an empty or wrong lexicon would otherwise clear every
+deterministic verdict).
 """
 from __future__ import annotations
 
@@ -28,6 +34,7 @@ from typing import TYPE_CHECKING, Any
 import jcs
 
 from folio_insights.proposals.dedupe import DeterministicDeduper
+from folio_insights.proposals.judgments import JudgmentInvalid, validate_judgment
 from folio_insights.proposals.lexicon import FolioLexicon
 from folio_insights.proposals.registry import (
     DETERMINISTIC,
@@ -40,13 +47,13 @@ from folio_insights.proposals.registry import (
 if TYPE_CHECKING:
     from folio_insights.storage import CorpusStorageContext
 
-_JUDGMENT_KEYS = {
-    "verdict", "target_iri", "target_proposal_id", "nearest", "reasoning",
-    "judged_by", "guardrail",
-}
-_VERDICTS = {
-    "NOVEL", "DUPLICATE_OF", "SYNONYM_OF", "MERGE_WITH", "NEEDS_WORK", "ALIAS_CANDIDATE",
-}
+RESERVED_OP_PREFIX = "proposals:"
+MIN_LEXICON_CONCEPTS = 3
+
+
+class LexiconTooSmall(ValueError):
+    """The lexicon cannot be FOLIO: running dedupe with it would clear every
+    deterministic verdict."""
 
 
 def _digest(data: Any) -> str:
@@ -95,12 +102,27 @@ class ProposalStore:
             "replayed": replayed,
             "observations": len(payload["observations"]),
             "new": new,
+            "dropped": dict(payload["dropped"]),
         }
 
-    async def apply_dedupe(self, lexicon: FolioLexicon) -> dict[str, Any]:
+    async def apply_dedupe(
+        self, lexicon: FolioLexicon, *, min_concepts: int = MIN_LEXICON_CONCEPTS
+    ) -> dict[str, Any]:
         """Run deterministic dedupe and append its changes (if any)."""
+        if len(lexicon.by_iri) < min_concepts:
+            raise LexiconTooSmall(
+                f"lexicon has {len(lexicon.by_iri)} concept(s), fewer than {min_concepts}; "
+                "refusing to dedupe (it would clear every deterministic verdict)"
+            )
         registry = await self.load()
         changes = DeterministicDeduper(lexicon).changes(registry)
+        known = set(registry.proposals)
+        for index, c in enumerate(changes):
+            if c["judgment"] is not None:
+                c["judgment"] = validate_judgment(
+                    c["judgment"], proposal_id=c["proposal_id"], known_ids=known,
+                    where=f"dedupe change {index}",
+                )
         summary: dict[str, Any] = {"changes": len(changes), "position": None, "replayed": False}
         counts: dict[str, int] = {}
         for c in changes:
@@ -120,28 +142,35 @@ class ProposalStore:
         self, judgments: Iterable[Mapping[str, Any]], *, op_id: str
     ) -> dict[str, Any]:
         """Record human or model judgments ``{proposal_id, verdict, judged_by,
-        ...}``. Every item is validated before anything is appended. An
-        unknown proposal ID, an unknown verdict or a ``deterministic``
-        ``judged_by`` refuses the whole batch."""
+        ...}``. Every item is validated before anything is appended
+        (``judgments.validate_judgment``); one invalid item refuses the whole
+        batch. ``judged_by`` may not be ``deterministic``. Errors name the
+        item index, never its values."""
+        if not isinstance(op_id, str) or op_id.startswith(RESERVED_OP_PREFIX):
+            raise ValueError(
+                f"caller op_ids may not use the reserved {RESERVED_OP_PREFIX!r} prefix"
+            )
         registry = await self.load()
+        known = set(registry.proposals)
         items = []
-        for j in judgments:
+        for index, j in enumerate(judgments):
+            where = f"judgment item {index}"
+            if not isinstance(j, Mapping):
+                raise JudgmentInvalid(f"{where}: must be an object")
             pid = j.get("proposal_id")
-            if pid not in registry.proposals:
-                raise ValueError(f"unknown proposal ID {pid!r} in corpus {self.corpus!r}")
-            block = {k: j[k] for k in _JUDGMENT_KEYS if k in j}
-            if block.get("verdict") not in _VERDICTS:
-                raise ValueError(f"invalid verdict {block.get('verdict')!r} for {pid}")
-            judged_by = block.get("judged_by")
-            if not isinstance(judged_by, str) or not judged_by or judged_by == DETERMINISTIC:
-                raise ValueError(
-                    f"judgment for {pid} needs a non-deterministic judged_by "
-                    "(for example 'human:<reviewer>' or 'model:<name>')"
+            if not isinstance(pid, str) or pid not in known:
+                raise JudgmentInvalid(
+                    f"{where}: proposal_id is not a proposal of corpus {self.corpus!r}"
                 )
-            block.setdefault("target_iri", None)
-            block.setdefault("target_proposal_id", None)
-            block.setdefault("nearest", [])
-            block.setdefault("reasoning", "")
+            block = validate_judgment(
+                {k: v for k, v in j.items() if k != "proposal_id"},
+                proposal_id=pid, known_ids=known, where=where,
+            )
+            if block["judged_by"] == DETERMINISTIC:
+                raise JudgmentInvalid(
+                    f"{where}: judged_by must name a human or model judge "
+                    "(for example 'human:<reviewer>' or 'model:<name>'), not 'deterministic'"
+                )
             items.append({"proposal_id": pid, "judgment": block})
         if not items:
             return {"recorded": 0, "position": None, "replayed": False}
@@ -167,4 +196,11 @@ def load_run_proposals(run_dir: str | Path) -> tuple[list[dict[str, Any]], dict[
     return list(pcs.get("proposed_classes", [])), spans
 
 
-__all__ = ["ProposalStore", "collect_op_id", "load_run_proposals"]
+__all__ = [
+    "MIN_LEXICON_CONCEPTS",
+    "RESERVED_OP_PREFIX",
+    "LexiconTooSmall",
+    "ProposalStore",
+    "collect_op_id",
+    "load_run_proposals",
+]

@@ -236,3 +236,13 @@ def test_all_proposed_candidate_routes_to_proposed_siblings():
     candidate = job.task_candidates[0]
     assert not candidate.folio_iri
     assert "Synthetic Novel Task" in job.metadata.get("proposed_siblings", [])
+
+
+def test_whitespace_only_iri_tags_never_vote():
+    unit = _unit("u1", "one", [
+        ConceptTag(iri="   ", label="Synthetic Blank A", confidence=0.6, extraction_path="llm"),
+        ConceptTag(iri=" ", label="Synthetic Blank B", confidence=0.6, extraction_path="llm"),
+        ConceptTag(iri=IRI_A, label="Synthetic Doctrine A", confidence=0.7,
+                   extraction_path="entity_ruler"),
+    ])
+    assert _discover([unit]).task_candidates[0].folio_iri == IRI_A

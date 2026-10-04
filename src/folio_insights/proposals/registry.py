@@ -4,7 +4,7 @@ The registry is a pure fold over one corpus's proposal ledger
 (``ctx.proposals``). Nothing here touches storage. ``store.ProposalStore``
 writes the ledger operations that this module builds and reads.
 
-Identity. A proposal's ID is ``PC-`` plus 16 hex characters of
+Identity. A proposal's ID is ``PC-`` plus 32 hex characters of
 ``sha256(corpus, normalized label)``, so it is deterministic and keyed by
 corpus. The same label in two corpora gets two IDs. Case and punctuation
 variants of one label share an ID: "Synthetic Tort Doctrine A" and
@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -40,13 +41,21 @@ KIND_COLLECT = "collect"
 KIND_JUDGMENT = "judgment"
 DETERMINISTIC = "deterministic"
 SUPPORTING_UNIT_CAP = 8
+MAX_LABEL_CHARS = 200
 
-_NORM_RE = re.compile(r"[^a-z0-9]+")
+_NORM_RE = re.compile(r"[\W_]+", re.UNICODE)
 
 
 def normalize_label(label: str) -> str:
-    """Lower-case; every run of non-alphanumerics becomes one space."""
-    return _NORM_RE.sub(" ", (label or "").lower()).strip()
+    """Unicode-aware normalization: NFKD, drop combining marks, casefold, and
+    turn every run of non-word characters (and ``_``) into one space.
+
+    "Société" and "societe" normalize alike; non-Latin labels keep their
+    letters ("合同法" stays "合同法") instead of collapsing to nothing.
+    """
+    decomposed = unicodedata.normalize("NFKD", label or "")
+    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return _NORM_RE.sub(" ", stripped.casefold()).strip()
 
 
 def stem_label(normalized: str) -> str:
@@ -70,7 +79,7 @@ def proposal_id(corpus: str, normalized: str) -> str:
     if not corpus or not normalized:
         raise ValueError("a proposal ID needs a corpus and a non-empty normalized label")
     digest = hashlib.sha256(f"{corpus}\x1f{normalized}".encode()).hexdigest()
-    return "PC-" + digest[:16]
+    return "PC-" + digest[:32]
 
 
 def collect_payload(
@@ -86,15 +95,25 @@ def collect_payload(
     the label, unit ID, extraction path, confidence and the unit's span go
     into the payload. Observations are sorted, so the same input always gives
     the same bytes and therefore the same request digest.
+
+    Rows that cannot become a proposal are counted in ``dropped`` instead of
+    skipped silently: ``empty`` (nothing left after normalization) and
+    ``too_long`` (a label over ``MAX_LABEL_CHARS``, which is a passage, not a
+    class name).
     """
     if not run:
         raise ValueError("a collect operation needs a run name")
     spans_by_unit = spans_by_unit or {}
     observations = []
+    dropped = {"empty": 0, "too_long": 0}
     for pc in proposed_classes:
         label = str(pc.get("proposed_label") or "").strip()
+        if len(label) > MAX_LABEL_CHARS:
+            dropped["too_long"] += 1
+            continue
         norm = normalize_label(label)
         if not norm:
+            dropped["empty"] += 1
             continue
         unit_id = str(pc.get("source_unit_id") or "")
         span = spans_by_unit.get(unit_id)
@@ -108,12 +127,19 @@ def collect_payload(
             "confidence": float(pc.get("confidence") or 0.0),
         })
     observations.sort(key=lambda o: (o["proposal_id"], o["unit_id"], o["proposed_label"]))
-    return {"run": run, "observations": observations}
+    return {"run": run, "observations": observations, "dropped": dropped}
 
 
 @dataclass
 class Proposal:
-    """Folded state of one proposal."""
+    """Folded state of one proposal.
+
+    ``occurrences`` counts observations, not tags. ``proposed_classes.json``
+    lists each exact label once per run (at its first unit), so a run
+    contributes one observation per distinct exact-label variant of the
+    proposal. ``run_occurrences`` holds that count per run, and
+    ``occurrences`` is their sum.
+    """
 
     proposal_id: str
     proposed_label: str
@@ -188,6 +214,12 @@ class ProposalRegistry:
         new = 0
         for pid, group in grouped.items():
             p = self.proposals.get(pid)
+            norms = {obs["normalized_label"] for obs in group}
+            if len(norms) != 1 or (p is not None and p.normalized_label not in norms):
+                raise ValueError(
+                    f"proposal ID {pid} maps to more than one normalized label; the "
+                    "ledger is inconsistent (an ID collision or a corrupted row)"
+                )
             if p is None:
                 p = Proposal(
                     proposal_id=pid,
@@ -226,6 +258,7 @@ class ProposalRegistry:
             "observations": len(observations),
             "proposals": len(grouped),
             "new_proposals": new,
+            "dropped": dict(entry.payload.get("dropped", {})),
         }
 
     def _apply_judgment(self, entry: ProposalLedgerEntry) -> None:

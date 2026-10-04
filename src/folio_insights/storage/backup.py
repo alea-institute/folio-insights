@@ -8,8 +8,9 @@ A snapshot is a directory holding:
 * ``projection.oxigraph`` — a RocksDB backup of the projection (optional;
   ``include_projection=False`` snapshots the journal only and a restore then
   rebuilds the projection from it);
-* ``snapshot.json`` — the manifest: per corpus the journal head, the
-  payload sha256 of the head row and row counts, plus the projection
+* ``snapshot.json`` — the manifest: per corpus (the union of journal and
+  proposal-ledger corpora) the journal head, the payload sha256 of the head
+  row and row counts, the same three for the proposal ledger, plus the projection
   watermarks, schema and adapter versions, the TBox digest, the sha256 of
   the copied journal file and the sha256 of every projection backup file.
 
@@ -67,7 +68,11 @@ import aiosqlite
 from folio_insights import __version__
 from folio_insights.storage._paths import inside_served_output, rename_noreplace
 from folio_insights.storage.errors import StorageError
-from folio_insights.storage.journal import JOURNAL_FILENAME, JOURNAL_SCHEMA_VERSION
+from folio_insights.storage.journal import (
+    JOURNAL_FILENAME,
+    JOURNAL_SCHEMA_VERSION,
+    PROPOSAL_LEDGER_SCHEMA_VERSION,
+)
 from folio_insights.storage.projection import (
     PROJECTION_ADAPTER_VERSION,
     PROJECTION_DIRNAME,
@@ -108,30 +113,92 @@ def _file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _has_proposal_ledger(conn: sqlite3.Connection) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'proposal_ledger'"
+    ).fetchone() is not None
+
+
 def _journal_summary(path: Path) -> dict[str, dict[str, Any]]:
-    """Per-corpus head, head-row digest and row counts of a closed journal."""
+    """Per-corpus heads, head-row digests and row counts of a closed journal.
+
+    Covers the union of corpora in the shard/governance journal and in the
+    proposal ledger. A corpus present in only one table reports head ``-1``,
+    digest ``None`` and zero rows for the other.
+    """
     uri = f"file:{path}?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
     try:
         out: dict[str, dict[str, Any]] = {}
-        rows = conn.execute(
-            "SELECT corpus, MAX(position), COUNT(*), "
-            "SUM(kind = 'governance') FROM journal GROUP BY corpus ORDER BY corpus"
-        ).fetchall()
-        for corpus, head, count, governance in rows:
-            (sha,) = conn.execute(
-                "SELECT payload_sha256 FROM journal WHERE corpus = ? AND position = ?",
-                (corpus, head),
-            ).fetchone()
+        journal = {
+            corpus: (int(head), int(count), int(governance or 0))
+            for corpus, head, count, governance in conn.execute(
+                "SELECT corpus, MAX(position), COUNT(*), "
+                "SUM(kind = 'governance') FROM journal GROUP BY corpus"
+            )
+        }
+        ledger: dict[str, tuple[int, int]] = {}
+        if _has_proposal_ledger(conn):
+            ledger = {
+                corpus: (int(head), int(count))
+                for corpus, head, count in conn.execute(
+                    "SELECT corpus, MAX(position), COUNT(*) FROM proposal_ledger GROUP BY corpus"
+                )
+            }
+        for corpus in sorted(set(journal) | set(ledger)):
+            head, count, governance = journal.get(corpus, (-1, 0, 0))
+            sha = None
+            if head >= 0:
+                (sha,) = conn.execute(
+                    "SELECT payload_sha256 FROM journal WHERE corpus = ? AND position = ?",
+                    (corpus, head),
+                ).fetchone()
+            p_head, p_count = ledger.get(corpus, (-1, 0))
+            p_sha = None
+            if p_head >= 0:
+                (p_sha,) = conn.execute(
+                    "SELECT payload_sha256 FROM proposal_ledger WHERE corpus = ? AND position = ?",
+                    (corpus, p_head),
+                ).fetchone()
             out[corpus] = {
-                "journal_head": int(head),
+                "journal_head": head,
                 "head_payload_sha256": sha,
-                "rows": int(count),
-                "governance_rows": int(governance or 0),
+                "rows": count,
+                "governance_rows": governance,
+                "proposal_head": p_head,
+                "proposal_head_payload_sha256": p_sha,
+                "proposal_rows": p_count,
             }
         return out
     finally:
         conn.close()
+
+
+_PROPOSAL_SUMMARY_KEYS = ("proposal_head", "proposal_head_payload_sha256", "proposal_rows")
+
+
+def _summary_matches(actual: dict[str, dict[str, Any]], recorded: dict[str, Any]) -> bool:
+    """Compare a restored journal's summary with the manifest's.
+
+    A manifest written before the proposal ledger existed has no proposal
+    fields; it matches only if the restored file holds no ledger rows (so no
+    unverified ledger row is ever restored).
+    """
+    if not isinstance(recorded, dict):
+        return False
+    legacy = all(
+        isinstance(v, dict) and not any(k in v for k in _PROPOSAL_SUMMARY_KEYS)
+        for v in recorded.values()
+    )
+    if not legacy:
+        return actual == recorded
+    if any(v["proposal_rows"] for v in actual.values()):
+        return False
+    stripped = {
+        c: {k: v for k, v in entry.items() if k not in _PROPOSAL_SUMMARY_KEYS}
+        for c, entry in actual.items()
+    }
+    return stripped == recorded
 
 
 def _integrity_check(path: Path) -> None:
@@ -141,6 +208,9 @@ def _integrity_check(path: Path) -> None:
         (version,) = conn.execute(
             "SELECT value FROM storage_meta WHERE key = 'journal_schema_version'"
         ).fetchone()
+        ledger_version = conn.execute(
+            "SELECT value FROM storage_meta WHERE key = 'proposal_ledger_schema_version'"
+        ).fetchone()
     finally:
         conn.close()
     if result != "ok":
@@ -149,6 +219,11 @@ def _integrity_check(path: Path) -> None:
         raise SnapshotError(
             f"journal schema version {version!r} is not supported by this code "
             f"({JOURNAL_SCHEMA_VERSION}); restore with the matching code version"
+        )
+    if ledger_version is not None and ledger_version[0] != str(PROPOSAL_LEDGER_SCHEMA_VERSION):
+        raise SnapshotError(
+            f"proposal ledger schema version {ledger_version[0]!r} is not supported by "
+            f"this code ({PROPOSAL_LEDGER_SCHEMA_VERSION}); restore with the matching code version"
         )
 
 
@@ -285,9 +360,17 @@ async def snapshot_storage(
 
 
 async def _corpora(journal: Path) -> list[str]:
+    """Every corpus in the journal or the proposal ledger, sorted."""
     async with aiosqlite.connect(f"file:{journal}?mode=ro", uri=True) as conn:
-        rows = await conn.execute_fetchall("SELECT DISTINCT corpus FROM journal ORDER BY corpus")
-    return [str(r[0]) for r in rows]
+        rows = await conn.execute_fetchall("SELECT DISTINCT corpus FROM journal")
+        has_ledger = await conn.execute_fetchall(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'proposal_ledger'"
+        )
+        if has_ledger:
+            rows = [*rows, *await conn.execute_fetchall(
+                "SELECT DISTINCT corpus FROM proposal_ledger"
+            )]
+    return sorted({str(r[0]) for r in rows})
 
 
 def read_snapshot_manifest(snapshot: str | os.PathLike[str]) -> dict[str, Any]:
@@ -339,7 +422,7 @@ async def restore_storage(
             raise SnapshotError("snapshot journal does not match its manifest digest")
         await asyncio.to_thread(_integrity_check, journal)
         summary = await asyncio.to_thread(_journal_summary, journal)
-        if summary != manifest["corpora"]:
+        if not _summary_matches(summary, manifest["corpora"]):
             raise SnapshotError("snapshot journal heads do not match its manifest")
 
         has_projection = bool(manifest["projection"].get("included")) and (
@@ -368,6 +451,7 @@ async def restore_storage(
             ctx = await CorpusStorageContext.open(tmp, corpus, config=config)
             try:
                 status = await ctx.status()
+                proposal_head = await ctx.proposals.head()
             finally:
                 await ctx.close()
             if not status.journal_head == status.projection_watermark == expected[
@@ -376,6 +460,11 @@ async def restore_storage(
                 raise SnapshotError(
                     f"restored corpus {corpus!r} did not reach journal head "
                     f"{expected['journal_head']}"
+                )
+            if proposal_head != expected["proposal_head"]:
+                raise SnapshotError(
+                    f"restored corpus {corpus!r} proposal ledger is at {proposal_head}, "
+                    f"not the recorded head {expected['proposal_head']}"
                 )
             heads[corpus] = status.journal_head
         rename_noreplace(tmp, dest)

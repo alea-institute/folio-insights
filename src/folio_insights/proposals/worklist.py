@@ -11,13 +11,15 @@ verdict must rest on definitions, not labels. It then splits the survivors:
 
 Producing a worklist records nothing and approves nothing. It makes no model
 or network call. Worklist items carry labels, provenance references (runs,
-unit IDs, spans) and FOLIO definitions, never source text.
+unit IDs, spans) and FOLIO definitions, never source text. The current
+judgment is emitted through ``judgment_view`` (validated fields only).
 """
 from __future__ import annotations
 
 from typing import Any
 
 from folio_insights.proposals.dedupe import VERDICT_ALIAS, survivors
+from folio_insights.proposals.judgments import judgment_view
 from folio_insights.proposals.lexicon import FolioLexicon
 from folio_insights.proposals.registry import Proposal, ProposalRegistry
 
@@ -67,7 +69,7 @@ def _item(p: Proposal, candidates: list[dict[str, Any]]) -> dict[str, Any]:
                 for s in p.supporting_units
             ],
         },
-        "current_judgment": p.judgment,
+        "current_judgment": judgment_view(p.judgment),
         "candidates": candidates,
     }
 

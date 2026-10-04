@@ -118,3 +118,12 @@ All U1–U4 scenarios pass after storage completion. Every non-evidence source c
 - **Authority.** Damien approved the pipeline "Yes, after Phase 13" (2026-09-30). On 2026-10-04 he said "start now", accepting that CORPUS-04 waits on Phase 11. Phase 13 merged in PRs #11–#13. Branch `feat/governance-pipeline` was cut from clean `origin/master` `cbeff73` (after the history scrub).
 - **U1.** The inventory is [`evidence/2026-10-04-governance-inventory.md`](evidence/2026-10-04-governance-inventory.md): 80 changed paths, with 47 transfers, 30 exclusions and 3 superseded. The characterization tests are in `tests/proposals/test_current_tagger_characterization.py`. Finding: on clean master the three empty-IRI discovery cases failed, because the B9 follow-on guard had never merged. U1 re-authors it, so R3 now holds.
 - **U2.** `folio_insights.proposals` (registry fold, dedupe, lexicon, offline worklist, `ProposalStore`) and `scripts/judge_proposals.py` (`collect`, `dedupe`, `worklist`) persist through a new scoped seam, `ctx.proposals`: the append-only `proposal_ledger` table in the corpus journal file (`storage/proposals.py`). It has explicit op_ids, the PII gate and `expected_head`. IDs are `PC-` plus `sha256(corpus, normalized label)`. Collection stores no source text. An alias-only FOLIO match stays a distinct `ALIAS_CANDIDATE` under review. Human and model judgments are never overwritten by dedupe. Tests: `tests/proposals/` (synthetic only, including a cross-process restart test and an offline-guarded CLI run).
+- **U1+U2 review.** An independent review found 8 P2 findings and 3 nits; there were no P0 or P1 findings. Each has a regression test in `tests/proposals/test_review_findings.py` (plus `tests/storage/test_pii_gate.py::test_integer_leaves_are_scanned`) that failed on the pre-fix tree. The fixes:
+  - the PII gate covers op_ids and integer leaves;
+  - judgments use an exact, excerpt-free schema;
+  - text keys are refused in ledger payloads;
+  - worklists are refused inside any git work tree;
+  - empty or tiny lexicons are refused;
+  - normalization is Unicode-aware, with 32-hex IDs;
+  - snapshot and restore verify the ledger;
+  - verdict targets are validated.

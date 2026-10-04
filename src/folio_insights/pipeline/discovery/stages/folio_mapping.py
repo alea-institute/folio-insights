@@ -68,7 +68,7 @@ class FolioMappingStage(DiscoveryStage):
                     # pool into a single "" bucket that can outvote the real
                     # IRIs, so proposed tags never vote and never feed the
                     # confidence blend (R3 of the proposed-class governance plan).
-                    if not tag.iri:
+                    if not (tag.iri or "").strip():
                         continue
                     iri_counter[tag.iri] += 1
                     iri_labels[tag.iri] = tag.label

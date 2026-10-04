@@ -30,10 +30,11 @@ async def _collect(root: Path, run: str, labels: list[str], corpus: str = "corpu
         await store.collect_run(run, [pc(label, f"{run}-u{i}") for i, label in enumerate(labels)])
 
 
-async def _dedupe(root: Path, lex: FolioLexicon | None = None, corpus: str = "corpus-a"):
+async def _dedupe(root: Path, lex: FolioLexicon | None = None, corpus: str = "corpus-a",
+                  min_concepts: int = 3):
     async with await CorpusStorageContext.open(root, corpus) as ctx:
         store = ProposalStore(ctx)
-        summary = await store.apply_dedupe(lex or lexicon())
+        summary = await store.apply_dedupe(lex or lexicon(), min_concepts=min_concepts)
         return summary, await store.load()
 
 
@@ -51,7 +52,8 @@ async def test_primary_label_dedupe(storage_root: Path):
     assert p.judgment["target_iri"] == IRI_TORT
     assert p.judgment["judged_by"] == "deterministic"
     assert "guardrail" not in p.judgment
-    assert p.judgment["nearest"][0]["definition"].startswith("An invented doctrine")
+    assert p.judgment["nearest"] == [{"iri": IRI_TORT, "label": "Synthetic Tort Doctrine",
+                                      "match_form": "primary", "score": None}]
     assert summary["verdicts"] == {"DUPLICATE_OF": 1}
     assert survivors(reg) == []
 
@@ -119,7 +121,7 @@ async def test_stale_deterministic_judgment_is_cleared_with_history(storage_root
     await _collect(storage_root, "run-1", ["Synthetic Tort Doctrine"])
     await _dedupe(storage_root)
     smaller = FolioLexicon.from_concepts([c for c in CONCEPTS if c["iri"] != IRI_TORT])
-    summary, reg = await _dedupe(storage_root, smaller)
+    summary, reg = await _dedupe(storage_root, smaller, min_concepts=1)
     (p,) = reg.all()
     assert summary["verdicts"] == {"CLEARED": 1}
     assert p.judgment is None

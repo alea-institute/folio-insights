@@ -142,7 +142,13 @@ class FolioLexicon:
     def load(cls, path: str | Path) -> FolioLexicon:
         """A FOLIO ``.owl`` file, or a JSON cache written by ``to_json``."""
         p = Path(path).expanduser()
-        return cls.from_json(p) if p.suffix.lower() == ".json" else cls.from_owl(p)
+        lex = cls.from_json(p) if p.suffix.lower() == ".json" else cls.from_owl(p)
+        if not lex.by_iri:
+            raise ValueError(
+                "lexicon file holds no FOLIO classes; refusing an empty lexicon "
+                "(it would clear every deterministic verdict)"
+            )
+        return lex
 
 
 __all__ = ["LABEL_FORMS", "PRIMARY", "FolioLexicon"]

@@ -11,8 +11,9 @@ them constructs a model client or opens a network connection.
             and across proposals. Human and model judgments are never overwritten.
   worklist  Write the judgment worklist JSON for definition-level review.
             Writing a worklist records no judgment and approves nothing. The
-            file must sit outside this repository and outside the corpus root,
-            so generated review material is never committed.
+            file must sit outside every git work tree (this repository, its
+            other worktrees and any other repository) and outside the corpus
+            root, so generated review material is never committed.
 
 Usage:
   python scripts/judge_proposals.py collect  --corpus C --run-dir OUT/C --run RUN
@@ -26,6 +27,7 @@ import argparse
 import asyncio
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -61,15 +63,55 @@ def _inside(path: Path, other: Path) -> bool:
     return path == other or other in path.parents
 
 
-def check_worklist_destination(out: Path, corpus_root: Path) -> None:
-    """Refuse a worklist path inside this repository or the storage root (R5)."""
-    if _inside(out, REPO_ROOT):
+def _nearest_existing_dir(path: Path) -> Path:
+    probe = path
+    while not probe.exists():
+        if probe.parent == probe:
+            break
+        probe = probe.parent
+    return probe if probe.is_dir() else probe.parent
+
+
+def _git_claims(directory: Path) -> bool:
+    """True if ``directory`` is inside any git work tree or git directory.
+
+    Runs git with inherited ``GIT_*`` variables dropped and system/global
+    config ignored. A git that cannot run fails closed (treated as a claim).
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "--is-inside-work-tree",
+             "--is-inside-git-dir"],
+            env=env, capture_output=True, text=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return True
+    if result.returncode != 0:
+        # "not a git repository" is the only acceptable failure.
+        return "not a git repository" not in result.stderr
+    return "true" in result.stdout.split()
+
+
+def check_worklist_destination(out: Path, corpus_root: Path) -> Path:
+    """Refuse a worklist path inside any git checkout (this repository, another
+    worktree or clone of it, or any other repository) or inside the storage
+    root (R5). Returns the resolved path, which is what gets written."""
+    resolved = Path(out).expanduser().resolve()
+    if _inside(resolved, REPO_ROOT):
         raise SystemExit(
             f"refusing to write a worklist inside the repository ({REPO_ROOT}); "
             "generated review material must never be committed"
         )
-    if _inside(out, corpus_root):
+    if _inside(resolved, corpus_root):
         raise SystemExit("refusing to write a worklist inside the corpus storage root")
+    if _git_claims(_nearest_existing_dir(resolved)):
+        raise SystemExit(
+            "refusing to write a worklist inside a git work tree or git directory; "
+            "generated review material must never be committed"
+        )
+    return resolved
 
 
 def _write_json_atomic(path: Path, data: Any) -> None:
@@ -89,8 +131,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
     root = resolve_corpus_root(args.corpus_root)
     out_path: Path | None = None
     if args.command == "worklist":
-        out_path = Path(args.out).expanduser()
-        check_worklist_destination(out_path, root)
+        out_path = check_worklist_destination(Path(args.out), root)
     lexicon = FolioLexicon.load(args.lexicon) if getattr(args, "lexicon", None) else None
     async with await CorpusStorageContext.open(root, args.corpus) as ctx:
         store = ProposalStore(ctx)

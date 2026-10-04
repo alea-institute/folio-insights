@@ -225,7 +225,8 @@ These rules hold for every format:
   storage root and outside the served `output/` directory.
 - **Default exports contain no rejected PII.** Inputs that match the PII
   gate (SSN, ABA routing number, US phone by default) are refused before the
-  journal append. They therefore never reach the journal, the projection, a
+  journal append. String leaves and integer leaves (as decimal text) are
+  scanned; an integer too large to render is refused. They therefore never reach the journal, the projection, a
   dump, a snapshot or an export. Signature objects are scanned too (`did`,
   `signing_key_id`, cosigners); only a `signature` value shaped exactly like
   an Ed25519 base64url signature and 64-hex `*_hash` digests are exempt.
@@ -298,12 +299,20 @@ proposed-class governance pipeline (`folio_insights.proposals`,
 - **Schema key.** `storage_meta` records `proposal_ledger_schema_version`
   (1). A journal written before the ledger existed gains the empty table on
   its next open. An unknown version is refused.
-- **No source text.** Proposals keep labels, run names, unit IDs and spans,
-  never unit text or excerpts.
+- **No source text.** Proposals keep labels (at most 200 characters), run
+  names, unit IDs and spans, never unit text or excerpts. A payload with an
+  `excerpt`, `source_text` or similar key anywhere is refused, and judgments
+  are reduced to an exact schema with capped strings.
+- **PII gate scope.** The gate scans the operation ID as well as the payload.
 - **Not projected.** Ledger rows never enter the RDF projection, so they do
-  not move its watermark. Snapshots and restores carry them because they copy
-  the whole journal file. TTL dumps and the export formats do not include them
-  yet.
+  not move its watermark. TTL dumps and the export formats do not include
+  them yet.
+- **Snapshots verify it.** The manifest's per-corpus entry (covering the union
+  of journal and ledger corpora) records `proposal_head`,
+  `proposal_head_payload_sha256` and `proposal_rows`. A snapshot or restore
+  refuses an unknown `proposal_ledger_schema_version`, and a restore checks
+  each corpus's ledger head. A manifest written before the ledger existed
+  restores only if the journal file holds no ledger rows.
 
 ## rdflib
 

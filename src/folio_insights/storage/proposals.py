@@ -10,9 +10,12 @@ Same write discipline as shards and governance events:
 * **Explicit operation IDs.** ``append`` requires ``op_id``. Retrying the
   same operation ID with the same request returns the committed row.
   Reusing it for a different request raises ``OperationIdConflict``.
-* **PII gate first.** The configured PII gate scans the kind and every
-  string leaf of the payload before the write transaction, so a refused
-  operation never reaches the journal file.
+* **PII gate first.** The configured PII gate scans the operation ID, the
+  kind and every string and integer leaf of the payload before the write
+  transaction, so a refused operation never reaches the journal file.
+* **No source text.** A payload that carries a key named in
+  ``FORBIDDEN_PAYLOAD_KEYS`` (``excerpt``, ``source_text`` and their
+  variants) anywhere is refused: the ledger holds references, never text.
 * **Guarded appends.** ``expected_head`` makes an append conditional on the
   ledger head the caller computed against. The comparison runs inside the
   ``BEGIN IMMEDIATE`` transaction, so it is atomic with every other writer.
@@ -42,6 +45,35 @@ if TYPE_CHECKING:
     from folio_insights.storage.context import CorpusStorageContext
 
 _KIND = re.compile(r"[a-z][a-z0-9_]{0,63}")
+MAX_OP_ID_CHARS = 200
+FORBIDDEN_PAYLOAD_KEYS = frozenset({
+    "excerpt", "source_text", "source_text_excerpt", "supporting_excerpt", "text",
+})
+
+
+class ProposalPayloadRefused(ValueError):
+    """A ledger payload carried a forbidden (text-bearing) key. The message
+    names the location, never a value."""
+
+
+_SAFE_KEY = re.compile(r"[a-z_][a-z0-9_]{0,63}")
+
+
+def _refuse_text_keys(value: Any, path: str) -> None:
+    """Refuse a forbidden key anywhere in ``value``. Paths name only plain
+    snake_case keys and list indexes; any other key is shown as ``<key>``."""
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if isinstance(key, str) and key.lower() in FORBIDDEN_PAYLOAD_KEYS:
+                raise ProposalPayloadRefused(
+                    f"proposal ledger payload carries a forbidden text key under {path} "
+                    f"(one of {sorted(FORBIDDEN_PAYLOAD_KEYS)}); nothing was appended"
+                )
+            part = key if isinstance(key, str) and _SAFE_KEY.fullmatch(key) else "<key>"
+            _refuse_text_keys(item, f"{path}.{part}")
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            _refuse_text_keys(item, f"{path}[{index}]")
 
 
 @dataclass(frozen=True)
@@ -91,15 +123,19 @@ class PersistentProposalLedger:
         is true when ``op_id`` was already committed for this same request."""
         ctx = self._ctx
         ctx._ensure_open()
-        if not isinstance(op_id, str) or not op_id.strip():
-            raise ValueError("a proposal ledger append needs an explicit, non-empty op_id")
+        if not isinstance(op_id, str) or not op_id.strip() or len(op_id) > MAX_OP_ID_CHARS:
+            raise ValueError(
+                "a proposal ledger append needs an explicit, non-empty op_id of at most "
+                f"{MAX_OP_ID_CHARS} characters"
+            )
         if not isinstance(kind, str) or not _KIND.fullmatch(kind):
             raise ValueError("proposal ledger kind must be a short snake_case name")
         if not isinstance(payload, Mapping):
             raise TypeError("proposal ledger payload must be a JSON object")
         body = jcs.canonicalize(dict(payload))
         request = {"kind": kind, "payload": json.loads(body)}
-        ctx.config.pii_gate.check(request)
+        _refuse_text_keys(request["payload"], "payload")
+        ctx.config.pii_gate.check({"op_id": op_id, **request})
         request_sha = hashlib.sha256(jcs.canonicalize(request)).hexdigest()
 
         async with ctx._write_lock:
@@ -128,4 +164,9 @@ class PersistentProposalLedger:
         return await self._ctx._journal.proposal_head(self.corpus)
 
 
-__all__ = ["PersistentProposalLedger", "ProposalLedgerEntry"]
+__all__ = [
+    "FORBIDDEN_PAYLOAD_KEYS",
+    "PersistentProposalLedger",
+    "ProposalLedgerEntry",
+    "ProposalPayloadRefused",
+]

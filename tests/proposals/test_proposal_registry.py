@@ -44,7 +44,7 @@ def test_normalize_and_ids_are_deterministic_and_corpus_keyed():
     assert normalize_label("  Synthetic-Tort  Doctrine A! ") == "synthetic tort doctrine a"
     a = proposal_id("corpus-a", "synthetic tort doctrine a")
     assert a == proposal_id("corpus-a", "synthetic tort doctrine a")
-    assert a.startswith("PC-") and len(a) == 19
+    assert a.startswith("PC-") and len(a) == 35
     assert a != proposal_id("corpus-b", "synthetic tort doctrine a")
     with pytest.raises(ValueError):
         proposal_id("corpus-a", "")
@@ -60,7 +60,7 @@ async def test_collect_creates_pending_proposals_without_source_text(storage_roo
         )
         reg = await store.load()
     assert stats == {"run": "run-1", "position": 0, "replayed": False,
-                     "observations": 2, "new": 2}
+                     "observations": 2, "new": 2, "dropped": {"empty": 0, "too_long": 0}}
     p = reg.by_label("synthetic tort doctrine a")
     assert p is not None and p.decision["status"] == "pending" and p.judgment is None
     assert p.runs == ["run-1"] and p.occurrences == 1
