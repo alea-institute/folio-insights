@@ -1,6 +1,7 @@
 """Phase 2 v2.0 Shard envelope (§6.1) — 15-field Pydantic core data model."""
 from folio_insights.shards.audit import ContentEdit, add_edit
 from folio_insights.shards.envelope import (
+    ENVELOPE_SCHEMA_VERSION,
     AttestedSignature,
     ShardEnvelope,
     ShardType,
@@ -29,6 +30,7 @@ from folio_insights.shards.subtypes import (
 )
 
 __all__ = [
+    "ENVELOPE_SCHEMA_VERSION",
     "add_edit",
     "AttestedSignature",
     "AuthorityPosition",
