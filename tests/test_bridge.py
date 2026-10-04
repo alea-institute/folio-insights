@@ -26,6 +26,23 @@ def test_folio_service_import():
 
 
 @pytest.mark.integration
+def test_deterministic_entity_ruler_canary():
+    """B5 canary: the deterministic ruler imports, loads the live FOLIO labels and
+    emits a real FOLIO IRI for a plain legal term. Trips if the pinned ruler or
+    the label source breaks, instead of letting tagging degrade silently."""
+    from folio_insights.services.bridge.folio_bridge import (
+        get_folio_service,
+        verify_deterministic_bridge,
+    )
+
+    ruler = verify_deterministic_bridge()()
+    ruler.load_patterns(get_folio_service().get_all_labels())
+    matches = ruler.find_matches("The parties scheduled a deposition for next week.")
+    iris = [getattr(m, "entity_id", "") for m in matches]
+    assert any(iri.startswith("https://folio.openlegalstandard.org/") for iri in iris), iris
+
+
+@pytest.mark.integration
 def test_normalizer_import():
     """Verify get_normalizer() returns callable functions."""
     from folio_insights.services.bridge.folio_bridge import get_normalizer

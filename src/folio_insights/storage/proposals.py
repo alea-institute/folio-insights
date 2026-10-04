@@ -25,7 +25,8 @@ Same write discipline as shards and governance events:
 
 Ledger rows are not replayed into the RDF projection. They never move the
 projection watermark. Snapshots copy them because they copy the whole journal
-file. Dumps and exports do not include them yet.
+file. Dumps and the RDF export formats do not include them; the approved-only
+backlog (``folio_insights.proposals.export``) is their export.
 """
 from __future__ import annotations
 
@@ -47,7 +48,8 @@ if TYPE_CHECKING:
 _KIND = re.compile(r"[a-z][a-z0-9_]{0,63}")
 MAX_OP_ID_CHARS = 200
 FORBIDDEN_PAYLOAD_KEYS = frozenset({
-    "excerpt", "source_text", "source_text_excerpt", "supporting_excerpt", "text",
+    "excerpt", "source_snippet", "source_text", "source_text_excerpt", "supporting_excerpt",
+    "text",
 })
 
 
@@ -59,21 +61,33 @@ class ProposalPayloadRefused(ValueError):
 _SAFE_KEY = re.compile(r"[a-z_][a-z0-9_]{0,63}")
 
 
-def _refuse_text_keys(value: Any, path: str) -> None:
+def refuse_text_keys(
+    value: Any,
+    path: str,
+    *,
+    subject: str = "proposal ledger payload",
+    outcome: str = "nothing was appended",
+) -> None:
     """Refuse a forbidden key anywhere in ``value``. Paths name only plain
-    snake_case keys and list indexes; any other key is shown as ``<key>``."""
+    snake_case keys and list indexes; any other key is shown as ``<key>``.
+    ``subject`` and ``outcome`` word the refusal for other generated material
+    (the approved-only backlog, for instance)."""
     if isinstance(value, Mapping):
         for key, item in value.items():
             if isinstance(key, str) and key.lower() in FORBIDDEN_PAYLOAD_KEYS:
                 raise ProposalPayloadRefused(
-                    f"proposal ledger payload carries a forbidden text key under {path} "
-                    f"(one of {sorted(FORBIDDEN_PAYLOAD_KEYS)}); nothing was appended"
+                    f"{subject} carries a forbidden text key under {path} "
+                    f"(one of {sorted(FORBIDDEN_PAYLOAD_KEYS)}); {outcome}"
                 )
             part = key if isinstance(key, str) and _SAFE_KEY.fullmatch(key) else "<key>"
-            _refuse_text_keys(item, f"{path}.{part}")
+            refuse_text_keys(item, f"{path}.{part}", subject=subject, outcome=outcome)
     elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
-            _refuse_text_keys(item, f"{path}[{index}]")
+            refuse_text_keys(item, f"{path}[{index}]", subject=subject, outcome=outcome)
+
+
+def _refuse_text_keys(value: Any, path: str) -> None:
+    refuse_text_keys(value, path)
 
 
 @dataclass(frozen=True)
@@ -169,4 +183,5 @@ __all__ = [
     "PersistentProposalLedger",
     "ProposalLedgerEntry",
     "ProposalPayloadRefused",
+    "refuse_text_keys",
 ]

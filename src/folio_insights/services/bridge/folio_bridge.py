@@ -100,12 +100,54 @@ def get_normalizer() -> dict[str, Any]:
     }
 
 
-def get_aho_corasick_matcher() -> Any:
-    """Import and return the AhoCorasickMatcher from folio-enrich."""
-    _ensure_folio_enrich_path()
-    from app.services.concept.entity_ruler import AhoCorasickMatcher
+class BridgeIntegrityError(RuntimeError):
+    """A required deterministic-matcher symbol cannot be imported.
 
-    return AhoCorasickMatcher
+    A sys.path bridge couples this package to a sibling checkout by directory
+    layout and internal API, and either can change without notice. When the
+    deterministic matcher breaks, callers must fail loud: a silent per-item
+    fallback to LLM guessing yields plausible but wrong IRIs.
+    """
+
+
+def get_entity_ruler() -> Any:
+    """Return the deterministic FOLIO entity-ruler class.
+
+    It is the pinned ``folio_resolve.FOLIOEntityRuler``: ``load_patterns(labels)``
+    with ``FolioService.get_all_labels()`` output, then ``find_matches(text)``
+    returning matches with ``.entity_id`` (the FOLIO IRI) and ``.text``. It
+    replaces the old import of folio-enrich's ``AhoCorasickMatcher`` from
+    ``app.services.concept.entity_ruler``, a module folio-enrich has since
+    moved, and it needs neither the sys.path bridge nor spaCy.
+
+    Raises ``BridgeIntegrityError`` (never returns ``None``) when the symbol is
+    missing.
+    """
+    try:
+        from folio_resolve import FOLIOEntityRuler
+    except ImportError as exc:
+        raise BridgeIntegrityError(
+            "Could not import the deterministic FOLIO entity ruler "
+            "(folio_resolve.FOLIOEntityRuler). It is the deterministic IRI path; without it "
+            "the tagger would fall back to LLM/semantic IRIs. Reinstall the pinned "
+            f"folio-resolve dependency. Underlying error: {exc!r}"
+        ) from exc
+    return FOLIOEntityRuler
+
+
+def get_aho_corasick_matcher() -> Any:
+    """Deprecated alias for :func:`get_entity_ruler` (kept for old import sites)."""
+    return get_entity_ruler()
+
+
+def verify_deterministic_bridge() -> Any:
+    """Startup canary: import and instantiate the deterministic ruler, loudly.
+
+    Returns the ruler class, or raises ``BridgeIntegrityError``.
+    """
+    ruler_cls = get_entity_ruler()
+    ruler_cls()
+    return ruler_cls
 
 
 def get_citation_extractor() -> Any:

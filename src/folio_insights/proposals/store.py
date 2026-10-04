@@ -17,6 +17,13 @@ Operation IDs are explicit and deterministic:
   (``JournalStateChanged``) rather than apply stale verdicts.
 * ``record_judgments``: an op_id from the caller, who owns the judgment.
   Caller op_ids may not use the reserved ``proposals:`` prefix.
+* ``record_decisions``: an op_id from the caller (same rule). The whole batch
+  is validated before anything is appended; one unknown ID or invalid status
+  refuses it all. Every batch is appended, even one whose decisions all equal
+  the current ones, so retrying the same op_id always replays and returns the
+  committed result with its original ``decided_at``, next to the current status
+  (``superseded_since`` lists proposals decided again since). A new batch is
+  appended only if the ledger is still at the head it was validated against.
 
 Every judgment, deterministic or recorded, passes ``judgments.validate_judgment``
 before it is appended, and ``apply_dedupe`` refuses a lexicon smaller than
@@ -33,12 +40,18 @@ from typing import TYPE_CHECKING, Any
 
 import jcs
 
+from folio_insights.proposals.decisions import (
+    DecisionInvalid,
+    validate_decided_by,
+    validate_decision,
+)
 from folio_insights.proposals.dedupe import DeterministicDeduper
 from folio_insights.proposals.judgments import JudgmentInvalid, validate_judgment
 from folio_insights.proposals.lexicon import FolioLexicon
 from folio_insights.proposals.registry import (
     DETERMINISTIC,
     KIND_COLLECT,
+    KIND_DECISION,
     KIND_JUDGMENT,
     ProposalRegistry,
     collect_payload,
@@ -178,6 +191,92 @@ class ProposalStore:
             KIND_JUDGMENT, {"judgments": items}, op_id=op_id
         )
         return {"recorded": len(items), "position": entry.position, "replayed": replayed}
+
+
+    async def record_decisions(
+        self,
+        decisions: Iterable[Mapping[str, Any]],
+        *,
+        op_id: str,
+        decided_by: str,
+    ) -> dict[str, Any]:
+        """Record explicit review decisions ``{proposal_id, status, note?,
+        merge_into?}`` by the human reviewer ``decided_by`` (``human:<name>``).
+
+        Returns ``{recorded, unchanged, position, replayed, results,
+        superseded_since}``. ``results`` maps each proposal ID to its ``status``
+        and ``decided_at`` as of this operation (the original outcome on a
+        replay) and to its ``current_status`` / ``current_decided_at`` now.
+        ``superseded_since`` lists the proposals whose decision changed after
+        this operation. ``unchanged`` counts decisions that already were
+        current. Errors name the item index, never values.
+        """
+        if not isinstance(op_id, str) or not op_id.strip() or op_id.startswith(RESERVED_OP_PREFIX):
+            raise ValueError(
+                "a decision batch needs an explicit op_id that does not use the reserved "
+                f"{RESERVED_OP_PREFIX!r} prefix"
+            )
+        decided_by = validate_decided_by(decided_by)
+        registry = await self.load()
+        items: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for index, raw in enumerate(decisions):
+            item = validate_decision(
+                raw, index=index, known=registry.proposals, decided_by=decided_by
+            )
+            if item["proposal_id"] in seen:
+                raise DecisionInvalid(
+                    f"decision item {index}: the batch names this proposal more than once"
+                )
+            seen.add(item["proposal_id"])
+            items.append(item)
+        if not items:
+            raise DecisionInvalid("a decision batch must hold at least one decision")
+        items.sort(key=lambda i: i["proposal_id"])
+        committed = {e.op_id for e in await self._ctx.proposals.entries()}
+        # Every batch is appended, including one whose decisions all equal the current ones
+        # (the fold ignores those items), so a retry under the same op_id always replays.
+        # A committed op_id replays (or refuses a different request) before the head check;
+        # a new batch must still be at the head it was validated against.
+        entry, replayed = await self._ctx.proposals.append(
+            KIND_DECISION,
+            {"decisions": items},
+            op_id=op_id,
+            expected_head=None if op_id in committed else registry.head,
+        )
+        position = entry.position
+        entries = await self._ctx.proposals.entries()
+        # The result as of this operation (a replay returns the original outcome), and the
+        # current state, which later decisions may have changed since.
+        as_of = ProposalRegistry.fold(self.corpus, [e for e in entries if e.position <= position])
+        current = ProposalRegistry.fold(self.corpus, entries)
+        results: dict[str, dict[str, Any]] = {}
+        recorded = 0
+        stale: list[str] = []
+        for i in items:
+            pid = i["proposal_id"]
+            then = as_of.proposals[pid].decision
+            now = current.proposals[pid].decision
+            results[pid] = {
+                "status": then.get("status"),
+                "decided_at": then.get("decided_at"),
+                "current_status": now.get("status"),
+                "current_decided_at": now.get("decided_at"),
+            }
+            if then.get("ledger_position") != now.get("ledger_position"):
+                stale.append(pid)
+            if then.get("ledger_position") == position:
+                recorded += 1
+        return {
+            "recorded": recorded,
+            "unchanged": len(items) - recorded,
+            "position": position,
+            "replayed": replayed,
+            "results": results,
+            # Proposals whose decision changed after this operation: the result above is
+            # historical, not current.
+            "superseded_since": sorted(stale),
+        }
 
 
 def load_run_proposals(run_dir: str | Path) -> tuple[list[dict[str, Any]], dict[str, list]]:

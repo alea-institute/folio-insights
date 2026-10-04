@@ -39,6 +39,24 @@ class Settings(BaseSettings):
     output_dir: Path = Path("./output")
     corpus_name: str = "default"
 
+    # Deterministic-IRI integrity (B5). The entity-ruler path is what produces deterministic
+    # concept IRIs. If it cannot load, the tagger would fall back to LLM/semantic IRIs silently.
+    # True (the default) fails the run loudly instead; False runs degraded. Either way the state
+    # is recorded in output metadata (``metadata.folio_tagger``).
+    require_deterministic_iri: bool = True
+
+    # Boundary detection performance (B7). Ambiguous (long) paragraphs are refined
+    # concurrently, at most ``boundary_tier_concurrency`` at a time. The Tier-3 LLM refiner is
+    # off by default: a deterministic sentence-group split handles long paragraphs with no
+    # network dependency and no dropped content. ``boundary_max_unit_chars`` caps a split unit.
+    boundary_llm_refine: bool = False
+    boundary_tier_concurrency: int = 8
+    boundary_max_unit_chars: int = 600
+
+    # Substantive-input guard (B6). Boundary detection drops boundaries by SHAPE only (heading,
+    # contents entry, attribution); the distiller additionally skips text shorter than this.
+    min_substantive_chars: int = 20
+
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 
 

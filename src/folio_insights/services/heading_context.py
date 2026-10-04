@@ -48,11 +48,33 @@ class HeadingContextExtractor:
         Returns:
             List of ConceptTags with extraction_path="heading_context".
         """
+        return [
+            ConceptTag(
+                iri=c["iri"],
+                label=c["label"],
+                confidence=c["confidence"],
+                extraction_path="heading_context",
+                branch=c["branch"],
+            )
+            for c in await self.extract_heading_candidates(section_path, folio_service)
+        ]
+
+    async def extract_heading_candidates(
+        self,
+        section_path: list[str],
+        folio_service: Any | None = None,
+    ) -> list[dict[str, Any]]:
+        """Like ``extract_heading_concepts``, as tagger concept dicts that also carry the
+        evidence: ``concept_text`` is the cleaned heading the concept was matched FROM.
+
+        ``label`` is the matched concept's own preferred label, so a label check against it
+        proves nothing; the B9 verifier checks the concept against ``concept_text`` instead.
+        """
         svc = folio_service or self._folio_service
         if svc is None or not section_path:
             return []
 
-        tags: list[ConceptTag] = []
+        candidates: list[dict[str, Any]] = []
 
         # Process from most specific to least (reverse order)
         reversed_path = list(reversed(section_path))
@@ -91,16 +113,15 @@ class HeadingContextExtractor:
                 else:
                     continue
 
-            tag = ConceptTag(
-                iri=getattr(top_match, "iri", ""),
-                label=getattr(top_match, "preferred_label", clean),
-                confidence=round(confidence, 3),
-                extraction_path="heading_context",
-                branch=getattr(top_match, "branch", ""),
-            )
-            tags.append(tag)
+            candidates.append({
+                "iri": getattr(top_match, "iri", ""),
+                "label": getattr(top_match, "preferred_label", clean),
+                "concept_text": clean,
+                "confidence": round(confidence, 3),
+                "branch": getattr(top_match, "branch", ""),
+            })
 
-        return tags
+        return candidates
 
 
 def _clean_heading(heading: str) -> str:

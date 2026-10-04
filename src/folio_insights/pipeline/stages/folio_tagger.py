@@ -7,7 +7,15 @@ Four extraction paths run independently on each KnowledgeUnit:
   4. Heading Context (document structure -> FOLIO concept mapping)
 
 Results are reconciled via FourPathReconciler, resolved to IRIs, and vetoed by the deterministic
-gates (place/agency + alias blocklist). Every surviving **non-ruler** tag then goes through the
+gates (place/agency + alias blocklist). An IRI that a non-deterministic path (llm, semantic,
+heading_context) carried into reconciliation must be supported, word for word, by the text it
+was matched FROM (B9): the LLM concept text, the unit text of a semantic search, or the cleaned
+heading. A rejected LLM-path IRI is dropped and the label re-resolved through
+``folio_resolve.LabelResolver`` (else it becomes a proposed class); a rejected semantic or
+heading-context tag is dropped. The
+deterministic entity-ruler path must be available; a missing ruler fails the run unless
+``require_deterministic_iri`` is off, and either way its state is recorded in
+``metadata.folio_tagger`` (B5). Every surviving **non-ruler** tag then goes through the
 LLM-as-judge stage (``folio_resolve.build_judge_prompt`` / ``parse_judge_json``) with the corpus
 **domain prior** injected (this corpus is a litigation practice treatise -> multi-tag
 Litigation / Trial Practice) and each candidate's FOLIO **definition** shown to the judge (the
@@ -126,7 +134,21 @@ class FolioTaggerStage(InsightsPipelineStage):
         # Initialize services
         folio_service = self._get_folio_service()
         embedding_service = self._get_embedding_service()
-        aho_matcher = self._get_aho_matcher(folio_service)
+        # Deterministic IRI path (B5). Loud on failure: a silent fallback to LLM/semantic IRIs is
+        # how wrong-concept tags passed unnoticed. The state lands in output metadata either way.
+        aho_matcher, det_status, det_reason = self._get_entity_ruler(folio_service)
+        tagger_meta: dict[str, Any] = {
+            "deterministic_iri_path": det_status,
+            "deterministic_iri_reason": det_reason,
+        }
+        job.metadata["folio_tagger"] = tagger_meta
+        if det_status != "active":
+            logger.error(
+                "FOLIO tagger running in DEGRADED mode: the deterministic IRI path is unavailable "
+                "(%s). Tags come from the LLM/semantic paths only; see metadata.folio_tagger.",
+                det_reason,
+            )
+        self._iri_rejections = 0
         heading_extractor = HeadingContextExtractor(folio_service)
         reconciler = self._get_reconciler(embedding_service)
 
@@ -172,9 +194,16 @@ class FolioTaggerStage(InsightsPipelineStage):
 
         self._flush_calibration(job)
         tagged_count = sum(1 for u in job.units if u.folio_tags)
+        tagger_meta["units_tagged"] = tagged_count
+        tagger_meta["entity_ruler_tags"] = sum(
+            1 for u in job.units for t in u.folio_tags if t.extraction_path == "entity_ruler"
+        )
+        tagger_meta["carried_iris_rejected"] = self._iri_rejections
         logger.info(
-            "FOLIO tagger: %d/%d units tagged (judge_enabled=%s, %d judge calls)",
+            "FOLIO tagger: %d/%d units tagged (judge_enabled=%s, %d judge calls, "
+            "deterministic_iri_path=%s, %d carried IRIs failed label verification)",
             tagged_count, len(job.units), _judge_enabled(), self._judge_call_count,
+            det_status, self._iri_rejections,
         )
         return job
 
@@ -204,18 +233,11 @@ class FolioTaggerStage(InsightsPipelineStage):
         semantic_concepts = self._run_semantic(unit.text, embedding_service)
 
         # Path 4: Heading Context
-        heading_concepts = await heading_extractor.extract_heading_concepts(
+        # Each candidate carries the cleaned heading it was matched from (``concept_text``), the
+        # evidence the B9 verifier checks the concept against.
+        heading_dicts = await heading_extractor.extract_heading_candidates(
             unit.source_section, folio_service
         )
-        heading_dicts = [
-            {
-                "iri": t.iri,
-                "label": t.label,
-                "confidence": t.confidence,
-                "branch": t.branch,
-            }
-            for t in heading_concepts
-        ]
 
         # Reconcile all four paths
         reconciled = reconciler.reconcile(
@@ -340,7 +362,10 @@ class FolioTaggerStage(InsightsPipelineStage):
                 if r.score >= 0.3:  # minimum semantic threshold
                     concepts.append({
                         "iri": r.metadata.get("iri", ""),
-                        "label": r.label,
+                        "label": r.label,  # the indexed concept's own label
+                        # The search ran on the unit text: that is the evidence the B9 verifier
+                        # checks the concept against (never the concept's own label).
+                        "concept_text": text,
                         "confidence": r.score,
                         "branch": r.metadata.get("branch", ""),
                     })
@@ -639,6 +664,14 @@ class FolioTaggerStage(InsightsPipelineStage):
           rapidfuzz over-scores to 90 ("law" -> Delaware). The bar is now 92.0.
         * **Every resolved tag carries its branch**, so the place/agency gate can veto it.
 
+        **Carried IRIs are verified (B9).** An IRI that arrived with the reconciled concept is
+        trusted as-is only when the deterministic entity ruler contributed it. Otherwise one of
+        the concept's labels must be supported, word for word, by the text the concept was
+        matched FROM (``evidence_text``: the LLM concept text, the unit text of a semantic
+        search, or the cleaned heading). A rejected LLM-path IRI is dropped and its label is
+        resolved like an IRI-less one; a rejected semantic or heading-context tag is dropped
+        outright, because its label is the rejected concept's own label.
+
         A concept whose label resolves to nothing (proposed class) keeps ``iri=''`` and is tagged
         ``proposed_class``. Gates run last: the alias blocklist and the place/agency corroboration
         veto are deterministic — high LLM confidence does NOT exempt a tag from them.
@@ -654,7 +687,24 @@ class FolioTaggerStage(InsightsPipelineStage):
             primary_path = rc.contributing_paths[0] if rc.contributing_paths else "unknown"
             paths = rc.contributing_paths or [primary_path]
 
-            if rc.iri:
+            carried_ok = bool(rc.iri) and (
+                self._iri_is_deterministic(paths)
+                or self._verify_iri_concept(self._evidence_for(rc, paths), rc.iri, folio_service)
+            )
+            if rc.iri and not carried_ok:
+                # B9: a non-deterministic path carried an IRI whose concept is not supported by
+                # the text it was matched from. Drop it, never pass it silently.
+                self._iri_rejections = getattr(self, "_iri_rejections", 0) + 1
+                logger.debug(
+                    "carried IRI %s failed evidence verification for path(s) %s", rc.iri, paths
+                )
+                if not self._label_is_own_text(paths):
+                    # Semantic / heading-context labels are the rejected concept's OWN label:
+                    # re-resolving it would find the same wrong concept, and proposing it would
+                    # propose an existing FOLIO label. The tag is dropped.
+                    continue
+
+            if carried_ok:
                 # A path (entity_ruler / semantic / heading_context) already supplied the IRI.
                 # Populate branch if the path left it empty so the gate can see every tag.
                 branch = rc.branch or self._branch_for(rc.iri, folio_service)
@@ -708,6 +758,126 @@ class FolioTaggerStage(InsightsPipelineStage):
                 )
 
         return self._apply_match_gates([t for t in tags if t is not None])
+
+    # ---- B9: concept-label verification of carried IRIs ----------------------------------------
+
+    # Function words ignored when comparing a concept label with evidence text.
+    _STOPWORDS = frozenset({
+        "a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "of", "on", "or",
+        "the", "to", "with",
+    })
+
+    @staticmethod
+    def _iri_is_deterministic(paths: list[str]) -> bool:
+        """An IRI the entity ruler supplied (exact or alias match) is trusted as-is. Re-verifying
+        it would strip good ruler tags whose surface form is an alias of the concept."""
+        return "entity_ruler" in paths
+
+    @staticmethod
+    def _label_is_own_text(paths: list[str]) -> bool:
+        """True when the reconciled label is the path's own text (the LLM's concept text), not
+        the label of the concept a semantic or heading search matched."""
+        return "llm" in paths or not ({"semantic", "heading_context"} & set(paths))
+
+    @classmethod
+    def _evidence_for(cls, rc: ReconciledConcept, paths: list[str]) -> str:
+        """The text a carried IRI must be supported by.
+
+        The reconciler records what each concept was matched FROM (``evidence_text``): the
+        LLM's concept text, the unit text a semantic search ran on, or the cleaned heading. A
+        reconciled concept built without it falls back to its label only when that label is the
+        path's own text; a semantic or heading label is the matched concept's own label, and
+        checking a concept against its own label proves nothing.
+        """
+        if rc.evidence_text:
+            return rc.evidence_text
+        return rc.label if cls._label_is_own_text(paths) else ""
+
+    def _verify_iri_concept(self, evidence: str, iri: str, folio_service: Any) -> bool:
+        """True iff the concept at ``iri`` is supported by ``evidence`` (see
+        ``_label_matches_concept``).
+
+        A check that cannot run never green-lights an IRI: no evidence, no FolioService, a
+        failed lookup or an unknown IRI all reject it.
+        """
+        if not iri or not evidence or folio_service is None:
+            return False
+        try:
+            concept = folio_service.get_concept(iri)
+        except Exception:
+            logger.debug("IRI verification lookup failed for %s", iri, exc_info=True)
+            return False
+        if concept is None:
+            return False
+        return self._label_matches_concept(evidence, concept)
+
+    @staticmethod
+    def _concept_labels(concept: Any) -> list[str]:
+        """The concept's own labels: preferred, FOLIO-preferred, rdfs label, hidden and
+        alternative labels. Only real strings count (duck-typed concepts may carry anything)."""
+        out: list[str] = []
+        for attr in ("preferred_label", "folio_pref_label", "label", "hidden_label"):
+            value = getattr(concept, attr, "")
+            if isinstance(value, str) and value.strip():
+                out.append(value)
+        alts = getattr(concept, "alternative_labels", None)
+        if isinstance(alts, (list, tuple)):
+            out.extend(a for a in alts if isinstance(a, str) and a.strip())
+        return out
+
+    @classmethod
+    def _tokens(cls, text: str) -> list[str]:
+        """Case-folded, accent-stripped word tokens without function words, with a light
+        plural fold (``-ies`` -> ``-y``; a trailing ``s`` dropped except after s/u/i). Nothing
+        else is stemmed: "contract" and "contractor" stay different words."""
+        import re
+        import unicodedata
+
+        decomposed = unicodedata.normalize("NFKD", text or "")
+        plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch)).casefold()
+        out = []
+        for w in re.findall(r"[^\W_]+", plain):
+            if w in cls._STOPWORDS:
+                continue
+            if len(w) > 4 and w.endswith("ies"):
+                w = w[:-3] + "y"
+            elif len(w) > 3 and w.endswith("s") and w[-2] not in "siu":
+                w = w[:-1]
+            out.append(w)
+        return out
+
+    @staticmethod
+    def _contains(seq: list[str], sub: list[str]) -> bool:
+        n = len(sub)
+        return n > 0 and any(seq[i:i + n] == sub for i in range(len(seq) - n + 1))
+
+    @classmethod
+    def _label_matches_concept(cls, evidence: str, concept: Any) -> bool:
+        """True iff one of ``concept``'s own labels is supported by ``evidence`` at the word level.
+
+        Whole words only, never substrings or edit distance, so a stem collision
+        ("contract" / "Contractor", "appellant" / "Appellate") or a fragment inside a longer
+        name never matches. A label supports the evidence when:
+
+        * the label's words appear, contiguous and in order, in the evidence (the concept is
+          named in the heading or unit text); or
+        * the evidence's words appear contiguously in the label and cover at least half of it
+          (a short heading naming most of a longer label).
+
+        Labels whose only word is shorter than three characters (codes) are ignored.
+        """
+        ev = cls._tokens(evidence)
+        if not ev:
+            return False
+        for candidate in cls._concept_labels(concept):
+            lab = cls._tokens(candidate)
+            if not lab or (len(lab) == 1 and len(lab[0]) < 3):
+                continue
+            if cls._contains(ev, lab):
+                return True
+            if cls._contains(lab, ev) and len(ev) * 2 >= len(lab):
+                return True
+        return False
 
     def _gate_or_none(
         self,
@@ -851,30 +1021,45 @@ class FolioTaggerStage(InsightsPipelineStage):
             logger.warning("EmbeddingService not available", exc_info=True)
             return None
 
-    def _get_aho_matcher(self, folio_service: Any) -> Any:
-        """Get the entity ruler backed by the pinned ``folio_resolve.FOLIOEntityRuler``.
+    def _get_entity_ruler(self, folio_service: Any) -> tuple[Any, str, str]:
+        """Build the deterministic entity ruler: ``(ruler_or_None, status, reason)``.
 
-        Migration item #1 (continued): the ruler previously sys.path-imported folio-enrich's
-        ``AhoCorasickMatcher`` from ``app.services.concept.entity_ruler``. That module moved in
-        folio-enrich (to ``app.services.matching``), breaking the import and silently dropping the
-        entire entity-ruler extraction path. The pinned ``FOLIOEntityRuler`` is a faithful,
-        dependency-free port with the same ``load_patterns(dict[str, LabelInfo])`` /
-        ``find_matches(text) -> [.. .entity_id, .text]`` interface, and consumes
-        ``folio_service.get_all_labels()`` directly (folio-enrich ``LabelInfo`` is duck-compatible:
-        ``.concept.iri`` + ``.label_type``). This removes the fragile folio-enrich matcher import.
+        ``status`` is ``"active"`` or ``"degraded"``. The ruler is the pinned
+        ``folio_resolve.FOLIOEntityRuler`` (a dependency-free port of folio-enrich's matcher with
+        the same ``load_patterns`` / ``find_matches`` interface), loaded with
+        ``folio_service.get_all_labels()``; the old sys.path import of folio-enrich's matcher is
+        gone, and so is any need for spaCy. Without FOLIO labels there is no deterministic IRI
+        path, so a missing FolioService or an empty label set is a failure too.
+
+        With ``settings.require_deterministic_iri`` (the default) any failure raises, so the run
+        aborts instead of emitting plausible-but-wrong LLM IRIs. With it off, the failure is
+        logged and reported as ``degraded``.
         """
-        try:
-            from folio_resolve import FOLIOEntityRuler
+        from folio_insights.config import get_settings
 
-            ruler = FOLIOEntityRuler()
-            if folio_service:
-                labels = folio_service.get_all_labels()
-                if labels:
-                    ruler.load_patterns(labels)
-            return ruler
-        except Exception:
-            logger.warning("FOLIOEntityRuler not available", exc_info=True)
-            return None
+        require = get_settings().require_deterministic_iri
+        try:
+            from folio_insights.services.bridge.folio_bridge import get_entity_ruler
+
+            if folio_service is None:
+                raise RuntimeError("FolioService unavailable: no FOLIO labels to load")
+            labels = folio_service.get_all_labels()
+            if not labels:
+                raise RuntimeError("FolioService.get_all_labels() returned no labels")
+            ruler = get_entity_ruler()()
+            ruler.load_patterns(labels)
+            logger.info("Deterministic FOLIO entity ruler loaded with %d labels", len(labels))
+            return ruler, "active", ""
+        except Exception as exc:
+            if require:
+                logger.error(
+                    "Deterministic FOLIO IRI path failed and require_deterministic_iri is set; "
+                    "aborting (set FOLIO_INSIGHTS_REQUIRE_DETERMINISTIC_IRI=false to run degraded)",
+                    exc_info=True,
+                )
+                raise
+            logger.error("Deterministic FOLIO entity ruler unavailable: DEGRADED", exc_info=True)
+            return None, "degraded", f"{type(exc).__name__}: {exc}"
 
     def _get_reconciler(self, embedding_service: Any) -> FourPathReconciler:
         """Get FourPathReconciler backed by the pinned ``folio_resolve.Reconciler``.

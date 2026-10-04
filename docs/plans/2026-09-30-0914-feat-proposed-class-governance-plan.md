@@ -127,3 +127,68 @@ All U1–U4 scenarios pass after storage completion. Every non-evidence source c
   - normalization is Unicode-aware, with 32-hex IDs;
   - snapshot and restore verify the ledger;
   - verdict targets are validated.
+- **U3 (branch `feat/governance-u3u4`, from `origin/master` `c3b5828`).** Four commits:
+  - `3857dc0`: the approvals half. It adds the `decision` ledger kind, folded by `ProposalRegistry`.
+    - **Pending until decided.** A proposal stays `pending` until an explicit decision by a `human:<name>` reviewer. Judgments, human or model, never approve.
+    - **Replay and history.** An identical decision keeps its original `decided_at`. Replaying an op_id returns the original result and time, even after later changes. A changed decision appends to `decision_history`.
+    - **Whole-batch validation.** `ProposalStore.record_decisions` checks the whole batch before appending. Unknown IDs, invalid statuses (no longer coerced to `pending`), extra keys, duplicate IDs and non-human reviewers refuse everything, and new batches append only at the validated head.
+    - **Export.** `proposals.export` builds the approved-only, deterministic backlog and runs the PII gate and forbidden-key check on it.
+    - **Scripts.** `scripts/apply_approvals.py` (`apply`, `export`), `scripts/build_approval_queue.py` (JSON plus a self-contained HTML page with nothing pre-selected) and a `judge_proposals.py judgments` subcommand. Every output is refused inside git work trees and the corpus root (`proposals.destinations`).
+    - **PII gap closed.** Governance events now pass the PII gate inside `_append_governance` (regression `tests/storage/test_governance_pii_gate.py`, which failed 3 of 5 on the pre-fix tree).
+    - **Export placement.** The backlog is deliberately not part of `storage export` or `dump`; `docs/storage-operations.md` says why.
+  - `3ebec1f`: B9 and B5 in the tagger.
+    - **B9.** Carried IRIs from the llm, semantic and heading_context paths pass a concept-label verifier. A rejected IRI is re-resolved through folio-resolve 0.4.0 `LabelResolver`, else the tag becomes `proposed_class`. The U1 characterization test was replaced in the same commit.
+    - **B5.** `_get_entity_ruler` uses the pinned `folio_resolve.FOLIOEntityRuler` and is loud by default (`require_deterministic_iri`). The path state goes into `metadata.folio_tagger` and the output summary. `folio_bridge` gains `get_entity_ruler`, `BridgeIntegrityError` and `verify_deterministic_bridge`.
+  - `8306f2d`: extraction fixes.
+    - **B6.** The substance guard runs in boundary detection and the distiller. Fixed in transfer: a heading prefix's period no longer counts as sentence punctuation.
+    - **RUB-05.** Anchors are added (`source_snippet`, `anchor_verified`, `anchor_score`).
+    - **B7.** Refinement is bounded and concurrent, Tier 3 is opt-in, and a deterministic sentence-group split caps unit size.
+    - **Binary re-read.** Elementless bridge ingest uses the extracted text.
+  - `1cf06ed`: B4 discovery fixes.
+    - **review.db.** It has a single schema and writer (`folio_insights.persistence`). The API re-exports and delegates to it. It stays SQLite because it holds mutable reviewer state.
+    - **Discovery.** The orchestrator persists after every run, and FolioMapping now runs after content clustering.
+    - **Export and OWL.** `export` hints when tasks are discovered but unreviewed. OWL skips IRI-less tasks.
+    - **LLM API.** Calls use `llm.complete`; the folio-enrich providers have no `generate`.
+  - **Learnings.** Six learning docs were carried as paraphrase or re-authored. They carry no headings, excerpts, unit labels or campaign figures.
+- **U4.** `72ecfc2` adds `scripts/check_exclusions.py` and `tests/proposals/test_exclusion_scanner.py`.
+  - **Checks.** The script audits new-commit paths against the excluded prefixes. It scans allowed text artifacts, at HEAD and in every new blob, for excerpt values, derived definitions, book provenance and generated proposal artifacts. It never prints values.
+  - **Tests.** They cover detection of a synthetic non-empty excerpt and the absence of false positives on field names in code or prose. Excluded paths are flagged but never read, and material added then removed is still caught.
+  - **Inventory.** The inventory is reconciled: 46 transferred, 30 excluded and 4 superseded, total 80, each with a landing pointer. The `pyproject.toml` spaCy entry is superseded, because the pinned folio-resolve ruler needs no spaCy. No dependency was added.
+- **U3/U4 verification (2026-10-04, interpreter `.venv`, temp corpus roots).**
+  - **Focused run.** `tests/proposals tests/test_folio_tagging.py tests/storage tests/governance` plus the transferred suites (`test_extraction_safeguards`, `test_discovery_persistence`, `test_bridge`, `test_folio_resolve_pin`, `test_cli_source_panel`) ran twice: 558 passed both times.
+  - **Full suite** (`-m "not gate5 and not slow"`): 1442 passed at `1cf06ed`, and 1458 passed, 34 skipped, 18 deselected at `72ecfc2` (all code final; baseline 1367).
+  - **Ruff.** On the changed files, only master's 5 deliberate E402 in `cli.py` remain.
+  - **Exclusion check.** `scripts/check_exclusions.py --history origin/master` found 0 tree findings and 0 history findings.
+  - **Path audit.** `git log origin/master..HEAD --name-only` contains no `data/governance`, `docs/evidence`, `output/` or `staging/` path, and `git status --short --ignored output data` is clean.
+  - **Browser check.** The approval-queue page was checked in Chromium (chrome-devtools) with synthetic data. Nothing was pre-selected; two choices produced a two-entry `proposed-class-approvals/v1` paste-back; there was no horizontal overflow at phone width. The page was then deleted.
+- **U3+U4 review fixes.** An independent review found one P1, five P2s and some nits. Each fix has a regression test that failed on the pre-fix code: 43 targeted tests failed with `src/` and `scripts/` stashed, and the substance tests failed to import.
+  - **P1, B9 verified a concept against itself.** Semantic and heading-context labels are the matched concept's own label, so the check always passed.
+    - **Fix.** Each path now records the text it matched FROM: the unit text for semantic, the cleaned heading via `HeadingContextExtractor.extract_heading_candidates`. `FourPathReconciler` carries it as `ReconciledConcept.evidence_text`, and carried IRIs are verified against it with whole-word token matching. There is no fuzzy partial-ratio match, so stem collisions such as contract/Contractor are rejected.
+    - **Rejected tags.** A rejected semantic or heading tag is dropped; a rejected LLM-path IRI is re-resolved through `LabelResolver`.
+    - **Tests.** End-to-end heading and semantic tests run through the reconciler.
+    - **Docs.** `docs/solutions/llm-path-unverified-iris.md` is corrected: the LLM path carries no IRIs of its own, the embedding-triage claim was wrong, and its status now says exactly what is verified.
+  - **P2-1, approval replay.** Every decision batch is appended, including no-op batches, so a retry always replays. Replays return the as-of-operation result alongside `current_status`, plus `superseded_since`, and the CLI warns when they differ. The CLI's default op_id folds in the ledger head.
+  - **P2-2, the fold trusted raw rows.** `ProposalRegistry` re-validates every stored decision item: decided status, human handle, known proposal, valid merge. An invalid item decides nothing and is reported in `invalid_decisions` and the backlog's `invalid_decision_items`. It is not a load failure, because append-only rows cannot be removed. `decided_by` is now a plain `human:<handle>` (no e-mail, DID, markup or invisible characters), and the docs state it is self-asserted.
+  - **P2-3, paste-back mismatch.** A decision body that carries `proposal_id` is refused.
+  - **P2-4, scanner gaps.**
+    - **Coverage.** The scanner now covers every ledger forbidden key plus `quote`, `snippet` and `passage`, with case-, space- and hyphen-insensitive keys. It scans notebooks, Markdown blockquotes, key-labelled table cells, `**Key:**` lines and key-classed HTML elements.
+    - **Pointers.** They hash unknown keys, so no raw key is ever printed.
+    - **Book gate.** A `--book PATH` shingle mode reports counts only.
+    - **Honesty.** The docstring now says the scanner is a heuristic. Shape findings in pre-range content are advisory.
+  - **P2-5, the 40-character floor.** Boundary detection drops units by shape only (`is_structural`). The length floor (now 20) applies only at the distiller skip. Clause-like prefixed lines ("Section 1983 claims require…") and enumerated tips are prose.
+  - **Nits.**
+    - **Queue page.** Radios and inputs carry `autocomplete="off"`, the script reads the shown state, and a merge-target field is prefilled from a `MERGE_WITH` judgment.
+    - **Notes.** The note prompt asks for the reviewer's own words; `reviewer_note` is capped and documented as reviewer-authored.
+    - **CLI.** It prints refusals as a clear message.
+    - **Deploy note.** Added for `require_deterministic_iri` in `docs/storage-operations.md`.
+  - **Verification.**
+    - **Focused run, twice** (proposals, tagging, storage, governance, plus the transferred suites): 622 passed both times.
+    - **Full suite** (`-m "not gate5 and not slow"`): 1522 passed, 34 skipped, 18 deselected.
+    - **Ruff:** clean on the changed files.
+    - **Browser:** the queue page was re-checked in Chromium: the merge target is carried into the paste-back and the radios are `autocomplete=off`.
+
+## Follow-ups (not in this PR)
+
+- **Signed decisions.** `decided_by` is a self-asserted handle. Anyone who can write the storage root can record any reviewer. Decisions signed with the reviewer's DID would make "a human decided" provable.
+- **A second approval surface.** `POST /proposed-classes/{label}/review` (`api/routes/review.py`) writes `proposed_class_decisions` in `review.db`, keyed by label. The ledger and the approved-only backlog ignore it. It should be retired, or routed through `ProposalStore.record_decisions`, so there is one source of truth for proposal approvals.
+- **A shingle gate in CI or pre-publication.** Run `scripts/check_exclusions.py --book PATH` against the local book copies before any publication. The key/shape scan alone cannot recognize unlabelled prose.

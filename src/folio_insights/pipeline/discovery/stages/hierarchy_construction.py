@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from typing import Any
 from uuid import uuid4
 
-from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit
+from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.models.task import (
     DiscoveredTask,
     TaskCandidate,
@@ -274,7 +274,7 @@ class HierarchyConstructionStage(DiscoveryStage):
             )
 
             try:
-                response = await llm.generate(prompt)
+                response = await llm.complete(prompt)
                 parsed = _json.loads(response)
 
                 is_ordered = parsed.get("is_ordered", False)

@@ -55,6 +55,12 @@ class KnowledgeUnit(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     text: str
     original_span: Span
+    # Verifiable source anchor (RUB-EXTRACT-05): a unit may paraphrase, but it carries the exact
+    # source substring at its span, the anchor's match score (1.0 = exact) and whether the score
+    # reached the verification threshold (services.anchoring, 0.85).
+    source_snippet: str = ""
+    anchor_verified: bool = False
+    anchor_score: float = 0.0
     unit_type: KnowledgeType
     source_file: str
     source_section: list[str] = Field(default_factory=list)

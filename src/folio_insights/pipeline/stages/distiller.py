@@ -13,6 +13,7 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from folio_insights.config import get_settings
 from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
@@ -20,6 +21,7 @@ from folio_insights.pipeline.stages.base import (
     record_lineage,
 )
 from folio_insights.services.prompts.distillation import DISTILLATION_PROMPT
+from folio_insights.services.substance import is_substantive
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,18 @@ class DistillerStage(InsightsPipelineStage):
         llm_bridge: object,
     ) -> None:
         """Distill a single knowledge unit's text."""
+        # B6, defence in depth: never hand a heading, contents entry or attribution line to the
+        # generative distiller (boundary detection already drops them; this catches any that
+        # arrive another way). The unit keeps its text and records why it was not distilled.
+        if not is_substantive(unit.text, get_settings().min_substantive_chars):
+            record_lineage(
+                unit,
+                stage="distiller",
+                action="distill_skipped",
+                detail="non-substantive input (heading/contents/attribution); not distilled",
+            )
+            return
+
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
         prompt = DISTILLATION_PROMPT.format(

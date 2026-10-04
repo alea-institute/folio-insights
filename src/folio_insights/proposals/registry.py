@@ -25,20 +25,34 @@ Ledger operation kinds folded here:
   writes them, and so do recorded human or model judgments. Every judgment
   is kept in ``judgment_history``. A later one supersedes the current one but
   never erases an earlier record.
+* ``decision``: explicit human review decisions (U3). A proposal stays
+  ``pending`` until one names it; a judgment never changes the decision. A
+  decision whose status, note, reviewer and merge target equal the current
+  one changes nothing (its original ``decided_at`` stands). A different one
+  becomes current and is appended to ``decision_history``; nothing earlier is
+  overwritten. ``decided_at`` is the ledger commit time of the operation. Every
+  stored item is re-validated (``decisions.decision_row_problem``): an item with
+  an unknown status, a non-human ``decided_by`` or a bad merge target decides
+  nothing and is listed in ``invalid_decisions``.
 """
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from folio_insights.proposals.decisions import decision_core, decision_row_problem
 from folio_insights.storage.proposals import ProposalLedgerEntry
+
+logger = logging.getLogger(__name__)
 
 KIND_COLLECT = "collect"
 KIND_JUDGMENT = "judgment"
+KIND_DECISION = "decision"
 DETERMINISTIC = "deterministic"
 SUPPORTING_UNIT_CAP = 8
 MAX_LABEL_CHARS = 200
@@ -157,6 +171,7 @@ class Proposal:
     decision: dict[str, Any] = field(
         default_factory=lambda: {"status": "pending", "note": "", "decided_at": None}
     )
+    decision_history: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -174,6 +189,7 @@ class Proposal:
             "judgment": None if self.judgment is None else dict(self.judgment),
             "judgment_history": [dict(j) for j in self.judgment_history],
             "decision": dict(self.decision),
+            "decision_history": [dict(d) for d in self.decision_history],
         }
 
 
@@ -185,6 +201,7 @@ class ProposalRegistry:
     proposals: dict[str, Proposal] = field(default_factory=dict)
     runs: dict[str, dict[str, Any]] = field(default_factory=dict)
     head: int = -1
+    invalid_decisions: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def fold(cls, corpus: str, entries: Iterable[ProposalLedgerEntry]) -> ProposalRegistry:
@@ -203,6 +220,8 @@ class ProposalRegistry:
             self._apply_collect(entry)
         elif entry.kind == KIND_JUDGMENT:
             self._apply_judgment(entry)
+        elif entry.kind == KIND_DECISION:
+            self._apply_decision(entry)
         # Unknown kinds (later units) are skipped by this fold, never misread.
 
     def _apply_collect(self, entry: ProposalLedgerEntry) -> None:
@@ -279,6 +298,38 @@ class ProposalRegistry:
                 "committed_at": entry.committed_at,
             }
 
+    def _apply_decision(self, entry: ProposalLedgerEntry) -> None:
+        for index, item in enumerate(entry.payload.get("decisions", [])):
+            problem = decision_row_problem(item, self.proposals)
+            if problem is not None:
+                # The ledger is append-only, so an invalid row (a raw append that bypassed
+                # ProposalStore.record_decisions) cannot be removed. Refusing the whole fold
+                # would make the corpus unloadable forever; instead the row decides nothing
+                # and is reported in ``invalid_decisions`` (and in the backlog's count).
+                self.invalid_decisions.append({
+                    "ledger_position": entry.position,
+                    "op_id": entry.op_id,
+                    "item": index,
+                    "reason": problem,
+                })
+                logger.warning(
+                    "ignored invalid decision item %d at ledger position %d: %s",
+                    index, entry.position, problem,
+                )
+                continue
+            p = self.proposals[item["proposal_id"]]
+            core = decision_core(item)
+            if core == decision_core(p.decision):
+                continue  # an identical decision keeps its original decided_at
+            record = {
+                **core,
+                "decided_at": entry.committed_at,
+                "ledger_position": entry.position,
+                "op_id": entry.op_id,
+            }
+            p.decision_history.append(dict(record))
+            p.decision = record
+
     # ---- queries ------------------------------------------------------
 
     def get(self, pid: str) -> Proposal | None:
@@ -297,6 +348,7 @@ class ProposalRegistry:
             "corpus": self.corpus,
             "ledger_head": self.head,
             "runs": {k: dict(v) for k, v in sorted(self.runs.items())},
+            "invalid_decisions": [dict(d) for d in self.invalid_decisions],
             "proposals": [p.to_dict() for p in self.all()],
         }
 
@@ -311,6 +363,7 @@ def judgment_core(judgment: Mapping[str, Any] | None) -> dict[str, Any] | None:
 __all__ = [
     "DETERMINISTIC",
     "KIND_COLLECT",
+    "KIND_DECISION",
     "KIND_JUDGMENT",
     "SUPPORTING_UNIT_CAP",
     "Proposal",

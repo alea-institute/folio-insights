@@ -1,4 +1,4 @@
-"""Proposed-class governance CLI: collect, dedupe, worklist (governance plan U2).
+"""Proposed-class governance CLI: collect, dedupe, worklist, judgments (plan U2/U3).
 
 All state lives in the Phase 13 corpus storage root (``--corpus-root``, else
 ``$FOLIO_INSIGHTS_CORPUS_ROOT``, else ``~/.folio-insights/corpora``), as the
@@ -14,24 +14,34 @@ them constructs a model client or opens a network connection.
             file must sit outside every git work tree (this repository, its
             other worktrees and any other repository) and outside the corpus
             root, so generated review material is never committed.
+  judgments Record human or model judgments from a JSON file (a list, or an
+            object with a ``judgments`` list, of ``{proposal_id, verdict,
+            judged_by, ...}``). The whole file is validated first; an unknown
+            ID or an invalid judgment refuses it all. A judgment informs the
+            reviewer and never approves anything: approval is a separate,
+            explicit decision (``apply_approvals.py``). The operation ID
+            defaults to a digest of the file's judgments, so re-recording the
+            same file is a replay.
 
 Usage:
   python scripts/judge_proposals.py collect  --corpus C --run-dir OUT/C --run RUN
   python scripts/judge_proposals.py dedupe   --corpus C --lexicon FOLIO.owl
   python scripts/judge_proposals.py worklist --corpus C --lexicon FOLIO.owl \\
       --out /path/outside/repo/worklist.json [--floor 74 --k 4 --min-candidate 60]
+  python scripts/judge_proposals.py judgments --corpus C --verdicts FILE [--op-id ID]
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
+
+import jcs
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
@@ -42,6 +52,10 @@ from folio_insights.proposals import (  # noqa: E402
     ProposalStore,
     build_worklist,
     load_run_proposals,
+)
+from folio_insights.proposals.destinations import (  # noqa: E402
+    check_generated_destination,
+    write_json_atomic,
 )
 from folio_insights.storage import CorpusStorageContext  # noqa: E402
 
@@ -58,73 +72,22 @@ def resolve_corpus_root(value: str | None) -> Path:
     return Path.home() / ".folio-insights" / "corpora"
 
 
-def _inside(path: Path, other: Path) -> bool:
-    path, other = path.resolve(), other.resolve()
-    return path == other or other in path.parents
-
-
-def _nearest_existing_dir(path: Path) -> Path:
-    probe = path
-    while not probe.exists():
-        if probe.parent == probe:
-            break
-        probe = probe.parent
-    return probe if probe.is_dir() else probe.parent
-
-
-def _git_claims(directory: Path) -> bool:
-    """True if ``directory`` is inside any git work tree or git directory.
-
-    Runs git with inherited ``GIT_*`` variables dropped and system/global
-    config ignored. A git that cannot run fails closed (treated as a claim).
-    """
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(directory), "rev-parse", "--is-inside-work-tree",
-             "--is-inside-git-dir"],
-            env=env, capture_output=True, text=True, timeout=30, check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return True
-    if result.returncode != 0:
-        # "not a git repository" is the only acceptable failure.
-        return "not a git repository" not in result.stderr
-    return "true" in result.stdout.split()
-
-
 def check_worklist_destination(out: Path, corpus_root: Path) -> Path:
     """Refuse a worklist path inside any git checkout (this repository, another
     worktree or clone of it, or any other repository) or inside the storage
     root (R5). Returns the resolved path, which is what gets written."""
-    resolved = Path(out).expanduser().resolve()
-    if _inside(resolved, REPO_ROOT):
-        raise SystemExit(
-            f"refusing to write a worklist inside the repository ({REPO_ROOT}); "
-            "generated review material must never be committed"
-        )
-    if _inside(resolved, corpus_root):
-        raise SystemExit("refusing to write a worklist inside the corpus storage root")
-    if _git_claims(_nearest_existing_dir(resolved)):
-        raise SystemExit(
-            "refusing to write a worklist inside a git work tree or git directory; "
-            "generated review material must never be committed"
-        )
-    return resolved
+    return check_generated_destination(
+        out, corpus_root, what="worklist", repo_root=REPO_ROOT
+    )
 
 
-def _write_json_atomic(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, indent=2, ensure_ascii=False, sort_keys=True)
-            fh.write("\n")
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
+def read_judgments(path: Path) -> list[dict[str, Any]]:
+    """A judgments file: a JSON list, or an object with a ``judgments`` list."""
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    items = payload.get("judgments") if isinstance(payload, dict) else payload
+    if not isinstance(items, list) or not items:
+        raise SystemExit("the judgments file must hold a non-empty list of judgments")
+    return items
 
 
 async def _run(args: argparse.Namespace) -> dict[str, Any]:
@@ -141,12 +104,18 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             return await store.collect_run(run, pcs, spans_by_unit=spans)
         if args.command == "dedupe":
             return await store.apply_dedupe(lexicon)
+        if args.command == "judgments":
+            items = read_judgments(Path(args.verdicts))
+            op_id = args.op_id or "judgments:" + hashlib.sha256(
+                jcs.canonicalize({"corpus": args.corpus, "judgments": items})
+            ).hexdigest()[:32]
+            return {**await store.record_judgments(items, op_id=op_id), "op_id": op_id}
         registry = await store.load()
     worklist = build_worklist(
         registry, lexicon, floor=args.floor, k=args.k, min_candidate=args.min_candidate
     )
     assert out_path is not None
-    _write_json_atomic(out_path, worklist)
+    write_json_atomic(out_path, worklist)
     return {**worklist["counts"], "worklist": str(out_path), "ledger_head": registry.head}
 
 
@@ -174,6 +143,11 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--floor", type=float, default=74.0)
     w.add_argument("--k", type=int, default=4)
     w.add_argument("--min-candidate", type=float, default=60.0)
+
+    j = sub.add_parser("judgments", help="record human or model judgments from a file")
+    common(j)
+    j.add_argument("--verdicts", required=True, help="JSON list of judgments")
+    j.add_argument("--op-id", default=None, help="explicit operation ID (default: digest)")
     return ap
 
 

@@ -133,7 +133,7 @@ class ContentClusteringStage(DiscoveryStage):
             if llm is None:
                 return self._fallback_label(unit_texts)
 
-            response = await llm.generate(prompt)
+            response = await llm.complete(prompt)
             parsed = json.loads(response)
 
             return (

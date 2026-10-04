@@ -1,8 +1,9 @@
-"""Run ``scripts/judge_proposals.py`` commands under an offline guard.
+"""Run governance script commands under an offline guard.
 
-``python -m tests.proposals._offline <argv-json-list>...``: each argument is a
-JSON list of CLI arguments for one ``judge_proposals.main`` call, run in order
-in this one process. Before anything runs, the guard:
+``python -m tests.proposals._offline [--script=NAME] <argv-json-list>...``: each
+argument is a JSON list of CLI arguments for one ``main`` call of
+``scripts/NAME.py`` (default ``judge_proposals``), run in order in this one
+process. Before anything runs, the guard:
 
 * makes every socket connect / DNS lookup raise and records the attempt;
 * records (and refuses) any import of a model-client module: the folio-enrich
@@ -13,6 +14,7 @@ refused connection attempts.
 """
 from __future__ import annotations
 
+import importlib
 import importlib.abc
 import json
 import socket
@@ -57,13 +59,17 @@ def main(argv: list[str]) -> None:
     socket.create_connection = _refuse("socket.create_connection")
     socket.getaddrinfo = _refuse("socket.getaddrinfo")
 
+    script = "judge_proposals"
+    if argv and argv[0].startswith("--script="):
+        script = argv[0].split("=", 1)[1]
+        argv = argv[1:]
     repo = Path(__file__).resolve().parents[2]
     sys.path.insert(0, str(repo / "scripts"))
-    import judge_proposals
+    module = importlib.import_module(script)
 
     results = []
     for raw in argv:
-        results.append(judge_proposals.main(json.loads(raw)))
+        results.append(module.main(json.loads(raw)))
     print(json.dumps({
         "exit_codes": results,
         "preloaded": already,
