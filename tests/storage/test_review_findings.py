@@ -116,17 +116,18 @@ async def test_open_write_transaction_is_never_projected(
     ctx: CorpusStorageContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gate_hit, release = asyncio.Event(), asyncio.Event()
-    original = context_module.CorpusStorageContext._check_revision
+    original = context_module.JournalTransaction.append_many
     refused_iri = shard(2).shard_iri
 
-    async def held_check(self, tx, candidate):  # type: ignore[no-untyped-def]
-        if candidate.shard_iri == refused_iri:
+    async def held_append(self, pendings):  # type: ignore[no-untyped-def]
+        rows = await original(self, pendings)  # appended inside the open transaction
+        if any(p.subject == refused_iri for p in pendings):
             gate_hit.set()
             await release.wait()
             raise ShardIdentityViolation("synthetic refusal of record 2")
-        return await original(self, tx, candidate)
+        return rows
 
-    monkeypatch.setattr(context_module.CorpusStorageContext, "_check_revision", held_check)
+    monkeypatch.setattr(context_module.JournalTransaction, "append_many", held_append)
 
     async def writer() -> None:
         with pytest.raises(ShardIdentityViolation):
@@ -134,12 +135,12 @@ async def test_open_write_transaction_is_never_projected(
 
     task = asyncio.create_task(writer())
     await gate_hit.wait()
-    during = await ctx.status()  # record 1 is appended but not committed
+    during = await ctx.status()  # both records are appended but not committed
     release.set()
     await task
     assert (during.journal_head, during.projection_watermark) == (-1, -1)
 
-    monkeypatch.setattr(context_module.CorpusStorageContext, "_check_revision", original)
+    monkeypatch.setattr(context_module.JournalTransaction, "append_many", original)
     third = shard(3)
     await ctx.shards.put(third.shard_iri, third)
     rows = await ctx.query(f"SELECT ?s WHERE {{ ?s {fi('journalPosition')} ?p }}")
