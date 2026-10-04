@@ -7,6 +7,7 @@ locks that match uv.lock, hash-verified build backends, and exact apk versions.
 """
 from __future__ import annotations
 
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -48,11 +49,15 @@ def test_uv_image_matches_across_dockerfiles() -> None:
     assert f"COPY --from={web} " in _read("Dockerfile")
 
 
-def _instructions(dockerfile: str) -> list[str]:
+def _instructions_of(text: str) -> list[str]:
     """Dockerfile instructions with comments dropped and continuations joined."""
-    lines = [ln for ln in _read(dockerfile).splitlines() if not ln.lstrip().startswith("#")]
+    lines = [ln for ln in text.splitlines() if not ln.lstrip().startswith("#")]
     return [ins.strip() for ins in "\n".join(lines).replace("\\\n", " ").splitlines()
             if ins.strip()]
+
+
+def _instructions(dockerfile: str) -> list[str]:
+    return _instructions_of(_read(dockerfile))
 
 
 def test_no_floating_latest_tags() -> None:
@@ -98,7 +103,10 @@ def _lock_entries(name: str) -> dict[str, str]:
 
 @pytest.mark.parametrize(
     "lock",
-    ["requirements.lock", "requirements.worker.lock", "requirements.build.lock"],
+    [
+        "requirements.lock", "requirements.worker.lock", "requirements.build.lock",
+        "requirements.dev.lock",
+    ],
 )
 def test_python_locks_hash_every_entry(lock: str) -> None:
     entries = _lock_entries(lock)
@@ -148,6 +156,43 @@ def test_web_locks_match_uv_lock() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def _load_export_script():
+    spec = importlib.util.spec_from_file_location(
+        "export_image_locks", REPO_ROOT / "scripts" / "export_image_locks.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.skipif(shutil.which("uv") is None, reason="uv not on PATH")
+def test_dev_lock_matches_uv_lock() -> None:
+    """The CI test container (ci/build.py ``_test``) installs requirements.dev.lock
+    with --require-hashes; it must be the uv.lock closure plus the dev extra, not a
+    stale one-off compile (it once still pinned folio-resolve 0.3.1, no fastapi)."""
+    export = _load_export_script()
+    expected = export.render(REPO_ROOT)[export.DEV_LOCK]
+    assert _read("requirements.dev.lock") == expected, (
+        "requirements.dev.lock is stale; run scripts/export_image_locks.py"
+    )
+
+
+def test_dev_lock_covers_runtime_and_dev_extra() -> None:
+    dev = _lock_entries("requirements.dev.lock")
+    runtime = _lock_entries("requirements.lock")
+    assert set(runtime) <= set(dev), sorted(set(runtime) - set(dev))
+    for name, body in runtime.items():
+        hashes = set(re.findall(r"--hash=sha256:[0-9a-f]{64}", body))
+        assert hashes == set(re.findall(r"--hash=sha256:[0-9a-f]{64}", dev[name])), (
+            f"{name}: dev lock pins a different artifact set than requirements.lock"
+        )
+    project = tomllib.loads(_read("pyproject.toml"))["project"]
+    for req in project["optional-dependencies"]["dev"]:
+        name = re.split(r"[\s<>=!~;\[]", req, maxsplit=1)[0].lower()
+        assert name in dev, f"dev extra {name} missing from requirements.dev.lock"
+
+
 def test_env_example_mirrors_dockerfile_digests() -> None:
     digests = re.findall(r"^\w+_DIGEST=(sha256:[0-9a-f]{64})$", _read(".env.docker.example"), re.M)
     pinned = {ref.split("@", 1)[1] for df in GATE5_DOCKERFILES for ref in _image_args(df).values()}
@@ -163,3 +208,32 @@ def test_every_run_stage_keys_its_cache_on_source_date_epoch(dockerfile: str) ->
         name = stage.split("\n", 1)[0]
         if re.search(r"^RUN ", stage, re.M):
             assert re.search(r"^ARG SOURCE_DATE_EPOCH", stage, re.M), f"{dockerfile}: {name}"
+
+
+@pytest.mark.parametrize(
+    "dockerfile",
+    [
+        "Dockerfile.worker",
+        pytest.param(
+            "Dockerfile.web",
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason="known gap: the web runtime stage opens with WORKDIR /app, so "
+                "that layer can be reused from an earlier commit's build",
+            ),
+        ),
+    ],
+)
+def test_runtime_stage_starts_with_an_epoch_keyed_run(dockerfile: str) -> None:
+    """A RUN's cache key includes SOURCE_DATE_EPOCH; COPY and WORKDIR keys do not
+    (BuildKit keys COPY --from on source content, not mtimes). A filesystem step
+    ahead of the runtime stage's first RUN is reused from a build under an earlier
+    commit, carrying wall-clock mtimes older than the new epoch that
+    rewrite-timestamp leaves alone, so warm and cold builds diverge."""
+    final_stage = re.split(r"^FROM ", _read(dockerfile), flags=re.M)[-1]
+    steps = [
+        ins.split(None, 1)[0]
+        for ins in _instructions_of(final_stage)
+        if ins.split(None, 1)[0] in {"RUN", "COPY", "ADD", "WORKDIR"}
+    ]
+    assert steps and steps[0] == "RUN", f"{dockerfile}: runtime stage begins with {steps[:1]}"

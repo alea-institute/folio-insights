@@ -35,8 +35,21 @@ FROM ${UV_IMAGE} AS uv
 # -------------------------------------------------------------------------
 # Stage 1: jlink JRE builder — strips Java runtime from ~180MB to ~60-80MB
 # RESEARCH.md Pattern 5; D-06 tuning step 1 (biggest single win).
-# Module set per RESEARCH.md line 443; expand iteratively if HermiT raises
-# ClassNotFoundException at reasoning time (Assumption A4 — Plan 07 follow-up).
+# Module set per RESEARCH.md line 443, plus what HermiT needs at runtime.
+#
+# java.desktop (Assumption A4, resolved 2026-10-04): HermiT bundles the
+# `rationals` automaton library, whose rationals.Transition uses
+# java.awt.geom.Point2D and java.awt.Point. HermiT builds those automata for
+# any ontology with object properties (ObjectPropertyInclusionManager), so
+# without java.desktop sync_reasoner died with
+# NoClassDefFoundError: java/awt/geom/Point2D. Both classes are plain geometry
+# value types; no AWT native library loads, so the JRE stays headless.
+#
+# Found with `jdeps --print-module-deps` on owlready2's bundled HermiT.jar
+# (java.base, java.desktop, java.logging, java.management; java.xml too) and
+# confirmed by a sync_reasoner run in the built image. java.management stays
+# out: only OWLAPI's TimedConsoleProgressMonitor uses it, and nothing in
+# HermiT.jar references that class. tests/test_worker_jre_modules.py pins this.
 # -------------------------------------------------------------------------
 FROM ${TEMURIN_IMAGE} AS jre-builder
 # Gate 5: the ARG puts SOURCE_DATE_EPOCH in this stage's cache key. Without it a
@@ -46,7 +59,7 @@ FROM ${TEMURIN_IMAGE} AS jre-builder
 ARG SOURCE_DATE_EPOCH
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN "$JAVA_HOME/bin/jlink" \
-        --add-modules java.base,java.logging,java.xml,java.naming,java.sql,jdk.crypto.ec \
+        --add-modules java.base,java.logging,java.xml,java.naming,java.sql,jdk.crypto.ec,java.desktop \
         --strip-debug \
         --no-man-pages \
         --no-header-files \
@@ -108,11 +121,6 @@ ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Custom JRE (biggest Gate 3 win — ~120MB saved vs full temurin-jre)
-COPY --from=jre-builder /opt/java-custom /opt/java-custom
-ENV JAVA_HOME=/opt/java-custom \
-    PATH="/opt/java-custom/bin:${PATH}"
-
 # No apk packages in the runtime stage (nothing to drift): the pyoxigraph
 # musllinux wheel vendors its own libgcc_s/libstdc++ (pyoxigraph.libs/, per
 # auditwheel), owlready2's optimizer is plain C, the jlink JRE links neither,
@@ -124,6 +132,20 @@ RUN addgroup -g 1001 appuser \
     && sed -i "s/^\(appuser:[^:]*:\)[0-9]*:/\1$(( ${SOURCE_DATE_EPOCH:-0} / 86400 )):/" /etc/shadow
 # Gate 5: busybox adduser stamps today's date into /etc/shadow (last password
 # change, in days); pin it to SOURCE_DATE_EPOCH so the layer is date-independent.
+#
+# Gate 5: this RUN must be the stage's FIRST filesystem step. A RUN's cache key
+# includes SOURCE_DATE_EPOCH (ARG/ENV above); a COPY or WORKDIR key does not.
+# BuildKit keys COPY --from on the source content, not its mtimes, so a COPY
+# placed before this RUN was reused from a build under an EARLIER commit with
+# that build's wall-clock mtimes. They predate the new epoch, rewrite-timestamp
+# only clamps newer times, and a warm build then differed from a cold
+# --no-cache build (seen 2026-10-04 on the JRE layer). Chained after this RUN,
+# every later step re-keys per commit. tests/test_image_pins.py enforces it.
+
+# Custom JRE (biggest Gate 3 win — ~120MB saved vs full temurin-jre)
+COPY --from=jre-builder /opt/java-custom /opt/java-custom
+ENV JAVA_HOME=/opt/java-custom \
+    PATH="/opt/java-custom/bin:${PATH}"
 
 # Copy pre-installed Python packages from the deps-builder stage.
 # This keeps gcc/g++/musl-dev/python3-dev/libffi-dev out of the runtime image
