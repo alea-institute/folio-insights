@@ -35,8 +35,21 @@ FROM ${UV_IMAGE} AS uv
 # -------------------------------------------------------------------------
 # Stage 1: jlink JRE builder — strips Java runtime from ~180MB to ~60-80MB
 # RESEARCH.md Pattern 5; D-06 tuning step 1 (biggest single win).
-# Module set per RESEARCH.md line 443; expand iteratively if HermiT raises
-# ClassNotFoundException at reasoning time (Assumption A4 — Plan 07 follow-up).
+# Module set per RESEARCH.md line 443, plus what HermiT needs at runtime.
+#
+# java.desktop (Assumption A4, resolved 2026-10-04): HermiT bundles the
+# `rationals` automaton library, whose rationals.Transition uses
+# java.awt.geom.Point2D and java.awt.Point. HermiT builds those automata for
+# any ontology with object properties (ObjectPropertyInclusionManager), so
+# without java.desktop sync_reasoner died with
+# NoClassDefFoundError: java/awt/geom/Point2D. Both classes are plain geometry
+# value types; no AWT native library loads, so the JRE stays headless.
+#
+# Found with `jdeps --print-module-deps` on owlready2's bundled HermiT.jar
+# (java.base, java.desktop, java.logging, java.management; java.xml too) and
+# confirmed by a sync_reasoner run in the built image. java.management stays
+# out: only OWLAPI's TimedConsoleProgressMonitor uses it, and nothing in
+# HermiT.jar references that class. tests/test_worker_jre_modules.py pins this.
 # -------------------------------------------------------------------------
 FROM ${TEMURIN_IMAGE} AS jre-builder
 # Gate 5: the ARG puts SOURCE_DATE_EPOCH in this stage's cache key. Without it a
@@ -46,7 +59,7 @@ FROM ${TEMURIN_IMAGE} AS jre-builder
 ARG SOURCE_DATE_EPOCH
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN "$JAVA_HOME/bin/jlink" \
-        --add-modules java.base,java.logging,java.xml,java.naming,java.sql,jdk.crypto.ec \
+        --add-modules java.base,java.logging,java.xml,java.naming,java.sql,jdk.crypto.ec,java.desktop \
         --strip-debug \
         --no-man-pages \
         --no-header-files \

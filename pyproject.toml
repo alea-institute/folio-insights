@@ -125,6 +125,7 @@ markers = [
     "gate3: Gate 3 worker image size test (requires docker + built worker image)",
     "gate4: Gate 4 SSR cold-page latency test (requires hyperfine + running servers)",
     "gate5: Gate 5 bit-identical digest test (slow, requires docker + dagger)",
+    "worker_image: runs inside a built worker image (requires docker + a worker image)",
     "slow: Tests taking >30s (skipped from quick suite via -m 'not slow')",
     "polysemy_spike: Phase 1 polysemy-distinguo spike tests",
     "shards: Phase 2 v2.0 Shard envelope tests",
