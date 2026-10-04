@@ -11,11 +11,17 @@ Synthetic data only. Covers the single-approval-surface plan's U2 scenarios:
   is refused; a repeat without op_id keeps the original ``decided_at``;
 * reads come from the ledger, not the legacy review.db table;
 * ``/review/reset`` leaves the legacy table and the ledger alone;
-* the API never creates a storage root and refuses one in served output.
+* the API never creates a storage root and refuses one in served output;
+* every proposed-class route needs the operator's explicit opt-in and a local
+  request (loopback peer and loopback Host), so neither a remote client nor a
+  DNS-rebinding page can record or read decisions;
+* a GET reads the journal read-only and never touches the projection.
 """
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import inspect
 import sqlite3
 from pathlib import Path
 
@@ -24,6 +30,7 @@ from fastapi.testclient import TestClient
 
 from api import main as api_main
 from api.main import app
+from folio_insights.persistence.review_db import SCHEMA_SQL
 from folio_insights.proposals import ProposalStore, build_backlog
 from folio_insights.storage import CorpusStorageContext
 
@@ -62,8 +69,18 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(api_main, "_corpus_root", root)
     monkeypatch.setattr(api_main, "_reviewer", "synthetic-reviewer")
     monkeypatch.delenv("FOLIO_INSIGHTS_REVIEWER", raising=False)
+    monkeypatch.setenv(OPT_IN, "1")
     ids = asyncio.run(_seed(root))
-    return {"out": out, "root": root, "ids": ids, "client": TestClient(app)}
+    return {"out": out, "root": root, "ids": ids, "client": local_client()}
+
+
+OPT_IN = "FOLIO_INSIGHTS_ALLOW_UNAUTHENTICATED_DECISIONS"
+
+
+def local_client(host: str = "127.0.0.1", client_ip: str = "127.0.0.1") -> TestClient:
+    """A client that looks like a local browser: loopback peer, loopback Host."""
+    return TestClient(app, base_url="http://127.0.0.1", client=(client_ip, 50000),
+                      headers={"host": host})
 
 
 def review(client: TestClient, label: str, corpus: str = CORPUS, **body):
@@ -266,3 +283,172 @@ def test_storage_root_inside_served_output_is_refused(env, monkeypatch):
     r = review(env["client"], "Zephyr Quorum Widget", status="approved")
     assert r.status_code == 503
     assert not (env["out"] / "corpora").exists()
+
+
+# ---- access posture (review finding P1) ------------------------------------------------
+
+
+def _routes(client: TestClient):
+    return [
+        lambda: client.post("/api/v1/proposed-classes/Zephyr Quorum Widget/review",
+                            params={"corpus": CORPUS}, json={"status": "approved"}),
+        lambda: client.get("/api/v1/proposed-classes", params={"corpus": CORPUS}),
+        lambda: client.get("/api/v1/proposed-classes/Zephyr Quorum Widget",
+                           params={"corpus": CORPUS}),
+    ]
+
+
+def test_without_the_opt_in_every_route_is_refused(env, monkeypatch):
+    monkeypatch.delenv(OPT_IN)
+    monkeypatch.setenv("FOLIO_INSIGHTS_REVIEWER", "synthetic-reviewer")  # not enough alone
+    head = load(env["root"]).head
+    for call in _routes(env["client"]):
+        r = call()
+        assert r.status_code == 403
+        # The refusal explains the risk; it does not just tell operators what to set.
+        assert "no authentication" in r.json()["detail"]
+        assert "FOLIO_INSIGHTS_REVIEWER" not in r.json()["detail"]
+    assert load(env["root"]).head == head
+
+
+@pytest.mark.parametrize("value", ["0", "true", "yes", ""])
+def test_only_an_explicit_1_opts_in(env, monkeypatch, value):
+    monkeypatch.setenv(OPT_IN, value)
+    assert review(env["client"], "Zephyr Quorum Widget", status="approved").status_code == 403
+
+
+@pytest.mark.parametrize("host,client_ip", [
+    ("rebind.attacker.test", "127.0.0.1"),  # DNS rebinding: local peer, foreign Host
+    ("127.0.0.1", "203.0.113.7"),  # remote peer
+    ("127.0.0.1", "testclient"),
+    ("localhost.attacker.test", "127.0.0.1"),
+    ("127.0.0.1.attacker.test", "127.0.0.1"),
+])
+def test_only_local_requests_are_answered(env, host, client_ip):
+    head = load(env["root"]).head
+    c = local_client(host=host, client_ip=client_ip)
+    for call in _routes(c):
+        assert call().status_code == 403
+    assert load(env["root"]).head == head
+
+
+@pytest.mark.parametrize("host,client_ip", [
+    ("localhost:8700", "127.0.0.1"), ("[::1]:8700", "::1"), ("127.0.0.1", "127.0.0.5"),
+])
+def test_loopback_variants_are_answered(env, host, client_ip):
+    c = local_client(host=host, client_ip=client_ip)
+    for call in _routes(c):
+        assert call().status_code == 200
+
+
+def test_other_routes_keep_working_on_any_host(env):
+    c = local_client(host="viewer.example.test", client_ip="203.0.113.7")
+    assert c.get("/health").status_code == 200
+
+
+def test_serve_defaults_to_loopback():
+    assert inspect.signature(api_main.serve).parameters["host"].default == "127.0.0.1"
+
+
+def test_configure_can_clear_the_reviewer(env, monkeypatch):
+    api_main.configure(reviewer=None)
+    assert api_main._reviewer is None
+    assert review(env["client"], "Zephyr Quorum Widget", status="approved").status_code == 403
+    api_main.configure(output_dir=env["out"])  # leaves corpus_root and reviewer alone
+    assert api_main._reviewer is None and api_main._corpus_root == env["root"]
+
+
+# ---- reads (review finding P2-4) and storage errors ------------------------------------
+
+
+def _tree(root: Path) -> dict[str, str]:
+    """Every file's digest, except SQLite's transient WAL sidecars (a read-only reader of
+    a WAL-mode journal may create empty ones; the journal itself must not change)."""
+    return {str(f.relative_to(root)): hashlib.sha256(f.read_bytes()).hexdigest()
+            for f in sorted(root.rglob("*"))
+            if f.is_file() and not f.name.endswith(("-wal", "-shm"))}
+
+
+def test_get_reads_never_touch_the_storage_root(env):
+    before = _tree(env["root"])
+    for i in range(5):
+        env["client"].get("/api/v1/proposed-classes", params={"corpus": f"corpus-{i}"})
+        env["client"].get("/api/v1/proposed-classes", params={"corpus": CORPUS})
+        env["client"].get("/api/v1/proposed-classes/Zephyr Quorum Widget",
+                          params={"corpus": CORPUS})
+    assert _tree(env["root"]) == before
+
+
+def test_unknown_label_post_never_opens_the_projection(env):
+    before = _tree(env["root"])
+    assert review(env["client"], "Unknown Synthetic Label", status="approved").status_code == 404
+    assert review(env["client"], "Zephyr Quorum Widget", corpus="corpus-z",
+                  status="approved").status_code == 404
+    assert _tree(env["root"]) == before
+
+
+def test_unreadable_ledger_is_503_not_500(env, tmp_path, monkeypatch):
+    broken = tmp_path / "broken-root"
+    broken.mkdir()
+    (broken / "journal.sqlite3").write_bytes(b"not a sqlite database" * 100)
+    monkeypatch.setattr(api_main, "_corpus_root", broken)
+    c = local_client()
+    assert c.get("/api/v1/proposed-classes", params={"corpus": CORPUS}).status_code == 503
+    assert review(c, "Zephyr Quorum Widget", status="approved").status_code == 503
+
+
+def test_non_storage_open_failure_is_503(env, monkeypatch):
+    from folio_insights.storage import CorpusStorageContext as Ctx
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("synthetic open failure")
+
+    monkeypatch.setattr(Ctx, "open", boom)
+    assert review(env["client"], "Zephyr Quorum Widget", status="approved").status_code == 503
+
+
+# ---- pre-existing review.db files (review finding P2-3) --------------------------------
+
+
+def _pre_change_db(path: Path) -> Path:
+    """A review.db as the pre-change code left it: every table, no legacy triggers
+    (``SCHEMA_SQL`` itself is unchanged from origin/master)."""
+    db = make_legacy_db(path, rows=[(1, "Synthetic Docket Lantern", CORPUS, "approved", "",
+                                     "2026-07-01")])
+    conn = sqlite3.connect(db)
+    conn.executescript(SCHEMA_SQL)
+    for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger'").fetchall():
+        conn.execute(f"DROP TRIGGER {name}")  # pre-change files never had any
+    conn.commit()
+    conn.close()
+    return db
+
+
+def test_read_only_pre_change_review_db_still_opens(env):
+    db = _pre_change_db(env["out"] / CORPUS / "review.db")
+    db.chmod(0o444)
+    try:
+        r = env["client"].get("/api/v1/review/stats", params={"corpus": CORPUS})
+    finally:
+        db.chmod(0o644)
+    assert r.status_code == 200, r.text
+
+
+def test_opening_an_existing_review_db_does_not_rewrite_it(env):
+    db = _pre_change_db(env["out"] / CORPUS / "review.db")
+    before = hashlib.sha256(db.read_bytes()).hexdigest()
+    for _ in range(3):
+        assert env["client"].get("/api/v1/review/stats", params={"corpus": CORPUS}).status_code == 200
+    assert hashlib.sha256(db.read_bytes()).hexdigest() == before
+    triggers = sqlite3.connect(db).execute(
+        "SELECT count(*) FROM sqlite_master WHERE type='trigger'").fetchone()[0]
+    assert triggers == 0
+
+
+def test_a_new_review_db_gets_the_read_only_triggers(env):
+    assert env["client"].get("/api/v1/review/stats", params={"corpus": "fresh"}).status_code == 200
+    conn = sqlite3.connect(env["out"] / "fresh" / "review.db")
+    with pytest.raises(sqlite3.DatabaseError, match="read-only legacy"):
+        conn.execute("INSERT INTO proposed_class_decisions (concept_label, corpus_name) "
+                     "VALUES ('Synthetic New Label', 'fresh')")
+    conn.close()

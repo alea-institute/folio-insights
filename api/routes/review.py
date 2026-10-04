@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 
 from api.services import proposals as proposal_svc
@@ -282,30 +282,30 @@ async def review_stats(
         await db.close()
 
 
-@router.get("/proposed-classes")
+# Every proposed-class route needs the operator's explicit opt-in and a local request
+# (api/services/proposals.py, require_local_opt_in): the API has no authentication.
+_LOCAL_ONLY = [Depends(proposal_svc.require_local_opt_in)]
+
+
+@router.get("/proposed-classes", dependencies=_LOCAL_ONLY)
 async def list_proposed_classes(
     corpus: str = Query("default"),
 ) -> dict[str, Any]:
-    """Every proposed class of the corpus with its current decision, from the ledger."""
-    from folio_insights.proposals import ProposalStore
-
+    """Every proposed class of the corpus with its current decision, from the ledger
+    (read-only connection; no storage context or projection)."""
     ledger = proposal_svc.ledger_corpus(corpus)
-    async with proposal_svc.open_ledger(ledger) as ctx:
-        registry = None if ctx is None else await ProposalStore(ctx).load()
+    registry = await proposal_svc.load_registry_readonly(ledger)
     return proposal_svc.registry_view(ledger, registry)
 
 
-@router.get("/proposed-classes/{label:path}")
+@router.get("/proposed-classes/{label:path}", dependencies=_LOCAL_ONLY)
 async def get_proposed_class(
     label: str,
     corpus: str = Query("default"),
 ) -> dict[str, Any]:
     """One proposed class (resolved by label) with its current decision, from the ledger."""
-    from folio_insights.proposals import ProposalStore
-
     ledger = proposal_svc.ledger_corpus(corpus)
-    async with proposal_svc.open_ledger(ledger) as ctx:
-        registry = None if ctx is None else await ProposalStore(ctx).load()
+    registry = await proposal_svc.load_registry_readonly(ledger)
     proposal = None if registry is None else registry.by_label(label)
     if proposal is None:
         raise HTTPException(
@@ -314,7 +314,7 @@ async def get_proposed_class(
     return {"corpus": ledger, **proposal_svc.proposal_view(proposal)}
 
 
-@router.post("/proposed-classes/{label:path}/review")
+@router.post("/proposed-classes/{label:path}/review", dependencies=_LOCAL_ONLY)
 async def review_proposed_class(
     label: str,
     body: ProposedClassReviewRequest,
@@ -344,6 +344,14 @@ async def review_proposed_class(
             detail=f"Invalid status: must be one of {sorted(INPUT_STATUSES)}; nothing was recorded",
         )
     explicit_op_id = None if body.op_id is None else proposal_svc.client_op_id(body.op_id)
+    # Resolve the label read-only first: an unknown label (or corpus) never opens the
+    # storage context or the projection.
+    known = await proposal_svc.load_registry_readonly(ledger)
+    if known is None or known.by_label(label) is None:
+        raise HTTPException(
+            status_code=404,
+            detail="no proposed class with this label in this corpus; nothing was recorded",
+        )
 
     async with proposal_svc.open_ledger(ledger) as ctx:
         if ctx is None:

@@ -23,14 +23,20 @@ from pathlib import Path
 
 import pytest
 
-from folio_insights.persistence.review_db import SCHEMA_SQL, read_legacy_proposed_class_rows
+from folio_insights.persistence.review_db import (
+    SCHEMA_SQL,
+    read_legacy_proposed_class_rows,
+    seal_legacy_proposed_class_table,
+)
 from folio_insights.proposals import ProposalStore, build_backlog, check_backlog
 from folio_insights.proposals.legacy import (
     LEGACY_REVIEWER,
     LEGACY_SOURCE,
+    LegacyImportConflict,
     import_legacy_decisions,
 )
 from folio_insights.storage import CorpusStorageContext
+from folio_insights.storage.errors import JournalStateChanged
 
 from tests.proposals._synthetic import pc
 
@@ -211,10 +217,14 @@ def test_reading_never_creates_or_alters_a_database(tmp_path):
     assert read_legacy_proposed_class_rows(empty) == []
 
 
-def test_legacy_table_is_read_only_once_the_schema_runs(tmp_path):
+def test_legacy_table_is_read_only_once_sealed(tmp_path):
     db = make_legacy_db(tmp_path / "review.db")
     conn = sqlite3.connect(db)
-    conn.executescript(SCHEMA_SQL)  # what every review.db open does
+    conn.executescript(SCHEMA_SQL)  # what every review.db open does: no triggers yet
+    conn.close()
+    assert seal_legacy_proposed_class_table(db) is True
+    assert seal_legacy_proposed_class_table(db) is False  # idempotent
+    conn = sqlite3.connect(db)
     for statement in (
         "INSERT INTO proposed_class_decisions (concept_label, corpus_name, status) "
         "VALUES ('Synthetic New Label', 'corpus-a', 'approved')",
@@ -251,10 +261,15 @@ def test_cli_import_legacy_is_explicit_and_idempotent(storage_root, tmp_path, ca
         assert cli.main([*common, *extra]) == 0
         return json.loads(capsys.readouterr().out.strip().splitlines()[-1])
 
-    dry = run("--dry-run")
+    dry = run("--dry-run", "--seal")
     assert dry["would_import"] == [1, 2] and dry["imported"] == []
-    first = run()
-    assert first["imported"] == [1, 2]
+    assert "sealed" not in dry  # a dry run never writes, not even the seal
+    first = run("--seal")
+    assert first["imported"] == [1, 2] and first["sealed"] is True
+    conn = sqlite3.connect(db)
+    with pytest.raises(sqlite3.DatabaseError, match="read-only legacy"):
+        conn.execute("DELETE FROM proposed_class_decisions")
+    conn.close()
     again = run()
     assert again["imported"] == [] and again["already_imported"] == [1, 2]
     with pytest.raises(SystemExit, match="refused"):
@@ -304,3 +319,126 @@ async def test_fold_ignores_a_raw_item_with_bad_provenance(storage_root):
         reg = await ProposalStore(ctx).load()
     assert reg.get(pid).decision["status"] == "pending"
     assert reg.invalid_decisions[0]["reason"].startswith("provenance")
+
+
+
+# ---- review finding P2-2: only each proposal's latest legacy row counts ----------------
+
+
+@pytest.mark.parametrize("latest,category", [
+    # The reviewer later reversed the approval under a case variant ...
+    ((2, "zephyr quorum widget", "corpus-a", "rejected", "x" * 600,
+      "2026-07-01T00:00:00+00:00"), "invalid_rows"),  # ... with a note the ledger refuses
+    ((2, "zephyr quorum widget", "corpus-a", "pending", "", "2026-07-01T00:00:00+00:00"),
+     "skipped_pending"),
+    ((2, "zephyr quorum widget", "corpus-a", "rejected", "Call 212-555-0142.",
+      "2026-07-01T00:00:00+00:00"), "pii_refused_rows"),
+    ((2, "zephyr quorum widget", "corpus-a", "maybe", "", "2026-07-01T00:00:00+00:00"),
+     "invalid_rows"),
+])
+async def test_an_unimportable_latest_row_skips_the_whole_proposal(
+    storage_root, tmp_path, latest, category
+):
+    db = make_legacy_db(tmp_path / "review.db", rows=[
+        (1, "Zephyr Quorum Widget", "corpus-a", "approved", "", "2026-06-01T00:00:00+00:00"),
+        latest,
+    ])
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await seed(ctx)
+        head = await ctx.proposals.head()
+        report = await import_legacy_decisions(ctx, read_legacy_proposed_class_rows(db))
+        assert await ctx.proposals.head() == head
+        decision = (await ProposalStore(ctx).load()).get(ids["Zephyr Quorum Widget"]).decision
+    assert report["imported"] == []
+    assert report[category] == [2]
+    assert report["superseded_rows"] == [1]
+    assert decision["status"] == "pending"  # the older, reversed approval never lands
+
+
+async def test_an_unorderable_timestamp_counts_as_latest(storage_root, tmp_path):
+    db = make_legacy_db(tmp_path / "review.db", rows=[
+        (1, "Zephyr Quorum Widget", "corpus-a", "approved", "", "2026-06-01T00:00:00+00:00"),
+        (2, "zephyr quorum widget", "corpus-a", "rejected", "", "9" * 300),
+    ])
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        await seed(ctx)
+        report = await import_legacy_decisions(ctx, read_legacy_proposed_class_rows(db))
+    assert report["imported"] == [] and report["invalid_rows"] == [2]
+    assert report["superseded_rows"] == [1]
+
+
+# ---- review finding P2-1: a decision landing mid-import is never overridden -------------
+
+
+async def test_a_decision_recorded_during_the_import_wins(storage_root, tmp_path):
+    db = make_legacy_db(tmp_path / "review.db", rows=[
+        (1, "Zephyr Quorum Widget", "corpus-a", "approved", "", "2026-06-01T00:00:00+00:00"),
+    ])
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await seed(ctx)
+        pid = ids["Zephyr Quorum Widget"]
+        real_entries = ctx.proposals.entries
+        fired = {"n": 0}
+
+        async def entries_with_race():
+            out = await real_entries()
+            if fired["n"] == 0:  # the import's first read: it decides from stale state
+                fired["n"] += 1
+                await ProposalStore(ctx).record_decisions(
+                    [{"proposal_id": pid, "status": "rejected", "note": "newer human call"}],
+                    op_id="api:review:key:race", decided_by="human:alice")
+            return out
+
+        ctx.proposals.entries = entries_with_race
+        try:
+            report = await import_legacy_decisions(ctx, read_legacy_proposed_class_rows(db))
+        finally:
+            ctx.proposals.entries = real_entries
+        p = (await ProposalStore(ctx).load()).get(pid)
+    assert report["imported"] == [] and report["already_decided"] == [1]
+    assert [(d["status"], d["decided_by"]) for d in p.decision_history] == [
+        ("rejected", "human:alice")]
+
+
+async def test_a_ledger_that_keeps_moving_aborts_the_import(storage_root, tmp_path):
+    db = make_legacy_db(tmp_path / "review.db", rows=[
+        (1, "Zephyr Quorum Widget", "corpus-a", "approved", "", "2026-06-01T00:00:00+00:00"),
+    ])
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        await seed(ctx)
+        head = await ctx.proposals.head()
+        real_load = ProposalStore.load
+        calls = {"n": 0}
+
+        async def stale_load(self):
+            reg = await real_load(self)
+            calls["n"] += 1
+            if calls["n"] % 2 == 1:  # every import pass sees a head that has since moved
+                reg.head -= 1
+            return reg
+
+        ProposalStore.load = stale_load
+        try:
+            with pytest.raises(LegacyImportConflict):
+                await import_legacy_decisions(ctx, read_legacy_proposed_class_rows(db))
+        finally:
+            ProposalStore.load = real_load
+        assert await ctx.proposals.head() == head
+
+
+async def test_record_decisions_honours_a_caller_expected_head(storage_root):
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await seed(ctx)
+        store = ProposalStore(ctx)
+        head = await ctx.proposals.head()
+        item = [{"proposal_id": ids["Zephyr Quorum Widget"], "status": "approve"}]
+        with pytest.raises(JournalStateChanged):
+            await store.record_decisions(item, op_id="t:eh:1", decided_by="human:alice",
+                                         expected_head=head - 1)
+        assert await ctx.proposals.head() == head
+        done = await store.record_decisions(item, op_id="t:eh:1", decided_by="human:alice",
+                                            expected_head=head)
+        # A replay of the committed op_id is unaffected by a stale expected_head.
+        again = await store.record_decisions(item, op_id="t:eh:1", decided_by="human:alice",
+                                             expected_head=head - 1)
+    assert done["recorded"] == 1 and again["replayed"] is True

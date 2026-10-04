@@ -13,11 +13,18 @@ there would be a separate migration.
 
 Exception: proposed-class decisions. The ``proposed_class_decisions`` table is read-only
 legacy. Proposal decisions live in the append-only proposal ledger of the corpus storage
-root (``folio_insights.proposals``), which the API route writes and reads. Triggers refuse
-every INSERT, UPDATE and DELETE on the legacy table, and nothing drops it. Its rows reach
-the ledger only through the explicit import ``scripts/apply_approvals.py import-legacy``
-(``folio_insights.proposals.legacy``), never on startup; ``read_legacy_proposed_class_rows``
-reads them without opening the database for writing.
+root (``folio_insights.proposals``), which the API route writes and reads. No code writes
+the legacy table, and nothing drops it. Its rows reach the ledger only through the explicit
+import ``scripts/apply_approvals.py import-legacy`` (``folio_insights.proposals.legacy``),
+never on startup; ``read_legacy_proposed_class_rows`` reads them without opening the
+database for writing.
+
+``LEGACY_READ_ONLY_TRIGGERS_SQL`` makes the database itself refuse every INSERT, UPDATE and
+DELETE on the legacy table. It is installed only where installing it rewrites nothing that
+already exists: in a review.db this code creates (``apply_schema(..., new_file=True)``), and
+by the explicit ``seal_legacy_proposed_class_table`` (``import-legacy --seal``). Opening an
+existing review.db never writes it, so a read-only file still opens and a tracked
+review.db is not rewritten by being read.
 """
 
 from __future__ import annotations
@@ -51,23 +58,6 @@ CREATE TABLE IF NOT EXISTS proposed_class_decisions (
     reviewed_at TEXT,
     UNIQUE(concept_label, corpus_name)
 );
-
--- Read-only legacy: proposed-class decisions live in the proposal ledger (see module doc).
-CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_insert
-BEFORE INSERT ON proposed_class_decisions
-BEGIN
-    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
-END;
-CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_update
-BEFORE UPDATE ON proposed_class_decisions
-BEGIN
-    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
-END;
-CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_delete
-BEFORE DELETE ON proposed_class_decisions
-BEGIN
-    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
-END;
 
 CREATE INDEX IF NOT EXISTS idx_review_corpus ON review_decisions(corpus_name);
 CREATE INDEX IF NOT EXISTS idx_review_status ON review_decisions(status);
@@ -170,9 +160,10 @@ async def persist_discovery(db_path: Path, corpus_name: str, job: Any) -> None:
 
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
+    new_file = not db_path.exists()
 
     async with aiosqlite.connect(str(db_path)) as db:
-        await db.executescript(SCHEMA_SQL)
+        await apply_schema(db, new_file=new_file)
 
         if job.task_hierarchy:
             for task in job.task_hierarchy.tasks:
@@ -238,6 +229,64 @@ async def persist_discovery(db_path: Path, corpus_name: str, job: Any) -> None:
     logger.info("Persisted discovery results to review.db for corpus '%s'", corpus_name)
 
 
+LEGACY_READ_ONLY_TRIGGERS_SQL = """\
+-- Read-only legacy: proposed-class decisions live in the proposal ledger (see module doc).
+CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_insert
+BEFORE INSERT ON proposed_class_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
+END;
+CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_update
+BEFORE UPDATE ON proposed_class_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
+END;
+CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_delete
+BEFORE DELETE ON proposed_class_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
+END;
+"""
+
+
+async def apply_schema(db: Any, *, new_file: bool) -> None:
+    """Create the review.db tables (``SCHEMA_SQL``, a no-op on an existing database) and,
+    in a database this call's caller just created, the legacy read-only triggers."""
+    await db.executescript(SCHEMA_SQL)
+    if new_file:
+        await db.executescript(LEGACY_READ_ONLY_TRIGGERS_SQL)
+
+
+def seal_legacy_proposed_class_table(db_path: Path) -> bool:
+    """Install the read-only triggers on the legacy table of an existing review.db.
+
+    Explicit and idempotent. Returns ``True`` when triggers were added, ``False`` when the
+    database already had them or has no legacy table. Raises ``FileNotFoundError`` for a
+    missing file (it never creates one) and ``sqlite3.Error`` for a read-only database."""
+    import sqlite3
+
+    path = Path(db_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"no review database at {path}")
+    conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=rw", uri=True)
+    try:
+        names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master")}
+        if "proposed_class_decisions" not in names:
+            return False
+        wanted = {
+            "proposed_class_decisions_read_only_insert",
+            "proposed_class_decisions_read_only_update",
+            "proposed_class_decisions_read_only_delete",
+        }
+        if wanted <= names:
+            return False
+        conn.executescript(LEGACY_READ_ONLY_TRIGGERS_SQL)
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
 LEGACY_PROPOSED_CLASS_COLUMNS = (
     "id", "concept_label", "corpus_name", "status", "reviewer_note", "reviewed_at",
 )
@@ -273,7 +322,10 @@ def read_legacy_proposed_class_rows(db_path: Path) -> list[dict[str, Any]]:
 
 __all__ = [
     "LEGACY_PROPOSED_CLASS_COLUMNS",
+    "LEGACY_READ_ONLY_TRIGGERS_SQL",
     "SCHEMA_SQL",
+    "apply_schema",
     "persist_discovery",
     "read_legacy_proposed_class_rows",
+    "seal_legacy_proposed_class_table",
 ]

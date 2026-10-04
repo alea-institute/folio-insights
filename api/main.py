@@ -84,24 +84,27 @@ _default_corpus: str = "default"
 # and the human reviewer recorded as decided_by (None: $FOLIO_INSIGHTS_REVIEWER).
 _corpus_root: Path | None = None
 _reviewer: str | None = None
+_UNSET: Any = object()
 
 
 def configure(
     output_dir: Path | str | None = None,
     corpus_name: str | None = None,
     *,
-    corpus_root: Path | str | None = None,
-    reviewer: str | None = None,
+    corpus_root: Path | str | None = _UNSET,
+    reviewer: str | None = _UNSET,
 ) -> None:
-    """Configure the server before startup (used by CLI and tests)."""
+    """Configure the server before startup (used by CLI and tests). ``corpus_root`` and
+    ``reviewer`` change only when passed; passing ``None`` clears them (back to the
+    environment)."""
     global _output_dir, _default_corpus, _corpus_root, _reviewer
     if output_dir is not None:
         _output_dir = Path(output_dir)
     if corpus_name is not None:
         _default_corpus = corpus_name
-    if corpus_root is not None:
-        _corpus_root = Path(corpus_root)
-    if reviewer is not None:
+    if corpus_root is not _UNSET:
+        _corpus_root = None if corpus_root is None else Path(corpus_root)
+    if reviewer is not _UNSET:
         _reviewer = reviewer
 
 
@@ -174,8 +177,9 @@ if _viewer_build.is_dir():
 # CLI entry point
 # ---------------------------------------------------------------------------
 
-def serve(host: str = "0.0.0.0", port: int = 8700) -> None:
-    """Start the review viewer server."""
+def serve(host: str = "127.0.0.1", port: int = 8700) -> None:
+    """Start the review viewer server, on loopback unless a host is given (the API has
+    no authentication; containers pass their host explicitly)."""
     import uvicorn
 
     uvicorn.run(app, host=host, port=port)

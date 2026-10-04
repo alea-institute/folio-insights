@@ -35,6 +35,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jcs
@@ -178,10 +179,52 @@ class PersistentProposalLedger:
         return await self._ctx._journal.proposal_head(self.corpus)
 
 
+def read_ledger_entries_readonly(journal_path: Path | str, corpus: str) -> list[ProposalLedgerEntry]:
+    """Every committed ledger operation of ``corpus``, read through a read-only SQLite
+    connection to the journal file, without opening a storage context.
+
+    For read-only callers (the review API's GET routes): it never opens the RDF
+    projection, never takes the projection lock and never creates or migrates anything.
+    A journal without the ledger table has no entries. An unknown
+    ``proposal_ledger_schema_version`` raises ``UnsupportedStorageSchema``; a missing
+    journal raises ``FileNotFoundError``."""
+    import sqlite3
+
+    from folio_insights.storage.errors import UnsupportedStorageSchema
+    from folio_insights.storage.journal import PROPOSAL_LEDGER_SCHEMA_VERSION, ProposalLedgerRow
+
+    path = Path(journal_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"no journal at {path}")
+    conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "proposal_ledger" not in tables:
+            return []
+        if "storage_meta" in tables:
+            version = conn.execute(
+                "SELECT value FROM storage_meta WHERE key = 'proposal_ledger_schema_version'"
+            ).fetchone()
+            if version is not None and str(version[0]) != str(PROPOSAL_LEDGER_SCHEMA_VERSION):
+                raise UnsupportedStorageSchema(
+                    "unsupported proposal_ledger_schema_version; refusing to read the ledger"
+                )
+        rows = conn.execute(
+            "SELECT corpus, position, op_id, request_sha256, kind, record_schema_version, "
+            "payload, payload_sha256, committed_at FROM proposal_ledger WHERE corpus = ? "
+            "ORDER BY position",
+            (corpus,),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [_entry(ProposalLedgerRow(*r)) for r in rows]
+
+
 __all__ = [
     "FORBIDDEN_PAYLOAD_KEYS",
     "PersistentProposalLedger",
     "ProposalLedgerEntry",
     "ProposalPayloadRefused",
+    "read_ledger_entries_readonly",
     "refuse_text_keys",
 ]
