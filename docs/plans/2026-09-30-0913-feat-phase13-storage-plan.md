@@ -136,3 +136,30 @@ Use a disposable corpus root and generated test signing identities; never read o
 ## Definition of Done
 
 U1–U4 satisfy their scenarios, every journal/projection restart is coherent, and `retract --apply` works across processes without private-store access. Document the Phase 11 exception explicitly. No book-derived fixtures or abandoned implementations remain. Before any live conversion, the orchestrator verifies a readable snapshot and rehearses restore; rollback restores that snapshot into a new destination with the matching code version, never mixes schemas or overwrites the only data copy.
+
+## Execution Evidence
+
+### U1 (2026-10-03)
+
+- Tests: `tests/shards/test_storage_prerequisites.py` pins golden canonical hashes and record-byte digests for all five subtypes, simulated journal round trips for legacy (v1) and current (v2) records, explicit-null and identity survival over repeated cycles, original-signature verification after store and reload, and unsupported-version refusal. `tests/revision/test_storage_prereq_signatures.py` shows a content revision fails the original signature while `get_shard_at` history still verifies it.
+- Gate 1: `tests/bench/test_gate1_rdf12.py` 32 passed.
+- Gate 2 fixture: `fixtures/bench.nq` (gitignored) regenerated from `folio-insights bench gen --seed 42 --target 1000000` (profile `phase-0-gate`; 1,000,000 synthetic quads; sha256 `842066a0c44af9cc5f0f9d4beeff31e9805c43885313cc91e0cfdbf53b7c7837`).
+- Gate 2 warm P95 (20 measured rounds, 3 warmup; nearest-rank P95 is the slowest round): all 13 gold queries pass the 500 ms target. Slowest: q13 111.1 ms, q07 37.9 ms, q11 22.6 ms, q09 16.7 ms, q05 4.0 ms; the other eight are under 1 ms.
+- Hardware: Intel Core 7 240H (16 logical CPUs, 5.2 GHz max), 61 GiB RAM, Linux 7.0.0-38-generic, Python 3.12.12, pyoxigraph 0.5.7 in-memory store, pytest-benchmark 5.2.3.
+
+### U2 (2026-10-03)
+
+- New `src/folio_insights/storage/`: `context.py` (corpus context, write path, barrier, recovery), `journal.py` (SQLite journal, triggers), `projection.py` (Oxigraph adapter and watermark), `governance.py`, `shards.py`, `pii.py`, `errors.py`. `revision/store.py` gains the typed corpus-scoped seam (`corpus`, `iter_shards`, `dependents_of`); `governance/log.py` gains `InMemoryGovernanceLog._from_history` so both backends run the same gates.
+- API checks against the installed packages: pyoxigraph 0.5.7 `Store.update` applies a multi-operation SPARQL update atomically (a failing later operation rolled back an earlier insert); RocksDB holds one lock per path per process, and a live query iterator keeps it, so results are materialized and the handle is dropped before an `flock` on `projection.lock` is released. aiosqlite 0.22.1 over SQLite 3.50.4: `BEGIN IMMEDIATE` serializes writers, WAL plus `synchronous=FULL`; `Connection.backup` exists for U4.
+- `tests/storage/`: 53 tests covering every U2 scenario, including subprocess restart survival, three competing writer processes, a process killed between journal commit and projection update, corpus isolation, operation-ID replay, UPDATE/DELETE refusal, invalid signatures, revoked and last-admin refusals, and PII refusal on create, revise, bulk and legacy bulk ingest with both stores unchanged.
+- Gate 2 rerun after U2: all 13 warm queries pass; slowest warm round q13 127.5 ms, q07 44.2 ms, q11 29.0 ms. Same hardware as U1.
+
+### U2 review fixes (2026-10-03)
+
+- Closed the verified review findings: replayed governance events (P1-1), uncommitted rows reaching the projection (P1-2), PII in validation errors (P2-1), `*_hash` keys skipping the PII gate (P2-2), `INSERT OR REPLACE` around the immutability triggers (P2-3), bulk replay matching other operations (P2-4), explicit-op_id retry after a later revision (P2-5), and a failed COMMIT leaving the transaction open. Regression tests: `tests/storage/test_review_findings.py`.
+
+### Follow-ups
+
+- **DONE (2026-10-03): `signed_at`, the signer `did` and `did_doc_snapshot_at` are bound into the signed governance payload.** `GovernanceEvent.signature_payload()` (`governance/events.py`) now hashes the event body plus a `signature_binding` object carrying those three fields and an explicit format marker, `SIGNATURE_PAYLOAD_FORMAT = "folio-insights/governance-event-signature/v2"` (v1 hashed the body only). `governance/cli/_signing.sign_and_verify_event` builds its own bound placeholder, so every CLI signer signs exactly the values it attaches. No v1-signed governance event was ever persisted: governance was in-memory until this branch, and no committed fixture or golden file holds a signed governance event. So the format change breaks no stored data.
+  - **Effect on replay:** a legitimate repeat by the same admin (revoke, re-grant, revoke) is now a distinct signed event and is accepted. A replay with a moved `signed_at` fails signature verification (`InvalidSignature`). A verbatim replay under a fresh operation ID is still refused by the storage check on the identical signature value or the identical (signer DID, payload hash) (`GovernanceEventReplayed`).
+  - **Not bound:** `signature.action` and `signing_key_id`. The event's own `action` is already in the body, and a tampered `signing_key_id` resolves a key that does not verify.

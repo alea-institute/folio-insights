@@ -32,8 +32,12 @@ D-05 amended in-phase append-only gate (TWO halves):
       pop / clear / set_at / replace methods. Internal helpers (e.g.
       ``_assign_position``) are ``_``-prefixed.
 
-D-05 forward-travel (NOT in this plan): the persistent SQLite ``BEFORE
-UPDATE/DELETE → RAISE FAIL`` trigger lands in Phase 13. The Phase 7 dict +
+Phase 13 (landed): ``folio_insights.storage.governance.PersistentGovernanceLog``
+implements this Protocol over the SQLite journal, whose ``BEFORE
+UPDATE/DELETE`` triggers refuse mutation of committed rows. It validates each
+append by running ``InMemoryGovernanceLog._from_history(...).append`` inside
+its write transaction. Historical note: the persistent SQLite ``BEFORE
+UPDATE/DELETE → RAISE FAIL`` trigger was forward-travel to Phase 13. The Phase 7 dict +
 the Protocol surface + the SHACL guard are the substrate Phase 13 swaps
 behind. The trigger is the third defense-in-depth layer that arrives THEN.
 
@@ -162,6 +166,27 @@ class InMemoryGovernanceLog:
 
     def __init__(self) -> None:
         self._by_corpus: dict[str, list[GovernanceEvent]] = {}
+
+    @classmethod
+    def _from_history(
+        cls, corpus: str, history: list[GovernanceEvent]
+    ) -> "InMemoryGovernanceLog":
+        """Internal: a log pre-loaded with ``history`` (position order).
+
+        Phase 13's persistent adapter (``folio_insights.storage.governance``)
+        loads the committed history inside its write transaction and runs
+        ``append`` on this snapshot, so the genesis carve-out, authorization,
+        last-admin lockout and SHACL gates are the SAME code for both backends.
+        """
+        for index, event in enumerate(history):
+            if event.position != index:
+                raise ValueError(
+                    f"governance history for {corpus!r} is not contiguous at "
+                    f"position {index} (found {event.position})"
+                )
+        log = cls()
+        log._by_corpus[corpus] = list(history)
+        return log
 
     async def append(self, event: GovernanceEvent) -> GovernanceEvent:
         """Single write entry (D-06). Assigns monotonic position, runs the

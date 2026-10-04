@@ -49,6 +49,12 @@ PromotionStatus = Literal[
 ]
 ContestResolutionPath = Literal["arbiter", "distinguo", "aporetic"]
 
+# Explicit marker for the governance signed-payload format. v1 (pre-Phase 13)
+# hashed the event body only; v2 also binds the signer DID, ``signed_at`` and
+# ``did_doc_snapshot_at`` (see ``_BaseEvent.signature_payload``). No v1-signed
+# governance event was ever persisted (governance was in-memory until Phase 13).
+SIGNATURE_PAYLOAD_FORMAT = "folio-insights/governance-event-signature/v2"
+
 
 class _BaseEvent(BaseModel):
     """Universal slots every governance event carries (D-06, D-16).
@@ -75,42 +81,38 @@ class _BaseEvent(BaseModel):
     signature: AttestedSignature
 
     def signature_payload(self) -> bytes:
-        """Return the JCS-canonical SHA-256 hash bytes of this event's content
-        excluding the signature itself AND the log-assigned position (07-04a
-        — Phase 6 verify_attestation belt-and-suspenders gate for role
-        events).
+        """Return the JCS-canonical SHA-256 hex digest (as bytes) this event's
+        signature commits to.
 
-        Mirrors ``revision.content_edit.canonical_content_hash`` discipline:
-        dump the model to a Python dict, drop the ``signature`` AND
-        ``position`` slots, JCS-canonicalize, SHA-256, return the digest hex
-        string encoded as bytes. The returned bytes can be passed to
-        ``sign_attestation`` / ``verify_attestation`` as the ``content_hash``
-        (those functions expect the hex string of the canonical hash).
+        Format ``SIGNATURE_PAYLOAD_FORMAT`` (v2, Phase 13): the event body
+        (``model_dump(mode="json")`` minus the ``signature`` and ``position``
+        slots) plus a ``signature_binding`` object carrying
 
-        CR-04: ``position`` is EXCLUDED from the signature payload.
+          * ``format`` — the explicit payload format marker;
+          * ``did`` — the signer DID (``signature.did``);
+          * ``signed_at`` — the signing timestamp (``signature.signed_at``);
+          * ``did_doc_snapshot_at`` — the DID-doc snapshot the verifier must
+            resolve the key at (``signature.did_doc_snapshot_at``, may be
+            null).
 
-        The CLI flow signs the event BEFORE calling ``log.append``, and
-        ``log.append`` is the single place that assigns the monotonic
-        ``position`` (D-06). If position were part of the payload, the
-        signature would commit to the placeholder ``position=-1`` (the
-        ``_BaseEvent`` default) and any later signature verification
-        against the persisted event (which carries the real position)
-        would fail.
+        The dict is JCS-canonicalized (RFC 8785) and SHA-256 hashed; the hex
+        digest's UTF-8 bytes are what ``sign_attestation`` /
+        ``verify_attestation`` take as ``content_hash``.
 
-        Position immutability is enforced elsewhere:
-          * The monotonic-position assignment inside
-            ``InMemoryGovernanceLog.append`` (and the Phase 13 SQL
-            ``BEFORE UPDATE/DELETE → RAISE FAIL`` trigger per D-05).
-          * The ``fi:GovernanceLogShape`` SHACL guard, which refuses
-            duplicate positions, signed_at moving backward with
-            position, and gaps in the position sequence.
+        Why the binding (Phase 13 review P1-1): v1 covered the body only, so
+        ``signed_at`` could be moved on a journaled event and replayed, and a
+        legitimate repeat by the same signer (revoke, re-grant, revoke) was
+        byte-identical to the original. Binding ``signed_at`` makes every
+        signing distinct and makes a moved timestamp fail verification.
+        Signers therefore build the event with a placeholder signature that
+        already carries the ``did``, ``signed_at`` and ``did_doc_snapshot_at``
+        they will sign with (``governance/cli/_signing.sign_and_verify_event``
+        does this itself).
 
-        Together these enforce that ``position`` is the log's assignment
-        — not part of the signed content — and that no event can be
-        renumbered or reordered post-append. The signature commits to
-        the event's content (corpus, signed_at, subject_did, etc.); the
-        log binds that content to a specific position via the append-
-        only invariant.
+        CR-04: ``position`` stays EXCLUDED. The CLI signs before
+        ``log.append`` assigns the monotonic position (D-06); position
+        immutability is enforced by the log's monotonic assignment, the
+        journal's UPDATE/DELETE/replace triggers, and ``fi:GovernanceLogShape``.
         """
         import hashlib
 
@@ -119,9 +121,15 @@ class _BaseEvent(BaseModel):
         # Pydantic dumps with .model_dump(mode="json") to get JSON-safe primitives
         # for JCS canonicalization (datetimes -> isoformat strings, etc.).
         data = self.model_dump(mode="json")
-        data.pop("signature", None)
-        # CR-04: drop position from the signature payload. See class docstring.
+        signature = data.pop("signature")
+        # CR-04: drop position from the signature payload. See docstring.
         data.pop("position", None)
+        data["signature_binding"] = {
+            "format": SIGNATURE_PAYLOAD_FORMAT,
+            "did": signature["did"],
+            "signed_at": signature["signed_at"],
+            "did_doc_snapshot_at": signature.get("did_doc_snapshot_at"),
+        }
         canonical = jcs.canonicalize(data)
         digest = hashlib.sha256(canonical).hexdigest()
         return digest.encode("utf-8")
@@ -316,5 +324,6 @@ __all__ = [
     "RoleAssertionEvent",
     "RoleName",
     "RoleRevocationEvent",
+    "SIGNATURE_PAYLOAD_FORMAT",
     "SupersessionEvent",
 ]
