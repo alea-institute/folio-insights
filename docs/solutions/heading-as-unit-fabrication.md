@@ -31,21 +31,25 @@ not catch it: the anchor correctly points at the heading; the invented claim is 
 
 ## Fix
 
-`folio_insights.services.substance.is_substantive` is a single conservative predicate:
+`folio_insights.services.substance` holds two conservative predicates:
 
-- shorter than `min_substantive_chars` (40 by default), or fewer than three words: not a unit;
-- an attribution line (a dash and a short name): not a unit;
-- an enumerated or structural prefix with no sentence punctuation after the prefix and at
-  most ten words: a heading;
-- a title-case line with no sentence punctuation and at most eight words: a heading.
+- `is_structural` judges shape only. A line is structural when it has fewer than three
+  words, is an attribution line (a dash and a short name), is a contents entry (dot
+  leaders, or a title ending in a page number), carries an enumerated or structural
+  prefix ("B.", "IV.", "Section 3", "Rule 403") without reading like a clause, or is a
+  short title-case line with no sentence punctuation. "Reads like a clause" means
+  sentence punctuation after the prefix, or at least three lowercase words.
+- `is_substantive` adds a small length floor (`min_substantive_chars`, 20).
 
-Boundary detection drops such boundaries before they become units and counts them in
-`metadata.boundary_detection.skipped_non_substantive`. The distiller checks again and records
+Boundary detection drops a boundary only when it is structural, and counts it in
+`metadata.boundary_detection.skipped_non_substantive`. Short genuine advice and
+enumerated tips stay units. The distiller checks `is_substantive` and records
 `distill_skipped` instead of calling the model, so the guard also holds for units that
 arrive another way.
 
-The prefix's own period is not sentence punctuation; the check looks past it. Without that,
-every lettered heading would pass. Numbered advice that is a real sentence is kept.
+Two refinements came from review. The prefix's own period is not sentence punctuation,
+so the check looks past it; without that, every lettered heading passed. And length is
+never a boundary-level reason: an earlier 40-character floor dropped short real advice.
 
 ## Tests
 

@@ -9,8 +9,11 @@ append-only proposal ledger of one corpus. Both subcommands are offline.
           one unknown proposal ID, invalid status or extra key refuses it all,
           and nothing is recorded. ``--decided-by`` names the human reviewer
           (``human:<name>``). The operation ID defaults to a digest of the
-          corpus, reviewer and decisions, so applying the same file twice is a
-          replay that returns the original result and decision time.
+          corpus, reviewer, decisions and current ledger head: a retry of an
+          apply that did not commit replays, and identical decisions keep their
+          original decision time. When a replayed operation's decisions were
+          changed later, a warning says so and ``current_status`` shows today's
+          state. A decision body may not carry its own ``proposal_id``.
   export  Write the approved-only backlog: only proposals whose current
           decision is ``approved``. The same ledger always gives the same
           bytes. The output passes the PII gate and the forbidden-key check,
@@ -82,14 +85,28 @@ def read_decisions(path: Path, corpus: str) -> list[dict[str, Any]]:
     for pid, body in sorted(decisions.items()):
         if not isinstance(body, dict):
             raise DecisionInvalid("every decision must be an object")
+        if "proposal_id" in body:
+            # The key names the proposal. A body that names one too could decide a
+            # different proposal than the one the reviewer saw under that key.
+            raise DecisionInvalid(
+                "a decision body must not carry proposal_id; the decisions key names the proposal"
+            )
         items.append({"proposal_id": pid, **body})
     return items
 
 
-def default_op_id(corpus: str, decided_by: str, items: list[dict[str, Any]]) -> str:
-    digest = hashlib.sha256(
-        jcs.canonicalize({"corpus": corpus, "decided_by": decided_by, "decisions": items})
-    ).hexdigest()
+def default_op_id(
+    corpus: str, decided_by: str, items: list[dict[str, Any]], ledger_head: int
+) -> str:
+    """A digest of the corpus, reviewer, decisions and the ledger head they were applied at.
+
+    Retrying an apply that did not commit (same head) replays. Applying the same file again
+    after the ledger moved is a new operation against the current state, not a replay of an
+    old one whose outcome may since have been superseded."""
+    digest = hashlib.sha256(jcs.canonicalize({
+        "corpus": corpus, "decided_by": decided_by, "decisions": items,
+        "ledger_head": ledger_head,
+    })).hexdigest()
     return f"approvals:{digest[:32]}"
 
 
@@ -106,10 +123,18 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 "ledger_head": backlog["ledger_head"]}
 
     items = read_decisions(Path(args.decisions), args.corpus)
-    op_id = args.op_id or default_op_id(args.corpus, args.decided_by, items)
     async with await CorpusStorageContext.open(root, args.corpus) as ctx:
+        op_id = args.op_id or default_op_id(
+            args.corpus, args.decided_by, items, await ctx.proposals.head()
+        )
         result = await ProposalStore(ctx).record_decisions(
             items, op_id=op_id, decided_by=args.decided_by
+        )
+    if result["superseded_since"]:
+        print(
+            f"WARNING: {len(result['superseded_since'])} decision(s) in this operation were "
+            "changed by later decisions; 'status' is historical, 'current_status' is now.",
+            file=sys.stderr,
         )
     return {**result, "op_id": op_id}
 
@@ -136,7 +161,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    result = asyncio.run(_run(args))
+    try:
+        result = asyncio.run(_run(args))
+    except DecisionInvalid as exc:
+        # The message names the item index and the rule (never a value); nothing was recorded.
+        raise SystemExit(f"refused: {exc}") from None
     print(json.dumps(result, sort_keys=True))
     return 0
 

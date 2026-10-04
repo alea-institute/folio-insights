@@ -45,7 +45,10 @@ DECISION_INPUT_KEYS = frozenset({"proposal_id", "status", "note", "merge_into"})
 DECISION_CORE_KEYS = ("status", "note", "decided_by", "merge_into")
 MAX_NOTE_CHARS = 500
 MAX_DECIDED_BY_CHARS = 100
-_HUMAN = re.compile(r"human:[^\s:][^\s]{0,90}")
+# A reviewer handle: "human:" and 1-64 of [A-Za-z0-9._-], starting with a letter or digit. No
+# e-mail addresses, DIDs, markup or invisible characters. The handle is self-asserted: nothing
+# here proves a human made the decision (see docs/storage-operations.md).
+_HUMAN = re.compile(r"human:[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
 class DecisionInvalid(ValueError):
@@ -59,8 +62,9 @@ def validate_decided_by(decided_by: Any) -> str:
         or not _HUMAN.fullmatch(decided_by)
     ):
         raise DecisionInvalid(
-            "decided_by must name a human reviewer as 'human:<name>' (no spaces); "
-            "a model or deterministic judge cannot record a decision"
+            "decided_by must name a human reviewer as 'human:<handle>' (letters, digits, '.', "
+            "'_' or '-'; no e-mail address); a model or deterministic judge cannot record a "
+            "decision"
         )
     return decided_by
 
@@ -145,6 +149,33 @@ __all__ = [
     "STATUS_REJECTED",
     "DecisionInvalid",
     "decision_core",
+    "decision_row_problem",
     "validate_decided_by",
     "validate_decision",
 ]
+
+
+def decision_row_problem(item: Any, proposals: Mapping[str, Any]) -> str | None:
+    """Why a STORED decision item is invalid, or ``None``. The fold applies this to every
+    ledger row, so a raw append that bypassed ``validate_decision`` cannot decide anything."""
+    if not isinstance(item, Mapping):
+        return "not an object"
+    pid = item.get("proposal_id")
+    if not isinstance(pid, str) or pid not in proposals:
+        return "unknown proposal_id"
+    if item.get("status") not in DECIDED_STATUSES:
+        return "status is not a decided status"
+    try:
+        validate_decided_by(item.get("decided_by"))
+    except DecisionInvalid:
+        return "decided_by is not a human reviewer handle"
+    note = item.get("note", "")
+    if note is not None and (not isinstance(note, str) or len(note) > MAX_NOTE_CHARS):
+        return "note is not a string within the length cap"
+    merge_into = item.get("merge_into")
+    if item.get("status") == STATUS_MERGED:
+        if not isinstance(merge_into, str) or merge_into not in proposals or merge_into == pid:
+            return "merge without a valid merge_into"
+    elif merge_into is not None:
+        return "merge_into without status merged"
+    return None

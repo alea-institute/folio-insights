@@ -29,7 +29,7 @@ from folio_insights.pipeline.stages.base import (
 from folio_insights.pipeline.stages.structure_parser import StructuredElement
 from folio_insights.services.anchoring import resolve_anchor
 from folio_insights.services.boundary.structural import Boundary, detect_structural_boundaries
-from folio_insights.services.substance import is_substantive
+from folio_insights.services.substance import is_structural
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +113,9 @@ class BoundaryDetectionStage(InsightsPipelineStage):
             if not text or len(text) < 10:
                 continue
 
-            # B6: a heading, contents entry or attribution line is not knowledge.
-            if not is_substantive(text, settings.min_substantive_chars):
+            # B6: a heading, contents entry or attribution line is not knowledge. Only the
+            # shape decides here; short genuine advice stays a unit.
+            if is_structural(text):
                 skipped_non_substantive += 1
                 continue
 

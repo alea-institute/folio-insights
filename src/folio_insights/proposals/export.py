@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from folio_insights.proposals.decisions import STATUS_APPROVED
+from folio_insights.proposals.decisions import MAX_NOTE_CHARS, STATUS_APPROVED
 from folio_insights.proposals.registry import Proposal, ProposalRegistry
 from folio_insights.storage.proposals import refuse_text_keys
 
@@ -70,7 +70,9 @@ def _row(p: Proposal) -> dict[str, Any]:
         "judgment": _judgment_summary(p),
         "decision": {
             "status": d.get("status"),
-            "reviewer_note": d.get("note", ""),
+            # Reviewer-authored free text (capped at decisions.MAX_NOTE_CHARS); never
+            # source text. The ledger PII gate and the backlog checks still apply.
+            "reviewer_note": (d.get("note", "") or "")[:MAX_NOTE_CHARS],
             "decided_by": d.get("decided_by"),
             "decided_at": d.get("decided_at"),
             "ledger_position": d.get("ledger_position"),
@@ -91,6 +93,8 @@ def build_backlog(registry: ProposalRegistry) -> dict[str, Any]:
         "corpus": registry.corpus,
         "ledger_head": registry.head,
         "count": len(rows),
+        # Ledger decision items the fold ignored as invalid (see ProposalRegistry).
+        "invalid_decision_items": len(registry.invalid_decisions),
         "proposals": rows,
     }
 

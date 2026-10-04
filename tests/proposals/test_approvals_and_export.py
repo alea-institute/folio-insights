@@ -132,11 +132,15 @@ async def test_repeated_identical_approval_returns_original_result_and_time(stor
         assert again["position"] == first["position"]
         assert again["results"] == first["results"]
         assert again["recorded"] == first["recorded"] == 1
-        # The same decision under a new op_id appends nothing and keeps the time.
+        assert await ctx.proposals.head() == head  # a replay appends nothing
+        # The same decision under a new op_id is recorded as a no-op batch: it changes
+        # nothing and keeps the original time, and a retry of it replays (review P2-1).
         same = await store.record_decisions(batch, op_id="test:decisions:b", decided_by=REVIEWER)
-        assert same["position"] is None and same["recorded"] == 0 and same["unchanged"] == 1
+        assert same["recorded"] == 0 and same["unchanged"] == 1 and not same["replayed"]
+        assert same["position"] == head + 1
         assert same["results"] == first["results"]
-        assert await ctx.proposals.head() == head
+        retry = await store.record_decisions(batch, op_id="test:decisions:b", decided_by=REVIEWER)
+        assert retry["replayed"] and retry["position"] == same["position"]
         # Reusing an op_id for a different request is refused.
         with pytest.raises(OperationIdConflict):
             await store.record_decisions(
@@ -167,9 +171,14 @@ async def test_changed_decision_appends_provenance_and_replay_keeps_original(sto
         assert p.decision_history[1]["decided_by"] == "human:second-reviewer"
         positions = [d["ledger_position"] for d in p.decision_history]
         assert positions == sorted(positions) and len(set(positions)) == 3
-        # Replaying the first op_id returns the original outcome, not today's.
+        # Replaying the first op_id returns the original outcome, and says it is not today's.
         replay = await store.record_decisions(approve, op_id="test:d:1", decided_by=REVIEWER)
-        assert replay["replayed"] and replay["results"] == first["results"]
+        then = {k: replay["results"][pid][k] for k in ("status", "decided_at")}
+        assert replay["replayed"] and then == {
+            k: first["results"][pid][k] for k in ("status", "decided_at")
+        }
+        assert replay["superseded_since"] == [pid]
+        assert replay["results"][pid]["current_decided_at"] == p.decision["decided_at"]
         assert build_backlog(reg)["proposals"][0]["decision_history_length"] == 3
 
 
@@ -394,3 +403,164 @@ def test_decisions_file_validation(tmp_path):
     f.write_text(json.dumps({"schema": "proposed-class-approvals/v1", "decisions": {}}))
     with pytest.raises(DecisionInvalid, match="non-empty"):
         mod.read_decisions(f, "corpus-a")
+
+
+# ---------- review U3+U4 findings ----------
+
+
+async def test_replay_reports_current_status_when_superseded(storage_root):
+    """P2-1: a replay of an approval that was later rejected shows both outcomes."""
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await _seed(ctx)
+        store = ProposalStore(ctx)
+        pid = ids["Zephyr Quorum Widget"]
+        await store.record_decisions([{"proposal_id": pid, "status": "approve"}],
+                                     op_id="opA", decided_by=REVIEWER)
+        await store.record_decisions([{"proposal_id": pid, "status": "reject"}],
+                                     op_id="opB", decided_by=REVIEWER)
+        replay = await store.record_decisions([{"proposal_id": pid, "status": "approve"}],
+                                              op_id="opA", decided_by=REVIEWER)
+    assert replay["replayed"]
+    assert replay["results"][pid]["status"] == "approved"
+    assert replay["results"][pid]["current_status"] == "rejected"
+    assert replay["superseded_since"] == [pid]
+
+
+async def test_retry_of_a_no_op_batch_replays_instead_of_reapplying(storage_root):
+    """P2-1: a no-op batch is recorded, so retrying its op_id after a later change replays
+    rather than appending (and silently re-approving)."""
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await _seed(ctx)
+        store = ProposalStore(ctx)
+        pid = ids["Synthetic Docket Lantern"]
+        approve = [{"proposal_id": pid, "status": "approve"}]
+        await store.record_decisions(approve, op_id="opC", decided_by=REVIEWER)
+        noop = await store.record_decisions(approve, op_id="opD", decided_by=REVIEWER)
+        await store.record_decisions([{"proposal_id": pid, "status": "reject"}],
+                                     op_id="opE", decided_by=REVIEWER)
+        head = await ctx.proposals.head()
+        retry = await store.record_decisions(approve, op_id="opD", decided_by=REVIEWER)
+        assert retry["replayed"] and retry["position"] == noop["position"]
+        assert await ctx.proposals.head() == head
+        assert (await store.load()).get(pid).decision["status"] == "rejected"
+
+
+async def test_fold_ignores_raw_decision_rows_that_bypass_validation(storage_root):
+    """P2-2: a raw ledger append cannot approve through a model reviewer, a bogus status,
+    an unknown proposal or a bad merge; the rows are reported, nothing exports."""
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await _seed(ctx)
+        z, lantern = ids["Zephyr Quorum Widget"], ids["Synthetic Docket Lantern"]
+        raw = [
+            {"proposal_id": z, "status": "approved", "note": "", "decided_by": "model:judge",
+             "merge_into": None},
+            {"proposal_id": lantern, "status": "bogus", "decided_by": REVIEWER},
+            {"proposal_id": "PC-" + "0" * 32, "status": "approved", "decided_by": REVIEWER},
+            {"proposal_id": lantern, "status": "merged", "decided_by": REVIEWER,
+             "merge_into": lantern},
+        ]
+        await ctx.proposals.append("decision", {"decisions": raw}, op_id="raw:1")
+        reg = await ProposalStore(ctx).load()
+    assert reg.get(z).decision["status"] == "pending"
+    assert reg.get(lantern).decision["status"] == "pending"
+    assert [d["item"] for d in reg.invalid_decisions] == [0, 1, 2, 3]
+    backlog = build_backlog(reg)
+    assert backlog["count"] == 0 and backlog["invalid_decision_items"] == 4
+    assert reg.to_dict()["invalid_decisions"][0]["reason"].startswith("decided_by")
+
+
+@pytest.mark.parametrize(
+    "decided_by",
+    ["human:jane.doe@example.com", "human:did:key:z6Mkabc", "human:<script>",
+     "human:\u200b", "human:role/reviewer", "human:", "model:judge"],
+)
+async def test_decided_by_must_be_a_plain_reviewer_handle(storage_root, decided_by):
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await _seed(ctx)
+        with pytest.raises(DecisionInvalid, match="human"):
+            await ProposalStore(ctx).record_decisions(
+                [{"proposal_id": ids["Zephyr Quorum Widget"], "status": "approve"}],
+                op_id="test:who", decided_by=decided_by,
+            )
+
+
+def test_paste_back_body_may_not_name_a_different_proposal(tmp_path):
+    """P2-3: the decisions key names the proposal; a body proposal_id is refused."""
+    mod = _script("apply_approvals")
+    f = tmp_path / "d.json"
+    f.write_text(json.dumps({"schema": "proposed-class-approvals/v1", "corpus": "c",
+                             "decisions": {"PC-A": {"proposal_id": "PC-B", "status": "approve"}}}))
+    with pytest.raises(DecisionInvalid, match="must not carry proposal_id"):
+        mod.read_decisions(f, "c")
+
+
+def test_default_op_id_folds_in_the_ledger_head():
+    mod = _script("apply_approvals")
+    items = [{"proposal_id": "PC-A", "status": "approve"}]
+    assert mod.default_op_id("c", REVIEWER, items, 3) == mod.default_op_id("c", REVIEWER, items, 3)
+    assert mod.default_op_id("c", REVIEWER, items, 3) != mod.default_op_id("c", REVIEWER, items, 4)
+
+
+@pytest.mark.timeout(240)
+async def test_cli_warns_when_a_replayed_decision_was_superseded(storage_root, tmp_path):
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await _seed(ctx)
+        pid = ids["Zephyr Quorum Widget"]
+        store = ProposalStore(ctx)
+        await store.record_decisions([{"proposal_id": pid, "status": "approve"}],
+                                     op_id="manual:1", decided_by=REVIEWER)
+        await store.record_decisions([{"proposal_id": pid, "status": "reject"}],
+                                     op_id="manual:2", decided_by=REVIEWER)
+    decisions = tmp_path / "d.json"
+    decisions.write_text(json.dumps({"schema": "proposed-class-approvals/v1",
+                                     "decisions": {pid: {"status": "approve"}}}))
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT / "src"), str(REPO_ROOT)])
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / "apply_approvals.py"), "apply",
+         "--corpus", "corpus-a", "--corpus-root", str(storage_root), "--decisions",
+         str(decisions), "--decided-by", REVIEWER, "--op-id", "manual:1"],
+        capture_output=True, text=True, env=env, cwd=REPO_ROOT, timeout=120, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "WARNING" in result.stderr and "current_status" in result.stderr
+    out = json.loads(result.stdout)
+    assert out["replayed"] and out["results"][pid]["current_status"] == "rejected"
+
+
+async def test_queue_page_inputs_resist_restore_and_offer_a_merge_target(storage_root):
+    """Nits: radios carry autocomplete=off, the script reads the shown state, a Merge has a
+    target field prefilled from a MERGE_WITH judgment, and the note prompt asks for the
+    reviewer's own words with a length cap."""
+    from html.parser import HTMLParser
+
+    from folio_insights.proposals.decisions import MAX_NOTE_CHARS
+
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        ids = await _seed(ctx)
+        reg = await ProposalStore(ctx).load()
+    page = render_html(build_queue(reg, lexicon()))
+
+    class _Inputs(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.radios, self.merge, self.notes = [], {}, []
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if tag == "input" and a.get("type") == "radio":
+                self.radios.append(a)
+            if tag == "input" and "data-merge-for" in a:
+                self.merge[a["data-merge-for"]] = a
+            if tag == "textarea" and "data-pid" in a:
+                self.notes.append(a)
+
+    parsed = _Inputs()
+    parsed.feed(page)
+    assert parsed.radios and all(r.get("autocomplete") == "off" for r in parsed.radios)
+    assert not any("checked" in r for r in parsed.radios)
+    merge_source = ids["Synthetic Filing Ritual"]
+    assert parsed.merge[merge_source]["value"] == ids["Synthetic Filing Rituals"]
+    assert all(n.get("maxlength") == str(MAX_NOTE_CHARS) for n in parsed.notes)
+    assert "refined definition" not in page and "never paste source text" in page
+    assert "if(r.checked)" in page and "merge_into" in page

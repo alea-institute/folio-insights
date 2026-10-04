@@ -311,9 +311,29 @@ proposed-class governance pipeline (`folio_insights.proposals`,
   decisions (`scripts/apply_approvals.py apply`). A proposal stays `pending`
   until one names it; judgments never change it. The whole batch is
   validated first (unknown IDs, invalid statuses and extra keys refuse it
-  all), `decided_by` must be `human:<name>`, and a changed decision appends
-  to `decision_history` instead of overwriting. Retrying an op_id returns the
-  original result and decision time.
+  all), `decided_by` must be a reviewer handle `human:<handle>` (letters,
+  digits, `.`, `_`, `-`; no e-mail address), and a changed decision appends
+  to `decision_history` instead of overwriting.
+- **Replays.** Every batch is appended, even one that changes nothing, so
+  retrying its op_id always replays. A replay returns the original result and
+  decision time, plus each proposal's `current_status` and a
+  `superseded_since` list; the CLI prints a warning when a replayed decision
+  was changed later. The CLI's default op_id includes the ledger head, so
+  applying the same file again after the ledger moved is a new operation.
+- **The fold re-validates.** Each stored decision item is checked again when
+  the ledger is folded. An item with an unknown status, a non-human
+  `decided_by`, an unknown proposal or a bad merge target decides nothing; it
+  is listed in the registry's `invalid_decisions` and counted in the backlog
+  (`invalid_decision_items`). It is not a load failure, because an
+  append-only row can never be removed.
+- **Limit: `decided_by` is self-asserted.** Nothing proves that a human made a
+  decision: whoever can write the storage root can record any handle. The
+  `human:` prefix and the fold check keep honest tooling from promoting
+  judgments; they are not authentication. Signed decisions are a planned
+  follow-up.
+- **Reviewer notes are reviewer-authored.** `reviewer_note` is free text in
+  the reviewer's own words, capped at 500 characters and passed through the
+  PII gate. It must never hold pasted source text.
 - **Snapshots verify it.** The manifest's per-corpus entry (covering the union
   of journal and ledger corpora) records `proposal_head`,
   `proposal_head_payload_sha256` and `proposal_rows`. A snapshot or restore
@@ -339,6 +359,23 @@ It is deliberately separate from `storage export` and `storage dump`:
   whose labels come from pipeline output, must never be committed (R5);
 - snapshots already copy the ledger and verify its per-corpus head, so a
   restore recovers every decision, and the backlog is regenerated from it.
+
+## Deploying extraction: the deterministic IRI path
+
+The extraction pipeline's FOLIO tagger needs its deterministic entity-ruler
+path. By default (`require_deterministic_iri`) a run aborts when that path
+cannot load, rather than emitting LLM/semantic IRIs silently. A host that runs
+extraction therefore needs:
+
+- a folio-enrich checkout (`FOLIO_INSIGHTS_FOLIO_ENRICH_PATH`), which provides
+  the FolioService and its FOLIO labels; and
+- the FOLIO ontology, either cached locally by folio-enrich or reachable over
+  the network on first load.
+
+Without them, set `FOLIO_INSIGHTS_REQUIRE_DETERMINISTIC_IRI=false` to run in
+degraded mode. The state is then recorded as `deterministic_iri_path:
+degraded` in the output summary's `folio_tagger` block, so a degraded run is
+never mistaken for a clean one.
 
 ## rdflib
 

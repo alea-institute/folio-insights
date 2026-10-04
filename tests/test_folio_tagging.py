@@ -557,21 +557,21 @@ def test_metadata_harvest_filters_one_word_singletons():
     assert "non" not in labels and "rule" not in labels
 
 
-# ---------- B9: carried IRIs pass the concept-label verifier (governance plan U3) ----------
+# ---------- B9: carried IRIs must be supported by their evidence text (governance plan U3) -------
 #
 # Every label and IRI below is synthetic. The verifier gates IRIs that a non-deterministic path
-# (llm / semantic / heading_context) carried into reconciliation; the entity ruler stays trusted.
+# (llm / semantic / heading_context) carried into reconciliation, against the text the concept
+# was matched FROM, never against the concept's own label. The entity ruler stays trusted.
 
 _B9_IRI = "https://folio.test/SyntheticQuorumization"
 _B9_OTHER = "https://folio.test/SyntheticLanternIsles"
 
 
 def _b9_concept(iri: str, label: str, *, alts=None, branch: str = "Synthetic Branch"):
-    from unittest.mock import MagicMock
+    from types import SimpleNamespace
 
-    concept = MagicMock(iri=iri, preferred_label=label, branch=branch)
-    concept.alternative_labels = alts if alts is not None else []
-    return concept
+    return SimpleNamespace(iri=iri, preferred_label=label, alternative_labels=alts or [],
+                           folio_pref_label="", label="", hidden_label="", branch=branch)
 
 
 def _b9_folio(concepts: dict, search: dict | None = None):
@@ -584,9 +584,10 @@ def _b9_folio(concepts: dict, search: dict | None = None):
     return svc
 
 
-def _b9_rc(label: str, paths: list[str], iri: str) -> ReconciledConcept:
+def _b9_rc(label: str, paths: list[str], iri: str, evidence: str = "") -> ReconciledConcept:
     return ReconciledConcept(
-        iri=iri, label=label, confidence=0.7, contributing_paths=paths, branch=""
+        iri=iri, label=label, confidence=0.7, contributing_paths=paths, branch="",
+        evidence_text=evidence,
     )
 
 
@@ -596,13 +597,31 @@ def _b9_tags(reconciled, svc):
     return [(t.iri, t.extraction_path) for t in FolioTaggerStage()._reconciled_to_tags(reconciled, svc)]
 
 
-@pytest.mark.parametrize("path", ["llm", "semantic", "heading_context"])
-def test_b9_unrelated_carried_iri_is_dropped_on_every_non_ruler_path(path):
+def test_b9_unrelated_llm_iri_is_dropped_and_label_becomes_proposed():
     svc = _b9_folio({_B9_OTHER: _b9_concept(_B9_OTHER, "Synthetic Lantern Isles")})
-    assert _b9_tags([_b9_rc("lantern", [path], _B9_OTHER)], svc) == [("", "proposed_class")]
+    assert _b9_tags([_b9_rc("quorum widget", ["llm"], _B9_OTHER)], svc) == [("", "proposed_class")]
 
 
-def test_b9_rejected_iri_is_re_resolved_through_label_resolver():
+@pytest.mark.parametrize("path", ["semantic", "heading_context"])
+def test_b9_unsupported_semantic_or_heading_tag_is_dropped(path):
+    """The label is the matched concept's own label: with evidence that does not name the
+    concept the tag is dropped (not re-resolved to the same concept, not proposed)."""
+    wrong = _b9_concept(_B9_OTHER, "Synthetic Lantern Isles")
+    svc = _b9_folio({_B9_OTHER: wrong}, search={"synthetic lantern isles": [(wrong, 100.0)]})
+    rc = _b9_rc("Synthetic Lantern Isles", [path], _B9_OTHER,
+                evidence="Synthetic Lanyard Island Practice")
+    assert _b9_tags([rc], svc) == []
+
+
+@pytest.mark.parametrize("path", ["semantic", "heading_context"])
+def test_b9_concept_label_alone_is_never_evidence(path):
+    """Regression for the tautology: without evidence text, a semantic or heading tag cannot
+    be verified against its own label, so it is dropped."""
+    svc = _b9_folio({_B9_IRI: _b9_concept(_B9_IRI, "Synthetic Quorumization")})
+    assert _b9_tags([_b9_rc("Synthetic Quorumization", [path], _B9_IRI)], svc) == []
+
+
+def test_b9_rejected_llm_iri_is_re_resolved_through_label_resolver():
     right = _b9_concept(_B9_IRI, "Synthetic Quorumization")
     svc = _b9_folio(
         {_B9_OTHER: _b9_concept(_B9_OTHER, "Synthetic Lantern Isles"), _B9_IRI: right},
@@ -613,36 +632,100 @@ def test_b9_rejected_iri_is_re_resolved_through_label_resolver():
     ]
 
 
-def test_b9_matching_carried_iri_is_kept_including_order_case_and_alt_labels():
+def test_b9_supported_iris_are_kept_by_order_case_plural_and_alt_label():
     svc = _b9_folio({
         _B9_IRI: _b9_concept(_B9_IRI, "Synthetic Quorumization", alts=["Zephyr Assembly Rule"]),
     })
-    assert _b9_tags([_b9_rc("quorumization synthetic", ["llm"], _B9_IRI)], svc) == [(_B9_IRI, "llm")]
-    assert _b9_tags([_b9_rc("zephyr assembly rule", ["semantic"], _B9_IRI)], svc) == [
-        (_B9_IRI, "semantic")
-    ]
-
-
-def test_b9_partial_match_rescues_inflection_but_not_containment():
-    svc = _b9_folio({
-        _B9_IRI: _b9_concept(_B9_IRI, "Quorumization"),
-        _B9_OTHER: _b9_concept(_B9_OTHER, "Northern Synthetic Lantern Isles"),
-    })
-    # Comparable lengths: an inflection variant of one stem passes.
-    assert _b9_tags([_b9_rc("quorumize", ["llm"], _B9_IRI)], svc) == [(_B9_IRI, "llm")]
-    # A word inside a much longer, unrelated name does not.
-    assert _b9_tags([_b9_rc("lantern", ["llm"], _B9_OTHER)], svc) == [("", "proposed_class")]
-
-
-def test_b9_entity_ruler_iri_is_trusted_even_when_ruler_and_llm_agree():
-    svc = _b9_folio({_B9_IRI: _b9_concept(_B9_IRI, "Synthetic Quorumization")})
-    # The ruler matched an alias surface that is not among the mocked concept's labels.
-    assert _b9_tags([_b9_rc("zq-rule", ["entity_ruler"], _B9_IRI)], svc) == [
-        (_B9_IRI, "entity_ruler")
-    ]
-    assert _b9_tags([_b9_rc("zq-rule", ["llm", "entity_ruler"], _B9_IRI)], svc) == [
+    assert _b9_tags([_b9_rc("synthetic quorumizations", ["llm"], _B9_IRI)], svc) == [
         (_B9_IRI, "llm")
     ]
+    unit = "Before the vote, check the zephyr assembly rules with the synthetic clerk."
+    assert _b9_tags([_b9_rc("Synthetic Quorumization", ["semantic"], _B9_IRI, unit)], svc) == [
+        (_B9_IRI, "semantic")
+    ]
+    assert _b9_tags(
+        [_b9_rc("Synthetic Quorumization", ["heading_context"], _B9_IRI, "Synthetic Quorumization")],
+        svc,
+    ) == [(_B9_IRI, "heading_context")]
+
+
+@pytest.mark.parametrize(
+    ("evidence", "concept_label"),
+    [
+        ("contract", "Contractor"),
+        ("licensor", "Licensee"),
+        ("appellant", "Appellate"),
+        ("employment", "Employee"),
+        ("arbitration", "Arbitrator"),
+        ("mediation", "Mediator"),
+        ("corporation", "Corporate"),
+        ("defamation", "Defamatory"),
+        ("lantern", "Northern Synthetic Lantern Isles"),  # a word inside a longer name
+        ("venue transfer", "Venezuela Region"),
+        ("al", "AL"),  # codes shorter than three letters never count
+    ],
+)
+def test_b9_stem_collisions_and_fragments_are_rejected(evidence, concept_label):
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept = _b9_concept(_B9_OTHER, concept_label)
+    assert FolioTaggerStage._label_matches_concept(evidence, concept) is False
+
+
+def test_b9_heading_end_to_end_rejects_a_fuzzy_wrong_concept():
+    """HeadingContextExtractor -> FourPathReconciler -> _reconciled_to_tags with a synthetic
+    heading that fuzzy-matches an unrelated concept: the tag must not survive."""
+    import asyncio
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    wrong = _b9_concept("https://folio.test/RWrongPlace", "Synthetic Venezuela Region")
+    right = _b9_concept("https://folio.test/RRight", "Synthetic Venue Transfer")
+
+    class _Folio:
+        def __init__(self, hit):
+            self.hit = hit
+
+        def search_by_label(self, q):  # noqa: ARG002
+            return [(self.hit, 0.55)]
+
+        def get_concept(self, iri):
+            return {wrong.iri: wrong, right.iri: right}.get(iri)
+
+    async def run(svc):
+        cands = await HeadingContextExtractor().extract_heading_candidates(
+            ["Synthetic Venue Transfer Practice"], svc
+        )
+        rc = FourPathReconciler(None).reconcile([], [], [], cands)
+        return [(t.iri, t.extraction_path) for t in FolioTaggerStage()._reconciled_to_tags(rc, svc)]
+
+    assert asyncio.run(run(_Folio(wrong))) == []
+    assert asyncio.run(run(_Folio(right))) == [(right.iri, "heading_context")]
+
+
+def test_b9_semantic_end_to_end_checks_the_unit_text():
+    from types import SimpleNamespace
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    wrong = _b9_concept("https://folio.test/RWrong", "Synthetic Lantern Isles")
+    right = _b9_concept("https://folio.test/RRight", "Synthetic Quorumization")
+    svc = _b9_folio({wrong.iri: wrong, right.iri: right})
+
+    class _Embeddings:
+        index_size = 2
+
+        def search(self, text, top_k):  # noqa: ARG002
+            return [SimpleNamespace(label=c.preferred_label, score=0.8,
+                                    metadata={"iri": c.iri, "branch": c.branch})
+                    for c in (wrong, right)]
+
+    stage = FolioTaggerStage()
+    unit = "Confirm the synthetic quorumization before the clerk calls the vote."
+    semantic = stage._run_semantic(unit, _Embeddings())
+    reconciled = FourPathReconciler(None).reconcile([], [], semantic, [])
+    tags = stage._reconciled_to_tags(reconciled, svc)
+    assert [(t.iri, t.extraction_path) for t in tags] == [(right.iri, "semantic")]
 
 
 def test_b9_a_check_that_cannot_run_never_green_lights_an_iri():

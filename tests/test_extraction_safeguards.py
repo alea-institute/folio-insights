@@ -1,7 +1,7 @@
 """Extraction safeguards transferred in governance plan U3 (B6, B7, RUB-05, binary re-read).
 
-* B6: ``is_substantive`` keeps heading, contents and attribution lines out of unit-ization
-  and distillation.
+* B6: ``is_structural`` keeps heading, contents and attribution lines out of unit-ization
+  (shape only), and ``is_substantive`` adds the distiller's small length floor.
 * RUB-05: every unit carries a verifiable anchor (span, exact snippet, score) into the
   ingested source text.
 * B7: long paragraphs are refined concurrently under a bound, Tier-3 LLM refinement is
@@ -24,7 +24,11 @@ from folio_insights.pipeline.stages.base import InsightsJob
 from folio_insights.pipeline.stages.boundary_detection import BoundaryDetectionStage
 from folio_insights.services.anchoring import MIN_ANCHOR_SCORE, resolve_anchor
 from folio_insights.services.boundary.structural import Boundary
-from folio_insights.services.substance import MIN_SUBSTANTIVE_CHARS, is_substantive
+from folio_insights.services.substance import (
+    MIN_SUBSTANTIVE_CHARS,
+    is_structural,
+    is_substantive,
+)
 
 SUBSTANTIVE = [
     "Confirm the synthetic filing deadline with the clerk before the hearing begins.",
@@ -32,15 +36,33 @@ SUBSTANTIVE = [
     "A short rule still counts when it reads like a sentence; keep it whole.",
     "1. Always confirm the synthetic deadline with the clerk before filing.",  # numbered advice
 ]
+# Short genuine advice and enumerated tips (review P2-5): never structural, and above the
+# distiller's 20-character floor.
+SHORT_ADVICE = [
+    "Never lead on direct examination.",
+    "Always object before the witness answers.",
+    "Do not ask a question you cannot answer.",
+    "1. Ask only leading questions on cross-examination",
+    "2. Keep every question to one fact",
+    "a) Object to hearsay before the answer comes in",
+    "- Never argue with the judge in front of the jury",
+    "Section 1983 claims require state action and a deprivation of a federal right",
+    "Rule 12(b)(6) motions test the pleadings, not the evidence.",
+    "IV. The court must find good cause before granting leave to amend",
+    "Short line that is still advice.",
+]
 NOT_SUBSTANTIVE = [
     "B. Synthetic Topic Heading",                         # enumerated heading
+    "B. Synthetic Topic",                                  # short enumerated heading
     "Chapter 7 Synthetic Hearing Practice Overview",      # structural word, no punctuation
     "IV. Preparing The Synthetic Record For Review",      # roman numeral heading
+    "Rule 403 Excludes Unfairly Prejudicial Evidence",    # title-cased rule heading
+    "Preserve Every Objection For The Appellate Record",  # title-case line
     "— A. Synthetic Author Name",                         # attribution line
     "The Craft Of Synthetic Courtroom Questioning Today",  # title-case line
-    "N/A",                                                 # too short, no words
+    "N/A",                                                 # no words
     "12 ............................................ 345",  # contents dots and page numbers
-    "Short line that is too brief.",                       # under the floor
+    "Synthetic Discovery Deadlines 42",                    # contents entry with page number
 ]
 
 
@@ -54,22 +76,32 @@ def _fresh_settings():
 # ---------- B6: substance ----------
 
 
-@pytest.mark.parametrize("text", SUBSTANTIVE)
+@pytest.mark.parametrize("text", SUBSTANTIVE + SHORT_ADVICE)
 def test_substantive_prose_is_kept(text):
+    assert not is_structural(text)
     assert is_substantive(text)
 
 
 @pytest.mark.parametrize("text", NOT_SUBSTANTIVE)
 def test_structural_lines_are_not_substantive(text):
+    assert is_structural(text)
     assert not is_substantive(text)
 
 
-def test_floor_is_configurable():
-    text = "Ask the synthetic panel one question."
-    assert len(text) < MIN_SUBSTANTIVE_CHARS
-    assert not is_substantive(text)
-    assert is_substantive(text, min_chars=20)
+def test_length_floor_applies_only_to_the_distiller():
+    text = "Ask one question."
+    assert len(text) < MIN_SUBSTANTIVE_CHARS == 20
+    assert not is_structural(text)  # boundary detection keeps it
+    assert not is_substantive(text)  # the distiller skips it
+    assert is_substantive(text, min_chars=10)
     assert not is_substantive("", 0) and not is_substantive(None)  # type: ignore[arg-type]
+
+
+async def test_boundary_detection_keeps_short_advice_and_enumerated_tips():
+    """Review P2-5: boundaries are dropped by shape only, never by length."""
+    job = await BoundaryDetectionStage().execute(_job(SHORT_ADVICE[:6] + [NOT_SUBSTANTIVE[1]]))
+    assert [u.text for u in job.units] == SHORT_ADVICE[:6]
+    assert job.metadata["boundary_detection"]["skipped_non_substantive"] == 1
 
 
 # ---------- RUB-05: anchoring ----------

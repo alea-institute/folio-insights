@@ -65,7 +65,7 @@ def repo(tmp_path: Path) -> Path:
         ("w.jsonl", json.dumps({"source_text": SENTINEL}) + "\n"),
         ("notes.md", f'Example row: {{"source_snippet": "{SENTINEL}"}}\n'),
         ("page.html", f'<div data-excerpt="{SENTINEL}"></div>\n'),
-        ("cfg.yaml", f"excerpt: {SENTINEL}\n"),
+        ("cfg.yaml", f"excerpt: {SENTINEL}\n"),  # 8 words: prose
     ],
 )
 def test_nonempty_excerpt_is_detected_without_printing_it(name, text):
@@ -80,7 +80,9 @@ def test_nonempty_excerpt_is_detected_without_printing_it(name, text):
 @pytest.mark.parametrize(
     ("name", "text"),
     [
-        ("w.json", json.dumps({"supporting_excerpt": "", "source_text": None, "text": SENTINEL})),
+        # Empty strong keys, and a short value under a weak key (a label, not prose).
+        ("w.json", json.dumps({"supporting_excerpt": "", "source_text": None,
+                               "text": "Synthetic short label"})),
         ("doc.md", "Worklist items carry no `supporting_excerpt`; `source_text` is dropped.\n"),
         ("doc.md", "**Rule excerpt:**\n"),
         ("doc.md", "    draft_definition: str   # a typed field in a code sample\n"),
@@ -159,11 +161,117 @@ def test_cli_exit_status_and_summary(repo):
 
 
 def test_this_repository_tree_is_clean():
-    """The tracked tree at HEAD carries no excerpt, derived definition, book provenance
-    or generated proposal artifact in any allowed text file."""
+    """The tracked tree at HEAD carries no strong finding (excerpt-key value, derived
+    definition, book provenance or generated proposal artifact) in any allowed text file.
+    Shape findings in pre-existing docs are advisory; see the scanner docstring."""
     probe = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
                            capture_output=True, check=False)
     if probe.returncode != 0:
         pytest.skip("not a git checkout (e.g. a built image)")
-    findings = _scanner().scan_tree(REPO_ROOT)
+    scanner = _scanner()
+    findings = [f for f in scanner.scan_tree(REPO_ROOT) if f.rule not in scanner.SHAPE_RULES]
     assert findings == [], [f.render() for f in findings]
+
+
+# ---------- review P2-4: false negatives, key leaks, shingles ----------
+
+PROSE = "The synthetic court held that the zephyr quorum widget governs every lantern filing."
+
+
+@pytest.mark.parametrize(
+    ("name", "text", "rule"),
+    [
+        ("b.json", json.dumps({"text": PROSE}), "prose-value"),
+        ("c.json", json.dumps({"quote": PROSE}), "excerpt-value"),
+        ("d.json", json.dumps({"supporting_units": [{"snippet": PROSE}]}), "excerpt-value"),
+        ("e.json", json.dumps({"decision": {"reviewer_note": PROSE}}), "prose-value"),
+        ("f.md", f"> {PROSE}\n", "blockquote-prose"),
+        ("g.md", f"| excerpt | {PROSE} |\n", "table-prose"),
+        ("g2.md", f"| id | quote |\n|---|---|\n| u1 | {PROSE} |\n", "table-prose"),
+        ("h.md", f"- **Excerpt:** {PROSE}\n", "excerpt-value"),
+        ("i.html", f"<td class='excerpt'>{PROSE}</td>", "excerpt-value"),
+        ("l.ipynb", json.dumps({"cells": [{"outputs": [{"excerpt": PROSE}]}]}), "excerpt-value"),
+        ("m.json", json.dumps({"Excerpt ": PROSE}), "excerpt-value"),
+        ("m2.json", json.dumps({"Source-Text": PROSE}), "excerpt-value"),
+        ("o.txt", f'source_text = """{PROSE}"""', "excerpt-value"),
+        ("s.json", json.dumps({"source_text_excerpt": PROSE}), "excerpt-value"),
+    ],
+)
+def test_reviewed_false_negatives_are_detected(name, text, rule):
+    assert _scanner().is_scanned(name)  # notebooks included
+    findings = _scanner().scan_text(name, text)
+    assert [f.rule for f in findings] == [rule]
+    assert "zephyr" not in findings[0].render()
+
+
+def test_every_ledger_forbidden_key_is_a_scanner_key():
+    from folio_insights.storage.proposals import FORBIDDEN_PAYLOAD_KEYS
+
+    scanner = _scanner()
+    assert FORBIDDEN_PAYLOAD_KEYS <= scanner.ALL_KEYS
+    for key in FORBIDDEN_PAYLOAD_KEYS:
+        assert scanner.scan_text("x.json", json.dumps({key: PROSE})), key
+
+
+def test_pointers_never_print_a_raw_key():
+    leaky = "Leaky Synthetic Book Label Here"
+    findings = _scanner().scan_text("n.json", json.dumps({leaky: {"excerpt": PROSE}}))
+    rendered = findings[0].render()
+    assert leaky not in rendered and "Leaky" not in rendered
+    assert "/#" in findings[0].where and findings[0].where.endswith("/excerpt")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Note: the excerpt field is dropped at collection.\n",
+        "- Source text: 14px/400, `--surface` bg, 16px padding\n",
+        "> Short quote.\n",
+        "| Status | Path | Notes |\n|---|---|---|\n| A | `x.py` | " + PROSE + " |\n",
+    ],
+)
+def test_ordinary_docs_are_not_findings(text):
+    assert _scanner().scan_text("doc.md", text) == []
+
+
+def test_shape_findings_in_old_content_are_advisory_but_new_ones_fail(repo):
+    _commit(repo, {"docs/old.md": f"> {PROSE}\n"}, "old quote")
+    _git(repo, "tag", "base2")
+    scanner = _scanner()
+    run = [sys.executable, str(REPO_ROOT / "scripts" / "check_exclusions.py"),
+           "--repo", str(repo), "--history", "base2"]
+    ok = subprocess.run(run, capture_output=True, text=True, check=False)
+    assert ok.returncode == 0, ok.stdout
+    assert json.loads(ok.stdout.splitlines()[-1])["tree_shape_advisory"] == 1
+    strict = subprocess.run([*run, "--strict"], capture_output=True, text=True, check=False)
+    assert strict.returncode == 1
+    _commit(repo, {"docs/new.md": f"> {PROSE}\n"}, "new quote")
+    new = subprocess.run(run, capture_output=True, text=True, check=False)
+    assert new.returncode == 1
+    assert [f.rule for f in scanner.audit_history(repo, "base2")] == ["blockquote-prose"]
+
+
+def test_book_shingle_mode_reports_counts_only(repo, tmp_path):
+    book_text = " ".join(f"synthetic{i} lantern" for i in range(60))
+    book = tmp_path / "book.txt"
+    book.write_text(book_text)
+    words = book_text.split()
+    _commit(repo, {"src/fixture.py": f'X = "{" ".join(words[10:40])}"\n'}, "copies a span")
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / "check_exclusions.py"),
+         "--repo", str(repo), "--history", "base", "--book", str(book)],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 1
+    assert "synthetic1" not in result.stdout and "lantern" not in result.stdout
+    lines = result.stdout.strip().splitlines()
+    assert any(line.startswith("book-shingles: src/fixture.py tree shared=") for line in lines)
+    assert json.loads(lines[-1])["book_shingle_findings"] == 2  # tree + history
+    inside = repo / "book.txt"
+    inside.write_text(book_text)
+    refused = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts" / "check_exclusions.py"),
+         "--repo", str(repo), "--book", str(inside)],
+        capture_output=True, text=True, check=False,
+    )
+    assert refused.returncode != 0 and "outside" in (refused.stdout + refused.stderr)

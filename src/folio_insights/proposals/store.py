@@ -19,10 +19,11 @@ Operation IDs are explicit and deterministic:
   Caller op_ids may not use the reserved ``proposals:`` prefix.
 * ``record_decisions``: an op_id from the caller (same rule). The whole batch
   is validated before anything is appended; one unknown ID or invalid status
-  refuses it all. Retrying the same op_id returns the committed result and
-  its original ``decided_at``. A batch whose every decision already equals the
-  current one appends nothing. A new batch is appended only if the ledger is
-  still at the head it was validated against.
+  refuses it all. Every batch is appended, even one whose decisions all equal
+  the current ones, so retrying the same op_id always replays and returns the
+  committed result with its original ``decided_at``, next to the current status
+  (``superseded_since`` lists proposals decided again since). A new batch is
+  appended only if the ledger is still at the head it was validated against.
 
 Every judgment, deterministic or recorded, passes ``judgments.validate_judgment``
 before it is appended, and ``apply_dedupe`` refuses a lexicon smaller than
@@ -41,7 +42,6 @@ import jcs
 
 from folio_insights.proposals.decisions import (
     DecisionInvalid,
-    decision_core,
     validate_decided_by,
     validate_decision,
 )
@@ -203,10 +203,13 @@ class ProposalStore:
         """Record explicit review decisions ``{proposal_id, status, note?,
         merge_into?}`` by the human reviewer ``decided_by`` (``human:<name>``).
 
-        Returns ``{recorded, unchanged, position, replayed, results}`` where
-        ``results`` maps each proposal ID to its current ``status`` and
-        ``decided_at`` after the operation (``unchanged`` counts the decisions
-        that already were current). Errors name the item index, never values.
+        Returns ``{recorded, unchanged, position, replayed, results,
+        superseded_since}``. ``results`` maps each proposal ID to its ``status``
+        and ``decided_at`` as of this operation (the original outcome on a
+        replay) and to its ``current_status`` / ``current_decided_at`` now.
+        ``superseded_since`` lists the proposals whose decision changed after
+        this operation. ``unchanged`` counts decisions that already were
+        current. Errors name the item index, never values.
         """
         if not isinstance(op_id, str) or not op_id.strip() or op_id.startswith(RESERVED_OP_PREFIX):
             raise ValueError(
@@ -231,38 +234,38 @@ class ProposalStore:
             raise DecisionInvalid("a decision batch must hold at least one decision")
         items.sort(key=lambda i: i["proposal_id"])
         committed = {e.op_id for e in await self._ctx.proposals.entries()}
-        unchanged = sum(
-            1 for i in items
-            if decision_core(i) == decision_core(registry.proposals[i["proposal_id"]].decision)
+        # Every batch is appended, including one whose decisions all equal the current ones
+        # (the fold ignores those items), so a retry under the same op_id always replays.
+        # A committed op_id replays (or refuses a different request) before the head check;
+        # a new batch must still be at the head it was validated against.
+        entry, replayed = await self._ctx.proposals.append(
+            KIND_DECISION,
+            {"decisions": items},
+            op_id=op_id,
+            expected_head=None if op_id in committed else registry.head,
         )
-        position: int | None = None
-        replayed = False
-        state = registry
-        if op_id in committed or unchanged < len(items):
-            # A committed op_id replays (or refuses a different request) before
-            # the head check; a new batch must still be at the validated head.
-            entry, replayed = await self._ctx.proposals.append(
-                KIND_DECISION,
-                {"decisions": items},
-                op_id=op_id,
-                expected_head=None if op_id in committed else registry.head,
-            )
-            position = entry.position
-            # The result as of this operation, so a replay returns the original
-            # outcome even after later decisions changed the proposal.
-            state = ProposalRegistry.fold(
-                self.corpus,
-                [e for e in await self._ctx.proposals.entries() if e.position <= position],
-            )
+        position = entry.position
+        entries = await self._ctx.proposals.entries()
+        # The result as of this operation (a replay returns the original outcome), and the
+        # current state, which later decisions may have changed since.
+        as_of = ProposalRegistry.fold(self.corpus, [e for e in entries if e.position <= position])
+        current = ProposalRegistry.fold(self.corpus, entries)
         results: dict[str, dict[str, Any]] = {}
         recorded = 0
+        stale: list[str] = []
         for i in items:
-            decision = state.proposals[i["proposal_id"]].decision
-            results[i["proposal_id"]] = {
-                "status": decision.get("status"),
-                "decided_at": decision.get("decided_at"),
+            pid = i["proposal_id"]
+            then = as_of.proposals[pid].decision
+            now = current.proposals[pid].decision
+            results[pid] = {
+                "status": then.get("status"),
+                "decided_at": then.get("decided_at"),
+                "current_status": now.get("status"),
+                "current_decided_at": now.get("decided_at"),
             }
-            if position is not None and decision.get("ledger_position") == position:
+            if then.get("ledger_position") != now.get("ledger_position"):
+                stale.append(pid)
+            if then.get("ledger_position") == position:
                 recorded += 1
         return {
             "recorded": recorded,
@@ -270,6 +273,9 @@ class ProposalStore:
             "position": position,
             "replayed": replayed,
             "results": results,
+            # Proposals whose decision changed after this operation: the result above is
+            # historical, not current.
+            "superseded_since": sorted(stale),
         }
 
 

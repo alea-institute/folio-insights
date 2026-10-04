@@ -36,13 +36,20 @@ def _to_concept_match(concept_match_cls: Any, c: dict[str, Any]) -> Any:
 
 
 class ReconciledConcept(BaseModel):
-    """A FOLIO concept reconciled across up to four extraction paths."""
+    """A FOLIO concept reconciled across up to four extraction paths.
+
+    ``evidence_text`` is the text the concept was matched FROM: the ruler's or the LLM's
+    surface text, the unit text a semantic search ran on, or the cleaned heading. ``label``
+    is often the matched concept's own label, so the B9 verifier checks the concept against
+    ``evidence_text``, never against ``label``.
+    """
 
     iri: str
     label: str
     confidence: float
     contributing_paths: list[str] = Field(default_factory=list)
     branch: str = ""
+    evidence_text: str = ""
 
 
 class FourPathReconciler:
@@ -108,6 +115,7 @@ class FourPathReconciler:
                     confidence=confidence,
                     contributing_paths=["semantic"],
                     branch=branch,
+                    evidence_text=sc.get("concept_text", "") or "",
                 )
                 base_results.append(new_rc)
                 if iri:
@@ -136,6 +144,7 @@ class FourPathReconciler:
                     confidence=confidence,
                     contributing_paths=["heading_context"],
                     branch=branch,
+                    evidence_text=hc.get("concept_text", "") or "",
                 )
                 base_results.append(new_rc)
                 if iri:
@@ -201,6 +210,7 @@ class FourPathReconciler:
                     confidence=r.concept.confidence,
                     contributing_paths=category_paths.get(r.category, []),
                     branch=r.concept.branch or "",
+                    evidence_text=r.concept.concept_text or "",
                 )
             )
         return reconciled
@@ -222,6 +232,7 @@ class FourPathReconciler:
                 confidence=c.get("confidence", 0.5),
                 contributing_paths=["entity_ruler"],
                 branch=c.get("branch", ""),
+                evidence_text=c.get("concept_text") or c.get("label", ""),
             )
             results.append(rc)
             if iri:
@@ -244,6 +255,7 @@ class FourPathReconciler:
                     confidence=c.get("confidence", 0.5),
                     contributing_paths=["llm"],
                     branch=c.get("branch", ""),
+                    evidence_text=c.get("concept_text") or c.get("label", ""),
                 )
                 results.append(rc)
                 if iri:

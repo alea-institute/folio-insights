@@ -161,3 +161,34 @@ All U1–U4 scenarios pass after storage completion. Every non-evidence source c
   - **Exclusion check.** `scripts/check_exclusions.py --history origin/master` found 0 tree findings and 0 history findings.
   - **Path audit.** `git log origin/master..HEAD --name-only` contains no `data/governance`, `docs/evidence`, `output/` or `staging/` path, and `git status --short --ignored output data` is clean.
   - **Browser check.** The approval-queue page was checked in Chromium (chrome-devtools) with synthetic data. Nothing was pre-selected; two choices produced a two-entry `proposed-class-approvals/v1` paste-back; there was no horizontal overflow at phone width. The page was then deleted.
+- **U3+U4 review fixes.** An independent review found one P1, five P2s and some nits. Each fix has a regression test that failed on the pre-fix code: 43 targeted tests failed with `src/` and `scripts/` stashed, and the substance tests failed to import.
+  - **P1, B9 verified a concept against itself.** Semantic and heading-context labels are the matched concept's own label, so the check always passed.
+    - **Fix.** Each path now records the text it matched FROM: the unit text for semantic, the cleaned heading via `HeadingContextExtractor.extract_heading_candidates`. `FourPathReconciler` carries it as `ReconciledConcept.evidence_text`, and carried IRIs are verified against it with whole-word token matching. There is no fuzzy partial-ratio match, so stem collisions such as contract/Contractor are rejected.
+    - **Rejected tags.** A rejected semantic or heading tag is dropped; a rejected LLM-path IRI is re-resolved through `LabelResolver`.
+    - **Tests.** End-to-end heading and semantic tests run through the reconciler.
+    - **Docs.** `docs/solutions/llm-path-unverified-iris.md` is corrected: the LLM path carries no IRIs of its own, the embedding-triage claim was wrong, and its status now says exactly what is verified.
+  - **P2-1, approval replay.** Every decision batch is appended, including no-op batches, so a retry always replays. Replays return the as-of-operation result alongside `current_status`, plus `superseded_since`, and the CLI warns when they differ. The CLI's default op_id folds in the ledger head.
+  - **P2-2, the fold trusted raw rows.** `ProposalRegistry` re-validates every stored decision item: decided status, human handle, known proposal, valid merge. An invalid item decides nothing and is reported in `invalid_decisions` and the backlog's `invalid_decision_items`. It is not a load failure, because append-only rows cannot be removed. `decided_by` is now a plain `human:<handle>` (no e-mail, DID, markup or invisible characters), and the docs state it is self-asserted.
+  - **P2-3, paste-back mismatch.** A decision body that carries `proposal_id` is refused.
+  - **P2-4, scanner gaps.**
+    - **Coverage.** The scanner now covers every ledger forbidden key plus `quote`, `snippet` and `passage`, with case-, space- and hyphen-insensitive keys. It scans notebooks, Markdown blockquotes, key-labelled table cells, `**Key:**` lines and key-classed HTML elements.
+    - **Pointers.** They hash unknown keys, so no raw key is ever printed.
+    - **Book gate.** A `--book PATH` shingle mode reports counts only.
+    - **Honesty.** The docstring now says the scanner is a heuristic. Shape findings in pre-range content are advisory.
+  - **P2-5, the 40-character floor.** Boundary detection drops units by shape only (`is_structural`). The length floor (now 20) applies only at the distiller skip. Clause-like prefixed lines ("Section 1983 claims require…") and enumerated tips are prose.
+  - **Nits.**
+    - **Queue page.** Radios and inputs carry `autocomplete="off"`, the script reads the shown state, and a merge-target field is prefilled from a `MERGE_WITH` judgment.
+    - **Notes.** The note prompt asks for the reviewer's own words; `reviewer_note` is capped and documented as reviewer-authored.
+    - **CLI.** It prints refusals as a clear message.
+    - **Deploy note.** Added for `require_deterministic_iri` in `docs/storage-operations.md`.
+  - **Verification.**
+    - **Focused run, twice** (proposals, tagging, storage, governance, plus the transferred suites): 622 passed both times.
+    - **Full suite** (`-m "not gate5 and not slow"`): 1522 passed, 34 skipped, 18 deselected.
+    - **Ruff:** clean on the changed files.
+    - **Browser:** the queue page was re-checked in Chromium: the merge target is carried into the paste-back and the radios are `autocomplete=off`.
+
+## Follow-ups (not in this PR)
+
+- **Signed decisions.** `decided_by` is a self-asserted handle. Anyone who can write the storage root can record any reviewer. Decisions signed with the reviewer's DID would make "a human decided" provable.
+- **A second approval surface.** `POST /proposed-classes/{label}/review` (`api/routes/review.py`) writes `proposed_class_decisions` in `review.db`, keyed by label. The ledger and the approved-only backlog ignore it. It should be retired, or routed through `ProposalStore.record_decisions`, so there is one source of truth for proposal approvals.
+- **A shingle gate in CI or pre-publication.** Run `scripts/check_exclusions.py --book PATH` against the local book copies before any publication. The key/shape scan alone cannot recognize unlabelled prose.

@@ -11,7 +11,11 @@ Approve / Reject / Merge / Needs work per card and copies a
 ``proposed-class-approvals/v1`` JSON paste-back for ``apply_approvals.py``.
 The judgment's recommendation is marked on its button but **never
 pre-selected**: only a choice the reviewer actually makes enters the
-paste-back, so no judgment is promoted to an approval by default (KTD4).
+paste-back, so no judgment is promoted to an approval by default (KTD4). Inputs
+carry ``autocomplete="off"`` and the script reads the state the page shows, so a
+restored form never disagrees with the paste-back. A Merge carries the target
+typed in (prefilled from a ``MERGE_WITH`` judgment); without one,
+``apply_approvals.py`` refuses the merge with a clear message.
 
 Producing a queue records nothing and approves nothing.
 """
@@ -21,7 +25,7 @@ import html
 import json
 from typing import Any
 
-from folio_insights.proposals.decisions import STATUS_PENDING
+from folio_insights.proposals.decisions import MAX_NOTE_CHARS, STATUS_PENDING
 from folio_insights.proposals.judgments import judgment_view
 from folio_insights.proposals.lexicon import FolioLexicon
 from folio_insights.proposals.registry import Proposal, ProposalRegistry
@@ -147,6 +151,9 @@ margin-bottom:4px}
 label.opt{border:1px solid var(--line);border-radius:999px;padding:3px 11px;cursor:pointer}
 label.opt:has(input:checked){border-color:var(--accent);outline:1px solid var(--accent)}
 label.rec::after{content:" (recommended)";font-family:var(--mono);font-size:10px;color:var(--accent)}
+label.merge{display:block;font-family:var(--mono);font-size:11px;color:var(--mut);margin:4px 0 8px}
+label.merge input{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);
+border-radius:6px;padding:4px 6px;margin-left:6px;width:min(320px,100%)}
 textarea{width:100%;min-height:40px;border:1px solid var(--line);border-radius:8px;
 background:var(--paper);color:var(--ink);font:inherit;padding:6px 8px}
 input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);
@@ -163,19 +170,29 @@ color:var(--accent-ink);padding:8px 14px;cursor:pointer}
 _JS = """
 (function(){
   var data=JSON.parse(document.getElementById('queue-data').textContent);
-  var chosen={},notes={};
+  var chosen={},notes={},targets={};
+  // Read the state the page actually shows (a browser may restore form state on reload), so
+  // the paste-back never disagrees with what the reviewer sees.
   document.querySelectorAll('input[type=radio]').forEach(function(r){
+    if(r.checked)chosen[r.dataset.pid]=r.value;
     r.addEventListener('change',function(){chosen[r.dataset.pid]=r.value;count();});
   });
   document.querySelectorAll('textarea[data-pid]').forEach(function(t){
+    if(t.value)notes[t.dataset.pid]=t.value;
     t.addEventListener('input',function(){notes[t.dataset.pid]=t.value;count();});
   });
+  document.querySelectorAll('input[data-merge-for]').forEach(function(m){
+    targets[m.dataset.mergeFor]=m.value;
+    m.addEventListener('input',function(){targets[m.dataset.mergeFor]=m.value;});
+  });
+  count();
   function count(){document.getElementById('n').textContent=Object.keys(chosen).length;}
   function blob(){
     var out={schema:data.decisions_schema,corpus:data.corpus,decisions:{}};
     Object.keys(chosen).sort().forEach(function(pid){
       var d={status:chosen[pid]};
       if(notes[pid]&&notes[pid].trim())d.note=notes[pid].trim();
+      if(chosen[pid]==='merge'&&targets[pid]&&targets[pid].trim())d.merge_into=targets[pid].trim();
       out.decisions[pid]=d;
     });
     return JSON.stringify(out,null,2);
@@ -217,8 +234,14 @@ def _card(e: dict[str, Any]) -> str:
         rec = " rec" if e["recommendation"] == value else ""
         options += (
             f"<label class='opt{rec}'><input type='radio' name='d-{_esc(pid)}' "
-            f"value='{value}' data-pid='{_esc(pid)}'> {text}</label>"
+            f"value='{value}' data-pid='{_esc(pid)}' autocomplete='off'> {text}</label>"
         )
+    merge_default = j.get("target_proposal_id") if j.get("verdict") == "MERGE_WITH" else ""
+    merge = (
+        f"<label class='merge'>Merge into (proposal ID, used only with Merge) "
+        f"<input type='text' data-merge-for='{_esc(pid)}' value='{_esc(merge_default or '')}' "
+        f"autocomplete='off' spellcheck='false' placeholder='PC-…'></label>"
+    )
     return (
         f"<article class='card' id='{_esc(pid)}'>"
         f"<span class='verdict'>{_esc(verdict)}</span>"
@@ -228,8 +251,11 @@ def _card(e: dict[str, Any]) -> str:
         f"<div class='prov'>units: {units or 'none recorded'}</div>"
         f"{reason}{guardrail}{table}"
         f"<fieldset><legend>Your decision</legend>{options}</fieldset>"
+        f"{merge}"
         f"<textarea data-pid='{_esc(pid)}' aria-label='Reviewer note for {_esc(pid)}' "
-        "placeholder='Optional note (a refined definition, a merge reason)'></textarea>"
+        f"maxlength='{MAX_NOTE_CHARS}' autocomplete='off' "
+        "placeholder='Optional reviewer note in your own words (never paste source text)'>"
+        "</textarea>"
         "</article>"
     )
 

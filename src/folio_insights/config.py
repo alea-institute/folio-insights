@@ -53,9 +53,9 @@ class Settings(BaseSettings):
     boundary_tier_concurrency: int = 8
     boundary_max_unit_chars: int = 600
 
-    # Substantive-input floor (B6): a boundary with fewer substantive characters than this, or
-    # shaped like a heading, contents entry or attribution, is not unit-ized or distilled.
-    min_substantive_chars: int = 40
+    # Substantive-input guard (B6). Boundary detection drops boundaries by SHAPE only (heading,
+    # contents entry, attribution); the distiller additionally skips text shorter than this.
+    min_substantive_chars: int = 20
 
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 

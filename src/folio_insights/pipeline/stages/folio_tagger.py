@@ -8,9 +8,11 @@ Four extraction paths run independently on each KnowledgeUnit:
 
 Results are reconciled via FourPathReconciler, resolved to IRIs, and vetoed by the deterministic
 gates (place/agency + alias blocklist). An IRI that a non-deterministic path (llm, semantic,
-heading_context) carried into reconciliation must pass the concept-label verifier first (B9): the
-concept's own labels must correspond to the tag label, or the IRI is dropped and the label is
-re-resolved through ``folio_resolve.LabelResolver`` (else it becomes a proposed class). The
+heading_context) carried into reconciliation must be supported, word for word, by the text it
+was matched FROM (B9): the LLM concept text, the unit text of a semantic search, or the cleaned
+heading. A rejected LLM-path IRI is dropped and the label re-resolved through
+``folio_resolve.LabelResolver`` (else it becomes a proposed class); a rejected semantic or
+heading-context tag is dropped. The
 deterministic entity-ruler path must be available; a missing ruler fails the run unless
 ``require_deterministic_iri`` is off, and either way its state is recorded in
 ``metadata.folio_tagger`` (B5). Every surviving **non-ruler** tag then goes through the
@@ -231,18 +233,11 @@ class FolioTaggerStage(InsightsPipelineStage):
         semantic_concepts = self._run_semantic(unit.text, embedding_service)
 
         # Path 4: Heading Context
-        heading_concepts = await heading_extractor.extract_heading_concepts(
+        # Each candidate carries the cleaned heading it was matched from (``concept_text``), the
+        # evidence the B9 verifier checks the concept against.
+        heading_dicts = await heading_extractor.extract_heading_candidates(
             unit.source_section, folio_service
         )
-        heading_dicts = [
-            {
-                "iri": t.iri,
-                "label": t.label,
-                "confidence": t.confidence,
-                "branch": t.branch,
-            }
-            for t in heading_concepts
-        ]
 
         # Reconcile all four paths
         reconciled = reconciler.reconcile(
@@ -367,7 +362,10 @@ class FolioTaggerStage(InsightsPipelineStage):
                 if r.score >= 0.3:  # minimum semantic threshold
                     concepts.append({
                         "iri": r.metadata.get("iri", ""),
-                        "label": r.label,
+                        "label": r.label,  # the indexed concept's own label
+                        # The search ran on the unit text: that is the evidence the B9 verifier
+                        # checks the concept against (never the concept's own label).
+                        "concept_text": text,
                         "confidence": r.score,
                         "branch": r.metadata.get("branch", ""),
                     })
@@ -667,9 +665,12 @@ class FolioTaggerStage(InsightsPipelineStage):
         * **Every resolved tag carries its branch**, so the place/agency gate can veto it.
 
         **Carried IRIs are verified (B9).** An IRI that arrived with the reconciled concept is
-        trusted as-is only when the deterministic entity ruler contributed it. Otherwise the
-        concept-label verifier (``_verify_iri_concept``) must accept it; a rejected IRI is
-        dropped and the label is resolved like an IRI-less one.
+        trusted as-is only when the deterministic entity ruler contributed it. Otherwise one of
+        the concept's labels must be supported, word for word, by the text the concept was
+        matched FROM (``evidence_text``: the LLM concept text, the unit text of a semantic
+        search, or the cleaned heading). A rejected LLM-path IRI is dropped and its label is
+        resolved like an IRI-less one; a rejected semantic or heading-context tag is dropped
+        outright, because its label is the rejected concept's own label.
 
         A concept whose label resolves to nothing (proposed class) keeps ``iri=''`` and is tagged
         ``proposed_class``. Gates run last: the alias blocklist and the place/agency corroboration
@@ -688,16 +689,20 @@ class FolioTaggerStage(InsightsPipelineStage):
 
             carried_ok = bool(rc.iri) and (
                 self._iri_is_deterministic(paths)
-                or self._verify_iri_concept(rc.label, rc.iri, folio_service)
+                or self._verify_iri_concept(self._evidence_for(rc, paths), rc.iri, folio_service)
             )
             if rc.iri and not carried_ok:
-                # B9: a non-deterministic path carried an IRI whose concept is not about this
-                # label. Drop it, never pass it silently; the label gets a second chance through
-                # the calibrated resolver below, else it becomes a proposed class.
+                # B9: a non-deterministic path carried an IRI whose concept is not supported by
+                # the text it was matched from. Drop it, never pass it silently.
                 self._iri_rejections = getattr(self, "_iri_rejections", 0) + 1
                 logger.debug(
-                    "carried IRI %s failed label verification for path(s) %s", rc.iri, paths
+                    "carried IRI %s failed evidence verification for path(s) %s", rc.iri, paths
                 )
+                if not self._label_is_own_text(paths):
+                    # Semantic / heading-context labels are the rejected concept's OWN label:
+                    # re-resolving it would find the same wrong concept, and proposing it would
+                    # propose an existing FOLIO label. The tag is dropped.
+                    continue
 
             if carried_ok:
                 # A path (entity_ruler / semantic / heading_context) already supplied the IRI.
@@ -756,14 +761,11 @@ class FolioTaggerStage(InsightsPipelineStage):
 
     # ---- B9: concept-label verification of carried IRIs ----------------------------------------
 
-    # A carried IRI's concept must have a label that matches the tag label at or above this
-    # rapidfuzz score (0-100). It sits well above the band where short or unrelated labels
-    # collide by accident and below genuine word-order and inflection variants.
-    _LABEL_IRI_VERIFY_THRESHOLD = 85.0
-    # partial_ratio scores 100 whenever one string contains the other, so it only counts when
-    # both strings are at least this long and comparable in length (containment is meaningful).
-    _PARTIAL_MIN_CHARS = 6
-    _PARTIAL_MIN_LENGTH_RATIO = 0.6
+    # Function words ignored when comparing a concept label with evidence text.
+    _STOPWORDS = frozenset({
+        "a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "of", "on", "or",
+        "the", "to", "with",
+    })
 
     @staticmethod
     def _iri_is_deterministic(paths: list[str]) -> bool:
@@ -771,13 +773,34 @@ class FolioTaggerStage(InsightsPipelineStage):
         it would strip good ruler tags whose surface form is an alias of the concept."""
         return "entity_ruler" in paths
 
-    def _verify_iri_concept(self, label: str, iri: str, folio_service: Any) -> bool:
-        """True iff the concept at ``iri`` is genuinely about ``label``.
+    @staticmethod
+    def _label_is_own_text(paths: list[str]) -> bool:
+        """True when the reconciled label is the path's own text (the LLM's concept text), not
+        the label of the concept a semantic or heading search matched."""
+        return "llm" in paths or not ({"semantic", "heading_context"} & set(paths))
 
-        A check that cannot run never green-lights an IRI: no FolioService, a failed lookup or an
-        unknown IRI all reject it.
+    @classmethod
+    def _evidence_for(cls, rc: ReconciledConcept, paths: list[str]) -> str:
+        """The text a carried IRI must be supported by.
+
+        The reconciler records what each concept was matched FROM (``evidence_text``): the
+        LLM's concept text, the unit text a semantic search ran on, or the cleaned heading. A
+        reconciled concept built without it falls back to its label only when that label is the
+        path's own text; a semantic or heading label is the matched concept's own label, and
+        checking a concept against its own label proves nothing.
         """
-        if not iri or folio_service is None:
+        if rc.evidence_text:
+            return rc.evidence_text
+        return rc.label if cls._label_is_own_text(paths) else ""
+
+    def _verify_iri_concept(self, evidence: str, iri: str, folio_service: Any) -> bool:
+        """True iff the concept at ``iri`` is supported by ``evidence`` (see
+        ``_label_matches_concept``).
+
+        A check that cannot run never green-lights an IRI: no evidence, no FolioService, a
+        failed lookup or an unknown IRI all reject it.
+        """
+        if not iri or not evidence or folio_service is None:
             return False
         try:
             concept = folio_service.get_concept(iri)
@@ -786,7 +809,7 @@ class FolioTaggerStage(InsightsPipelineStage):
             return False
         if concept is None:
             return False
-        return self._label_matches_concept(label, concept)
+        return self._label_matches_concept(evidence, concept)
 
     @staticmethod
     def _concept_labels(concept: Any) -> list[str]:
@@ -803,30 +826,56 @@ class FolioTaggerStage(InsightsPipelineStage):
         return out
 
     @classmethod
-    def _label_matches_concept(cls, label: str, concept: Any) -> bool:
-        """True iff one of ``concept``'s own labels corresponds to ``label``.
+    def _tokens(cls, text: str) -> list[str]:
+        """Case-folded, accent-stripped word tokens without function words, with a light
+        plural fold (``-ies`` -> ``-y``; a trailing ``s`` dropped except after s/u/i). Nothing
+        else is stemmed: "contract" and "contractor" stay different words."""
+        import re
+        import unicodedata
 
-        ``token_sort_ratio`` (case-insensitive, word-order insensitive) is always used.
-        ``partial_ratio`` rescues inflection variants of one stem, but only when containment is
-        meaningful (see ``_PARTIAL_MIN_CHARS`` / ``_PARTIAL_MIN_LENGTH_RATIO``): a short code or a
-        word inside a longer, unrelated name must not pass.
+        decomposed = unicodedata.normalize("NFKD", text or "")
+        plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch)).casefold()
+        out = []
+        for w in re.findall(r"[^\W_]+", plain):
+            if w in cls._STOPWORDS:
+                continue
+            if len(w) > 4 and w.endswith("ies"):
+                w = w[:-3] + "y"
+            elif len(w) > 3 and w.endswith("s") and w[-2] not in "siu":
+                w = w[:-1]
+            out.append(w)
+        return out
+
+    @staticmethod
+    def _contains(seq: list[str], sub: list[str]) -> bool:
+        n = len(sub)
+        return n > 0 and any(seq[i:i + n] == sub for i in range(len(seq) - n + 1))
+
+    @classmethod
+    def _label_matches_concept(cls, evidence: str, concept: Any) -> bool:
+        """True iff one of ``concept``'s own labels is supported by ``evidence`` at the word level.
+
+        Whole words only, never substrings or edit distance, so a stem collision
+        ("contract" / "Contractor", "appellant" / "Appellate") or a fragment inside a longer
+        name never matches. A label supports the evidence when:
+
+        * the label's words appear, contiguous and in order, in the evidence (the concept is
+          named in the heading or unit text); or
+        * the evidence's words appear contiguously in the label and cover at least half of it
+          (a short heading naming most of a longer label).
+
+        Labels whose only word is shorter than three characters (codes) are ignored.
         """
-        from rapidfuzz import fuzz
-
-        wanted = (label or "").strip().casefold()
-        if not wanted:
+        ev = cls._tokens(evidence)
+        if not ev:
             return False
         for candidate in cls._concept_labels(concept):
-            cand = candidate.strip().casefold()
-            score = float(fuzz.token_sort_ratio(wanted, cand))
-            shorter, longer = sorted((len(wanted), len(cand)))
-            if (
-                shorter >= cls._PARTIAL_MIN_CHARS
-                and longer
-                and shorter / longer >= cls._PARTIAL_MIN_LENGTH_RATIO
-            ):
-                score = max(score, float(fuzz.partial_ratio(wanted, cand)))
-            if score >= cls._LABEL_IRI_VERIFY_THRESHOLD:
+            lab = cls._tokens(candidate)
+            if not lab or (len(lab) == 1 and len(lab[0]) < 3):
+                continue
+            if cls._contains(ev, lab):
+                return True
+            if cls._contains(lab, ev) and len(ev) * 2 >= len(lab):
                 return True
         return False
 

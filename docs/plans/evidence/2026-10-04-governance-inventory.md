@@ -164,4 +164,13 @@ Coverage check: the path column of these tables, sorted, equals `git diff --name
   metadata only. Its tests (`tests/proposals/test_exclusion_scanner.py`) prove detection of a
   synthetic non-empty excerpt and no false positives on field-name references in source code or
   prose.
+- **What the scanner is.** A key and shape heuristic: it finds material labelled or shaped
+  the way generated proposal artifacts are. It cannot recognize unlabelled book prose. The
+  real gate is its `--book PATH` mode, a 12-word shingle comparison against a local copy of
+  the source text that reports counts only. After the U3+U4 review it covers every ledger
+  forbidden key plus `quote`, `snippet` and `passage`, matches keys case-, space- and
+  hyphen-insensitively, scans notebooks, Markdown blockquotes, key-labelled table cells,
+  `**Key:**` lines and key-classed HTML elements, and never prints a raw key. Shape findings
+  in content that predates the audited range are advisory (168 long blockquotes in older
+  docs and `.planning` at the time of the review fix), not failures.
 - **Result.** See the plan's Execution Evidence (U3/U4) for the recorded runs.
