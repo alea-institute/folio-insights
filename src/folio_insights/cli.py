@@ -650,6 +650,13 @@ from folio_insights.corpus.cli import corpus_group as _corpus_group
 
 cli.add_command(_corpus_group)
 
+# Register the Phase 13 storage subgroup (export, dump, snapshot, restore).
+# Same module-bottom pattern; the storage package loads only when one of
+# its commands runs.
+from folio_insights.storage_cli import storage_group as _storage_group  # noqa: E402
+
+cli.add_command(_storage_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
