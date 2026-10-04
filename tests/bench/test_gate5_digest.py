@@ -1,8 +1,10 @@
 """Gate 5 — bit-identical digest (REQ-OBS-04, D-08).
 
-Two back-to-back Dagger builds with the same SOURCE_DATE_EPOCH must produce
-identical digests, which proves the local pipeline is deterministic. Runs when
-Docker and the Dagger SDK are available. (A second mode compared against the
+Two back-to-back ``ci.build`` runs (images via ``docker buildx``) with the same
+SOURCE_DATE_EPOCH must produce identical digests, which proves the local
+pipeline is deterministic. Runs when Docker with the buildx plugin and the
+Dagger SDK are available. Determinism over time (pinned inputs) is checked
+statically by ``tests/test_image_pins.py``. (A second mode compared against the
 Railway-deployed digest; Railway was retired 2026-07-27 and that mode removed.)
 
 Plan 00-05 renamed the CI driver package from ``dagger/`` to ``ci/`` to
@@ -14,7 +16,7 @@ Diagnostic: if Mode 1 fails (back-to-back local builds drift), the culprit
 is one of the 10 Gate 5 techniques in RESEARCH.md — most commonly:
   1. SOURCE_DATE_EPOCH not plumbed into the Dockerfile (check ARG+ENV)
   2. apt-get/pip cache left in image (check --no-cache-dir, rm -rf)
-  3. pip without --require-hashes (check requirements.lock usage)
+  3. an install without --require-hashes (check requirements.lock usage)
   4. ``COPY . .`` instead of ordered explicit COPY (check Dockerfiles)
 """
 from __future__ import annotations
@@ -51,6 +53,14 @@ def _missing_build_tooling() -> str | None:
     )
     if probe.returncode != 0:
         return "docker daemon not reachable"
+    # ci/build.py builds with `docker buildx build ... rewrite-timestamp=true`;
+    # a docker CLI without the buildx plugin would fail mid-build instead.
+    buildx = subprocess.run(
+        ["docker", "buildx", "version"],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    if buildx.returncode != 0:
+        return "docker buildx plugin not available"
     return None
 
 
@@ -65,7 +75,7 @@ def _require_build_tooling() -> None:
         return
     if os.environ.get("GATE5_REQUIRED") == "1":
         pytest.fail(f"Gate 5 required but cannot build: {reason}")
-    pytest.skip(f"{reason} — Gate 5 needs Docker and Dagger to build images")
+    pytest.skip(f"{reason} — Gate 5 needs Docker (with buildx) and Dagger to build images")
 
 
 def _dagger_build(tag: str, which: str = "web") -> str:

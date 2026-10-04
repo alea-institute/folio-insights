@@ -1,0 +1,13 @@
+# Build backends for every source build in the images — passed to uv as
+# --build-constraints, which pins (and hash-verifies) the isolated build env.
+# Without it, uv/pip fetch the newest backend at build time, and the backend
+# version reaches the image bytes (WHEEL "Generator:" lines, Cython-generated C).
+#   hatchling                  — folio-insights (pyproject.toml) and folio-propositions
+#   setuptools, wheel, Cython  — owlready2 sdist (worker), per its [build-system]
+# Regenerate (then rebuild both images and re-run Gate 5):
+#   uv pip compile requirements.build.in --generate-hashes --python-version 3.11 \
+#     -o requirements.build.lock
+hatchling
+setuptools
+wheel
+Cython

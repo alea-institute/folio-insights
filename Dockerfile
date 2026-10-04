@@ -22,8 +22,10 @@ RUN npm run build
 # =========================================================================
 FROM python:3.11-slim AS python-builder
 
-# Bring in uv for fast, deterministic Python installs (matches folio-mapper)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Bring in uv for fast, deterministic Python installs (matches folio-mapper).
+# Pinned by digest (same uv as Dockerfile.web / Dockerfile.worker); `:latest`
+# silently changed the installer between builds.
+COPY --from=ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21 /uv /uvx /bin/
 
 # Build tools stay in this stage; git is required for folio-propositions.
 RUN apt-get update && apt-get install -y --no-install-recommends \
