@@ -1,0 +1,54 @@
+"""Subprocess entry points for the cross-process proposal tests.
+
+``python -m tests.proposals._proc write ROOT CORPUS`` collects two synthetic
+runs, records a human judgment and runs deterministic dedupe in its own
+process. ``... read ROOT CORPUS`` folds the ledger in a fresh process. Both
+print the folded registry as one JSON line.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import sys
+
+from folio_insights.proposals import ProposalStore
+from folio_insights.storage import CorpusStorageContext
+
+from tests.proposals._synthetic import lexicon, pc
+
+
+async def _write(root: str, corpus: str) -> dict:
+    async with await CorpusStorageContext.open(root, corpus) as ctx:
+        store = ProposalStore(ctx)
+        await store.collect_run(
+            "run-1",
+            [pc("Synthetic Tort Doctrine", "u1"), pc("Synthetic Filing Rituals", "u2"),
+             pc("Synthetic Wrong Rule", "u3")],
+            spans_by_unit={"u1": [0, 12], "u2": [13, 40]},
+        )
+        await store.collect_run(
+            "run-2", [pc("Synthetic Filing Ritual", "u7"), pc("synthetic wrong-rule", "u8")]
+        )
+        pid = (await store.load()).by_label("Synthetic Wrong Rule").proposal_id
+        await store.record_judgments(
+            [{"proposal_id": pid, "verdict": "NOVEL", "judged_by": "human:synthetic-reviewer",
+              "reasoning": "Synthetic: the alias concept's definition is unrelated."}],
+            op_id="proc:judgment:1",
+        )
+        await store.apply_dedupe(lexicon())
+        return (await store.load()).to_dict()
+
+
+async def _read(root: str, corpus: str) -> dict:
+    async with await CorpusStorageContext.open(root, corpus) as ctx:
+        return (await ProposalStore(ctx).load()).to_dict()
+
+
+def main() -> None:
+    command, root, corpus = sys.argv[1:4]
+    fn = {"write": _write, "read": _read}[command]
+    print(json.dumps(asyncio.run(fn(root, corpus)), sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

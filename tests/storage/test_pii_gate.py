@@ -129,3 +129,19 @@ async def test_disabled_gate_is_an_explicit_choice(storage_root: Path) -> None:
     finally:
         await ctx.close()
     assert (storage_root / JOURNAL_FILENAME).exists()
+
+
+def test_integer_leaves_are_scanned() -> None:
+    """Review P2-2: a checksum-valid routing number stored as a JSON integer
+    is refused like the same digits in a string; booleans are not integers;
+    an integer too large to render is refused (fail closed); the signature and
+    digest exemptions still apply to strings only."""
+    gate = PiiGate()
+    with pytest.raises(PiiRejected, match="aba_routing") as err:
+        gate.check({"payload": {"counts": [1, 110000000]}})
+    assert "110000000" not in str(err.value)
+    assert err.value.field_path == "payload.counts[1]"
+    gate.check({"flag": True, "n": 42, "position": 2125550142})
+    with pytest.raises(PiiRejected, match="unscannable_integer"):
+        gate.check({"n": 1 << 20_000})
+    gate.check({"signature": "A" * 86, "payload_hash": "a" * 64})

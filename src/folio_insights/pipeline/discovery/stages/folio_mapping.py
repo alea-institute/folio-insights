@@ -11,7 +11,7 @@ import logging
 from collections import Counter
 from typing import Any
 
-from folio_insights.models.task import TaskCandidate, compute_task_confidence
+from folio_insights.models.task import compute_task_confidence
 from folio_insights.pipeline.discovery.stages.base import DiscoveryStage, DiscoveryJob
 
 logger = logging.getLogger(__name__)
@@ -64,6 +64,12 @@ class FolioMappingStage(DiscoveryStage):
                 if unit is None:
                     continue
                 for tag in unit.folio_tags:
+                    # A proposed_class tag has no IRI. Every one of them would
+                    # pool into a single "" bucket that can outvote the real
+                    # IRIs, so proposed tags never vote and never feed the
+                    # confidence blend (R3 of the proposed-class governance plan).
+                    if not (tag.iri or "").strip():
+                        continue
                     iri_counter[tag.iri] += 1
                     iri_labels[tag.iri] = tag.label
                     tag_confidences.append(tag.confidence)

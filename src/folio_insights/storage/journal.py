@@ -27,6 +27,13 @@ Reads outside a write transaction use a separate read-only connection, so they
 see only committed rows even while this process holds an open
 ``BEGIN IMMEDIATE`` on the write connection.
 
+A second append-only table, ``proposal_ledger``, holds the proposed-class
+governance ledger (collect runs, judgments; see ``storage/proposals.py``). It
+has the same guards (contiguous per-corpus positions, unique op_id, UPDATE /
+DELETE / replace refused) and its own ``storage_meta`` schema key. It is never
+replayed into the RDF projection, so it leaves the projection watermark and
+chain digest untouched; snapshots carry it because they copy the whole file.
+
 Shard rows keep the U17 adapter's ``original_bytes`` and
 ``source_schema_version`` next to the current-version ``payload`` written by
 ``dump_shard_record`` (KTD5). ``original_bytes`` is NULL exactly when the
@@ -51,6 +58,7 @@ from folio_insights.storage.errors import OperationIdConflict, UnsupportedStorag
 JOURNAL_FILENAME = "journal.sqlite3"
 JOURNAL_SCHEMA_VERSION = 1
 GOVERNANCE_RECORD_SCHEMA_VERSION = 1
+PROPOSAL_LEDGER_SCHEMA_VERSION = 1
 
 KIND_SHARD = "shard"
 KIND_GOVERNANCE = "governance"
@@ -165,11 +173,69 @@ _DDL: tuple[str, ...] = (
         SELECT RAISE(ABORT, 'storage_meta is append-only: DELETE refused');
     END
     """,
+    """
+    CREATE TABLE IF NOT EXISTS proposal_ledger (
+        corpus TEXT NOT NULL,
+        position INTEGER NOT NULL CHECK (position >= 0),
+        op_id TEXT NOT NULL,
+        request_sha256 TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        record_schema_version INTEGER NOT NULL,
+        payload BLOB NOT NULL,
+        payload_sha256 TEXT NOT NULL,
+        committed_at TEXT NOT NULL,
+        PRIMARY KEY (corpus, position),
+        UNIQUE (corpus, op_id)
+    ) STRICT
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS proposal_ledger_refuse_update
+    BEFORE UPDATE ON proposal_ledger
+    BEGIN
+        SELECT RAISE(ABORT, 'proposal ledger is append-only: UPDATE refused');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS proposal_ledger_refuse_delete
+    BEFORE DELETE ON proposal_ledger
+    BEGIN
+        SELECT RAISE(ABORT, 'proposal ledger is append-only: DELETE refused');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS proposal_ledger_contiguous_position
+    BEFORE INSERT ON proposal_ledger
+    WHEN NEW.position != (
+        SELECT COALESCE(MAX(position), -1) + 1 FROM proposal_ledger
+        WHERE corpus = NEW.corpus
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'proposal ledger position must be contiguous per corpus');
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS proposal_ledger_refuse_replace
+    BEFORE INSERT ON proposal_ledger
+    WHEN EXISTS (
+        SELECT 1 FROM proposal_ledger WHERE corpus = NEW.corpus AND position = NEW.position
+    ) OR EXISTS (
+        SELECT 1 FROM proposal_ledger WHERE corpus = NEW.corpus AND op_id = NEW.op_id
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'proposal ledger is append-only: insert over a committed row refused');
+    END
+    """,
 )
 
 _COLUMNS = (
     "corpus, position, op_id, request_sha256, kind, subject, governance_position, "
     "record_schema_version, source_schema_version, payload, original_bytes, "
+    "payload_sha256, committed_at"
+)
+
+
+_PROPOSAL_COLUMNS = (
+    "corpus, position, op_id, request_sha256, kind, record_schema_version, payload, "
     "payload_sha256, committed_at"
 )
 
@@ -220,6 +286,47 @@ def _row(values: tuple) -> JournalRow:
     return JournalRow(*values)
 
 
+@dataclass(frozen=True)
+class ProposalLedgerRow:
+    """One committed proposal-ledger operation (never projected to RDF)."""
+
+    corpus: str
+    position: int
+    op_id: str
+    request_sha256: str
+    kind: str
+    record_schema_version: int
+    payload: bytes
+    payload_sha256: str
+    committed_at: str
+
+
+def _proposal_row(values: tuple) -> ProposalLedgerRow:
+    return ProposalLedgerRow(*values)
+
+
+async def _proposal_head(conn: aiosqlite.Connection, corpus: str) -> int:
+    rows = list(
+        await conn.execute_fetchall(
+            "SELECT COALESCE(MAX(position), -1) FROM proposal_ledger WHERE corpus = ?",
+            (corpus,),
+        )
+    )
+    return int(rows[0][0])
+
+
+async def _find_proposal_op(
+    conn: aiosqlite.Connection, corpus: str, op_id: str
+) -> ProposalLedgerRow | None:
+    rows = list(
+        await conn.execute_fetchall(
+            f"SELECT {_PROPOSAL_COLUMNS} FROM proposal_ledger WHERE corpus = ? AND op_id = ?",
+            (corpus, op_id),
+        )
+    )
+    return _proposal_row(tuple(rows[0])) if rows else None
+
+
 class JournalTransaction:
     """Reads and appends inside one ``BEGIN IMMEDIATE`` write transaction."""
 
@@ -265,6 +372,34 @@ class JournalTransaction:
 
     async def append(self, pending: PendingRow) -> JournalRow:
         return (await self.append_many([pending]))[0]
+
+    async def proposal_head(self) -> int:
+        return await _proposal_head(self._conn, self.corpus)
+
+    async def find_proposal_op(self, op_id: str) -> ProposalLedgerRow | None:
+        return await _find_proposal_op(self._conn, self.corpus, op_id)
+
+    async def append_proposal(
+        self, *, op_id: str, request_sha256: str, kind: str, payload: bytes
+    ) -> ProposalLedgerRow:
+        """Append one proposal-ledger row at the next contiguous position."""
+        values = (
+            self.corpus,
+            await self.proposal_head() + 1,
+            op_id,
+            request_sha256,
+            kind,
+            PROPOSAL_LEDGER_SCHEMA_VERSION,
+            payload,
+            sha256_hex(payload),
+            datetime.now(UTC).isoformat(),
+        )
+        await self._conn.execute(
+            f"INSERT INTO proposal_ledger ({_PROPOSAL_COLUMNS}) "
+            f"VALUES ({', '.join('?' * len(values))})",
+            values,
+        )
+        return _proposal_row(values)
 
     async def append_many(self, pendings: list[PendingRow]) -> list[JournalRow]:
         """Append ``pendings`` at the next contiguous positions in one
@@ -386,6 +521,7 @@ class Journal:
                         f"journal schema version {rows[0][0]!r} is not supported "
                         f"(this code reads {JOURNAL_SCHEMA_VERSION})"
                     )
+                await _check_proposal_ledger_version(conn)
                 await conn.execute("COMMIT")
             except BaseException:
                 await conn.execute("ROLLBACK")
@@ -472,6 +608,19 @@ class Journal:
             for r in rows
         ]
 
+    async def proposal_head(self, corpus: str) -> int:
+        return await _proposal_head(self.read_conn, corpus)
+
+    async def proposal_rows(self, corpus: str) -> list[ProposalLedgerRow]:
+        """Every committed proposal-ledger row of ``corpus`` in position order
+        (read connection: committed rows only)."""
+        rows = await self.read_conn.execute_fetchall(
+            f"SELECT {_PROPOSAL_COLUMNS} FROM proposal_ledger WHERE corpus = ? "
+            "ORDER BY position",
+            (corpus,),
+        )
+        return [_proposal_row(tuple(r)) for r in rows]
+
     async def corpora(self) -> list[str]:
         """Every corpus with at least one committed row, sorted."""
         rows = await self.read_conn.execute_fetchall(
@@ -545,6 +694,28 @@ class Journal:
         return [_row(tuple(r)) for r in rows]
 
 
+async def _check_proposal_ledger_version(conn: aiosqlite.Connection) -> None:
+    """Record the proposal ledger's schema version on first open; refuse an
+    unknown one. The ledger is additive: a journal written before it existed
+    gains the empty table and this key on its next open."""
+    rows = list(
+        await conn.execute_fetchall(
+            "SELECT value FROM storage_meta WHERE key = 'proposal_ledger_schema_version'"
+        )
+    )
+    if not rows:
+        await conn.execute(
+            "INSERT INTO storage_meta (key, value) VALUES "
+            "('proposal_ledger_schema_version', ?)",
+            (str(PROPOSAL_LEDGER_SCHEMA_VERSION),),
+        )
+    elif rows[0][0] != str(PROPOSAL_LEDGER_SCHEMA_VERSION):
+        raise UnsupportedStorageSchema(
+            f"proposal ledger schema version {rows[0][0]!r} is not supported "
+            f"(this code reads {PROPOSAL_LEDGER_SCHEMA_VERSION})"
+        )
+
+
 def committed_corpora(path: Path) -> list[str]:
     """Corpora with at least one committed row in the journal at ``path``,
     read-only (never creates the file). An absent journal has none."""
@@ -577,10 +748,12 @@ __all__ = [
     "JOURNAL_SCHEMA_VERSION",
     "KIND_GOVERNANCE",
     "KIND_SHARD",
+    "PROPOSAL_LEDGER_SCHEMA_VERSION",
     "Journal",
     "JournalRow",
     "JournalTransaction",
     "PendingRow",
+    "ProposalLedgerRow",
     "check_replay",
     "committed_corpora",
     "sha256_hex",

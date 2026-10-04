@@ -9,7 +9,9 @@ use (U3 wires every CLI command through it). It owns:
   named-graph view with a durable per-corpus applied-position watermark;
 * ``shards`` (``PersistentShardStore``) and ``governance``
   (``PersistentGovernanceLog``), the persistent implementations of the
-  existing ``ShardStore`` and five-method ``GovernanceLog`` seams.
+  existing ``ShardStore`` and five-method ``GovernanceLog`` seams;
+* ``proposals`` (``PersistentProposalLedger``), the append-only
+  proposed-class governance ledger (not projected to RDF).
 
 Write path (KTD3): validate and gate the input, then inside one
 ``BEGIN IMMEDIATE`` transaction check operation-ID replay, re-check state
@@ -362,10 +364,12 @@ class CorpusStorageContext:
         self._closed = True
         self._write_lock = asyncio.Lock()
         from folio_insights.storage.governance import PersistentGovernanceLog
+        from folio_insights.storage.proposals import PersistentProposalLedger
         from folio_insights.storage.shards import PersistentShardStore
 
         self.shards = PersistentShardStore(self)
         self.governance = PersistentGovernanceLog(self)
+        self.proposals = PersistentProposalLedger(self)
 
     # ── lifecycle ─────────────────────────────────────────────────────────
 

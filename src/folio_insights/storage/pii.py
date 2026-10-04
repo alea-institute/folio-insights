@@ -14,8 +14,10 @@ Defaults cover three US patterns:
 * ``us_phone`` — a NANP number written with separators or a parenthesized
   area code (``(212) 555-0142``, ``212-555-0142``, ``+1 212.555.0142``).
 
-Scope: every string leaf of the record is scanned, including IRIs, mapping
-keys, raw input that a migration would drop, and every field of signature
+Scope: every string leaf of the record is scanned, and so is every integer
+leaf (as its decimal text; booleans are not integers here, and an integer too
+large to render is refused as ``unscannable_integer``). That includes IRIs,
+mapping keys, raw input that a migration would drop, and every field of signature
 objects (``did``, ``signing_key_id``, ``action``, cosigners...). Only two
 machine-generated values are exempt, and only when they have the exact shape
 of what they claim to be: a ``signature`` value that is an Ed25519 signature
@@ -118,9 +120,22 @@ def _path(parts: tuple[str | int, ...]) -> str:
     return out
 
 
+# Integers are scanned as their decimal text (a 9-digit integer can be an ABA
+# routing number). Python refuses int -> str above ~4300 digits; an integer
+# beyond this bound is refused rather than skipped (fail closed).
+MAX_SCANNED_INT_BITS = 14_000
+UNSCANNABLE_INTEGER = "unscannable_integer"
+
+
+def _is_scanned_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def _string_leaves(value: Any, path: str) -> Iterator[tuple[str, str]]:
     if isinstance(value, str):
         yield path, value
+    elif _is_scanned_int(value) and value.bit_length() <= MAX_SCANNED_INT_BITS:
+        yield path, str(value)
     elif isinstance(value, Mapping):
         for key, item in value.items():
             if isinstance(key, str):
@@ -178,6 +193,10 @@ class PiiGate:
         def walk(value: Any, parts: tuple[str | int, ...]) -> None:
             if isinstance(value, str):
                 scan(value, parts)
+            elif _is_scanned_int(value):
+                if value.bit_length() > MAX_SCANNED_INT_BITS:
+                    raise PiiRejected(_path(parts) or "<root>", UNSCANNABLE_INTEGER)
+                scan(str(value), parts)
             elif isinstance(value, Mapping):
                 for key, item in value.items():
                     if isinstance(key, str):
