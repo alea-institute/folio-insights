@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import sys
 from pathlib import Path
 
 SMOKE_TARGET = 10_000  # 10k — fast test iteration (~5s); D-15 logic is scale-invariant
@@ -31,7 +32,11 @@ def _run_gen(
     out_path = tmp_path / out_name
     result = subprocess.run(
         [
-            "uv", "run", "folio-insights", "bench", "gen",
+            # The current interpreter, not `uv run`: uv would first sync a
+            # project venv (multi-GB, networked), which the CI test container
+            # neither has nor needs.
+            sys.executable, "-c", "from folio_insights.cli import cli; cli()",
+            "bench", "gen",
             "--seed", str(seed),
             "--target", str(target),
             "--profile", profile,
