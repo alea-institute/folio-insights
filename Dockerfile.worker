@@ -121,11 +121,6 @@ ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Custom JRE (biggest Gate 3 win — ~120MB saved vs full temurin-jre)
-COPY --from=jre-builder /opt/java-custom /opt/java-custom
-ENV JAVA_HOME=/opt/java-custom \
-    PATH="/opt/java-custom/bin:${PATH}"
-
 # No apk packages in the runtime stage (nothing to drift): the pyoxigraph
 # musllinux wheel vendors its own libgcc_s/libstdc++ (pyoxigraph.libs/, per
 # auditwheel), owlready2's optimizer is plain C, the jlink JRE links neither,
@@ -137,6 +132,20 @@ RUN addgroup -g 1001 appuser \
     && sed -i "s/^\(appuser:[^:]*:\)[0-9]*:/\1$(( ${SOURCE_DATE_EPOCH:-0} / 86400 )):/" /etc/shadow
 # Gate 5: busybox adduser stamps today's date into /etc/shadow (last password
 # change, in days); pin it to SOURCE_DATE_EPOCH so the layer is date-independent.
+#
+# Gate 5: this RUN must be the stage's FIRST filesystem step. A RUN's cache key
+# includes SOURCE_DATE_EPOCH (ARG/ENV above); a COPY or WORKDIR key does not.
+# BuildKit keys COPY --from on the source content, not its mtimes, so a COPY
+# placed before this RUN was reused from a build under an EARLIER commit with
+# that build's wall-clock mtimes. They predate the new epoch, rewrite-timestamp
+# only clamps newer times, and a warm build then differed from a cold
+# --no-cache build (seen 2026-10-04 on the JRE layer). Chained after this RUN,
+# every later step re-keys per commit. tests/test_image_pins.py enforces it.
+
+# Custom JRE (biggest Gate 3 win — ~120MB saved vs full temurin-jre)
+COPY --from=jre-builder /opt/java-custom /opt/java-custom
+ENV JAVA_HOME=/opt/java-custom \
+    PATH="/opt/java-custom/bin:${PATH}"
 
 # Copy pre-installed Python packages from the deps-builder stage.
 # This keeps gcc/g++/musl-dev/python3-dev/libffi-dev out of the runtime image

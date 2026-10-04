@@ -49,11 +49,15 @@ def test_uv_image_matches_across_dockerfiles() -> None:
     assert f"COPY --from={web} " in _read("Dockerfile")
 
 
-def _instructions(dockerfile: str) -> list[str]:
+def _instructions_of(text: str) -> list[str]:
     """Dockerfile instructions with comments dropped and continuations joined."""
-    lines = [ln for ln in _read(dockerfile).splitlines() if not ln.lstrip().startswith("#")]
+    lines = [ln for ln in text.splitlines() if not ln.lstrip().startswith("#")]
     return [ins.strip() for ins in "\n".join(lines).replace("\\\n", " ").splitlines()
             if ins.strip()]
+
+
+def _instructions(dockerfile: str) -> list[str]:
+    return _instructions_of(_read(dockerfile))
 
 
 def test_no_floating_latest_tags() -> None:
@@ -204,3 +208,32 @@ def test_every_run_stage_keys_its_cache_on_source_date_epoch(dockerfile: str) ->
         name = stage.split("\n", 1)[0]
         if re.search(r"^RUN ", stage, re.M):
             assert re.search(r"^ARG SOURCE_DATE_EPOCH", stage, re.M), f"{dockerfile}: {name}"
+
+
+@pytest.mark.parametrize(
+    "dockerfile",
+    [
+        "Dockerfile.worker",
+        pytest.param(
+            "Dockerfile.web",
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason="known gap: the web runtime stage opens with WORKDIR /app, so "
+                "that layer can be reused from an earlier commit's build",
+            ),
+        ),
+    ],
+)
+def test_runtime_stage_starts_with_an_epoch_keyed_run(dockerfile: str) -> None:
+    """A RUN's cache key includes SOURCE_DATE_EPOCH; COPY and WORKDIR keys do not
+    (BuildKit keys COPY --from on source content, not mtimes). A filesystem step
+    ahead of the runtime stage's first RUN is reused from a build under an earlier
+    commit, carrying wall-clock mtimes older than the new epoch that
+    rewrite-timestamp leaves alone, so warm and cold builds diverge."""
+    final_stage = re.split(r"^FROM ", _read(dockerfile), flags=re.M)[-1]
+    steps = [
+        ins.split(None, 1)[0]
+        for ins in _instructions_of(final_stage)
+        if ins.split(None, 1)[0] in {"RUN", "COPY", "ADD", "WORKDIR"}
+    ]
+    assert steps and steps[0] == "RUN", f"{dockerfile}: runtime stage begins with {steps[:1]}"
