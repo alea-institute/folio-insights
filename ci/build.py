@@ -26,8 +26,12 @@ Gate 5 discipline (10 techniques):
   9. Normalized context               — images build from ``git archive HEAD`` of the COPY'd
                                          paths (``export_build_context``): every mtime is
                                          the commit time, modes are 0644/0755; then
-                                         ``.dockerignore`` applies. ``BUILD_CTX_EXCLUDE``
-                                         filters the Dagger lint/test context
+                                         ``.dockerignore`` applies. Each image gets its own
+                                         freshly named context directory
+                                         (``export_image_contexts``), so BuildKit never
+                                         reuses a stale incremental context transfer.
+                                         ``BUILD_CTX_EXCLUDE`` filters the Dagger lint/test
+                                         context
  10. No attestations                   — provenance stamps build times, so it is disabled
 
 Reproducible over time, not just back to back. Gate 5's two builds run minutes
@@ -235,6 +239,38 @@ def export_build_context(
         raise SystemExit(f"git archive failed (exit {archive.returncode})")
 
 
+def export_image_contexts(
+    work_root: Path,
+    repo_root: Path = REPO_ROOT,
+    dockerfiles: tuple[str, ...] = IMAGE_DOCKERFILES,
+) -> dict[str, Path]:
+    """Export a separate, uniquely named build context for each Dockerfile.
+
+    BuildKit keeps each local build context it receives and, on the next build
+    that sends a context with the same directory BASENAME (buildx's shared key
+    ignores the parent path), transfers only the difference. That diff never
+    updates a directory whose children did not change, even when the
+    directory's own mtime did. The old fixed ``<tmp>/context`` path therefore
+    let a build inherit directory mtimes from an earlier run, often an earlier
+    commit. Those predate SOURCE_DATE_EPOCH, ``rewrite-timestamp`` only clamps
+    newer times, and the image differed from a cold rebuild (seen as the
+    ``/app/src`` mtime in the worker). It was intermittent because the web and
+    worker builds raced for the one cached transfer: the build that lost the
+    race got a fresh, full copy.
+
+    A basename no earlier build used forces a full transfer, so the image sees
+    exactly the exported mtimes. One directory per image keeps the two
+    parallel builds from sharing a transfer at all.
+    """
+    contexts: dict[str, Path] = {}
+    for dockerfile in dockerfiles:
+        stem = dockerfile.lower().replace(".", "-")
+        context_dir = Path(tempfile.mkdtemp(prefix=f"ctx-{stem}-", dir=work_root))
+        export_build_context(context_dir, repo_root, dockerfiles)
+        contexts[dockerfile] = context_dir
+    return contexts
+
+
 async def _build_image(
     *,
     dockerfile: str,
@@ -353,10 +389,8 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
 
     with tempfile.TemporaryDirectory(prefix="fi-ci-build-") as work_root:
         metadata_dir = Path(work_root) / "metadata"
-        context_dir = Path(work_root) / "context"
         metadata_dir.mkdir()
-        context_dir.mkdir()
-        export_build_context(context_dir)
+        contexts = export_image_contexts(Path(work_root))
         async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
             # Parallelizable stages: both image builds (BuildKit) and lint (Dagger)
             web_task = _build_image(
@@ -364,14 +398,14 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
                 tag=f"ttl.sh/fi-web:{tag_suffix}",
                 sde=sde,
                 metadata_dir=metadata_dir,
-                context_dir=context_dir,
+                context_dir=contexts["Dockerfile.web"],
             )
             worker_task = _build_image(
                 dockerfile="Dockerfile.worker",
                 tag=f"ttl.sh/fi-worker:{tag_suffix}",
                 sde=sde,
                 metadata_dir=metadata_dir,
-                context_dir=context_dir,
+                context_dir=contexts["Dockerfile.worker"],
             )
             # Keep lint optional on --no-lint; test always runs.
             tasks = [web_task, worker_task]

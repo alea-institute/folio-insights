@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from ci.build import context_paths, export_build_context
+from ci.build import context_paths, export_build_context, export_image_contexts
 
 COMMIT_EPOCH = 1_700_000_000
 DOCKERFILE = """FROM base AS builder
@@ -89,3 +89,25 @@ def test_export_builds_head_and_warns_on_uncommitted(
     export_build_context(dest, repo, ("Dockerfile.x",))
     assert (dest / "src/pkg/mod.py").read_text() == "src/pkg/mod.py"
     assert "src/pkg/mod.py" in capsys.readouterr().err
+
+
+
+def test_each_image_gets_a_fresh_uniquely_named_context(repo: Path, tmp_path: Path) -> None:
+    """BuildKit reuses a cached context transfer for any later context with the same
+    basename, and that incremental transfer keeps stale directory mtimes. Every
+    image, on every run, must therefore build from a basename never used before."""
+    (repo / "Dockerfile.y").write_text("FROM base\nCOPY src/ ./src/\n")
+    _git(repo, "add", "-A")
+    date = f"@{COMMIT_EPOCH} +0000"
+    _git(repo, "commit", "-q", "-m", "y", GIT_AUTHOR_DATE=date, GIT_COMMITTER_DATE=date)
+    dockerfiles = ("Dockerfile.x", "Dockerfile.y")
+    runs = []
+    for run in ("run1", "run2"):
+        (tmp_path / run).mkdir()
+        runs.append(export_image_contexts(tmp_path / run, repo, dockerfiles))
+    contexts = [ctx for run in runs for ctx in run.values()]
+    assert all(set(run) == set(dockerfiles) for run in runs)
+    assert len({ctx.name for ctx in contexts}) == len(contexts), contexts
+    for ctx in contexts:
+        assert (ctx / "src/pkg/mod.py").read_text() == "src/pkg/mod.py"
+        assert int((ctx / "src").stat().st_mtime) == COMMIT_EPOCH
