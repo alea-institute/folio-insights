@@ -210,20 +210,7 @@ def test_every_run_stage_keys_its_cache_on_source_date_epoch(dockerfile: str) ->
             assert re.search(r"^ARG SOURCE_DATE_EPOCH", stage, re.M), f"{dockerfile}: {name}"
 
 
-@pytest.mark.parametrize(
-    "dockerfile",
-    [
-        "Dockerfile.worker",
-        pytest.param(
-            "Dockerfile.web",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="known gap: the web runtime stage opens with WORKDIR /app, so "
-                "that layer can be reused from an earlier commit's build",
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("dockerfile", GATE5_DOCKERFILES)
 def test_runtime_stage_starts_with_an_epoch_keyed_run(dockerfile: str) -> None:
     """A RUN's cache key includes SOURCE_DATE_EPOCH; COPY and WORKDIR keys do not
     (BuildKit keys COPY --from on source content, not mtimes). A filesystem step
