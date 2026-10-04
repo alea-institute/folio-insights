@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 
 import folio_insights.storage.context as context_module
+from folio_insights.governance.log import InvalidSignature
 from folio_insights.shards import AttestedSignature
 from folio_insights.storage import (
     CorpusStorageContext,
@@ -47,26 +48,48 @@ PHONE = "212-555-0142"
 # ── P1-1: replayed governance event ───────────────────────────────────────
 
 
-async def test_replayed_event_with_moved_signed_at_is_refused(
+async def test_same_signer_revoke_regrant_revoke_cycle_succeeds(
     ctx: CorpusStorageContext, admin
 ) -> None:
-    second_admin, subject = new_identity(), new_identity()
+    """With signed_at bound into the signed payload, a repeat by the same
+    admin is a distinct signed event, not a replay."""
+    subject = new_identity()
+    await ctx.governance.append(genesis(CORPUS, admin))
+    await ctx.governance.append(role_assertion(CORPUS, admin, subject.did, "reviewer", at(1)))
+    await ctx.governance.append(role_revocation(CORPUS, admin, subject.did, "reviewer", at(2)))
+    regrant = await ctx.governance.append(
+        role_assertion(CORPUS, admin, subject.did, "reviewer", at(3))
+    )
+    assert (await ctx.governance.query_active_roles_at(CORPUS, at(3))).get(subject.did) == {
+        "reviewer"
+    }
+    final = await ctx.governance.append(
+        role_revocation(CORPUS, admin, subject.did, "reviewer", at(4))
+    )
+    assert (regrant.position, final.position) == (3, 4)
+    assert subject.did not in await ctx.governance.query_active_roles_at(CORPUS, at(10))
+
+
+async def test_replay_with_moved_signed_at_fails_verification(
+    ctx: CorpusStorageContext, admin
+) -> None:
+    subject = new_identity()
     await ctx.governance.append(genesis(CORPUS, admin))
     await ctx.governance.append(
-        role_assertion(CORPUS, admin, second_admin.did, "corpus_admin", at(1))
+        role_assertion(CORPUS, admin, subject.did, "corpus_admin", at(1))
     )
-    await ctx.governance.append(role_assertion(CORPUS, admin, subject.did, "corpus_admin", at(1)))
     revocation = role_revocation(CORPUS, admin, subject.did, "corpus_admin", at(2))
     await ctx.governance.append(revocation)
     await ctx.governance.append(
-        role_assertion(CORPUS, second_admin, subject.did, "corpus_admin", at(3))
+        role_assertion(CORPUS, admin, subject.did, "corpus_admin", at(3))
     )
     head = await ctx.governance.latest_position(CORPUS)
 
     replay = revocation.model_copy(
         update={"signature": revocation.signature.model_copy(update={"signed_at": at(4)})}
     )
-    with pytest.raises(GovernanceEventReplayed):
+    assert replay.signature_payload() != revocation.signature_payload()
+    with pytest.raises(InvalidSignature):
         await ctx.governance.append(replay)
 
     assert await ctx.governance.latest_position(CORPUS) == head
@@ -74,7 +97,7 @@ async def test_replayed_event_with_moved_signed_at_is_refused(
     assert roles.get(subject.did) == {"corpus_admin"}
 
 
-async def test_identical_event_under_fresh_op_id_is_refused(
+async def test_verbatim_replay_under_fresh_op_id_is_refused(
     ctx: CorpusStorageContext, admin
 ) -> None:
     await ctx.governance.append(genesis(CORPUS, admin))

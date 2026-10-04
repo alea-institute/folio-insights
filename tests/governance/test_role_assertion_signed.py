@@ -103,8 +103,10 @@ async def test_role_assertion_signed_end_to_end() -> None:
     await log.append(genesis)
 
     # Now Alice signs a RoleAssertion granting Bob reviewer. The signature is
-    # over the event's signature_payload (JCS-canonical hash of content sans
-    # signature).
+    # over the event's v2 signature_payload: the JCS-canonical hash of the
+    # body (sans signature and position) plus the signer DID, signed_at and
+    # did_doc_snapshot_at. The placeholder therefore carries the same did /
+    # t0 / t0 that sign_attestation uses below.
     payload_hash = RoleAssertionEvent(
         corpus=CORPUS,
         position=1,
@@ -129,6 +131,9 @@ async def test_role_assertion_signed_end_to_end() -> None:
         subject_did=bob_did,
         role="reviewer",
     )
+
+    # The persisted event recomputes the payload the placeholder produced.
+    assert bob_event.signature_payload().hex() == payload_hash
 
     # Verify the signature independently (Phase 6 contract).
     verified = await verify_attestation(payload_hash, bob_sig, cache=cache)

@@ -56,9 +56,10 @@ class OperationIdConflict(ValueError):
 class GovernanceEventReplayed(ValueError):
     """A governance event whose signature is already in the committed history.
 
-    The signature covers only the event body, so a journaled event re-sent
-    with a moved ``signature.signed_at`` or under a fresh operation ID would
-    otherwise be accepted again (a replayed revocation, for instance).
+    A verbatim copy of a journaled signed event, re-sent under a fresh
+    operation ID, would otherwise be appended again (a replayed revocation,
+    for instance). A copy with a moved ``signed_at`` fails signature
+    verification instead, since the signed payload binds it.
     """
 
 

@@ -67,9 +67,12 @@ async def sign_and_verify_event(
     """Sign + verify-round-trip an event, returning the verified signature.
 
     Order:
-      1. ``payload_hash = event.signature_payload().decode("utf-8")``.
+      1. ``payload_hash`` = ``signature_payload()`` of the event with a
+         placeholder signature bound to ``did`` / ``now`` /
+         ``did_doc_snapshot_at`` (v2 payload format).
       2. ``sig = sign_attestation(content_hash=payload_hash, ...)``.
-      3. ``ok = await verify_attestation(payload_hash, sig, cache=cache)``.
+      3. ``ok`` = the signed event's payload recomputes to ``payload_hash``
+         AND ``verify_attestation(payload_hash, sig, cache=cache)``.
       4. If ``ok`` is False, raise ``InvalidSignature``. Otherwise return ``sig``.
 
     The cache parameter is mandatory — there is no "skip verification" path.
@@ -85,7 +88,24 @@ async def sign_and_verify_event(
     from folio_insights.identity.signer import sign_attestation
     from folio_insights.identity.verifier import verify_attestation
 
-    payload_hash = event.signature_payload().decode("utf-8")
+    from folio_insights.shards.envelope import AttestedSignature
+
+    # The v2 payload binds the signer DID, signed_at and did_doc_snapshot_at
+    # (events.SIGNATURE_PAYLOAD_FORMAT), so hash the event with a placeholder
+    # carrying exactly the values signed below; whatever placeholder the
+    # caller attached cannot drift from them.
+    bound = event.model_copy(
+        update={
+            "signature": AttestedSignature(
+                did=did,
+                action=action,
+                signed_at=now,
+                signing_key_id=signing_key_id,
+                did_doc_snapshot_at=did_doc_snapshot_at,
+            )
+        }
+    )
+    payload_hash = bound.signature_payload().decode("utf-8")
     sig = sign_attestation(
         content_hash=payload_hash,
         signing_key=signing_key,
@@ -95,7 +115,10 @@ async def sign_and_verify_event(
         did_doc_snapshot_at=did_doc_snapshot_at,
         now=now,
     )
-    ok = await verify_attestation(payload_hash, sig, cache=cache)
+    signed = event.model_copy(update={"signature": sig})
+    ok = signed.signature_payload().decode("utf-8") == payload_hash and (
+        await verify_attestation(payload_hash, sig, cache=cache)
+    )
     if not ok:
         raise InvalidSignature(
             f"verify_attestation refused the signature for {action} event "

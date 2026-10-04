@@ -178,22 +178,23 @@ def _canonical_sha(data: Any) -> str:
 
 
 def _replay_keys(event: GovernanceEvent) -> tuple[str | None, tuple[str, str]]:
-    """What identifies a signed governance event independent of the unsigned
-    ``signed_at`` and the operation ID: the signature value, and the
-    (signer DID, signed payload hash) pair."""
+    """What identifies a signed governance event independent of its
+    operation ID: the signature value, and the (signer DID, signed payload
+    hash) pair."""
     payload_sha = hashlib.sha256(event.signature_payload()).hexdigest()
     return (event.signature.signature or None), (event.signature.did, payload_sha)
 
 
 def _refuse_replayed_event(event: GovernanceEvent, history: list[GovernanceEvent]) -> None:
-    """Refuse ``event`` if its signature, or its (signer, signed payload),
-    already appears in committed ``history``.
+    """Refuse ``event`` if its signature value, or its (signer DID, signed
+    payload hash), already appears in committed ``history``.
 
-    The ed25519 signature covers the event body only; ``signed_at`` and the
-    operation ID are not bound to it, so without this check an old signed
-    event could be journaled again (a replayed revocation reverting a later
-    re-grant). Binding those fields into the signed payload is a cross-phase
-    follow-up recorded in the Phase 13 plan.
+    The v2 signed payload (``events.SIGNATURE_PAYLOAD_FORMAT``) binds
+    ``signed_at``, the signer DID and ``did_doc_snapshot_at``, so a legitimate
+    repeat by the same signer (revoke, re-grant, revoke) signs a different
+    payload and is accepted, and a replay with a moved ``signed_at`` fails
+    signature verification before this point. What remains is the verbatim
+    replay, possibly under a fresh operation ID; this check refuses it.
     """
     signature, signed = _replay_keys(event)
     for prior in history:
