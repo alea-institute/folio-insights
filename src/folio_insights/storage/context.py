@@ -40,8 +40,12 @@ Seams for the CLI (U3, wired) and later units:
   read-only SPARQL), ``PersistentShardStore.get_record`` (original bytes and
   source version), ``journal_path`` / ``projection_path`` for snapshots, and
   ``rebuild_projection`` after a restore. Full SHACL is deferred to Phase 11;
-  ``StorageConfig.shard_validator`` is the explicit hook and ``status()``
-  reports ``full_shacl='deferred-to-phase-11'`` until it is wired.
+  ``StorageConfig.shard_validator`` / ``event_validator`` are the explicit
+  hooks (U4). They run only AFTER every built-in check (PII gate, model
+  validation, signature verification), can only add refusals, and
+  ``status()`` keeps reporting ``full_shacl='deferred-to-phase-11'`` even
+  when a hook is installed: a hook is a seam, not the Phase 11 exit
+  criterion.
 """
 from __future__ import annotations
 
@@ -164,14 +168,22 @@ class StorageConfig:
     * ``pii_gate`` — the configurable ingest gate (defaults: SSN, ABA, phone).
     * ``event_verifier`` — signature check run on every governance append
       before the journal transaction; ``None`` disables it (test doubles only).
-    * ``shard_validator`` — Phase 11 full-SHACL hook, called on every shard
-      write before the journal append. ``None`` means deferred, and
-      ``status()`` says so; it is never reported as passed.
+    * ``shard_validator`` — Phase 11 full-SHACL hook for shards, called on
+      every shard write (put, ingest, bulk load) after the PII gate and model
+      validation and before the journal transaction. Raise to refuse.
+    * ``event_validator`` — the same hook for governance events, called after
+      signature verification and before the journal transaction (whose
+      in-transaction authorization still runs afterwards).
+
+    Neither hook replaces a built-in check, and installing one does not
+    change ``full_shacl``: Phase 11 full SHACL stays reported as deferred
+    (``FULL_SHACL_STATUS``) and is never reported as passed.
     """
 
     pii_gate: PiiGate = field(default_factory=PiiGate)
     event_verifier: EventVerifier | None = verify_event_signature_offline
     shard_validator: Callable[[ShardEnvelope], None] | None = None
+    event_validator: Callable[[GovernanceEvent], None] | None = None
     busy_timeout_s: float = 30.0
     projection_lock_timeout_s: float = 120.0
     replay_batch_size: int = 256
@@ -185,6 +197,7 @@ class StorageStatus:
     projection_watermark: int
     projection_adapter_version: int
     full_shacl: str
+    validation_hooks: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -573,6 +586,14 @@ class CorpusStorageContext:
             projection_watermark=watermark,
             projection_adapter_version=PROJECTION_ADAPTER_VERSION,
             full_shacl=FULL_SHACL_STATUS,
+            validation_hooks=tuple(
+                name
+                for name, hook in (
+                    ("shard_validator", self.config.shard_validator),
+                    ("event_validator", self.config.event_validator),
+                )
+                if hook is not None
+            ),
         )
 
     async def journal_head(self) -> int:
@@ -641,6 +662,8 @@ class CorpusStorageContext:
                 f"governance {event.action} event signature did not verify for "
                 f"signer {event.signature.did!r}; nothing was appended"
             )
+        if self.config.event_validator is not None:
+            self.config.event_validator(event)  # Phase 11 hook: after the built-ins
 
         async with self._write_lock:
             self._ensure_open()
