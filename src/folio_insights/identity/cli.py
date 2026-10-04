@@ -475,22 +475,18 @@ def bind_cmd(sub: str, key_path: Path, binding_endpoint: str) -> None:
 
 
 def _load_shard(path: Path):
-    """Load a ShardEnvelope from a JSON file (model_dump form).
+    """Load a shard from a stored JSON record via the U17 versioned adapter.
 
-    Uses the Phase-3 discriminated-union ``Shard`` (an
-    ``Annotated[Union[…], Field(discriminator="shard_type")]``) via a Pydantic
-    ``TypeAdapter`` so any subtype (SimpleAssertion / Hypothesis / etc.)
-    round-trips. Fails loud with click.echo + exit on a malformed file rather
-    than letting a Pydantic ValidationError leak to a traceback.
+    ``shards.records.load_shard_record`` is the one sanctioned record path: it
+    migrates supported legacy versions (unstamped v1 records) forward, rejects
+    unsupported versions, and validates through the discriminated ``Shard``
+    union so any subtype round-trips. Fails loud with click.echo + exit on a
+    malformed or unsupported file rather than leaking a traceback.
     """
-    from pydantic import TypeAdapter
-
-    from folio_insights.shards import Shard
+    from folio_insights.shards.records import load_shard_record
 
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        ta: TypeAdapter = TypeAdapter(Shard)
-        return ta.validate_python(raw)
+        return load_shard_record(path.read_bytes()).shard
     except Exception as exc:
         click.echo(f"Error loading shard JSON from {path}: {exc}", err=True)
         sys.exit(1)

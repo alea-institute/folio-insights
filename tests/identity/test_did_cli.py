@@ -206,3 +206,43 @@ def test_did_sign_aborts_when_operator_declines(
     assert result.exit_code == 2, result.output
     # No JSON body printed — only the preview + abort message.
     assert "{" not in result.output.split("Aborted")[-1]
+
+
+# ── U17 — shard JSON goes through the versioned record adapter ──────────────
+
+
+def test_did_preview_migrates_legacy_unstamped_shard(
+    tmp_home: Path, tmp_path: Path
+) -> None:
+    """A legacy (v1, unstamped) shard file previews with the same content hash."""
+    from folio_insights.revision import canonical_content_hash
+
+    shard = _sample_shard(SimpleAssertionShard)
+    legacy = json.loads(shard.model_dump_json())
+    del legacy["schema_version"]
+    shard_path = tmp_path / "legacy.json"
+    shard_path.write_text(json.dumps(legacy), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        did_group,
+        ["preview", "--action", "extract", "--shard-json", str(shard_path)],
+    )
+    assert result.exit_code == 0, result.output
+    assert canonical_content_hash(shard) in result.output
+
+
+def test_did_preview_rejects_unsupported_schema_version(
+    tmp_home: Path, tmp_path: Path
+) -> None:
+    """A shard file stamped with an unknown schema_version exits non-zero."""
+    data = json.loads(_sample_shard(SimpleAssertionShard).model_dump_json())
+    data["schema_version"] = 99
+    shard_path = tmp_path / "future.json"
+    shard_path.write_text(json.dumps(data), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        did_group,
+        ["preview", "--action", "extract", "--shard-json", str(shard_path)],
+    )
+    assert result.exit_code != 0
+    assert "newer than this code supports" in result.output
