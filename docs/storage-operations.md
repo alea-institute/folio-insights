@@ -11,7 +11,7 @@ A storage root is one directory, chosen by `--corpus-root`, else
 
 | Path | Role |
 |---|---|
-| `journal.sqlite3` (+ `-wal`, `-shm`) | The authoritative journal: every shard revision and governance event of every corpus, append-only, with an `op_id` per operation. |
+| `journal.sqlite3` (+ `-wal`, `-shm`) | The authoritative journal: every shard revision and governance event of every corpus, append-only, with an `op_id` per operation. The same file holds the append-only `proposal_ledger` table (proposed-class governance; see below). |
 | `projection.oxigraph/` | The RDF projection (pyoxigraph/RocksDB). It is derived state: one ABox graph and one governance graph per corpus, a shared TBox graph, and a per-corpus watermark. |
 | `projection.lock` | The cross-process lock that guards the projection. |
 
@@ -282,6 +282,28 @@ hooks.
 - **Full SHACL is still deferred.** `status().full_shacl` stays
   `deferred-to-phase-11` even with hooks installed. A hook is a seam, not
   the Phase 11 exit criterion.
+
+## Proposed-class ledger
+
+`ctx.proposals` (`PersistentProposalLedger`) is the storage seam of the
+proposed-class governance pipeline (`folio_insights.proposals`,
+`scripts/judge_proposals.py`). It is a second append-only table,
+`proposal_ledger`, in `journal.sqlite3`.
+
+- **Same guards as the journal.** Positions are contiguous per corpus, each
+  operation has an explicit `op_id` (a retry returns the committed row, and a
+  reuse for a different request is refused), UPDATE, DELETE and replace are
+  refused by triggers, and the PII gate runs before the write transaction.
+  `expected_head` makes an append conditional on the ledger head.
+- **Schema key.** `storage_meta` records `proposal_ledger_schema_version`
+  (1). A journal written before the ledger existed gains the empty table on
+  its next open. An unknown version is refused.
+- **No source text.** Proposals keep labels, run names, unit IDs and spans,
+  never unit text or excerpts.
+- **Not projected.** Ledger rows never enter the RDF projection, so they do
+  not move its watermark. Snapshots and restores carry them because they copy
+  the whole journal file. TTL dumps and the export formats do not include them
+  yet.
 
 ## rdflib
 

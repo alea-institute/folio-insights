@@ -35,6 +35,7 @@ from folio_insights.storage.errors import (
 )
 from folio_insights.storage.governance import PersistentGovernanceLog
 from folio_insights.storage.pii import DEFAULT_PII_PATTERNS, PiiGate, PiiPattern
+from folio_insights.storage.proposals import PersistentProposalLedger, ProposalLedgerEntry
 from folio_insights.storage.shards import PersistentShardStore
 
 __all__ = [
@@ -47,6 +48,7 @@ __all__ = [
     "JournalStateChanged",
     "OperationIdConflict",
     "PersistentGovernanceLog",
+    "PersistentProposalLedger",
     "PersistentShardStore",
     "PiiGate",
     "PiiPattern",
@@ -54,6 +56,7 @@ __all__ = [
     "ProjectionLockTimeout",
     "ProjectionRecoveryFailed",
     "ProjectionRecoveryPending",
+    "ProposalLedgerEntry",
     "ShardIdentityViolation",
     "ShardRecordInvalid",
     "StorageClosed",
