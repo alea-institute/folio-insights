@@ -440,30 +440,40 @@ class ProjectionHandle:
                 raise UnsupportedStorageSchema("projection replay rows are not contiguous")
 
         store = self._wrapper.store
-        # A subject needs its old quads deleted if the store already has it or
-        # an earlier row of this batch inserts it (a revision in the batch).
-        # A shard row's journal ``subject`` is its shard IRI.
+        # Each shard row replaces ALL of its subject's quads, so within one
+        # batch only the last revision of a subject determines the result:
+        # earlier revisions in the batch are skipped (their positions still
+        # count toward the watermark). Deletes touch only quads that existed
+        # before the batch and run before every insert. Besides being less
+        # work, this never inserts and then deletes the same quad inside one
+        # update, which pyoxigraph 0.5.7's RocksDB backend fails on ("Not able
+        # to find the string ... in the string store").
         abox = corpus_graph(corpus)
+        last_index: dict[str, int] = {}
+        for index, row in enumerate(rows):
+            if row.kind == KIND_SHARD:  # a shard row's journal subject is its IRI
+                last_index[row.subject] = index
+        effective = [
+            row
+            for index, row in enumerate(rows)
+            if row.kind != KIND_SHARD or last_index[row.subject] == index
+        ]
         # An empty ABox graph (a first load) has no subject to probe for.
         abox_empty = next(store.quads_for_pattern(None, None, None, abox), None) is None
-        seen: set[str] = set()
-        replaced: set[str] = set()
-        for row in rows:
-            if row.kind != KIND_SHARD:
-                continue
-            if row.subject in seen or (
-                not abox_empty
-                and next(
-                    store.quads_for_pattern(NamedNode(row.subject), None, None, abox), None
-                )
+        existing = (
+            []
+            if abox_empty
+            else sorted(
+                subject
+                for subject in last_index
+                if next(store.quads_for_pattern(NamedNode(subject), None, None, abox), None)
                 is not None
-            ):
-                replaced.add(row.subject)
-            seen.add(row.subject)
+            )
+        )
 
         last = rows[-1]
         node = corpus_graph(corpus)
-        if not replaced and len(rows) >= BULK_LOAD_MIN_ROWS:
+        if not existing and len(rows) >= BULK_LOAD_MIN_ROWS:
             # Add-only catch-up: non-transactional bulk load, then the watermark
             # (see the module docstring for why the pair is crash-safe).
             from folio_insights.storage._parallel import (
@@ -472,39 +482,33 @@ class ProjectionHandle:
                 render_chunk,
             )
 
-            if len(rows) >= PARALLEL_MIN_ITEMS:
+            if len(effective) >= PARALLEL_MIN_ITEMS:
                 slim = [
                     r if r.original_bytes is None else dataclasses.replace(r, original_bytes=None)
-                    for r in rows
+                    for r in effective
                 ]
                 nquads = b"".join(map_chunks(render_chunk, slim, corpus))
             else:
                 nquads = "".join(
                     f"{s} {p} {o} {graph} .\n"
-                    for graph, _, triples in (row_triples(corpus, r, load=load) for r in rows)
+                    for graph, _, triples in (
+                        row_triples(corpus, r, load=load) for r in effective
+                    )
                     for s, p, o in triples
                 ).encode("utf-8")
             store.bulk_load(nquads, format=RdfFormat.N_QUADS)
             store.update(_watermark_update(node, last.position, last.payload_sha256))
             return last.position
 
-        rendered = [row_triples(corpus, row, load=load) for row in rows]
-        ops: list[str] = []
-        if replaced:
-            # Subjects are replayed in row order, so an in-batch revision is
-            # applied as delete-then-insert per row (never merged).
-            for graph, subject, triples in rendered:
-                if subject is not None and subject in replaced:
-                    ops.append(f"DELETE WHERE {{ GRAPH {graph} {{ <{subject}> ?p ?o }} }}")
-                ops.append(f"INSERT DATA {{ GRAPH {graph} {{ {_triples_block(triples)} }} }}")
-        else:
-            by_graph: dict[str, list[str]] = {}
-            for graph, _, triples in rendered:
-                by_graph.setdefault(str(graph), []).append(_triples_block(triples))
-            ops = [
-                f"INSERT DATA {{ GRAPH {graph} {{ {' '.join(blocks)} }} }}"
-                for graph, blocks in by_graph.items()
-            ]
+        ops = [f"DELETE WHERE {{ GRAPH {abox} {{ <{subject}> ?p ?o }} }}" for subject in existing]
+        by_graph: dict[str, list[str]] = {}
+        for row in effective:
+            graph, _, triples = row_triples(corpus, row, load=load)
+            by_graph.setdefault(str(graph), []).append(_triples_block(triples))
+        ops.extend(
+            f"INSERT DATA {{ GRAPH {graph} {{ {' '.join(blocks)} }} }}"
+            for graph, blocks in by_graph.items()
+        )
         ops.append(_watermark_update(node, last.position, last.payload_sha256))
         store.update(" ;\n".join(ops))
         return last.position

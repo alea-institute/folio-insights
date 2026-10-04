@@ -187,3 +187,27 @@ async def test_tbox_reloads_when_vocab_digest_changes(storage_root: Path) -> Non
         assert len(handle.graph_quads(TBOX_GRAPH)) == len(tbox_quads())
     finally:
         handle.close()
+
+
+async def test_rebuild_with_two_revisions_of_one_shard_in_a_batch(storage_root: Path) -> None:
+    """A batch holding several revisions of one shard applies only the last
+    one, with the same result as applying them one by one. The old per-row
+    INSERT / DELETE WHERE / INSERT sequence inside one update failed on
+    pyoxigraph 0.5.7 (RocksDB: "Not able to find the string ... in the string
+    store") when rebuilding a restored projection; the end-to-end reproducer
+    is ``test_snapshot_restore.py::test_snapshot_restore_matches_original``
+    (``rebuild_projection=True``)."""
+    ctx = await CorpusStorageContext.open(storage_root, "corpus-a")
+    try:
+        await ctx.shards.put(shard(1).shard_iri, shard(1))
+        await ctx.shards.put(shard(1).shard_iri, shard(1, sense="second"))
+        await ctx.shards.put(shard(1).shard_iri, shard(1, sense="third"))
+        live = await ctx.query("SELECT ?p ?o WHERE { ?s ?p ?o }")
+        assert await ctx.rebuild_projection() == 2
+        rebuilt = await ctx.query("SELECT ?p ?o WHERE { ?s ?p ?o }")
+        key = sorted((str(r["p"]), str(r["o"])) for r in live)
+        assert sorted((str(r["p"]), str(r["o"])) for r in rebuilt) == key
+        senses = [r["o"].value for r in rebuilt if r["p"].value == f"{FI}sense"]
+        assert senses == ["third"]
+    finally:
+        await ctx.close()
