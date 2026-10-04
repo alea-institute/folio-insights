@@ -44,10 +44,12 @@ from folio_insights.proposals.decisions import (
     DecisionInvalid,
     validate_decided_by,
     validate_decision,
+    validate_provenance,
 )
 from folio_insights.proposals.dedupe import DeterministicDeduper
 from folio_insights.proposals.judgments import JudgmentInvalid, validate_judgment
 from folio_insights.proposals.lexicon import FolioLexicon
+from folio_insights.storage.errors import JournalStateChanged
 from folio_insights.proposals.registry import (
     DETERMINISTIC,
     KIND_COLLECT,
@@ -199,9 +201,22 @@ class ProposalStore:
         *,
         op_id: str,
         decided_by: str,
+        provenance: Mapping[str, Mapping[str, Any]] | None = None,
+        expected_head: int | None = None,
     ) -> dict[str, Any]:
         """Record explicit review decisions ``{proposal_id, status, note?,
         merge_into?}`` by the human reviewer ``decided_by`` (``human:<name>``).
+
+        ``provenance`` optionally maps proposal IDs of this batch to a small
+        map of scalar fields (``decisions.validate_provenance``) stored on that
+        item, for instance the original row and time of an imported legacy
+        decision. A key that names no decision of the batch refuses it all.
+
+        ``expected_head`` (default ``None``: the head this call loads) makes a new
+        batch conditional on the ledger head the CALLER computed its decisions
+        against, for callers that decide from state they loaded earlier (the
+        legacy import). A different head raises ``JournalStateChanged`` and
+        appends nothing. A replay of a committed op_id is not affected.
 
         Returns ``{recorded, unchanged, position, replayed, results,
         superseded_since}``. ``results`` maps each proposal ID to its ``status``
@@ -218,6 +233,10 @@ class ProposalStore:
             )
         decided_by = validate_decided_by(decided_by)
         registry = await self.load()
+        if expected_head is not None and (
+            isinstance(expected_head, bool) or not isinstance(expected_head, int)
+        ):
+            raise ValueError("expected_head must be a ledger position (an integer)")
         items: list[dict[str, Any]] = []
         seen: set[str] = set()
         for index, raw in enumerate(decisions):
@@ -232,8 +251,21 @@ class ProposalStore:
             items.append(item)
         if not items:
             raise DecisionInvalid("a decision batch must hold at least one decision")
+        if provenance:
+            if not isinstance(provenance, Mapping) or not set(provenance) <= seen:
+                raise DecisionInvalid(
+                    "provenance may only name proposals decided in this batch; nothing was "
+                    "recorded"
+                )
+            for index, item in enumerate(items):
+                if item["proposal_id"] in provenance:
+                    item["provenance"] = validate_provenance(
+                        provenance[item["proposal_id"]], where=f"decision item {index}"
+                    )
         items.sort(key=lambda i: i["proposal_id"])
         committed = {e.op_id for e in await self._ctx.proposals.entries()}
+        if op_id not in committed and expected_head is not None and expected_head != registry.head:
+            raise JournalStateChanged(expected=expected_head, actual=registry.head)
         # Every batch is appended, including one whose decisions all equal the current ones
         # (the fold ignores those items), so a retry under the same op_id always replays.
         # A committed op_id replays (or refuses a different request) before the head check;
@@ -242,7 +274,9 @@ class ProposalStore:
             KIND_DECISION,
             {"decisions": items},
             op_id=op_id,
-            expected_head=None if op_id in committed else registry.head,
+            expected_head=None if op_id in committed else (
+                registry.head if expected_head is None else expected_head
+            ),
         )
         position = entry.position
         entries = await self._ctx.proposals.entries()

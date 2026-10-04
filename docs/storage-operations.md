@@ -308,7 +308,9 @@ proposed-class governance pipeline (`folio_insights.proposals`,
   not move its watermark. TTL dumps and the RDF export formats do not include
   them (see "Approved-only backlog" below for why).
 - **Decisions.** `decision` operations record explicit human review
-  decisions (`scripts/apply_approvals.py apply`). A proposal stays `pending`
+  decisions (`scripts/apply_approvals.py apply`, or the review API; see
+  "One approval surface" below). The ledger is the only store of record for
+  proposal decisions. A proposal stays `pending`
   until one names it; judgments never change it. The whole batch is
   validated first (unknown IDs, invalid statuses and extra keys refuse it
   all), `decided_by` must be a reviewer handle `human:<handle>` (letters,
@@ -359,6 +361,143 @@ It is deliberately separate from `storage export` and `storage dump`:
   whose labels come from pipeline output, must never be committed (R5);
 - snapshots already copy the ledger and verify its per-corpus head, so a
   restore recovers every decision, and the backlog is regenerated from it.
+
+### One approval surface: the review API
+
+The review API records and reads proposed-class decisions in the same ledger
+(`api/services/proposals.py`), so a decision made through it reaches the
+approved-only backlog.
+
+**Access posture: off by default, local-only when on.** The API has no
+authentication. Whoever can reach these routes could record a permanent
+"human" decision under the configured reviewer's handle, or read reviewer
+notes, handles and provenance. So every proposed-class route (both GETs and
+the POST) answers 403 unless all of these hold:
+
+- the operator has set `FOLIO_INSIGHTS_ALLOW_UNAUTHENTICATED_DECISIONS=1`
+  (exactly `1`). This is a separate switch from the reviewer, and setting the
+  reviewer alone does nothing;
+- the client address is loopback (`127.0.0.0/8`, `::1`);
+- the `Host` header names `localhost`, `127.0.0.1` or `::1`, with any port.
+  A DNS-rebinding page in a local browser sends its own host name, so it is
+  refused.
+
+Every other route is unaffected, whatever its Host. `folio-insights serve` and
+`api.main.serve` bind `127.0.0.1` by default. The container images bind
+`0.0.0.0` explicitly (`Dockerfile`, `Dockerfile.web` CMD). Their clients are
+not loopback, so the proposed-class routes stay refused there even with the
+opt-in. Use `scripts/apply_approvals.py` on the host that holds the storage
+root. Proper authentication, with the reviewer taken from the authenticated
+principal, is a follow-up.
+
+- **Write.** `POST /api/v1/proposed-classes/{label}/review?corpus=C` with
+  `{"status": "approved", "note": "..."}`. It also accepts every status the
+  ledger accepts: `approve`/`approved`, `reject`/`rejected`, `needs_work`, and
+  `merge`/`merged` with `merge_into` naming the surviving proposal ID. The
+  label resolves to the corpus's proposal ID through the registry, so case and
+  punctuation variants find the same proposal. It is resolved read-only first,
+  so an unknown label or corpus never opens the storage context. The decision
+  is recorded through `ProposalStore.record_decisions`, with the same
+  validation, the PII gate and the decision history. Every refusal writes
+  nothing:
+
+  | Refusal | Status |
+  |---|---|
+  | Invalid status, malformed corpus ID or `op_id`, or a merge without a valid target | 400 |
+  | No opt-in, a non-local request, or no (or an invalid) reviewer | 403 |
+  | Unknown label (or no ledger yet) | 404 |
+  | `op_id` reused for a different decision, or the ledger moved mid-request | 409 |
+  | A body field outside the model (`decided_by`, for instance) | 422 |
+  | The PII gate matched the note | 422 |
+  | The storage root sits inside the served output directory, or storage cannot open or read | 503 |
+- **Reviewer.** `decided_by` is `human:<handle>` from server configuration:
+  `api.main.configure(reviewer=...)`, else `$FOLIO_INSIGHTS_REVIEWER`.
+  `configure(reviewer=None)` clears it. A bare handle gets the `human:`
+  prefix. The reviewer is never taken from the request. As with the CLI, the
+  handle is self-asserted.
+- **Operation IDs.** The body may carry `op_id`, a client idempotency key
+  (1-100 of letters, digits, `.`, `_`, `:`, `-`), stored as
+  `api:review:key:<op_id>`. A retry with it replays the original result and
+  appends nothing. Without one, the server derives
+  `api:review:auto:<digest>` over the corpus, reviewer, decision and ledger
+  head. A repeat of a current decision is then a no-op batch that keeps the
+  original `decided_at`.
+- **Read.** `GET /api/v1/proposed-classes?corpus=C` lists every proposal with
+  its current decision, and `GET /api/v1/proposed-classes/{label}?corpus=C`
+  returns one. Both fold the ledger through a read-only SQLite connection to
+  `journal.sqlite3` (`storage.proposals.read_ledger_entries_readonly`). They
+  never open a storage context, the RDF projection or `review.db`. SQLite may
+  leave empty `-wal`/`-shm` sidecars next to a WAL-mode journal.
+- **Corpus mapping (conservative).** The ledger corpus is the API corpus ID
+  verbatim. That is the `output/<corpus>/` directory name, and
+  `judge_proposals.py collect --corpus` must use the same name. IDs that are
+  not 1-128 characters of letters, digits, `.`, `_` or `-` are refused.
+  Proposal IDs hash the corpus, so collecting under a different name leaves
+  the API with no proposals (404). It can never decide another corpus's
+  proposal.
+- **Storage root.** `api.main.configure(corpus_root=...)`, else
+  `$FOLIO_INSIGHTS_CORPUS_ROOT`, else `~/.folio-insights/corpora`, the same
+  resolution as the CLI. The API never creates a storage root: with no
+  `journal.sqlite3`, reads return an empty list and writes find no label.
+- **Reset.** `POST /api/v1/review/reset` resets unit review only. Ledger
+  decisions are append-only, and the legacy table is read-only.
+
+### Legacy review.db decisions
+
+Before the ledger, the API upserted proposed-class decisions into the
+`proposed_class_decisions` table of `output/<corpus>/review.db`, keyed by
+label, with no reviewer. That table is now **read-only legacy**:
+
+- **No writers.** No code writes it, nothing drops it, and nothing migrates
+  it on startup.
+- **Unchanged on open.** Opening an existing review.db writes nothing:
+  `SCHEMA_SQL` is unchanged and every statement is `IF NOT EXISTS`. A
+  read-only review.db still opens, and a tracked `review.db` is never
+  rewritten just by being read.
+- **Database-level guard.** Triggers that refuse every INSERT, UPDATE and
+  DELETE on the table (`LEGACY_READ_ONLY_TRIGGERS_SQL`) are installed in only
+  two places:
+  - in a review.db this code creates;
+  - by the explicit `import-legacy --seal`.
+
+Its rows reach the ledger only through an explicit, idempotent import:
+
+```bash
+python scripts/apply_approvals.py import-legacy --corpus C \
+    --review-db output/C/review.db [--legacy-corpus NAME] [--dry-run] [--seal]
+```
+
+- **What it records.** It opens the database read-only. Rows are matched by
+  `corpus_name`, which defaults to `--corpus`. Decisions go in as one batch by
+  `human:legacy-review-db`, with op_id `legacy-review-db:<digest>`.
+- **Latest row per proposal.** Every row of the corpus is first grouped by
+  the proposal its label resolves to, whatever its status. Only the latest row
+  of each proposal (by `reviewed_at`, then row ID) can be imported; the older
+  rows are `superseded_rows`.
+  - If the latest row is `pending`, invalid (another status, a note the
+    ledger refuses, or a `reviewed_at` that cannot be ordered) or PII-refused,
+    the whole proposal is skipped. An older decision that the reviewer later
+    reversed therefore never lands.
+- **Provenance.** Each decision carries `source`, `legacy_row_id`,
+  `legacy_row_digest` and the original `legacy_reviewed_at`. The ledger's
+  `decided_at` is the import's commit time. The approved-only backlog shows
+  the provenance.
+- **Never overrides.** A proposal that already has a ledger decision is left
+  alone (`already_decided`), because the ledger is newer than the legacy
+  table.
+- **Concurrent writers.** The batch is appended only if the ledger is still
+  at the head the rules were evaluated at (`record_decisions(expected_head=...)`).
+  If another writer moved it, the import starts again once from a fresh load.
+  If it moved again, the import aborts with `refused: …` and appends nothing.
+- **Idempotent.** A row already imported is found by its digest
+  (`already_imported`), so a second run appends nothing.
+- **Reports.** Outcomes are reported by legacy row ID, never by label or note:
+  `skipped_pending`, `invalid_rows`, `unresolved_rows` (labels that resolve to
+  no proposal of the corpus), `superseded_rows` and `pii_refused_rows`.
+- **Dry run.** `--dry-run` reports `would_import` and writes nothing, not even
+  the seal.
+- **Seal.** `--seal` installs the read-only triggers after a successful
+  import. It is idempotent and needs a writable review.db.
 
 ## Deploying extraction: the deterministic IRI path
 

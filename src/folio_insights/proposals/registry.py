@@ -30,7 +30,8 @@ Ledger operation kinds folded here:
   decision whose status, note, reviewer and merge target equal the current
   one changes nothing (its original ``decided_at`` stands). A different one
   becomes current and is appended to ``decision_history``; nothing earlier is
-  overwritten. ``decided_at`` is the ledger commit time of the operation. Every
+  overwritten. ``decided_at`` is the ledger commit time of the operation (an
+  imported legacy decision keeps its original time in ``provenance``). Every
   stored item is re-validated (``decisions.decision_row_problem``): an item with
   an unknown status, a non-human ``decided_by`` or a bad merge target decides
   nothing and is listed in ``invalid_decisions``.
@@ -327,6 +328,8 @@ class ProposalRegistry:
                 "ledger_position": entry.position,
                 "op_id": entry.op_id,
             }
+            if "provenance" in item:
+                record["provenance"] = dict(item["provenance"])
             p.decision_history.append(dict(record))
             p.decision = record
 
