@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     output_dir: Path = Path("./output")
     corpus_name: str = "default"
 
+    # Deterministic-IRI integrity (B5). The entity-ruler path is what produces deterministic
+    # concept IRIs. If it cannot load, the tagger would fall back to LLM/semantic IRIs silently.
+    # True (the default) fails the run loudly instead; False runs degraded. Either way the state
+    # is recorded in output metadata (``metadata.folio_tagger``).
+    require_deterministic_iri: bool = True
+
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 
 

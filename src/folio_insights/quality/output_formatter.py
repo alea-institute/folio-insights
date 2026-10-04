@@ -82,6 +82,9 @@ class OutputFormatter:
                 "documents_processed": len(corpus.documents),
                 "folio_concepts_used": len(folio_iris),
                 "dedup_count": metadata.get("dedup_count", 0),
+                # Deterministic-IRI provenance (B5): "degraded" means the entity-ruler path was
+                # unavailable and tags came from the LLM/semantic paths only.
+                "folio_tagger": metadata.get("folio_tagger", {}),
             },
         }
 

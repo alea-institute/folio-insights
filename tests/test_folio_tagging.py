@@ -555,3 +555,245 @@ def test_metadata_harvest_filters_one_word_singletons():
     labels = [t.label for t in prior.active_tags()]
     assert "Fed. R. Evid." in labels
     assert "non" not in labels and "rule" not in labels
+
+
+# ---------- B9: carried IRIs pass the concept-label verifier (governance plan U3) ----------
+#
+# Every label and IRI below is synthetic. The verifier gates IRIs that a non-deterministic path
+# (llm / semantic / heading_context) carried into reconciliation; the entity ruler stays trusted.
+
+_B9_IRI = "https://folio.test/SyntheticQuorumization"
+_B9_OTHER = "https://folio.test/SyntheticLanternIsles"
+
+
+def _b9_concept(iri: str, label: str, *, alts=None, branch: str = "Synthetic Branch"):
+    from unittest.mock import MagicMock
+
+    concept = MagicMock(iri=iri, preferred_label=label, branch=branch)
+    concept.alternative_labels = alts if alts is not None else []
+    return concept
+
+
+def _b9_folio(concepts: dict, search: dict | None = None):
+    from unittest.mock import MagicMock
+
+    search = search or {}
+    svc = MagicMock()
+    svc.get_concept.side_effect = lambda iri: concepts.get(iri)
+    svc.search_by_label.side_effect = lambda text: search.get(text.lower(), [])
+    return svc
+
+
+def _b9_rc(label: str, paths: list[str], iri: str) -> ReconciledConcept:
+    return ReconciledConcept(
+        iri=iri, label=label, confidence=0.7, contributing_paths=paths, branch=""
+    )
+
+
+def _b9_tags(reconciled, svc):
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    return [(t.iri, t.extraction_path) for t in FolioTaggerStage()._reconciled_to_tags(reconciled, svc)]
+
+
+@pytest.mark.parametrize("path", ["llm", "semantic", "heading_context"])
+def test_b9_unrelated_carried_iri_is_dropped_on_every_non_ruler_path(path):
+    svc = _b9_folio({_B9_OTHER: _b9_concept(_B9_OTHER, "Synthetic Lantern Isles")})
+    assert _b9_tags([_b9_rc("lantern", [path], _B9_OTHER)], svc) == [("", "proposed_class")]
+
+
+def test_b9_rejected_iri_is_re_resolved_through_label_resolver():
+    right = _b9_concept(_B9_IRI, "Synthetic Quorumization")
+    svc = _b9_folio(
+        {_B9_OTHER: _b9_concept(_B9_OTHER, "Synthetic Lantern Isles"), _B9_IRI: right},
+        search={"synthetic quorumization": [(right, 100.0)]},
+    )
+    assert _b9_tags([_b9_rc("Synthetic Quorumization", ["llm"], _B9_OTHER)], svc) == [
+        (_B9_IRI, "llm")
+    ]
+
+
+def test_b9_matching_carried_iri_is_kept_including_order_case_and_alt_labels():
+    svc = _b9_folio({
+        _B9_IRI: _b9_concept(_B9_IRI, "Synthetic Quorumization", alts=["Zephyr Assembly Rule"]),
+    })
+    assert _b9_tags([_b9_rc("quorumization synthetic", ["llm"], _B9_IRI)], svc) == [(_B9_IRI, "llm")]
+    assert _b9_tags([_b9_rc("zephyr assembly rule", ["semantic"], _B9_IRI)], svc) == [
+        (_B9_IRI, "semantic")
+    ]
+
+
+def test_b9_partial_match_rescues_inflection_but_not_containment():
+    svc = _b9_folio({
+        _B9_IRI: _b9_concept(_B9_IRI, "Quorumization"),
+        _B9_OTHER: _b9_concept(_B9_OTHER, "Northern Synthetic Lantern Isles"),
+    })
+    # Comparable lengths: an inflection variant of one stem passes.
+    assert _b9_tags([_b9_rc("quorumize", ["llm"], _B9_IRI)], svc) == [(_B9_IRI, "llm")]
+    # A word inside a much longer, unrelated name does not.
+    assert _b9_tags([_b9_rc("lantern", ["llm"], _B9_OTHER)], svc) == [("", "proposed_class")]
+
+
+def test_b9_entity_ruler_iri_is_trusted_even_when_ruler_and_llm_agree():
+    svc = _b9_folio({_B9_IRI: _b9_concept(_B9_IRI, "Synthetic Quorumization")})
+    # The ruler matched an alias surface that is not among the mocked concept's labels.
+    assert _b9_tags([_b9_rc("zq-rule", ["entity_ruler"], _B9_IRI)], svc) == [
+        (_B9_IRI, "entity_ruler")
+    ]
+    assert _b9_tags([_b9_rc("zq-rule", ["llm", "entity_ruler"], _B9_IRI)], svc) == [
+        (_B9_IRI, "llm")
+    ]
+
+
+def test_b9_a_check_that_cannot_run_never_green_lights_an_iri():
+    from unittest.mock import MagicMock
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    failing = MagicMock()
+    failing.get_concept.side_effect = RuntimeError("synthetic lookup failure")
+    failing.search_by_label.return_value = []
+    assert _b9_tags([_b9_rc("Synthetic Quorumization", ["llm"], _B9_IRI)], failing) == [
+        ("", "proposed_class")
+    ]
+    unknown = _b9_folio({})
+    assert _b9_tags([_b9_rc("Synthetic Quorumization", ["llm"], _B9_IRI)], unknown) == [
+        ("", "proposed_class")
+    ]
+    tags = FolioTaggerStage()._reconciled_to_tags(
+        [_b9_rc("Synthetic Quorumization", ["llm"], _B9_IRI)], None
+    )
+    assert [(t.iri, t.extraction_path) for t in tags] == [("", "proposed_class")]
+
+
+def test_b9_non_string_concept_attributes_are_ignored():
+    """Duck-typed concepts (MagicMock attributes, None) never count as labels."""
+    from unittest.mock import MagicMock
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    concept = MagicMock()  # every attribute is a MagicMock, none is a str
+    assert FolioTaggerStage._label_matches_concept("anything", concept) is False
+    assert FolioTaggerStage._label_matches_concept("", _b9_concept(_B9_IRI, "x")) is False
+
+
+# ---------- B5: the deterministic IRI path fails loud, or reports degraded ----------
+
+
+def _with_require(monkeypatch, value: bool) -> None:
+    from folio_insights.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setenv("FOLIO_INSIGHTS_REQUIRE_DETERMINISTIC_IRI", "true" if value else "false")
+
+
+@pytest.fixture
+def _reset_settings():
+    from folio_insights.config import get_settings
+
+    yield
+    get_settings.cache_clear()
+
+
+def test_b5_missing_folio_service_raises_by_default(monkeypatch, _reset_settings):
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    _with_require(monkeypatch, True)
+    with pytest.raises(RuntimeError, match="FolioService unavailable"):
+        FolioTaggerStage()._get_entity_ruler(None)
+    empty = MagicMock()
+    empty.get_all_labels.return_value = {}
+    with pytest.raises(RuntimeError, match="no labels"):
+        FolioTaggerStage()._get_entity_ruler(empty)
+
+
+def test_b5_degraded_mode_is_explicit_and_reported(monkeypatch, _reset_settings):
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+
+    _with_require(monkeypatch, False)
+    ruler, status, reason = FolioTaggerStage()._get_entity_ruler(None)
+    assert ruler is None and status == "degraded" and "FolioService unavailable" in reason
+
+
+def test_b5_active_ruler_is_the_pinned_folio_resolve_ruler(monkeypatch, _reset_settings):
+    from folio_resolve import FOLIOEntityRuler
+
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+    from folio_insights.services.bridge.folio_bridge import (
+        BridgeIntegrityError,
+        get_aho_corasick_matcher,
+        get_entity_ruler,
+        verify_deterministic_bridge,
+    )
+
+    _with_require(monkeypatch, True)
+    assert get_entity_ruler() is FOLIOEntityRuler is get_aho_corasick_matcher()
+    assert verify_deterministic_bridge() is FOLIOEntityRuler
+    assert issubclass(BridgeIntegrityError, RuntimeError)
+
+    loaded = {}
+
+    class _Ruler:
+        def load_patterns(self, labels):
+            loaded["labels"] = labels
+
+    monkeypatch.setattr(
+        "folio_insights.services.bridge.folio_bridge.get_entity_ruler", lambda: _Ruler
+    )
+    svc = MagicMock()
+    svc.get_all_labels.return_value = {"synthetic quorumization": object()}
+    ruler, status, reason = FolioTaggerStage()._get_entity_ruler(svc)
+    assert isinstance(ruler, _Ruler) and status == "active" and reason == ""
+    assert loaded["labels"] == svc.get_all_labels.return_value
+
+
+def test_b5_missing_ruler_symbol_raises_bridge_integrity_error(monkeypatch):
+    import builtins
+
+    from folio_insights.services.bridge.folio_bridge import BridgeIntegrityError, get_entity_ruler
+
+    real_import = builtins.__import__
+
+    def _no_ruler(name, *args, **kwargs):
+        if name == "folio_resolve" and args and args[2] and "FOLIOEntityRuler" in args[2]:
+            raise ImportError("synthetic: symbol missing")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _no_ruler)
+    with pytest.raises(BridgeIntegrityError, match="deterministic FOLIO entity ruler"):
+        get_entity_ruler()
+
+
+@pytest.mark.asyncio
+async def test_b5_execute_records_degraded_state_and_verification_counts(monkeypatch, _reset_settings):
+    from folio_insights.models.corpus import CorpusManifest
+    from folio_insights.pipeline.stages.folio_tagger import FolioTaggerStage
+    from folio_insights.quality.output_formatter import OutputFormatter
+
+    _with_require(monkeypatch, False)
+    stage = FolioTaggerStage()
+    monkeypatch.setattr(stage, "_get_folio_service", lambda: None)
+    monkeypatch.setattr(stage, "_get_embedding_service", lambda: None)
+
+    async def _no_llm(text, section):  # noqa: ARG001
+        return [{"iri": _B9_IRI, "label": "synthetic lantern", "concept_text": "synthetic lantern",
+                 "confidence": 0.6, "branch": ""}]
+
+    monkeypatch.setattr(stage, "_run_llm_concept", _no_llm)
+    unit = KnowledgeUnit(
+        text="A synthetic sentence about a synthetic lantern rule for the tests.",
+        original_span=Span(start=0, end=10, source_file="synthetic.md"),
+        unit_type=KnowledgeType.ADVICE,
+        source_file="synthetic.md",
+        source_section=["Synthetic Part", "Synthetic Section"],
+    )
+    job = InsightsJob(corpus_name="synthetic", source_dir=Path("/nonexistent"), units=[unit])
+    job = await stage.execute(job)
+    meta = job.metadata["folio_tagger"]
+    assert meta["deterministic_iri_path"] == "degraded"
+    assert meta["carried_iris_rejected"] == 1
+    assert [(t.iri, t.extraction_path) for t in unit.folio_tags] == [("", "proposed_class")]
+    assert meta["entity_ruler_tags"] == 0
+    manifest = CorpusManifest(name="synthetic", created_at="t0", updated_at="t0")
+    summary = OutputFormatter().format_units_json(job.units, manifest, job.metadata)["summary"]
+    assert summary["folio_tagger"]["deterministic_iri_path"] == "degraded"

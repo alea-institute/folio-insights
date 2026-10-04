@@ -5,7 +5,8 @@ These tests pin what ``origin/master`` (folio-resolve 0.4.0) does today, BEFORE 
 logic from the historical governance branch is re-authored:
 
 * which reconciled concepts become matched tags (non-empty IRI) and which become
-  ``proposed_class`` tags (``iri == ''``);
+  ``proposed_class`` tags (``iri == ''``), including (since U3, B9) that an IRI a
+  non-deterministic path carried must pass the concept-label verifier;
 * the shape of ``proposed_classes.json``, which is the registry's input;
 * discovery's FOLIO-mapping vote, including the rule that empty-IRI proposed tags
   never vote.
@@ -120,15 +121,25 @@ def test_mixed_batch_partitions_into_matched_and_proposed():
     assert all(t.iri == "" for t in tags if t.extraction_path == "proposed_class")
 
 
-def test_llm_carried_iri_is_currently_trusted_characterization():
-    """Characterization: on master an IRI the LLM path carried is kept as-is,
-    without a concept-label check. The historical B9 fix gates it through a
-    verifier; U3 transfers that deliberately and must update this test."""
+def test_llm_carried_iri_must_pass_the_concept_label_verifier():
+    """Deliberate U3 change (B9). U1 pinned master's behaviour here as
+    ``test_llm_carried_iri_is_currently_trusted_characterization``: an IRI the
+    LLM path carried was kept without any concept-label check. U3 gates it
+    through the verifier: the concept's own labels must correspond to the tag
+    label, else the IRI is dropped, the label is re-resolved through
+    ``LabelResolver`` and, with no resolution, becomes a proposed class."""
     svc = _folio(concepts={IRI_A: _concept(IRI_A, "Synthetic Doctrine A")})
     tags = FolioTaggerStage()._reconciled_to_tags(
         [_rc("an unrelated synthetic phrase", ["llm"], iri=IRI_A)], svc
     )
-    assert [(t.iri, t.extraction_path) for t in tags] == [(IRI_A, "llm")]
+    assert [(t.iri, t.extraction_path, t.label) for t in tags] == [
+        ("", "proposed_class", "an unrelated synthetic phrase")
+    ]
+    # A carried IRI whose concept IS about the label is kept.
+    kept = FolioTaggerStage()._reconciled_to_tags(
+        [_rc("synthetic doctrine a", ["llm"], iri=IRI_A)], svc
+    )
+    assert [(t.iri, t.extraction_path) for t in kept] == [(IRI_A, "llm")]
 
 
 # ---------- proposed_classes.json: the registry's input ----------

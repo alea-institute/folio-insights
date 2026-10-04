@@ -330,7 +330,8 @@ def test_entity_ruler_uses_pinned_folio_resolve_ruler() -> None:
     folio_service = MagicMock()
     folio_service.get_all_labels.return_value = labels
 
-    ruler = stage._get_aho_matcher(folio_service)
+    ruler, status, _reason = stage._get_entity_ruler(folio_service)
+    assert status == "active"
     assert isinstance(ruler, FOLIOEntityRuler)
     # The ruler actually finds the loaded label and emits its IRI as entity_id.
     matches = ruler.find_matches("The Cross-Examination began.")
@@ -361,7 +362,8 @@ def test_entity_ruler_duck_types_folio_enrich_labelinfo() -> None:
     folio_service = MagicMock()
     folio_service.get_all_labels.return_value = labels
 
-    ruler = stage._get_aho_matcher(folio_service)
+    ruler, status, _reason = stage._get_entity_ruler(folio_service)
+    assert status == "active"
     matches = ruler.find_matches("Prepare for the Deposition.")
     assert any(getattr(m, "entity_id", "") == "R-depo" for m in matches)
 
