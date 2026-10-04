@@ -18,6 +18,13 @@ An input decision is ``{proposal_id, status, note?, merge_into?}``:
 
 Any other key is refused. ``decided_by`` must name a human reviewer
 (``human:<name>``). Errors name the item index and the rule, never a value.
+
+A stored item may also carry ``provenance``: a small map of short scalar
+fields recording where the decision came from (for instance, the original
+row and timestamp of a decision imported from the legacy ``review.db``
+table). It is set by ``ProposalStore.record_decisions(provenance=...)``,
+never by an input decision, and it is not part of the decision's identity
+(``decision_core``).
 """
 from __future__ import annotations
 
@@ -45,6 +52,9 @@ DECISION_INPUT_KEYS = frozenset({"proposal_id", "status", "note", "merge_into"})
 DECISION_CORE_KEYS = ("status", "note", "decided_by", "merge_into")
 MAX_NOTE_CHARS = 500
 MAX_DECIDED_BY_CHARS = 100
+MAX_PROVENANCE_KEYS = 8
+MAX_PROVENANCE_VALUE_CHARS = 200
+_PROVENANCE_KEY = re.compile(r"[a-z][a-z0-9_]{0,63}")
 # A reviewer handle: "human:" and 1-64 of [A-Za-z0-9._-], starting with a letter or digit. No
 # e-mail addresses, DIDs, markup or invisible characters. The handle is self-asserted: nothing
 # here proves a human made the decision (see docs/storage-operations.md).
@@ -67,6 +77,34 @@ def validate_decided_by(decided_by: Any) -> str:
             "decision"
         )
     return decided_by
+
+
+def validate_provenance(value: Any, *, where: str) -> dict[str, Any]:
+    """The canonical form of one decision's ``provenance``, or ``DecisionInvalid``.
+
+    At most ``MAX_PROVENANCE_KEYS`` snake_case keys; each value is ``None``, a
+    bool, an int or a string of at most ``MAX_PROVENANCE_VALUE_CHARS``
+    characters. Errors name the rule, never a value."""
+    problem = provenance_problem(value)
+    if problem is not None:
+        raise DecisionInvalid(f"{where}: provenance {problem}")
+    return {k: value[k] for k in sorted(value)}
+
+
+def provenance_problem(value: Any) -> str | None:
+    if not isinstance(value, Mapping) or not value or len(value) > MAX_PROVENANCE_KEYS:
+        return f"must be an object of 1 to {MAX_PROVENANCE_KEYS} fields"
+    for key, item in value.items():
+        if not isinstance(key, str) or not _PROVENANCE_KEY.fullmatch(key):
+            return "keys must be short snake_case names"
+        if item is None or isinstance(item, (bool, int)):
+            continue
+        if not isinstance(item, str) or len(item) > MAX_PROVENANCE_VALUE_CHARS:
+            return (
+                "values must be null, a boolean, an integer or a string of at most "
+                f"{MAX_PROVENANCE_VALUE_CHARS} characters"
+            )
+    return None
 
 
 def validate_decision(
@@ -150,8 +188,10 @@ __all__ = [
     "DecisionInvalid",
     "decision_core",
     "decision_row_problem",
+    "provenance_problem",
     "validate_decided_by",
     "validate_decision",
+    "validate_provenance",
 ]
 
 
@@ -178,4 +218,6 @@ def decision_row_problem(item: Any, proposals: Mapping[str, Any]) -> str | None:
             return "merge without a valid merge_into"
     elif merge_into is not None:
         return "merge_into without status merged"
+    if "provenance" in item and provenance_problem(item["provenance"]) is not None:
+        return "provenance is not a small map of scalar fields"
     return None
