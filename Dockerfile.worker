@@ -39,6 +39,12 @@ FROM ${UV_IMAGE} AS uv
 # ClassNotFoundException at reasoning time (Assumption A4 — Plan 07 follow-up).
 # -------------------------------------------------------------------------
 FROM ${TEMURIN_IMAGE} AS jre-builder
+# Gate 5: the ARG puts SOURCE_DATE_EPOCH in this stage's cache key. Without it a
+# jlink layer cached under an EARLIER commit was reused; its file mtimes predate
+# the current epoch, rewrite-timestamp only clamps newer times, so a warm build
+# and a cold --no-cache build of the same commit produced different digests.
+ARG SOURCE_DATE_EPOCH
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 RUN "$JAVA_HOME/bin/jlink" \
         --add-modules java.base,java.logging,java.xml,java.naming,java.sql,jdk.crypto.ec \
         --strip-debug \

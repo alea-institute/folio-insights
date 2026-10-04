@@ -27,6 +27,8 @@ execution: code
 | D6 | Worker runtime runs `apk add libgcc libstdc++ sqlite-libs` unpinned | Yes | Remove the step. pyoxigraph vendors libgcc_s and libstdc++. The JRE links neither. sqlite-libs ships in the base image. |
 | D7 | Web builder `build-essential` | No compile happens under `--only-binary :all:` | Remove it. |
 | D8 | Web builder apt `git` | No. It only checks out a commit-pinned tree. | Leave it unpinned and document why. |
+| D9 | Build context taken from the working tree | Yes. COPY carries mtimes and modes, and rewrite-timestamp only clamps times newer than the epoch. The cold rebuild exposed this: directory mtimes moved when Python wrote `__pycache__`. | `ci/build.py` exports `git archive HEAD` of the COPY'd paths, so every mtime is the commit time and modes are 0644/0755. |
+| D10 | The `jre-builder` stage has no `SOURCE_DATE_EPOCH` ARG | Yes. A jlink layer cached under an earlier commit kept its older mtimes, so the warm worker digest differed from the cold one. | Add `ARG`/`ENV SOURCE_DATE_EPOCH` to the stage. A test requires the ARG in every stage that has a RUN. |
 
 ## Implementation Units
 

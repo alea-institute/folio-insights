@@ -152,3 +152,14 @@ def test_env_example_mirrors_dockerfile_digests() -> None:
     digests = re.findall(r"^\w+_DIGEST=(sha256:[0-9a-f]{64})$", _read(".env.docker.example"), re.M)
     pinned = {ref.split("@", 1)[1] for df in GATE5_DOCKERFILES for ref in _image_args(df).values()}
     assert set(digests) == pinned
+
+
+@pytest.mark.parametrize("dockerfile", GATE5_DOCKERFILES)
+def test_every_run_stage_keys_its_cache_on_source_date_epoch(dockerfile: str) -> None:
+    """A stage with RUN but no SOURCE_DATE_EPOCH ARG reuses layers cached under an
+    earlier commit, whose mtimes predate the epoch and escape rewrite-timestamp."""
+    stages = re.split(r"^FROM ", _read(dockerfile), flags=re.M)[1:]
+    for stage in stages:
+        name = stage.split("\n", 1)[0]
+        if re.search(r"^RUN ", stage, re.M):
+            assert re.search(r"^ARG SOURCE_DATE_EPOCH", stage, re.M), f"{dockerfile}: {name}"

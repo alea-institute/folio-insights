@@ -23,7 +23,11 @@ Gate 5 discipline (10 techniques):
   6. ``--no-install-recommends``       — Dockerfiles already set
   7. ``PYTHONDONTWRITEBYTECODE=1``     — Dockerfiles already set
   8. Ordered explicit COPY             — Dockerfiles already follow
-  9. ``.dockerignore`` excludes        — image context; ``BUILD_CTX_EXCLUDE`` for Dagger lint/test
+  9. Normalized context               — images build from ``git archive HEAD`` of the COPY'd
+                                         paths (``export_build_context``): every mtime is
+                                         the commit time, modes are 0644/0755; then
+                                         ``.dockerignore`` applies. ``BUILD_CTX_EXCLUDE``
+                                         filters the Dagger lint/test context
  10. No attestations                   — provenance stamps build times, so it is disabled
 
 Reproducible over time, not just back to back. Gate 5's two builds run minutes
@@ -47,6 +51,11 @@ keeps it that way:
     fails the build loudly; refresh with the script, then re-run Gate 5.
   * Web builder apt ``git`` stays unpinned: it only checks out the pinned commit
     and never reaches the image.
+  * File metadata — ``rewrite-timestamp`` clamps only times NEWER than
+    SOURCE_DATE_EPOCH. Older ones passed straight through: working-tree files a
+    checkout did not touch (hence the normalized context above), and layers
+    cached under an earlier commit by a stage whose cache key lacked the epoch
+    (hence every stage with a RUN declares ``ARG SOURCE_DATE_EPOCH``).
 
 Refresh any pin by regenerating its lock with the named tool, then rebuild and
 re-run Gate 5 (``GATE5_REQUIRED=1 python -m pytest -m gate5
@@ -61,8 +70,10 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 
@@ -156,12 +167,80 @@ def assert_bundled_corpora_tracked(repo_root: Path = REPO_ROOT) -> None:
         )
 
 
+IMAGE_DOCKERFILES = ("Dockerfile.web", "Dockerfile.worker")
+
+# ``COPY [--flags] <src>... <dest>`` from the build context (no ``--from=``).
+_COPY_RE = re.compile(r"^COPY\s+(?P<args>.+)$")
+
+
+def context_paths(
+    repo_root: Path = REPO_ROOT, dockerfiles: tuple[str, ...] = IMAGE_DOCKERFILES,
+) -> list[str]:
+    """Every context path the Dockerfiles COPY, plus the Dockerfiles and .dockerignore."""
+    paths = {".dockerignore", *dockerfiles}
+    for name in dockerfiles:
+        text = (repo_root / name).read_text(encoding="utf-8").replace("\\\n", " ")
+        for line in text.splitlines():
+            match = _COPY_RE.match(line.strip())
+            if not match:
+                continue
+            words = match.group("args").split()
+            if any(w.startswith("--from=") for w in words):
+                continue
+            sources = [w for w in words if not w.startswith("--")][:-1]
+            paths.update(src.rstrip("/") or "." for src in sources)
+    return sorted(paths)
+
+
+def export_build_context(
+    dest: Path,
+    repo_root: Path = REPO_ROOT,
+    dockerfiles: tuple[str, ...] = IMAGE_DOCKERFILES,
+) -> None:
+    """Write HEAD's tracked files that the images COPY into ``dest``, normalized.
+
+    The build context used to be the working tree, and COPY carries each file's
+    mtime and mode into the image. BuildKit's ``rewrite-timestamp`` only clamps
+    times NEWER than SOURCE_DATE_EPOCH, so a file older than the HEAD commit
+    (one a checkout did not touch, or a directory whose mtime moved when Python
+    wrote ``__pycache__``) kept its own time, and the mode followed the local
+    umask. Two checkouts of one commit then built different digests.
+
+    ``git archive`` of HEAD stamps every entry with the commit time — exactly
+    SOURCE_DATE_EPOCH — and ``tar.umask=0022`` fixes modes to 0644/0755 (only
+    git's executable bit survives). The context is therefore a pure function of
+    the commit. Uncommitted changes are NOT built; a warning names them.
+    """
+    paths = context_paths(repo_root, dockerfiles)
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "--", *paths],
+        cwd=repo_root, capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    if dirty:
+        print(
+            "WARNING: building HEAD; these uncommitted changes are NOT in the image:\n"
+            + dirty, file=sys.stderr,
+        )
+    archive = subprocess.Popen(
+        ["git", "-c", "tar.umask=0022", "archive", "--format=tar", "HEAD", "--", *paths],
+        cwd=repo_root, stdout=subprocess.PIPE,
+    )
+    assert archive.stdout is not None
+    with tarfile.open(fileobj=archive.stdout, mode="r|") as tar:
+        # "tar", not "data": the data filter drops directory modes, so
+        # directories would follow the local umask again.
+        tar.extractall(dest, filter="tar")
+    if archive.wait() != 0:
+        raise SystemExit(f"git archive failed (exit {archive.returncode})")
+
+
 async def _build_image(
     *,
     dockerfile: str,
     tag: str,
     sde: str,
     metadata_dir: Path,
+    context_dir: Path,
 ) -> tuple[str, str]:
     """Build an image with BuildKit's native reproducible export and publish it.
 
@@ -190,11 +269,11 @@ async def _build_image(
         "--sbom=false",
         "--output", f"type=registry,name={tag},rewrite-timestamp=true",
         "--metadata-file", str(metadata_file),
-        str(REPO_ROOT),
+        str(context_dir),
     ]
     proc = await asyncio.create_subprocess_exec(
         *cmd,
-        cwd=REPO_ROOT,
+        cwd=context_dir,
         env={**os.environ, "SOURCE_DATE_EPOCH": sde},
         stdout=sys.stderr,
         stderr=sys.stderr,
@@ -263,8 +342,12 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
     _load_digests()  # Fail-fast if .env.docker(.example) absent
     tag_suffix = args.tag or sde
 
-    with tempfile.TemporaryDirectory(prefix="fi-ci-build-") as metadata_root:
-        metadata_dir = Path(metadata_root)
+    with tempfile.TemporaryDirectory(prefix="fi-ci-build-") as work_root:
+        metadata_dir = Path(work_root) / "metadata"
+        context_dir = Path(work_root) / "context"
+        metadata_dir.mkdir()
+        context_dir.mkdir()
+        export_build_context(context_dir)
         async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
             # Parallelizable stages: both image builds (BuildKit) and lint (Dagger)
             web_task = _build_image(
@@ -272,12 +355,14 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
                 tag=f"ttl.sh/fi-web:{tag_suffix}",
                 sde=sde,
                 metadata_dir=metadata_dir,
+                context_dir=context_dir,
             )
             worker_task = _build_image(
                 dockerfile="Dockerfile.worker",
                 tag=f"ttl.sh/fi-worker:{tag_suffix}",
                 sde=sde,
                 metadata_dir=metadata_dir,
+                context_dir=context_dir,
             )
             # Keep lint optional on --no-lint; test always runs.
             tasks = [web_task, worker_task]
