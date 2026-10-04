@@ -136,3 +136,13 @@ Use a disposable corpus root and generated test signing identities; never read o
 ## Definition of Done
 
 U1–U4 satisfy their scenarios, every journal/projection restart is coherent, and `retract --apply` works across processes without private-store access. Document the Phase 11 exception explicitly. No book-derived fixtures or abandoned implementations remain. Before any live conversion, the orchestrator verifies a readable snapshot and rehearses restore; rollback restores that snapshot into a new destination with the matching code version, never mixes schemas or overwrites the only data copy.
+
+## Execution Evidence
+
+### U1 (2026-10-03)
+
+- Tests: `tests/shards/test_storage_prerequisites.py` pins golden canonical hashes and record-byte digests for all five subtypes, simulated journal round trips for legacy (v1) and current (v2) records, explicit-null and identity survival over repeated cycles, original-signature verification after store and reload, and unsupported-version refusal. `tests/revision/test_storage_prereq_signatures.py` shows a content revision fails the original signature while `get_shard_at` history still verifies it.
+- Gate 1: `tests/bench/test_gate1_rdf12.py` 32 passed.
+- Gate 2 fixture: `fixtures/bench.nq` (gitignored) regenerated from `folio-insights bench gen --seed 42 --target 1000000` (profile `phase-0-gate`; 1,000,000 synthetic quads; sha256 `842066a0c44af9cc5f0f9d4beeff31e9805c43885313cc91e0cfdbf53b7c7837`).
+- Gate 2 warm P95 (20 measured rounds, 3 warmup; nearest-rank P95 is the slowest round): all 13 gold queries pass the 500 ms target. Slowest: q13 111.1 ms, q07 37.9 ms, q11 22.6 ms, q09 16.7 ms, q05 4.0 ms; the other eight are under 1 ms.
+- Hardware: Intel Core 7 240H (16 logical CPUs, 5.2 GHz max), 61 GiB RAM, Linux 7.0.0-38-generic, Python 3.12.12, pyoxigraph 0.5.7 in-memory store, pytest-benchmark 5.2.3.
