@@ -13,6 +13,13 @@ from folio_insights.shards.iri_registry import (
     ShardIRIRegistry,
 )
 from folio_insights.shards.minting import mint_shard_iri
+from folio_insights.shards.records import (
+    LoadedShardRecord,
+    MalformedEnvelopeRecord,
+    UnsupportedEnvelopeVersion,
+    dump_shard_record,
+    load_shard_record,
+)
 from folio_insights.shards.subtypes import (
     DISPUTED_EPISTEMIC_STATUS_SUBSET,
     AuthorityPosition,
@@ -38,6 +45,11 @@ __all__ = [
     "ContentEdit",
     "DISPUTED_EPISTEMIC_STATUS_SUBSET",
     "DisputedPropositionShard",
+    "dump_shard_record",
+    "load_shard_record",
+    "LoadedShardRecord",
+    "MalformedEnvelopeRecord",
+    "UnsupportedEnvelopeVersion",
     "GenerationMethod",
     "GlossKind",
     "GlossShard",
