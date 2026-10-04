@@ -1,4 +1,4 @@
-# Handoff — /source security fix, book scrub, v2.0 GSD→CE migration (2026-09-27; refreshed 2026-10-04)
+# Handoff — /source security fix, book scrub, v2.0 GSD→CE migration (2026-09-27; refreshed 2026-10-04, late)
 
 ## Done (verified 2026-10-03)
 - PR #2 merged on 2026-09-30: `/api/v1/source` confined to the output dir, the `test1` corpus untracked, build guard against untracked corpus files, Gate 5 runnable, Railway config removed, GSD v2.0 archived.
@@ -7,13 +7,31 @@
 - The v2.0 candidate gates moved into the 2026-09-30 backlog-review decision sheet.
 
 ## Still open
-1. **GitHub Support purge (Damien sends).** The history scrub is done, but GitHub-owned `refs/pull/1`–`refs/pull/9` still reach the old book commits. Only GitHub Support can remove them.
-2. **Proposed-class governance pipeline is next.** Damien answered "Yes, after Phase 13" on 2026-09-30, and there is a plan at `docs/plans/2026-09-30-0914-feat-proposed-class-governance-plan.md`. Plan R7 says governance starts after storage "passes its exit criteria". Phase 13 met every criterion that synthetic data can reach. CORPUS-04 (the three real benchmark corpora plus SHACL) waits on Phase 11 and the real corpora.
-3. **Phase 13 follow-ups:**
-   - PII patterns miss unformatted 9- and 10-digit numbers.
-   - The nightly dump has an entry point but no scheduler.
-   - Full SHACL is deferred to Phase 11.
-   - U17 left two open questions: restructuring the subtypes, and span offsets.
+1. **GitHub Support purge (Damien sends).** GitHub-owned `refs/pull/1`–`refs/pull/9` still reach the pre-scrub book commits.
+2. **v2.0 phase gates (Damien decides).** These are on Decision Sheet `folio-insights-2026-10-04-1531-v2-next-phases`. Each recommendation below is agent-proposed, not yet answered:
+   - **Phase 11 SHACL:** build it next.
+   - **Phases 12 and 13.5:** build them after Phase 11.
+   - **Phases 9 and 10:** plan only.
+   - **Review UI (14/15):** re-scope it with mockups.
+3. **Agent-doable follow-ups:**
+   - **Cold rebuild timestamp:** a cold `--no-cache` worker rebuild can differ from Gate 5 by an `app/src/` directory timestamp when both images build in parallel (it reproduces on master).
+   - **Web runtime stage:** it lacks the epoch-keyed `RUN` ordering (tracked by a strict xfail).
+   - **Dagger `_test` container:** it lacks `uv`, `git` and folio-enrich.
+   - **PII patterns:** they miss unseparated 10-digit numbers.
+   - **Signed decisions:** `decided_by` is self-asserted.
+   - **API authentication:** the proposed-class routes are opt-in, loopback-only for now.
+   - **U17 open questions:** subtype restructuring and span offsets.
+   - **CORPUS-04:** needs Phase 11 and the real corpora.
+
+## Closed 2026-10-04 (later)
+- **Governance pipeline:**
+  - **U1+U2:** PR #15.
+  - **U3+U4:** PR #16. It adds decisions, the approved-only export, B4–B9 and the exclusion scanner (`scripts/check_exclusions.py`, with an optional `--book` shingle gate).
+- **Single approval surface:** PR #17. Proposed-class decisions go through the proposal ledger, and legacy review.db is imported only by an explicit `import-legacy`.
+- **Long-term reproducible images:** PR #18. Every image input is pinned (uv digest, hashed locks, apk closure, build backends), and builds use a normalized HEAD context.
+- **HermiT in the worker JRE:** PR #19, which also refreshes `requirements.dev.lock` and fixes the worker stage ordering.
+- **Review status:** each PR passed an independent adversarial review with every finding fixed. The fast suite stands at 1620 passed.
+- **Process lesson:** a worker ran a box-wide `docker image prune`. Worker briefs now forbid broad Docker cleanup.
 
 ## Closed 2026-10-04
 - **History scrub:** executed on Damien's go. The two `archive/*` branches were deleted, and `filter-repo` removed `output/test1/sources/` and `staging/ta_ch01*` from every branch and tag. All were force-pushed after a fresh verified mirror backup.
