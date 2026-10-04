@@ -165,9 +165,68 @@ U1–U4 satisfy their scenarios, every journal/projection restart is coherent, a
 - Tests: `tests/governance/test_cli_persistent_retract.py` (13; subprocess CLI per step: init and roles across processes, cascade after restart, stale after dependent edit / unrelated edit / role revocation, commit once + replay, three racing applies, missing target at preview and apply, mismatched preview, unauthorized apply, typed-seam builder) and `tests/storage/test_guarded_append.py` (5). `tests/conftest.py` points the CLI corpus root at a per-test temp directory.
 - Results: `pytest tests/storage tests/revision tests/governance tests/shards tests/corpus` 571 passed, three consecutive runs; full suite (`-m "not gate5 and not slow" --benchmark-skip`) 1213 passed, 34 skipped (all `tests/bench`: missing gitignored `fixtures/bench.nq` plus `--benchmark-skip`), 17 deselected.
 
+### U4 (2026-10-03)
+
+Operator guide: [`docs/storage-operations.md`](../storage-operations.md).
+
+- **Export formats** (`storage/exports.py`): all eight are serialized and parsed with pyoxigraph.
+  - **Per-format capability:** each format declares how it handles named graphs and whether it can carry RDF 1.2 triple terms.
+  - **Named graphs:** N-Quads and JSON-LD carry them natively. The per-graph Turtle files (`abox/*.ttl`, `tbox.ttl`, `governance.ttl`) carry them by file layout plus manifest. Neo4j CSV carries them as a `graph` relationship property. `combined.ttl` and CONSTRUCT carry none, so `require_named_graphs` refuses them.
+  - **Triple terms:** JSON-LD and Neo4j CSV refuse a dataset that contains one, rather than flattening it.
+  - **Signed records:** every whole-dataset format includes `fi:signedRecord`, `fi:signedRecordSha256` and `fi:recordSourceSchemaVersion` per current shard, and `fi:signedEvent` per governance event. These are read from the journal at the projection's watermark. Tests reload the records from N-Quads, JSON-LD, Neo4j and the ABox Turtle file and re-verify their signatures.
+  - **Partial CONSTRUCT:** a result that drops a shard's or event's identity and signature triples is refused unless `allow_partial` is set, and the manifest records that it was set.
+  - **Loss check:** every file is parsed back and compared. On a mismatch the export raises `ExportLossDetected` and removes what it wrote.
+  - **Destinations:** a destination inside the storage root, inside the served output directory, or non-empty is refused.
+  - **CLI:** `folio-insights storage export`.
+- **Named-graph partitioning:** a shared TBox graph (`https://folio-insights.aleainstitute.ai/tbox`) is loaded from the vocab TTL with deterministic blank-node labels and reloaded when the vocab digest changes. `ctx.query(include_tbox=True)` gives `GRAPH ?g` = {ABox, governance, TBox} for that corpus only (test: `test_named_graph_partitioning_with_shared_tbox`).
+- **Bulk load:** `ctx.bulk_load_shards` uses the same checks and the same single journal transaction as `ingest_shards`.
+  - **Catch-up:** an add-only catch-up of 2,048 rows or more goes through `Store.bulk_load` and then a transactional watermark update. A crash between the two is recovered by idempotent replay (tested).
+  - **Process pool:** per-record checks and N-Quads rendering run in a `forkserver` process pool (8 workers) for batches of 2,048 or more. If the pool fails, they run in-process. The first refusal in input order is the one raised.
+  - **Journal:** appends are batched (`executemany`) and revisions are looked up in batches. Current-version rows store NULL `original_bytes`, meaning "identical to payload"; readers substitute the payload.
+  - **PII gate:** a digit-run prefilter and lazy field paths, with the same leaves, the same order and the same refusals.
+- **Bulk-load benchmark** (`tests/bench/test_storage_bulk_load.py`, marked `slow`): 43,479 synthetic shards projected to 1,000,017 ABox triples, each run into a fresh root. **Target met.** Run 1: 228,278 / 238,164 / 235,467 triples/s (4.38 / 4.20 / 4.25 s), median 235,467. Run 2: 243,908 / 224,988 / 241,693 (4.10 / 4.45 / 4.14 s), median 241,693. The first run in a process includes pool start-up.
+  - **Hardware:** Intel Core 7 240H (16 logical CPUs), 61.1 GiB RAM, Linux 7.0.0-38-generic, Python 3.12.12, pyoxigraph 0.5.7 (RocksDB on local disk).
+  - **Without the pool:** the in-process path measured about 95–99K triples/s at 460K triples, during development just before the pool was added. The gate depends on the pool.
+  - **Not gated:** `rebuild_projection` at 1M takes 18.2–20.3 s (49–55K triples/s), because pyoxigraph deletes are transactional at about 15 µs per quad. Other 1M timings: all seven default exports with round-trip verification took 62.1 s; dump plus commit took 20.1 s; a snapshot took 0.22 s (0.19 s journal-only); a restore took 0.26 s with the projection and 2.38 s with a rebuild.
+- **Nightly TTL dump** (`storage/dump.py`, `folio-insights storage dump`): writes `tbox.ttl` and per-corpus `abox.ttl`, `governance.ttl` and `manifest.json` into a dedicated repository.
+  - **Verified:** every file is round-trip checked before the commit.
+  - **Deterministic:** an unchanged corpus makes no commit.
+  - **Committer:** commits go out under `folio-insights dump job <dump-job@folio-insights.invalid>`.
+  - **Repository boundary:** a repository nested in another repository, overlapping the storage root, or inside the served output directory is refused.
+  - **Test:** `test_dump_writes_ttl_and_a_visible_local_commit` uses a disposable repository and checks `git log`. `restore_ttl_dump` loads a dump into a new pyoxigraph store (the RDF view).
+  - **Scheduling and push:** not done. The entry point is documented only.
+- **Snapshot and restore** (`storage/backup.py`): under the projection lock, the snapshot takes a `Store.backup` of the projection, then an aiosqlite `Connection.backup` of the journal, then an integrity check, then a manifest.
+  - **Restore target:** a NEW destination only.
+  - **Assembly:** each restore is assembled in a hidden sibling directory and verified before it is renamed into place. Checks: journal digest, integrity, heads and head-row digests, and a full open and catch-up of each corpus.
+  - **Comparison:** tests compare all journal rows (op_ids included), active roles, events, revisions with original bytes, and RDF query results, both with the copied projection and after a rebuild.
+  - **Interruption:** a restore interrupted by an exception, or by a process killed with `os._exit`, leaves the destination absent, the snapshot byte-identical and the live root unchanged.
+- **Review nit closed:** projection metadata stores the payload sha256 of the watermark row. Recovery rebuilds on a mismatch, and a projection that has no digest is rebuilt once. The test `test_same_length_journal_with_different_content_is_detected` swaps in a journal of the same length with different rows.
+- **Phase 11 hook:** `StorageConfig.event_validator` joins `shard_validator`. Both run after the built-in checks and before the journal transaction. Tests cover put, ingest and the parallel bulk path. `status().full_shacl` stays `deferred-to-phase-11` even with hooks installed, and full SHACL remains deferred.
+- **rdflib adapter-only:** `tests/storage/test_rdflib_adapter_only.py`.
+  - **Source scan:** no rdflib or oxrdflib import in `storage/` or `storage_cli.py`, and no rdflib graph with a `store=` backend anywhere in `src`.
+  - **Runtime check:** across the full life cycle, every rdflib graph constructed is in-memory. The only one is the governance SHACL subset adapter used by pyshacl.
+- **Found and fixed:**
+  - **Quadratic guard trigger.** U2's journal guard trigger OR-ed three conditions inside one `EXISTS`, which made bulk inserts quadratic: 20K shards took 180 s. It is replaced on open by indexed `journal_refuse_replace_v2`.
+  - **pyoxigraph string-store bug.** pyoxigraph 0.5.7 (RocksDB) fails an update that inserts, deletes, then re-inserts the same quads ("Not able to find the string … in the string store"). The pre-U4 per-row DELETE/INSERT replay hit this when rebuilding a restored projection. Replay batches now apply only the last revision per subject, with deletes first.
+- **Results:**
+  - **Plan test set:** `pytest tests/storage tests/revision tests/governance tests/shards tests/corpus`: 631 passed, three consecutive runs.
+  - **Gate 1:** 32 passed.
+  - **Gate 2:** all 13 warm queries pass. Slowest warm max: q13 115.6 ms, q07 38.3 ms, q11 23.0 ms, q09 16.0 ms.
+  - **Full suite:** (`-m "not gate5 and not slow" --benchmark-skip`, `fixtures/bench.nq` regenerated, sha256 `842066a0…7c7837`): 1291 passed, 16 skipped, 18 deselected.
+  - **Ruff:** clean on changed files. `src/folio_insights/cli.py` keeps its five pre-existing E402 findings, and the new import is marked `noqa`.
+
 ### Follow-ups
 
 - **DONE (2026-10-03): `signed_at`, the signer `did` and `did_doc_snapshot_at` are bound into the signed governance payload.** `GovernanceEvent.signature_payload()` (`governance/events.py`) now hashes the event body plus a `signature_binding` object carrying those three fields and an explicit format marker, `SIGNATURE_PAYLOAD_FORMAT = "folio-insights/governance-event-signature/v2"` (v1 hashed the body only). `governance/cli/_signing.sign_and_verify_event` builds its own bound placeholder, so every CLI signer signs exactly the values it attaches. No v1-signed governance event was ever persisted: governance was in-memory until this branch, and no committed fixture or golden file holds a signed governance event. So the format change breaks no stored data.
   - **Effect on replay:** a legitimate repeat by the same admin (revoke, re-grant, revoke) is now a distinct signed event and is accepted. A replay with a moved `signed_at` fails signature verification (`InvalidSignature`). A verbatim replay under a fresh operation ID is still refused by the storage check on the identical signature value or the identical (signer DID, payload hash) (`GovernanceEventReplayed`).
   - **Not bound:** `signature.action` and `signing_key_id`. The event's own `action` is already in the body, and a tampered `signing_key_id` resolves a key that does not verify.
 - **U3 hand-off to U4:** there is still no CLI command that writes shards; shards reach a corpus through `CorpusStorageContext` (`shards.put`, `ingest_shards`) only. Non-retract CLI writes use a fresh op_id per invocation because each invocation signs a new event (new `signed_at`); only `retract --apply` is retry-safe across invocations, through its saved preview.
+- **U4 deviations and open items (2026-10-03):**
+  - **Bulk-load fixture:** the 1M benchmark loads synthetic shard records through the journal (`bulk_load_shards`), not `fixtures/bench.nq`. That file is RDF rather than shard records, and loading it straight into the projection would bypass the journal.
+  - **JSON-LD:** expanded JSON-LD with named graphs, not framed. STORAGE-06's "JSON-LD frames" wording would need a framing library.
+  - **Dump restore:** restores the RDF view only. The journal is restored from snapshots.
+  - **Dump job:** STORAGE-05's "scheduled Arq job" is an entry point only, per scope. Scheduling and push stay with the orchestrator.
+  - **Exit criterion 7 (CORPUS-04):** the v1 advocacy, FRE and Restatement benchmark corpora loading and passing SHACL and cluster validation is NOT met. It needs real corpora and Phase 11 SHACL, both outside this unit.
+  - **Full SHACL:** remains deferred to Phase 11.
+  - **Rebuild speed:** `rebuild_projection` at 1M (about 19 s) is bounded by pyoxigraph's transactional deletes. Restores that rebuild avoid it by replaying into an empty projection.
+
