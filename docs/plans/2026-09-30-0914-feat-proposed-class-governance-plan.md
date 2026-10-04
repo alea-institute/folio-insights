@@ -16,6 +16,7 @@ execution: code
 - Execution profile: Plan only in U12; implementation follows verified Phase 13 storage and an orchestrator-prepared clean default-branch base.
 - Stop conditions: Storage incomplete, contaminated source data, or unresolved clean-history proof blocks integration.
 - Delivery: The orchestrator creates the fresh branch; this worker neither creates it nor replays the old branch.
+- Start exception (2026-10-04): Damien said "start now" on 2026-10-04, accepting that CORPUS-04 waits on Phase 11. Phase 13 merged in PRs #11–#13; implementation runs on `feat/governance-pipeline` from clean `origin/master` `cbeff73`. See Execution Evidence.
 
 ## Product Contract
 
@@ -111,3 +112,8 @@ After reconstruction run `python -m pytest tests/proposals tests/test_folio_tagg
 ## Definition of Done
 
 All U1–U4 scenarios pass after storage completion. Every non-evidence source change has been transferred or has a reviewed evidence-based exclusion. Tree and new history are clean of book-derived material. No abandoned code remains. Rollback reverts the new integration commits and restores a verified pre-import storage snapshot into a new destination; it never merges or restores the contaminated branch. Publication belongs to the orchestrator after review.
+
+## Execution Evidence
+
+- **Authority.** Damien approved the pipeline "Yes, after Phase 13" (2026-09-30). On 2026-10-04 he said "start now", accepting that CORPUS-04 waits on Phase 11. Phase 13 merged in PRs #11–#13. Branch `feat/governance-pipeline` was cut from clean `origin/master` `cbeff73` (after the history scrub).
+- **U1.** The inventory is [`evidence/2026-10-04-governance-inventory.md`](evidence/2026-10-04-governance-inventory.md): 80 changed paths, with 47 transfers, 30 exclusions and 3 superseded. The characterization tests are in `tests/proposals/test_current_tagger_characterization.py`. Finding: on clean master the three empty-IRI discovery cases failed, because the B9 follow-on guard had never merged. U1 re-authors it, so R3 now holds.
