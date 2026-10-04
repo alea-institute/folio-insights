@@ -239,12 +239,10 @@ def discover(
         TaskDiscoveryOrchestrator,
     )
 
-    # Check for review database (optional -- enables decision persistence)
+    # review.db holds reviewer decisions. Always pass it: a missing database reads as "no
+    # approved decisions yet", and discovery creates or refreshes it so `export` can read it.
     db_path = output_path / corpus_name / "review.db"
-    orchestrator = TaskDiscoveryOrchestrator(
-        settings,
-        db_path=db_path if db_path.exists() else None,
-    )
+    orchestrator = TaskDiscoveryOrchestrator(settings, db_path=db_path)
 
     click.echo(f"Discovering tasks for corpus: {corpus_name}")
     click.echo(f"Source: {extraction_path}")
@@ -362,6 +360,22 @@ def export(
         ).fetchall()
 
     if not task_rows:
+        # Tell "nothing discovered" apart from "nothing approved yet": a CLI-only run discovers
+        # tasks as 'unreviewed', and export defaults to approved tasks only.
+        if approved_only:
+            total = conn.execute(
+                "SELECT COUNT(*) FROM task_decisions WHERE corpus_name = ?",
+                (corpus_name,),
+            ).fetchone()[0]
+            if total:
+                click.echo(
+                    f"Error: No approved tasks to export ({total} discovered but unreviewed). "
+                    "Approve them in the reviewer UI, or re-run with '--all' to export "
+                    "everything discovered.",
+                    err=True,
+                )
+                conn.close()
+                sys.exit(1)
         click.echo("Error: No tasks found to export.", err=True)
         conn.close()
         sys.exit(1)

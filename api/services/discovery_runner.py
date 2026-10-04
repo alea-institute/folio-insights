@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from api.models.processing import ActivityEntry, ProcessingJob, ProcessingStatus
+from api.models.processing import ActivityEntry, ProcessingStatus
 from api.services.job_manager import JobManager
 
 logger = logging.getLogger(__name__)
@@ -196,86 +196,11 @@ async def _persist_discovery_to_sqlite(
     corpus_name: str,
     pipeline_job,
 ) -> None:
-    """Persist discovered tasks, unit links, and contradictions to SQLite.
+    """Persist discovered tasks, unit links and contradictions to ``review.db``.
 
-    Creates the review.db if it doesn't exist. Inserts new rows or
-    updates existing ones (via INSERT OR IGNORE / ON CONFLICT).
+    Delegates to the library's ``persist_discovery`` so the API and the CLI write
+    identical rows.
     """
-    import aiosqlite
+    from folio_insights.persistence import persist_discovery
 
-    from api.db.models import SCHEMA_SQL
-
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-
-    async with aiosqlite.connect(str(db_path)) as db:
-        await db.executescript(SCHEMA_SQL)
-
-        if pipeline_job.task_hierarchy:
-            # Insert task_decisions
-            for task in pipeline_job.task_hierarchy.tasks:
-                await db.execute(
-                    """
-                    INSERT INTO task_decisions
-                        (task_id, corpus_name, folio_iri, label, parent_task_id,
-                         is_procedural, canonical_order, is_manual)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(task_id) DO UPDATE SET
-                        folio_iri = excluded.folio_iri,
-                        label = excluded.label,
-                        parent_task_id = excluded.parent_task_id,
-                        is_procedural = excluded.is_procedural,
-                        canonical_order = excluded.canonical_order,
-                        updated_at = datetime('now')
-                    """,
-                    (
-                        task.id,
-                        corpus_name,
-                        task.folio_iri,
-                        task.label,
-                        task.parent_task_id,
-                        int(task.is_procedural),
-                        task.canonical_order,
-                        int(task.is_manual),
-                    ),
-                )
-
-            # Insert task_unit_links
-            for task_id, unit_ids in pipeline_job.task_hierarchy.task_unit_links.items():
-                for uid in unit_ids:
-                    await db.execute(
-                        """
-                        INSERT OR IGNORE INTO task_unit_links
-                            (task_id, unit_id, corpus_name)
-                        VALUES (?, ?, ?)
-                        """,
-                        (task_id, uid, corpus_name),
-                    )
-
-        # Insert contradictions
-        for c in pipeline_job.contradictions:
-            await db.execute(
-                """
-                INSERT INTO contradictions
-                    (task_id, unit_id_a, unit_id_b, corpus_name, nli_score,
-                     contradiction_type)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(unit_id_a, unit_id_b, task_id) DO UPDATE SET
-                    nli_score = excluded.nli_score,
-                    contradiction_type = excluded.contradiction_type
-                """,
-                (
-                    c.task_id,
-                    c.unit_id_a,
-                    c.unit_id_b,
-                    corpus_name,
-                    c.nli_score,
-                    c.contradiction_type,
-                ),
-            )
-
-        await db.commit()
-
-    logger.info(
-        "Persisted discovery results to SQLite for corpus '%s'",
-        corpus_name,
-    )
+    await persist_discovery(db_path, corpus_name, pipeline_job)

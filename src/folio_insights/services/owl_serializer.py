@@ -102,8 +102,9 @@ class OWLSerializer:
         # 2. Declare custom annotation properties
         self._declare_annotation_properties(g)
 
-        # 3. Build task-id -> IRI lookup for parent resolution
-        task_iri_lookup = {t["id"]: t["folio_iri"] for t in tasks}
+        # 3. Build task-id -> IRI lookup for parent resolution. Tasks with no folio_iri
+        #    (proposed classes) are left out, so a null IRI never reaches URIRef (B4c).
+        task_iri_lookup = {t["id"]: t["folio_iri"] for t in tasks if t.get("folio_iri")}
 
         # 4. Add task classes
         for task in tasks:
@@ -173,7 +174,11 @@ class OWLSerializer:
         units_by_task: dict[str, list[dict]],
     ) -> None:
         """Add a task as an owl:Class with label, subclass, and annotations."""
-        task_iri = URIRef(task["folio_iri"])
+        folio_iri = task.get("folio_iri")
+        if not folio_iri:
+            # A proposed class has no FOLIO IRI, so there is no OWL class to emit (B4c).
+            return
+        task_iri = URIRef(folio_iri)
 
         # Class declaration
         g.add((task_iri, RDF.type, OWL.Class))
@@ -182,9 +187,9 @@ class OWLSerializer:
         label = task.get("edited_label") or task["label"]
         g.add((task_iri, RDFS.label, Literal(label)))
 
-        # Subclass relationship
+        # Subclass relationship (only to a parent that has an IRI)
         parent_id = task.get("parent_task_id")
-        if parent_id and parent_id in task_iri_lookup:
+        if parent_id and task_iri_lookup.get(parent_id):
             parent_iri = URIRef(task_iri_lookup[parent_id])
             g.add((task_iri, RDFS.subClassOf, parent_iri))
 
@@ -225,13 +230,18 @@ class OWLSerializer:
         if not iri_str:
             return  # Skip units without an IRI mapping
 
+        # A unit of a proposed-class task (no FOLIO IRI) has no class to instantiate (B4c).
+        task_folio_iri = task.get("folio_iri")
+        if not task_folio_iri:
+            return
+
         unit_iri = URIRef(iri_str)
 
         # Individual declaration
         g.add((unit_iri, RDF.type, OWL.NamedIndividual))
 
-        # Type link to parent task class
-        task_iri = URIRef(task["folio_iri"])
+        # Type link to the parent task class
+        task_iri = URIRef(task_folio_iri)
         g.add((unit_iri, RDF.type, task_iri))
 
         # Label (truncated to 100 chars)

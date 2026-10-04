@@ -8,28 +8,30 @@ approved decisions for the frontend DiffView.
 
 Stages (in order):
   1. HeadingAnalysisStage
-  2. FolioMappingStage
-  3. ContentClusteringStage
+  2. ContentClusteringStage
+  3. FolioMappingStage   (after every candidate-creating stage; see _build_stages)
   4. HierarchyConstructionStage
   5. CrossSourceMergingStage
   6. ContradictionDetectionStage
+
+After the stages run, the results are written to JSON and persisted to the corpus
+``review.db`` (``folio_insights.persistence``), which ``export`` and the reviewer UI read.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from folio_insights.config import Settings
 from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.models.task import (
     DiscoveredTask,
     DiscoveryJob,
-    TaskHierarchy,
 )
 from folio_insights.pipeline.discovery.stages.base import DiscoveryStage
 
@@ -146,10 +148,15 @@ class TaskDiscoveryOrchestrator:
             ContradictionDetectionStage,
         )
 
+        # FolioMapping must run after EVERY stage that creates task candidates: heading analysis
+        # and content clustering both do. Between them, every cluster-born candidate kept
+        # folio_iri=None, and a source with no usable headings exported no IRI at all.
+        # Hierarchy construction is the first consumer of folio_iri, so mapping sits just
+        # before it.
         return [
             HeadingAnalysisStage(),
-            FolioMappingStage(),
             ContentClusteringStage(),
+            FolioMappingStage(),
             HierarchyConstructionStage(),
             CrossSourceMergingStage(),
             ContradictionDetectionStage(),
@@ -317,6 +324,22 @@ class TaskDiscoveryOrchestrator:
         # 6. Write output files
         pipeline_duration = time.monotonic() - pipeline_start
         self._write_output(job, corpus_dir, diff)
+
+        # 6b. Persist to review.db so `export` and the reviewer UI can read the results (B4).
+        #     A failure is reported loudly (log and stderr): without the database, `export`
+        #     would find no tasks with no obvious cause.
+        db_path = self._db_path or (corpus_dir / "review.db")
+        try:
+            from folio_insights.persistence import persist_discovery
+
+            await persist_discovery(db_path, corpus_name, job)
+        except Exception:
+            logger.exception("Failed to persist discovery results to %s", db_path)
+            print(
+                f"WARNING: failed to write review.db at {db_path}; `export` will find no "
+                "tasks. See the log.",
+                file=sys.stderr,
+            )
 
         task_count = len(
             job.task_hierarchy.tasks if job.task_hierarchy else []
