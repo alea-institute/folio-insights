@@ -20,13 +20,13 @@ The boundary scan in
 """
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 
 import click
 
 from folio_insights.governance.authorize import Allow, Deny, authorize
+from folio_insights.governance.cli._state import corpus_root_option
 from folio_insights.identity.keys import KEY_PATH
 
 
@@ -48,10 +48,12 @@ from folio_insights.identity.keys import KEY_PATH
     show_default=True,
     help="Local ed25519 keystore JWK (DID-06).",
 )
+@corpus_root_option
 def export_cmd(
     corpus_name: str,
     output_path: Path,
     key_path: Path,
+    corpus_root: Path | None,
 ) -> None:
     """Export the governance log for <corpus_name> as Turtle (D-08, on-demand).
 
@@ -59,14 +61,20 @@ def export_cmd(
     PROV-O ``prov:wasAttributedTo``. The export is a read-only audit
     artifact — no log mutation occurs.
     """
-    from folio_insights.governance.cli._state import GOVERNANCE_LOG
+    from folio_insights.governance.cli._state import (
+        corpus_storage,
+        run_cli,
+    )
     from folio_insights.governance.shape_validation import (
         serialize_log_as_turtle,
     )
+    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
 
-    log = GOVERNANCE_LOG
+    # One DidDocCache for signing AND the storage append-time verifier
+    # (pre-populate it for did:web / did:plc signers).
+    cache = InMemoryDidDocCache()
 
     try:
         sk = load_signing_key(key_path)
@@ -82,37 +90,39 @@ def export_cmd(
     signer_did = _derive_didkey_from_signing_key(sk)
 
     async def _run() -> None:
-        # ── D-19 FIRST STEP (applies even on read paths — 07-05b extension) ──
-        decision = await authorize(signer_did, "export", corpus_name, log=log)
-        if isinstance(decision, Deny):
-            click.echo(f"unauthorized (denied: {decision.reason})", err=True)
-            sys.exit(1)
-        assert isinstance(decision, Allow)
+        async with corpus_storage(corpus_root, corpus_name, cache=cache) as ctx:
+            log = ctx.governance
+            # ── D-19 FIRST STEP (applies even on read paths — 07-05b extension) ──
+            decision = await authorize(signer_did, "export", corpus_name, log=log)
+            if isinstance(decision, Deny):
+                click.echo(f"unauthorized (denied: {decision.reason})", err=True)
+                sys.exit(1)
+            assert isinstance(decision, Allow)
 
-        events = []
-        async for ev in log.iter_events(corpus_name):
-            events.append(ev)
+            events = []
+            async for ev in log.iter_events(corpus_name):
+                events.append(ev)
 
-        # D-04 boundary: serialize_log_as_turtle lives in shape_validation.py
-        # — the lone module under governance/ that owns the RDF substrate
-        # dependency. This CLI never touches the RDF stack directly.
-        turtle = serialize_log_as_turtle(events)
+            # D-04 boundary: serialize_log_as_turtle lives in shape_validation.py
+            # — the lone module under governance/ that owns the RDF substrate
+            # dependency. This CLI never touches the RDF stack directly.
+            turtle = serialize_log_as_turtle(events)
 
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(turtle, encoding="utf-8")
-        except Exception as exc:
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(turtle, encoding="utf-8")
+            except Exception as exc:
+                click.echo(
+                    f"failed to write Turtle to {output_path}: {exc}", err=True
+                )
+                sys.exit(1)
+
             click.echo(
-                f"failed to write Turtle to {output_path}: {exc}", err=True
+                f"exported {len(events)} events from corpus {corpus_name!r} "
+                f"to {output_path}"
             )
-            sys.exit(1)
 
-        click.echo(
-            f"exported {len(events)} events from corpus {corpus_name!r} "
-            f"to {output_path}"
-        )
-
-    asyncio.run(_run())
+    run_cli(_run())
 
 
 __all__ = ["export_cmd"]

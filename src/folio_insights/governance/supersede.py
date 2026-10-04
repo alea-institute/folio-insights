@@ -79,9 +79,9 @@ async def validate_supersession(
             f"({event.old_shard_iri!r}) — a shard cannot supersede itself "
             f"(PRD §21.9 valid-time semantics)"
         )
-    # Resolvability check — defensive; the CLI passes an InMemoryShardStore
-    # that may be empty in test setups. If the store has entries we require
-    # both sides to resolve.
+    # Resolvability check — the CLI passes the corpus's persistent ShardStore
+    # (Phase 13 U3), which may be empty for a new corpus. We require both
+    # sides to resolve.
     #
     # WR-04 fix: previously, when BOTH sides were absent (an empty store),
     # this validator silently passed — leaving the false-success path open

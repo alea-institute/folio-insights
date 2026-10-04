@@ -15,7 +15,6 @@ aiosqlite imports here.
 """
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from rich.console import Console
 from rich.table import Table
 
 from folio_insights.governance.authorize import Allow, Deny, authorize
+from folio_insights.governance.cli._state import corpus_root_option
 from folio_insights.identity.keys import KEY_PATH
 
 
@@ -47,13 +47,22 @@ from folio_insights.identity.keys import KEY_PATH
     show_default=True,
     help="Local ed25519 keystore JWK (DID-06).",
 )
-def show_cmd(corpus: str, limit: int, key_path: Path) -> None:
+@corpus_root_option
+def show_cmd(
+    corpus: str, limit: int, key_path: Path, corpus_root: Path | None
+) -> None:
     """Show recent governance events for a corpus (read-only, gated by authorize)."""
-    from folio_insights.governance.cli._state import GOVERNANCE_LOG
+    from folio_insights.governance.cli._state import (
+        corpus_storage,
+        run_cli,
+    )
+    from folio_insights.identity.cache import InMemoryDidDocCache
     from folio_insights.identity.cli import _derive_didkey_from_signing_key
     from folio_insights.identity.keys import load_signing_key
 
-    log = GOVERNANCE_LOG
+    # One DidDocCache for signing AND the storage append-time verifier
+    # (pre-populate it for did:web / did:plc signers).
+    cache = InMemoryDidDocCache()
 
     try:
         sk = load_signing_key(key_path)
@@ -69,46 +78,48 @@ def show_cmd(corpus: str, limit: int, key_path: Path) -> None:
     signer_did = _derive_didkey_from_signing_key(sk)
 
     async def _run() -> None:
-        # ── D-19 FIRST STEP (applies even on read paths — 07-05b extension) ──
-        decision = await authorize(signer_did, "show", corpus, log=log)
-        if isinstance(decision, Deny):
-            click.echo(f"unauthorized (denied: {decision.reason})", err=True)
-            sys.exit(1)
-        assert isinstance(decision, Allow)
+        async with corpus_storage(corpus_root, corpus, cache=cache) as ctx:
+            log = ctx.governance
+            # ── D-19 FIRST STEP (applies even on read paths — 07-05b extension) ──
+            decision = await authorize(signer_did, "show", corpus, log=log)
+            if isinstance(decision, Deny):
+                click.echo(f"unauthorized (denied: {decision.reason})", err=True)
+                sys.exit(1)
+            assert isinstance(decision, Allow)
 
-        events = []
-        async for ev in log.iter_events(corpus):
-            events.append(ev)
-            if len(events) >= limit:
-                break
+            events = []
+            async for ev in log.iter_events(corpus):
+                events.append(ev)
+                if len(events) >= limit:
+                    break
 
-        console = Console()
-        table = Table(
-            title=f"Governance log: {corpus} (showing {len(events)} events)",
-            show_lines=False,
-        )
-        table.add_column("position", justify="right")
-        table.add_column("action")
-        table.add_column("signer_did")
-        table.add_column("signed_at")
-        table.add_column("shard_iri")
-        for ev in events:
-            shard_iri = getattr(ev, "shard_iri", None) or ""
-            signed_at = (
-                ev.signature.signed_at.isoformat()
-                if ev.signature.signed_at is not None
-                else ""
+            console = Console()
+            table = Table(
+                title=f"Governance log: {corpus} (showing {len(events)} events)",
+                show_lines=False,
             )
-            table.add_row(
-                str(ev.position),
-                ev.action,
-                ev.signature.did,
-                signed_at,
-                shard_iri,
-            )
-        console.print(table)
+            table.add_column("position", justify="right")
+            table.add_column("action")
+            table.add_column("signer_did")
+            table.add_column("signed_at")
+            table.add_column("shard_iri")
+            for ev in events:
+                shard_iri = getattr(ev, "shard_iri", None) or ""
+                signed_at = (
+                    ev.signature.signed_at.isoformat()
+                    if ev.signature.signed_at is not None
+                    else ""
+                )
+                table.add_row(
+                    str(ev.position),
+                    ev.action,
+                    ev.signature.did,
+                    signed_at,
+                    shard_iri,
+                )
+            console.print(table)
 
-    asyncio.run(_run())
+    run_cli(_run())
 
 
 __all__ = ["show_cmd"]
