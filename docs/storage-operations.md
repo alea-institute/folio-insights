@@ -17,9 +17,12 @@ A storage root is one directory, chosen by `--corpus-root`, else
 
 The journal is the only thing that must survive. The projection can always
 be rebuilt from it. On every open, the projection checks its watermark: the
-journal position plus the payload sha256 of the row at that position. A
-journal that is shorter, or the same length with different content, makes
-the projection rebuild itself rather than serve stale RDF.
+journal position, the payload sha256 of the row at that position, and a
+chain digest over every applied row's (position, op_id, payload sha256,
+commit time). A journal that is shorter, or that differs in ANY applied row,
+makes the projection rebuild itself rather than serve stale RDF. The chain
+is checked incrementally, so it costs a full journal scan only on a
+context's first read.
 
 Named graphs:
 
@@ -40,11 +43,11 @@ arrives with Phase 13.5 (private corpora).
 
 | Command | What it does |
 |---|---|
-| `status CORPUS` | Journal head, projection watermark, installed validation hooks, `full_shacl` (always `deferred-to-phase-11`). |
+| `status CORPUS` | (Refuses a corpus with no committed rows; never creates one.) Journal head, projection watermark, installed validation hooks, `full_shacl` (always `deferred-to-phase-11`). |
 | `export CORPUS --out DIR [--format F]… [--construct-query Q \| --construct-file F] [--allow-partial] [--require-named-graphs]` | The export formats (below). Writes to a new or empty directory. |
 | `dump --repo DIR [--corpus C]… [--init]` | Writes a TTL dump of every corpus and records a local Git commit. This is the nightly job's entry point. |
 | `snapshot --out DIR [--no-projection]` | Snapshots the whole storage root (all corpora). |
-| `restore SNAPSHOT --to NEWDIR [--rebuild-projection]` | Restores a snapshot into a new storage root. |
+| `restore SNAPSHOT --to NEWDIR [--use-snapshot-projection]` | Restores a snapshot into a new storage root (the projection is rebuilt from the journal unless asked otherwise). |
 
 ## Backup: snapshots
 
@@ -91,22 +94,32 @@ folio-insights storage restore /backups/fi-2026-10-03 --to /srv/fi/corpora-resto
 - **New destination only.** A destination that exists (even an empty one)
   is refused, and so is one that overlaps the snapshot. A restore never
   writes over live data.
-- **Verified before it appears.** The restore is assembled in
+- **Checked before it appears.** The restore is assembled in
   `.<dest>.restoring-<id>` next to the destination. These checks run first:
   - the journal sha256 against the manifest;
   - the SQLite integrity check and the schema version;
   - per-corpus heads and head-row digests against the manifest;
-  - a full open and catch-up of every corpus. Journal rows past a snapshot
-    watermark are replayed; a watermark whose digest does not match is
-    rebuilt.
+  - a full open and catch-up of every corpus.
 
-  Only then is the directory renamed into place.
+  Only then is the directory renamed into place, with a no-replace rename
+  (`renameat2(RENAME_NOREPLACE)`): a destination that appears meanwhile is
+  never replaced.
+- **The projection is rebuilt by default.** The snapshot's projection is
+  used only with `--use-snapshot-projection` (`rebuild_projection=False`),
+  and then only after every file's sha256 matches the manifest; symlinks,
+  special files, missing or unlisted files are refused.
+- **The manifest is not authenticated.** These checks prove the snapshot is
+  consistent with its own `snapshot.json`; that file is not signed, so
+  anyone who can rewrite the snapshot directory can rewrite it to match.
+  Keep snapshots where only the operator can write. Rebuilding the
+  projection (the default) at least never serves RDF the journal does not
+  produce.
+- **Never in the served directory.** Snapshot and restore destinations
+  inside the served `output/` directory are refused.
 - **Interruption-safe.** A failure or kill before the rename never creates
   the destination. It never touches the snapshot or any live root. A killed
   process can leave a `.<dest>.restoring-*` directory, which is safe to
   delete.
-- **Rebuild:** `--rebuild-projection` skips the copied projection and
-  replays the journal into a fresh one.
 - **Matching code:** restore with the code version recorded in the
   manifest. An unsupported journal schema is refused, never migrated
   silently.
@@ -116,7 +129,7 @@ Then point the service at the new root (`--corpus-root` or
 destination and switching to it; never overwrite the only copy.
 
 At 1,000,017 triples, a restore that copies the projection took 0.26 s, and
-a restore with a rebuild took 2.38 s.
+a restore with a rebuild (now the default) took 2.38 s.
 
 ## Dumps: the nightly TTL job
 
@@ -144,8 +157,14 @@ corpora/<percent-encoded corpus>/manifest.json   # graph IRI, statements, sha256
   head.
 - **Its own work tree:** the repository must be its own work tree. A
   subdirectory of another repository (this checkout, for instance) is
-  refused, and so is any path that overlaps the storage root or sits inside
-  the served `output/` directory.
+  refused, including a path that does not exist yet (the nearest existing
+  ancestor is checked before anything is created), and so is any path that
+  overlaps the storage root or sits inside the served `output/` directory.
+- **Git runs pinned.** Every git call drops inherited `GIT_*` variables,
+  ignores system and global config (`GIT_CONFIG_NOSYSTEM=1`,
+  `GIT_CONFIG_GLOBAL=/dev/null`), and pins `core.hooksPath=/dev/null`,
+  `core.fsmonitor=false` and `commit.gpgsign=false`; commits use
+  `--no-verify`. Repository hooks, fsmonitor commands and signing never run.
 - **Local only:** the job only commits locally. **Scheduling and pushing are
   deliberately not done here.** A host can run the entry point nightly,
   for example with a systemd user timer:
@@ -207,7 +226,15 @@ These rules hold for every format:
 - **Default exports contain no rejected PII.** Inputs that match the PII
   gate (SSN, ABA routing number, US phone by default) are refused before the
   journal append. They therefore never reach the journal, the projection, a
-  dump, a snapshot or an export.
+  dump, a snapshot or an export. Signature objects are scanned too (`did`,
+  `signing_key_id`, cosigners); only a `signature` value shaped exactly like
+  an Ed25519 base64url signature and 64-hex `*_hash` digests are exempt.
+- **CONSTRUCT partiality is checked on subjects.** The identity/signature
+  refusal applies to shards and events that appear as SUBJECTS of the
+  result. A result that only mentions a shard IRI as an object is not
+  checked (known limitation).
+- **Unknown corpora are refused.** `storage export` and `storage status`
+  refuse a corpus with no committed rows instead of creating it.
 
 At 1,000,017 triples, the seven default formats took 62 s, including the
 round-trip verification.
@@ -222,9 +249,21 @@ instead of every committed record.
   subjects is written with `Store.bulk_load`, followed by a transactional
   watermark update. A crash between the two is repaired by idempotent
   replay.
-- **Parallel checks.** The per-record checks and the N-Quads rendering run
-  in a `forkserver` process pool for batches of 2,048 records or more. If
-  the pool cannot start, they fall back to running in-process.
+- **Parallel checks (explicit opt-in).** The per-record checks and the
+  N-Quads rendering run in a `forkserver` process pool for batches of 2,048
+  records or more, but only when the pool is requested: `bulk_load_shards`
+  (default `parallel=True`) and the storage CLI (`StorageConfig(process_pool=True)`).
+  `ingest_shards`, `put` and ordinary catch-ups always run in-process.
+  Worker start-up re-imports the caller's `__main__`, so a script that calls
+  `bulk_load_shards` must guard its entry point with
+  `if __name__ == "__main__":` or pass `parallel=False`.
+- **Pool failure is permanent per process.** If the pool cannot start, or a
+  worker breaks (for example a record that cannot be pickled back), the
+  batch is redone in-process and the pool stays disabled for the rest of
+  that process.
+- **Refusal order does not depend on batch size.** The refusal raised is the
+  one with the earliest input index, whether from a built-in check or a
+  Phase 11 hook, with or without the pool.
 - **Throughput.** The recorded 1M-triple benchmark lives in the plan's U4
   evidence. It is reproduced by `pytest tests/bench/test_storage_bulk_load.py -m slow -s`.
 
@@ -233,6 +272,9 @@ instead of every committed record.
 `StorageConfig(shard_validator=..., event_validator=...)` are the Phase 11
 hooks.
 
+- **They see copies.** Each hook receives a deep copy, so a hook can refuse
+  but can never change what the identity and append-only checks, the
+  journal, the projection cache or the persisted governance event see.
 - **When they run.** They run after the built-in checks: the PII gate and
   model validation for shards, signature verification for events. They run
   before the journal transaction, whose identity and authorization checks

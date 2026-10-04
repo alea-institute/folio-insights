@@ -215,6 +215,21 @@ Operator guide: [`docs/storage-operations.md`](../storage-operations.md).
   - **Full suite:** (`-m "not gate5 and not slow" --benchmark-skip`, `fixtures/bench.nq` regenerated, sha256 `842066a0…7c7837`): 1291 passed, 16 skipped, 18 deselected.
   - **Ruff:** clean on changed files. `src/folio_insights/cli.py` keeps its five pre-existing E402 findings, and the new import is marked `noqa`.
 
+### U4 review fixes (2026-10-04)
+
+Closed the independent review's findings; regression tests in `tests/storage/test_u4_review_findings.py` (22 tests; 20 fail on the pre-fix code, the two `rename_noreplace` unit tests cover the new helper and the race test covers its use).
+
+- **P1 hook isolation:** Phase 11 shard and event hooks receive deep copies; identity, shrink and append-only checks, the projection cache and the persisted event use pre-hook state.
+- **P1 restore verification:** snapshots record per-file sha256 of the projection backup; restore rebuilds the projection from the journal by default and uses the snapshot projection only on request after a digest, symlink and file-set check. The manifest is documented as unauthenticated.
+- **P2 watermark:** a chain digest over (position, op_id, payload_sha256, committed_at) up to the watermark replaces the single-row check (incremental per context; projections without it rebuild once).
+- **P2 refusal order:** the earliest-index refusal (built-in or hook) wins with or without the pool.
+- **P2 pool opt-in:** only `bulk_load_shards` and the storage CLI use the process pool; `ingest_shards` never does.
+- **P2 dump:** nested-repo refusal checks the nearest existing ancestor; git runs with scrubbed `GIT_*`, no system/global config, pinned hooksPath/fsmonitor/gpgsign and `commit --no-verify`.
+- **P2 PII:** signature objects are scanned; only an Ed25519-shaped base64url `signature` value and 64-hex `*_hash` digests are exempt.
+- **P2 served output:** snapshot and restore refuse it; the guard resolves the configured `output_dir` against both the cwd and the project root and fails closed when settings cannot load.
+- **Nits:** no-replace renames (renameat2) for restore, snapshot and dump restore; symlinks in snapshot projections refused; dump-restore manifest paths contained; `storage status/export` refuse unknown corpora without creating them.
+- **Results:** plan test set 654 passed ×3; Gate 1 32 passed; Gate 2 16 passed (slowest warm max q13 122.5 ms); full suite 1314 passed, 16 skipped, 18 deselected; bulk-load benchmark medians 259,689 and 250,607 triples/s (same hardware).
+
 ### Follow-ups
 
 - **DONE (2026-10-03): `signed_at`, the signer `did` and `did_doc_snapshot_at` are bound into the signed governance payload.** `GovernanceEvent.signature_payload()` (`governance/events.py`) now hashes the event body plus a `signature_binding` object carrying those three fields and an explicit format marker, `SIGNATURE_PAYLOAD_FORMAT = "folio-insights/governance-event-signature/v2"` (v1 hashed the body only). `governance/cli/_signing.sign_and_verify_event` builds its own bound placeholder, so every CLI signer signs exactly the values it attaches. No v1-signed governance event was ever persisted: governance was in-memory until this branch, and no committed fixture or golden file holds a signed governance event. So the format change breaks no stored data.

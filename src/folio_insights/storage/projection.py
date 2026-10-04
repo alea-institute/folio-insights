@@ -19,10 +19,12 @@ Named graphs per corpus (``<corpus-ns><quoted corpus>``):
   payload sha256 of the journal row at the watermark, and the adapter
   version (storage-internal; never in the corpus dataset a query sees).
 
-Watermark integrity (U4): the watermark records the journal position AND the
-``payload_sha256`` of the row at that position. Recovery compares both with
-the journal, so a journal restored with the same length but different content
-is detected and the corpus graphs are rebuilt instead of trusted.
+Watermark integrity (U4): the watermark records the journal position, the
+``payload_sha256`` of the row at that position, and a chain digest over every
+applied row's (position, op_id, payload_sha256, committed_at). Recovery
+recomputes the chain from the journal, so a journal restored with different
+content anywhere in the applied prefix (not only at the watermark row) is
+detected and the corpus graphs are rebuilt instead of trusted.
 
 Apply paths. A normal batch is ONE SPARQL update (quads + watermark,
 transactional). A large catch-up whose rows only add new subjects (a bulk
@@ -256,16 +258,41 @@ def row_triples(
     )
 
 
-def _watermark_update(node: NamedNode, watermark: int, payload_sha256: str) -> str:
+# Journal chain digest: d(-1) = CHAIN_GENESIS, d(i) = sha256(d(i-1) || JSON of
+# [position, op_id, payload_sha256, committed_at]) for every row 0..i. The
+# projection records d(watermark); recovery recomputes it from the journal, so
+# ANY difference in the applied prefix (not just the watermark row) is found.
+CHAIN_GENESIS = hashlib.sha256(b"folio-insights/journal-chain/v1").hexdigest()
+
+
+def chain_step(previous: str, position: int, op_id: str, payload_sha256: str,
+               committed_at: str) -> str:
+    link = json.dumps([position, op_id, payload_sha256, committed_at], separators=(",", ":"))
+    return hashlib.sha256(bytes.fromhex(previous) + link.encode("utf-8")).hexdigest()
+
+
+def chain_over(previous: str, rows: Iterable[Any]) -> str:
+    digest = previous
+    for row in rows:
+        digest = chain_step(digest, row.position, row.op_id, row.payload_sha256, row.committed_at)
+    return digest
+
+
+def _watermark_update(
+    node: NamedNode, watermark: int, payload_sha256: str, chain_digest: str
+) -> str:
     wm = Literal(str(watermark), datatype=_XSD_INT)
     ver = Literal(str(PROJECTION_ADAPTER_VERSION), datatype=_XSD_INT)
     sha = Literal(payload_sha256)
+    chain = Literal(chain_digest)
     return (
         f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedPosition')} ?w }} }} ;\n"
         f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedPayloadSha256')} ?h }} }} ;\n"
+        f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedChainDigest')} ?c }} }} ;\n"
         f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('adapterVersion')} ?v }} }} ;\n"
         f"INSERT DATA {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedPosition')} {wm} . "
         f"{node} {fi('appliedPayloadSha256')} {sha} . "
+        f"{node} {fi('appliedChainDigest')} {chain} . "
         f"{node} {fi('adapterVersion')} {ver} . }} }}"
     )
 
@@ -333,6 +360,7 @@ class ProjectionState:
     watermark: int
     adapter_version: int | None
     payload_sha256: str | None = None
+    chain_digest: str | None = None
 
 
 # Rows applied per transactional update, and the size from which a catch-up
@@ -354,21 +382,23 @@ class ProjectionHandle:
     def state(self, corpus: str) -> ProjectionState:
         node = corpus_graph(corpus)
         rows = [
-            (sol["w"], sol["v"], sol["h"])
+            (sol["w"], sol["v"], sol["h"], sol["c"])
             for sol in self._wrapper.store.query(
-                f"SELECT ?w ?v ?h WHERE {{ GRAPH {META_GRAPH} {{ "
+                f"SELECT ?w ?v ?h ?c WHERE {{ GRAPH {META_GRAPH} {{ "
                 f"{node} {fi('appliedPosition')} ?w . "
                 f"OPTIONAL {{ {node} {fi('adapterVersion')} ?v }} "
-                f"OPTIONAL {{ {node} {fi('appliedPayloadSha256')} ?h }} }} }}"
+                f"OPTIONAL {{ {node} {fi('appliedPayloadSha256')} ?h }} "
+                f"OPTIONAL {{ {node} {fi('appliedChainDigest')} ?c }} }} }}"
             )
         ]
         if not rows:
             return ProjectionState(watermark=-1, adapter_version=None)
-        w, v, h = rows[0]
+        w, v, h, c = rows[0]
         return ProjectionState(
             watermark=int(w.value),
             adapter_version=None if v is None else int(v.value),
             payload_sha256=None if h is None else h.value,
+            chain_digest=None if c is None else c.value,
         )
 
     def reset(self, corpus: str) -> None:
@@ -421,15 +451,25 @@ class ProjectionHandle:
         rows: Sequence[JournalRow],
         *,
         load: ShardLoader = load_row_shard,
+        parallel: bool = False,
     ) -> int:
         """Apply contiguous ``rows`` and move the watermark to the last one.
 
         ``load`` turns a shard row into its validated envelope (the context
         passes a cache of the envelopes it just validated for this commit).
         """
+        state = self.state(corpus)
         if not rows:
-            return self.state(corpus).watermark
-        current = self.state(corpus).watermark
+            return state.watermark
+        current = state.watermark
+        if current < 0:
+            previous_chain = CHAIN_GENESIS
+        elif state.chain_digest is None:
+            raise UnsupportedStorageSchema(
+                f"projection for {corpus!r} has no journal chain digest; rebuild it"
+            )
+        else:
+            previous_chain = state.chain_digest
         if rows[0].position != current + 1:
             raise UnsupportedStorageSchema(
                 f"projection replay for {corpus!r} expected position {current + 1}, "
@@ -473,6 +513,7 @@ class ProjectionHandle:
 
         last = rows[-1]
         node = corpus_graph(corpus)
+        chain = chain_over(previous_chain, rows)
         if not existing and len(rows) >= BULK_LOAD_MIN_ROWS:
             # Add-only catch-up: non-transactional bulk load, then the watermark
             # (see the module docstring for why the pair is crash-safe).
@@ -482,7 +523,7 @@ class ProjectionHandle:
                 render_chunk,
             )
 
-            if len(effective) >= PARALLEL_MIN_ITEMS:
+            if parallel and len(effective) >= PARALLEL_MIN_ITEMS:
                 slim = [
                     r if r.original_bytes is None else dataclasses.replace(r, original_bytes=None)
                     for r in effective
@@ -497,7 +538,7 @@ class ProjectionHandle:
                     for s, p, o in triples
                 ).encode("utf-8")
             store.bulk_load(nquads, format=RdfFormat.N_QUADS)
-            store.update(_watermark_update(node, last.position, last.payload_sha256))
+            store.update(_watermark_update(node, last.position, last.payload_sha256, chain))
             return last.position
 
         ops = [f"DELETE WHERE {{ GRAPH {abox} {{ <{subject}> ?p ?o }} }}" for subject in existing]
@@ -509,7 +550,7 @@ class ProjectionHandle:
             f"INSERT DATA {{ GRAPH {graph} {{ {' '.join(blocks)} }} }}"
             for graph, blocks in by_graph.items()
         )
-        ops.append(_watermark_update(node, last.position, last.payload_sha256))
+        ops.append(_watermark_update(node, last.position, last.payload_sha256, chain))
         store.update(" ;\n".join(ops))
         return last.position
 
@@ -615,6 +656,7 @@ class ProjectionLock:
 
 __all__ = [
     "BULK_LOAD_MIN_ROWS",
+    "CHAIN_GENESIS",
     "CORPUS_NS",
     "DEPENDENCY_PREDICATES",
     "META_GRAPH",
@@ -625,6 +667,8 @@ __all__ = [
     "ProjectionHandle",
     "ProjectionLock",
     "ProjectionState",
+    "chain_over",
+    "chain_step",
     "corpus_graph",
     "corpus_graphs",
     "governance_event_iri",

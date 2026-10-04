@@ -124,7 +124,7 @@ async def test_snapshot_restore_matches_original(tmp_path: Path, include_project
     await ctx.ingest_shards([shard(40)])
     await ctx.close()
 
-    restored = await restore_storage(snap.path, tmp_path / "restored")
+    restored = await restore_storage(snap.path, tmp_path / "restored", rebuild_projection=False)
     assert restored.projection == ("restored" if include_projection else "rebuilt")
     assert restored.corpora == {"corpus-a": 10, "corpus-b": 3}
     after = await _observe(tmp_path / "restored")
@@ -133,7 +133,7 @@ async def test_snapshot_restore_matches_original(tmp_path: Path, include_project
     assert {r[2] for r in after["rows"]} >= {"genesis:corpus-a", "op-grant", "op-rev",
                                               "op-revoke", "op-ingest#0"}
 
-    rebuilt = await restore_storage(snap.path, tmp_path / "rebuilt", rebuild_projection=True)
+    rebuilt = await restore_storage(snap.path, tmp_path / "rebuilt")  # default: rebuild
     assert rebuilt.projection == "rebuilt"
     assert await _observe(tmp_path / "rebuilt") == before
 
@@ -197,7 +197,7 @@ async def test_interrupted_restore_leaves_original_and_snapshot_intact(
 
     monkeypatch.setattr(backup.shutil, "copytree", interrupted)
     with pytest.raises(KeyboardInterrupt):
-        await restore_storage(snap.path, tmp_path / "restored")
+        await restore_storage(snap.path, tmp_path / "restored", rebuild_projection=False)
     monkeypatch.undo()
     assert not (tmp_path / "restored").exists()
     assert not list(tmp_path.glob(".restored.restoring-*"))
@@ -221,7 +221,7 @@ def test_killed_restore_process_leaves_original_and_snapshot_intact(tmp_path: Pa
         "    real(src, dst, *a, **k)\n"
         "    os._exit(17)  # killed after the projection copy, before verification\n"
         "b.shutil.copytree = die\n"
-        "asyncio.run(b.restore_storage(sys.argv[1], sys.argv[2]))\n"
+        "asyncio.run(b.restore_storage(sys.argv[1], sys.argv[2], rebuild_projection=False))\n"
     )
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join([str(REPO_ROOT / "src"), str(REPO_ROOT)])

@@ -38,11 +38,8 @@ from urllib.parse import quote
 from pyoxigraph import NamedNode, RdfFormat, Store
 
 from folio_insights.storage.errors import StorageError
-from folio_insights.storage.exports import (
-    _graph_file,
-    _served_output_dir,
-    build_export_dataset,
-)
+from folio_insights.storage._paths import inside, inside_served_output, rename_noreplace
+from folio_insights.storage.exports import _graph_file, build_export_dataset
 from folio_insights.storage.journal import JOURNAL_FILENAME
 from folio_insights.storage.projection import TBOX_GRAPH, corpus_graph, governance_graph
 
@@ -67,47 +64,79 @@ def corpus_dirname(corpus: str) -> str:
     return quote(corpus, safe="") or "_"
 
 
-def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
-    proc = subprocess.run(
-        ["git", "-C", str(repo), *args],
+# Every git call pins configuration that could run code or sign: no hooks,
+# no fsmonitor, no signing, and no system / global / inherited GIT_* config.
+_GIT_PINS: tuple[str, ...] = (
+    "-c", "core.hooksPath=/dev/null",
+    "-c", "core.fsmonitor=false",
+    "-c", "commit.gpgsign=false",
+    "-c", "tag.gpgsign=false",
+    "-c", "init.defaultBranch=main",
+)
+
+
+def _git_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    env["GIT_CONFIG_GLOBAL"] = os.devnull
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    if extra:
+        env.update(extra)
+    return env
+
+
+def _git_run(
+    repo: Path, *args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *_GIT_PINS, "-C", str(repo), *args],
         capture_output=True,
         text=True,
-        env=env,
+        env=_git_env(env),
         check=False,
     )
+
+
+def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
+    proc = _git_run(repo, *args, env=env)
     if proc.returncode != 0:
         raise DumpError(f"git {' '.join(args)} failed ({proc.returncode}): {proc.stderr.strip()}")
     return proc.stdout.strip()
 
 
+def _toplevel(path: Path) -> Path | None:
+    """The Git work tree containing ``path`` (an existing directory), if any."""
+    proc = _git_run(path, "rev-parse", "--show-toplevel")
+    return Path(proc.stdout.strip()).resolve() if proc.returncode == 0 else None
+
+
 def _check_repo(repo: Path, corpus_root: Path, *, init: bool) -> None:
     resolved = repo.resolve()
-    root = corpus_root.resolve()
-    if resolved == root or root in resolved.parents or resolved in root.parents:
+    if inside(resolved, corpus_root) or inside(corpus_root, resolved):
         raise DumpError("the dump repository must not overlap the storage root")
-    served = _served_output_dir()
-    if served is not None and (resolved == served or served in resolved.parents):
+    if inside_served_output(resolved) is not None:
         raise DumpError("the dump repository must not be inside the served output directory")
+    # Nearest existing ancestor (the repo itself when it exists): a dump
+    # repository must never be created or used inside another work tree.
+    probe = resolved
+    while not probe.exists():
+        probe = probe.parent
+    top = _toplevel(probe)
+    if top is not None and top != resolved:
+        raise DumpError(
+            f"{repo} is inside the Git repository {top}; the dump repository must be "
+            "its own work tree"
+        )
     if not repo.exists():
         if not init:
             raise DumpError(f"dump repository {repo} does not exist (pass init=True)")
         repo.mkdir(parents=True, mode=0o700)
         _git(repo, "init", "--quiet")
         return
-    probe = subprocess.run(
-        ["git", "-C", str(repo), "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=False,
-    )
-    if probe.returncode != 0:
+    if top is None:
         if not init:
             raise DumpError(f"{repo} is not a Git repository (pass init=True)")
         _git(repo, "init", "--quiet")
-        return
-    if Path(probe.stdout.strip()).resolve() != resolved:
-        raise DumpError(
-            f"{repo} is inside the Git repository {probe.stdout.strip()}; the dump "
-            "repository must be its own work tree"
-        )
 
 
 async def _corpora(corpus_root: Path) -> list[str]:
@@ -178,21 +207,18 @@ async def run_ttl_dump(
         heads[corpus] = dataset.watermark
 
     _git(repo, "add", "--", *written)
-    staged = subprocess.run(
-        ["git", "-C", str(repo), "diff", "--cached", "--quiet"], check=False
-    ).returncode
+    staged = _git_run(repo, "diff", "--cached", "--quiet").returncode
     if staged == 0:
         return DumpResult(repo=repo, corpora=heads, files=written, commit=None, changed=False)
     stamp = (now or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
     body = "\n".join(f"{c}: journal head {h}" for c, h in heads.items())
-    env = dict(os.environ)
-    env.update(
+    env = dict(
         GIT_AUTHOR_NAME=author_name,
         GIT_AUTHOR_EMAIL=author_email,
         GIT_COMMITTER_NAME=author_name,
         GIT_COMMITTER_EMAIL=author_email,
     )
-    _git(repo, "commit", "--quiet", "-m", f"dump: {len(heads)} corpora at {stamp}", "-m", body,
+    _git(repo, "commit", "--quiet", "--no-verify", "-m", f"dump: {len(heads)} corpora at {stamp}", "-m", body,
          env=env)
     commit = _git(repo, "rev-parse", "HEAD")
     return DumpResult(repo=repo, corpora=heads, files=written, commit=commit, changed=True)
@@ -213,22 +239,33 @@ def restore_ttl_dump(
     dest = Path(destination)
     if dest.exists():
         raise DumpError(f"restore destination {dest} already exists; use a new path")
+    if inside_served_output(dest) is not None:
+        raise DumpError("the restore destination must not be inside the served output directory")
+    base = src.resolve()
+
+    def within(rel: str) -> Path:
+        path = (base / rel).resolve()
+        if Path(rel).is_absolute() or not inside(path, base) or path == base:
+            raise DumpError(f"dump manifest path {rel!r} escapes the dump directory")
+        return path
+
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.parent / f".{dest.name}.restoring-{uuid.uuid4().hex}"
     loaded: dict[str, int] = {}
     try:
         store = Store(str(tmp))
         try:
-            tbox = src / "tbox.ttl"
-            if tbox.exists():
+            tbox = within("tbox.ttl") if (src / "tbox.ttl").exists() else None
+            if tbox is not None:
                 store.load(path=str(tbox), format=RdfFormat.TURTLE, to_graph=TBOX_GRAPH)
                 loaded[TBOX_GRAPH.value] = _count(store, TBOX_GRAPH)
             for manifest_path in sorted((src / "corpora").glob("*/manifest.json")):
-                manifest = json.loads(manifest_path.read_text())
+                rel = manifest_path.relative_to(src).as_posix()
+                manifest = json.loads(within(rel).read_text())
                 for entry in manifest["files"]:
                     graph = NamedNode(entry["graph"])
                     store.load(
-                        path=str(src / entry["path"]), format=RdfFormat.TURTLE, to_graph=graph
+                        path=str(within(entry["path"])), format=RdfFormat.TURTLE, to_graph=graph
                     )
                     count = _count(store, graph)
                     if count != entry["statements"]:
@@ -240,7 +277,10 @@ def restore_ttl_dump(
             store.flush()
         finally:
             del store
-        os.rename(tmp, dest)
+        rename_noreplace(tmp, dest)
+    except FileExistsError as exc:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise DumpError(f"restore destination {dest} appeared during the restore") from exc
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise

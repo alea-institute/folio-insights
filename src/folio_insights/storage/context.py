@@ -188,6 +188,10 @@ class StorageConfig:
     projection_lock_timeout_s: float = 120.0
     replay_batch_size: int = 256
     bulk_replay_batch_size: int = 16384
+    # Opt in to the forkserver process pool for every large batch this
+    # context handles (the storage CLI does; library callers get it only from
+    # ``bulk_load_shards``). See ``bulk_load_shards`` for the __main__ caveat.
+    process_pool: bool = False
 
 
 @dataclass(frozen=True)
@@ -352,6 +356,9 @@ class CorpusStorageContext:
         # re-validating the same bytes. Only current-version records whose
         # payload IS the validated input are cached; cleared every catch-up.
         self._shard_cache: dict[tuple[int, str], ShardEnvelope] = {}
+        # (watermark, chain digest) last verified against or written from this
+        # context's journal (see ``_chain_matches``).
+        self._verified_chain: tuple[int, str] | None = None
         self._closed = True
         self._write_lock = asyncio.Lock()
         from folio_insights.storage.governance import PersistentGovernanceLog
@@ -443,6 +450,7 @@ class CorpusStorageContext:
         read: Callable[[ProjectionHandle, int], T] | None = None,
         *,
         rebuild: bool = False,
+        parallel: bool = False,
     ) -> tuple[int, T | None]:
         """Under the projection lock: replay journal rows past the watermark,
         then (optionally) run ``read`` against the caught-up projection.
@@ -468,12 +476,12 @@ class CorpusStorageContext:
                     rebuild
                     or stale_adapter
                     or state.watermark > head
-                    or not await self._watermark_matches(state.watermark, state.payload_sha256)
+                    or not await self._chain_matches(state)
                 ):
                     # KTD5: derived RDF is rebuilt from the journal, never trusted
                     # past it (a projection newer than a restored journal) or
-                    # beside it (a restored journal of the same length whose row
-                    # at the watermark has different content).
+                    # beside it (a journal whose applied prefix differs in any
+                    # row: the chain digest covers every row up to the watermark).
                     await asyncio.to_thread(handle.reset, self.corpus)
                     watermark = -1
                 else:
@@ -496,11 +504,22 @@ class CorpusStorageContext:
                     if not rows:
                         break
                     watermark = await asyncio.to_thread(
-                        handle.apply, self.corpus, rows, load=_load
+                        handle.apply,
+                        self.corpus,
+                        rows,
+                        load=_load,
+                        parallel=parallel or self.config.process_pool,
                     )
                     self._confirmed = watermark
                 self._confirmed = watermark
                 cache.clear()
+                applied = await asyncio.to_thread(handle.state, self.corpus)
+                # Written by apply from this journal's own rows: trusted.
+                self._verified_chain = (
+                    (applied.watermark, applied.chain_digest)
+                    if applied.chain_digest is not None
+                    else None
+                )
                 result: T | None = None
                 if read is not None:
                     try:
@@ -513,21 +532,37 @@ class CorpusStorageContext:
         finally:
             lock.release()
 
-    async def _watermark_matches(self, watermark: int, payload_sha256: str | None) -> bool:
-        """The projection's watermark row still is the journal's row there.
+    async def _chain_matches(self, state: Any) -> bool:
+        """The projection was built from exactly this journal's rows.
 
-        Compares the recorded ``payload_sha256`` with the committed row at the
-        watermark position, so a journal swapped for one of the same length
-        but different content is detected (and the projection rebuilt). A
-        watermark without a recorded digest (a pre-U4 projection) never
-        matches and is rebuilt once.
+        Recomputes the chain digest over (position, op_id, payload_sha256,
+        committed_at) of every row up to the watermark and compares it with
+        the projection's. Incremental from the last digest this context
+        verified or wrote, so steady-state reads cost nothing extra. A
+        projection without a chain digest (pre-U4 fix) never matches and is
+        rebuilt once. Also re-checks the watermark row's payload digest.
         """
+        from folio_insights.storage.projection import CHAIN_GENESIS, chain_over
+
+        watermark = state.watermark
         if watermark < 0:
             return True
-        row = await self._journal.row_at(self.corpus, watermark)
-        return row is not None and payload_sha256 is not None and (
-            row.payload_sha256 == payload_sha256
+        if state.chain_digest is None or state.payload_sha256 is None:
+            return False
+        cached = self._verified_chain
+        if cached is not None and cached[0] == watermark:
+            return cached[1] == state.chain_digest
+        start, digest = (
+            cached if cached is not None and cached[0] < watermark else (-1, CHAIN_GENESIS)
         )
+        rows = await self._journal.chain_rows(self.corpus, after=start, upto=watermark)
+        if len(rows) != watermark - start or rows[-1].payload_sha256 != state.payload_sha256:
+            return False
+        digest = chain_over(digest, rows)
+        if digest != state.chain_digest:
+            return False
+        self._verified_chain = (watermark, digest)
+        return True
 
     async def _barrier(self) -> int:
         """Bring the projection up to the committed head; return the watermark
@@ -563,9 +598,9 @@ class CorpusStorageContext:
             ) from exc
         return watermark, result  # type: ignore[return-value]
 
-    async def _after_commit(self, op_id: str, position: int) -> None:
+    async def _after_commit(self, op_id: str, position: int, *, parallel: bool = False) -> None:
         try:
-            await self._catch_up()
+            await self._catch_up(parallel=parallel)
         except Exception as exc:
             await self._fail_closed()
             raise ProjectionRecoveryPending(
@@ -653,17 +688,22 @@ class CorpusStorageContext:
     ) -> GovernanceEvent:
         self._ensure_open()
         self._check_corpus(event.corpus)
+        # Work on a private copy: neither the caller, the verifier nor a hook
+        # can change the event between verification and persistence.
+        event = event.model_copy(deep=True)
         request_sha = _canonical_sha(event.model_dump(mode="json"))
         op = op_id or f"governance:{request_sha}"
 
         verifier = self.config.event_verifier
-        if verifier is not None and not await verifier(event):
+        if verifier is not None and not await verifier(event.model_copy(deep=True)):
             raise InvalidSignature(
                 f"governance {event.action} event signature did not verify for "
                 f"signer {event.signature.did!r}; nothing was appended"
             )
         if self.config.event_validator is not None:
-            self.config.event_validator(event)  # Phase 11 hook: after the built-ins
+            # Phase 11 hook: after the built-ins, on a copy (it can refuse,
+            # never rewrite what is persisted).
+            self.config.event_validator(event.model_copy(deep=True))
 
         async with self._write_lock:
             self._ensure_open()
@@ -717,31 +757,44 @@ class CorpusStorageContext:
         Returns the loaded record and the current-version payload.
         """
         loaded, prepared = prepare_one(raw, self.config.pii_gate)
-        if self.config.shard_validator is not None:
-            self.config.shard_validator(loaded.shard)
+        self._run_shard_hook(loaded.shard)
         return loaded, prepared.payload
 
+    def _run_shard_hook(self, shard: ShardEnvelope) -> None:
+        """The Phase 11 shard hook, on a deep copy: it can refuse, but cannot
+        change what the identity / append-only checks, the journal or the
+        projection cache see."""
+        if self.config.shard_validator is not None:
+            self.config.shard_validator(shard.model_copy(deep=True))
+
     def _prepare_many(
-        self, raws: list[bytes | str | Mapping[str, Any]]
+        self, raws: list[bytes | str | Mapping[str, Any]], *, parallel: bool = False
     ) -> list[tuple[PreparedRecord, ShardEnvelope | None]]:
-        """``_prepare`` for a batch, in input order, with the first refusal in
-        input order raised. A large batch runs the per-record checks in the
-        bulk-load process pool (``storage._parallel``) and returns bytes only;
-        the Phase 11 hook always runs here, after those checks."""
+        """``_prepare`` for a batch, in input order.
+
+        The refusal raised is the one with the earliest input index, whether
+        it comes from a built-in check or from the Phase 11 hook, so the
+        outcome never depends on batch size or on the process pool. With
+        ``parallel`` (explicit opt-in: ``bulk_load_shards`` and the storage
+        CLI) a large batch runs the built-in checks in the process pool and
+        returns bytes only; the hook always runs here, per chunk, in order.
+        """
         out: list[tuple[PreparedRecord, ShardEnvelope | None]] = []
-        if len(raws) >= PARALLEL_MIN_ITEMS:
+        if parallel and len(raws) >= PARALLEL_MIN_ITEMS:
             for records, failure in map_chunks(prepare_chunk, raws, self.config.pii_gate):
-                out.extend((record, None) for record in records)
+                # Hook the records of this chunk that precede its first
+                # built-in refusal: an earlier hook refusal wins.
+                hooked = self.config.shard_validator is not None
+                for record in records:
+                    if hooked:
+                        self._run_shard_hook(load_shard_record(record.payload).shard)
+                    out.append((record, None))
                 if failure is not None:
                     raise failure[1]
-            if self.config.shard_validator is not None:
-                for record, _ in out:
-                    self.config.shard_validator(load_shard_record(record.payload).shard)
             return out
         for raw in raws:
             loaded, prepared = prepare_one(raw, self.config.pii_gate)
-            if self.config.shard_validator is not None:
-                self.config.shard_validator(loaded.shard)
+            self._run_shard_hook(loaded.shard)
             # Cache only when the committed payload IS the validated input.
             out.append((prepared, loaded.shard if prepared.original_bytes is None else None))
         return out
@@ -841,12 +894,20 @@ class CorpusStorageContext:
         records: Iterable[bytes | str | Mapping[str, Any] | ShardEnvelope],
         *,
         op_id: str | None = None,
+        parallel: bool = True,
     ) -> BulkLoadResult:
         """``ingest_shards`` for large loads: the same checks, the same single
         journal transaction and the same projection catch-up (which bulk-loads
         add-only batches), without re-validating every committed record into
-        a returned list. Returns positions and counts instead."""
-        rows = await self._ingest(records, op_id=op_id)
+        a returned list. Returns positions and counts instead.
+
+        ``parallel`` (default on) runs the per-record checks and the
+        projection rendering in a ``forkserver`` process pool for batches of
+        2,048 or more. Worker start-up re-imports the caller's ``__main__``,
+        so a script calling this must guard its entry point with
+        ``if __name__ == "__main__":`` (or pass ``parallel=False``).
+        ``ingest_shards`` never uses the pool."""
+        rows = await self._ingest(records, op_id=op_id, parallel=parallel)
         if not rows:
             return BulkLoadResult(op_id=op_id, records=0, first_position=-1, last_position=-1)
         return BulkLoadResult(
@@ -861,10 +922,13 @@ class CorpusStorageContext:
         records: Iterable[bytes | str | Mapping[str, Any] | ShardEnvelope],
         *,
         op_id: str | None,
+        parallel: bool = False,
     ) -> list[JournalRow]:
         self._ensure_open()
+        parallel = parallel or self.config.process_pool
         prepared = self._prepare_many(
-            [dump_shard_record(r) if isinstance(r, ShardEnvelope) else r for r in records]
+            [dump_shard_record(r) if isinstance(r, ShardEnvelope) else r for r in records],
+            parallel=parallel,
         )
         if not prepared:
             return []
@@ -920,7 +984,7 @@ class CorpusStorageContext:
                     )
                     for (_, cached), row in zip(prepared, rows):
                         self._remember(cached, row)
-        await self._after_commit(op, rows[-1].position)
+        await self._after_commit(op, rows[-1].position, parallel=parallel)
         return rows
 
     # ── internal reads used by the adapters ───────────────────────────────

@@ -10,8 +10,8 @@ A snapshot is a directory holding:
   rebuilds the projection from it);
 * ``snapshot.json`` — the manifest: per corpus the journal head, the
   payload sha256 of the head row and row counts, plus the projection
-  watermarks, schema and adapter versions, the TBox digest and the sha256
-  of the copied journal file.
+  watermarks, schema and adapter versions, the TBox digest, the sha256 of
+  the copied journal file and the sha256 of every projection backup file.
 
 Ordering: the projection lock is held while both copies are taken, so the
 projection cannot advance during the snapshot, and the journal copy is
@@ -21,15 +21,30 @@ restore replays the difference (and the watermark digest check rebuilds a
 projection that does not match).
 
 Restore goes into a NEW destination only. It is assembled in a hidden
-sibling directory, verified (file digest, SQLite integrity check, heads and
-head-row digests against the manifest, then a full open and catch-up of
-every corpus), and only then renamed into place. An interrupted or failed
-restore therefore never creates the destination and never writes to the
-snapshot or to any live storage root; at worst it leaves a
+sibling directory, checked, and only then renamed into place with a
+no-replace rename:
+
+* the journal copy's sha256, SQLite integrity check, schema version, heads
+  and head-row digests against the manifest;
+* by DEFAULT the projection is REBUILT from that journal
+  (``rebuild_projection=True``); the snapshot's projection is used only on
+  request, and then only after every file's sha256 matches the manifest
+  (symlinks and unlisted or missing files are refused);
+* a full open and catch-up of every corpus.
+
+What these checks establish is consistency with the manifest. The manifest
+itself is NOT authenticated (unsigned): someone who can rewrite the
+snapshot directory can rewrite ``snapshot.json`` to match. Keep snapshots
+where only the operator can write; rebuilding the projection from the
+journal (the default) at least never serves RDF that the journal does not
+produce.
+
+An interrupted or failed restore never creates the destination and never
+writes to the snapshot or to any live storage root; at worst it leaves a
 ``.<dest>.restoring-*`` directory that is safe to delete.
 
-Snapshots and restores never touch the served output directory and never
-read credentials.
+Snapshots, restores and their destinations are refused inside the served
+output directory; nothing here reads credentials.
 """
 from __future__ import annotations
 
@@ -39,6 +54,7 @@ import json
 import os
 import shutil
 import sqlite3
+import stat
 import time
 import uuid
 from dataclasses import dataclass
@@ -49,6 +65,7 @@ from typing import Any
 import aiosqlite
 
 from folio_insights import __version__
+from folio_insights.storage._paths import inside_served_output, rename_noreplace
 from folio_insights.storage.errors import StorageError
 from folio_insights.storage.journal import JOURNAL_FILENAME, JOURNAL_SCHEMA_VERSION
 from folio_insights.storage.projection import (
@@ -135,6 +152,45 @@ def _integrity_check(path: Path) -> None:
         )
 
 
+def _tree_digests(root: Path) -> dict[str, str]:
+    """sha256 of every regular file under ``root`` (relative POSIX paths).
+    Symlinks and special files are refused, never followed."""
+    out: dict[str, str] = {}
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        base = Path(dirpath)
+        for name in [*dirnames, *filenames]:
+            path = base / name
+            mode = path.lstat().st_mode
+            if stat.S_ISLNK(mode):
+                raise SnapshotError(f"refusing symlink in snapshot projection: {path}")
+            if name in filenames:
+                if not stat.S_ISREG(mode):
+                    raise SnapshotError(f"refusing non-regular file in snapshot: {path}")
+                out[path.relative_to(root).as_posix()] = _file_sha256(path)
+    return out
+
+
+def _copy_verified_tree(src: Path, dst: Path, expected: dict[str, str]) -> None:
+    """Copy ``src`` to ``dst`` (no symlinks followed), then require the COPY
+    to match ``expected`` exactly: same file set, same sha256 per file."""
+    if src.is_symlink() or not src.is_dir():
+        raise SnapshotError(f"snapshot projection {src} is not a plain directory")
+    for rel in expected:
+        if Path(rel).is_absolute() or ".." in Path(rel).parts:
+            raise SnapshotError(f"snapshot manifest projection path {rel!r} is not contained")
+    _tree_digests(src)  # refuses symlinks / special files before copying
+    shutil.copytree(src, dst, symlinks=True)
+    actual = _tree_digests(dst)
+    if actual != expected:
+        missing = sorted(set(expected) - set(actual))
+        extra = sorted(set(actual) - set(expected))
+        changed = sorted(k for k in set(actual) & set(expected) if actual[k] != expected[k])
+        raise SnapshotError(
+            "snapshot projection does not match its manifest digests "
+            f"(missing {len(missing)}, unlisted {len(extra)}, changed {len(changed)})"
+        )
+
+
 def _inside(path: Path, other: Path) -> bool:
     path, other = path.resolve(), other.resolve()
     return path == other or other in path.parents
@@ -167,6 +223,8 @@ async def snapshot_storage(
         raise SnapshotError(f"snapshot destination {dest} already exists")
     if _inside(dest, src):
         raise SnapshotError("snapshot destination must be outside the storage root")
+    if inside_served_output(dest) is not None:
+        raise SnapshotError("snapshot destination must not be inside the served output directory")
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.parent / f".{dest.name}.partial-{uuid.uuid4().hex}"
     tmp.mkdir(mode=0o700)
@@ -186,6 +244,9 @@ async def snapshot_storage(
                         for c, s in states.items()
                     }
                     await asyncio.to_thread(handle.backup, tmp / PROJECTION_DIRNAME)
+                    projection["files"] = await asyncio.to_thread(
+                        _tree_digests, tmp / PROJECTION_DIRNAME
+                    )
                 finally:
                     await asyncio.to_thread(handle.close)
             else:
@@ -213,7 +274,10 @@ async def snapshot_storage(
             "projection": projection,
         }
         (tmp / SNAPSHOT_MANIFEST).write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-        os.rename(tmp, dest)
+        rename_noreplace(tmp, dest)
+    except FileExistsError as exc:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise SnapshotError(f"snapshot destination {dest} appeared during the snapshot") from exc
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise
@@ -241,14 +305,14 @@ async def restore_storage(
     snapshot: str | os.PathLike[str],
     destination: str | os.PathLike[str],
     *,
-    rebuild_projection: bool = False,
+    rebuild_projection: bool = True,
+    process_pool: bool = False,
 ) -> RestoreResult:
     """Restore ``snapshot`` into the NEW storage root ``destination``."""
     from folio_insights.storage.context import CorpusStorageContext, StorageConfig
 
     snap = Path(snapshot)
     dest = Path(destination)
-    manifest = read_snapshot_manifest(snap)
     if dest.exists():
         raise RestoreRefused(
             f"restore destination {dest} already exists; restores go into a new "
@@ -256,6 +320,9 @@ async def restore_storage(
         )
     if _inside(dest, snap) or _inside(snap, dest):
         raise RestoreRefused("restore destination must be separate from the snapshot")
+    if inside_served_output(dest) is not None:
+        raise RestoreRefused("restore destination must not be inside the served output directory")
+    manifest = read_snapshot_manifest(snap)
     if manifest.get("journal_schema_version") != JOURNAL_SCHEMA_VERSION:
         raise SnapshotError(
             f"snapshot journal schema {manifest.get('journal_schema_version')!r} does not "
@@ -280,13 +347,20 @@ async def restore_storage(
         ).exists()
         use_projection = has_projection and not rebuild_projection
         if use_projection:
+            expected = manifest["projection"].get("files")
+            if not isinstance(expected, dict) or not expected:
+                raise SnapshotError(
+                    "snapshot manifest lists no projection file digests; restore with "
+                    "rebuild_projection=True"
+                )
             await asyncio.to_thread(
-                shutil.copytree, snap / PROJECTION_DIRNAME, tmp / PROJECTION_DIRNAME
+                _copy_verified_tree, snap / PROJECTION_DIRNAME, tmp / PROJECTION_DIRNAME,
+                expected,
             )
 
         # Open every corpus: replays journal rows past each watermark and
         # rebuilds any projection whose watermark digest does not match.
-        config = StorageConfig(event_verifier=None)
+        config = StorageConfig(event_verifier=None, process_pool=process_pool)
         heads: dict[str, int] = {}
         for corpus, expected in summary.items():
             # Without a copied projection this open IS the rebuild: the empty
@@ -304,7 +378,10 @@ async def restore_storage(
                     f"{expected['journal_head']}"
                 )
             heads[corpus] = status.journal_head
-        os.rename(tmp, dest)
+        rename_noreplace(tmp, dest)
+    except FileExistsError as exc:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise RestoreRefused(f"restore destination {dest} appeared during the restore") from exc
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise

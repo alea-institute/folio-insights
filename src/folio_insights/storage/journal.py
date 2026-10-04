@@ -458,6 +458,20 @@ class Journal:
         )
         return _row(tuple(rows[0])) if rows else None
 
+    async def chain_rows(self, corpus: str, *, after: int, upto: int) -> list[JournalRow]:
+        """Rows ``after < position <= upto`` with only the chain-digest columns
+        populated (position, op_id, payload_sha256, committed_at)."""
+        rows = await self.read_conn.execute_fetchall(
+            "SELECT position, op_id, payload_sha256, committed_at FROM journal "
+            "WHERE corpus = ? AND position > ? AND position <= ? ORDER BY position",
+            (corpus, after, upto),
+        )
+        return [
+            JournalRow(corpus, int(r[0]), str(r[1]), "", "", "", None, 0, None, b"", None,
+                       str(r[2]), str(r[3]))
+            for r in rows
+        ]
+
     async def corpora(self) -> list[str]:
         """Every corpus with at least one committed row, sorted."""
         rows = await self.read_conn.execute_fetchall(
@@ -531,6 +545,22 @@ class Journal:
         return [_row(tuple(r)) for r in rows]
 
 
+def committed_corpora(path: Path) -> list[str]:
+    """Corpora with at least one committed row in the journal at ``path``,
+    read-only (never creates the file). An absent journal has none."""
+    import sqlite3
+
+    if not path.is_file():
+        return []
+    conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        return [str(r[0]) for r in conn.execute(
+            "SELECT DISTINCT corpus FROM journal ORDER BY corpus"
+        )]
+    finally:
+        conn.close()
+
+
 def check_replay(existing: JournalRow, request_sha256: str) -> JournalRow:
     """Return ``existing`` for an identical retry; refuse a reused operation ID."""
     if existing.request_sha256 != request_sha256:
@@ -552,5 +582,6 @@ __all__ = [
     "JournalTransaction",
     "PendingRow",
     "check_replay",
+    "committed_corpora",
     "sha256_hex",
 ]

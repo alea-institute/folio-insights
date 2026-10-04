@@ -277,7 +277,9 @@ async def test_destination_boundaries(populated, monkeypatch: pytest.MonkeyPatch
     with pytest.raises(ExportRefused, match="storage root"):
         await export_corpus(ctx, ctx.root / "exports")
     served = tmp / "served"
-    monkeypatch.setattr(exports, "_served_output_dir", lambda: served.resolve())
+    import folio_insights.storage._paths as paths
+
+    monkeypatch.setattr(paths, "served_output_dirs", lambda: (served.resolve(),))
     with pytest.raises(ExportRefused, match="served output"):
         await export_corpus(ctx, served / "corpus")
     full = tmp / "full"

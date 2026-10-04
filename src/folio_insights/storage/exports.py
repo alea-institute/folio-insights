@@ -82,6 +82,7 @@ from pyoxigraph import (
     serialize,
 )
 
+from folio_insights.storage._paths import inside, inside_served_output
 from folio_insights.storage.errors import StorageError
 from folio_insights.storage.projection import (
     CORPUS_NS,
@@ -546,26 +547,16 @@ class ExportResult:
 
 def _refuse_destination(destination: Path, ctx: CorpusStorageContext) -> None:
     dest = destination.resolve()
-    root = ctx.root.resolve()
-    if dest == root or root in dest.parents:
+    if inside(dest, ctx.root):
         raise ExportRefused(f"export destination {destination} is inside the corpus storage root")
-    served = _served_output_dir()
-    if served is not None and (dest == served or served in dest.parents):
+    served = inside_served_output(dest)
+    if served is not None:
         raise ExportRefused(
             f"export destination {destination} is inside the served output directory "
             f"{served}; storage exports never expand the served boundary"
         )
     if dest.exists() and any(dest.iterdir()):
         raise ExportRefused(f"export destination {destination} exists and is not empty")
-
-
-def _served_output_dir() -> Path | None:
-    try:
-        from folio_insights.config import get_settings
-
-        return Path(get_settings().output_dir).resolve()
-    except Exception:  # noqa: BLE001 - no settings means no served directory to guard
-        return None
 
 
 def check_capabilities(

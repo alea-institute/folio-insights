@@ -41,6 +41,19 @@ def _run(coro):  # noqa: ANN001, ANN202
         sys.exit(1)
 
 
+def _open_existing(corpus_root: Path | None, corpus: str):  # noqa: ANN202
+    """Open a corpus that already has committed rows; never create one."""
+    from folio_insights.storage import CorpusStorageContext, StorageConfig
+    from folio_insights.storage.journal import JOURNAL_FILENAME, committed_corpora
+
+    root = resolve_corpus_root(corpus_root)
+    if corpus not in committed_corpora(root / JOURNAL_FILENAME):
+        click.echo(f"storage error: no corpus {corpus!r} under {root}", err=True)
+        sys.exit(1)
+    # The CLI entry point is __main__-guarded, so the process pool is safe here.
+    return CorpusStorageContext.open(root, corpus, config=StorageConfig(process_pool=True))
+
+
 @click.group(name="storage")
 def storage_group() -> None:
     """Persistent storage operations: export, dump, snapshot, restore."""
@@ -75,14 +88,13 @@ def export_cmd(
     corpus_root: Path | None,
 ) -> None:
     """Export CORPUS_NAME in the Phase 13 formats (verified round trips)."""
-    from folio_insights.storage import CorpusStorageContext
     from folio_insights.storage.exports import ALL_FORMATS, export_corpus
 
     if construct_file is not None:
         construct_query = construct_file.read_text(encoding="utf-8")
 
     async def run() -> None:
-        ctx = await CorpusStorageContext.open(resolve_corpus_root(corpus_root), corpus_name)
+        ctx = await _open_existing(corpus_root, corpus_name)
         try:
             result = await export_corpus(
                 ctx,
@@ -148,13 +160,20 @@ def snapshot_cmd(out: Path, no_projection: bool, corpus_root: Path | None) -> No
 @click.argument("snapshot", type=click.Path(file_okay=False, exists=True, path_type=Path))
 @click.option("--to", "to", required=True, type=click.Path(file_okay=False, path_type=Path),
               help="NEW storage root to restore into (must not exist).")
-@click.option("--rebuild-projection", is_flag=True,
-              help="Rebuild the projection from the journal instead of copying it.")
-def restore_cmd(snapshot: Path, to: Path, rebuild_projection: bool) -> None:
-    """Restore SNAPSHOT into a new storage root, verified before it appears."""
+@click.option("--use-snapshot-projection", is_flag=True,
+              help="Copy the snapshot's projection (after per-file digest checks) instead "
+                   "of rebuilding it from the journal (the default).")
+def restore_cmd(snapshot: Path, to: Path, use_snapshot_projection: bool) -> None:
+    """Restore SNAPSHOT into a new storage root, checked before it appears.
+
+    The projection is rebuilt from the restored journal unless
+    --use-snapshot-projection is given. The snapshot manifest is not signed:
+    keep snapshots where only the operator can write.
+    """
     from folio_insights.storage.backup import restore_storage
 
-    result = _run(restore_storage(snapshot, to, rebuild_projection=rebuild_projection))
+    result = _run(restore_storage(snapshot, to, rebuild_projection=not use_snapshot_projection,
+                                  process_pool=True))
     click.echo(json.dumps({"restored": str(result.path), "corpora": result.corpora,
                            "projection": result.projection}, indent=2))
 
@@ -164,10 +183,8 @@ def restore_cmd(snapshot: Path, to: Path, rebuild_projection: bool) -> None:
 @corpus_root_option
 def status_cmd(corpus_name: str, corpus_root: Path | None) -> None:
     """Journal head, projection watermark and the Phase 11 SHACL status."""
-    from folio_insights.storage import CorpusStorageContext
-
     async def run() -> None:
-        ctx = await CorpusStorageContext.open(resolve_corpus_root(corpus_root), corpus_name)
+        ctx = await _open_existing(corpus_root, corpus_name)
         try:
             status = await ctx.status()
         finally:
