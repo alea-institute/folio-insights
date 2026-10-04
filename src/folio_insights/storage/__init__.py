@@ -13,12 +13,14 @@ from folio_insights.storage.context import (
     StorageConfig,
     StorageStatus,
     StoredShardRecord,
+    cached_event_verifier,
     open_corpus_storage,
     verify_event_signature_offline,
 )
 from folio_insights.storage.errors import (
     CorpusIsolationError,
     GovernanceEventReplayed,
+    JournalStateChanged,
     OperationIdConflict,
     PiiRejected,
     ProjectionLockTimeout,
@@ -40,6 +42,7 @@ __all__ = [
     "CorpusIsolationError",
     "CorpusStorageContext",
     "GovernanceEventReplayed",
+    "JournalStateChanged",
     "OperationIdConflict",
     "PersistentGovernanceLog",
     "PersistentShardStore",
@@ -57,6 +60,7 @@ __all__ = [
     "StorageStatus",
     "StoredShardRecord",
     "UnsupportedStorageSchema",
+    "cached_event_verifier",
     "open_corpus_storage",
     "verify_event_signature_offline",
 ]

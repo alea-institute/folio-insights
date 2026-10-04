@@ -399,6 +399,16 @@ class Journal:
     async def head(self, corpus: str) -> int:
         return await _head(self.read_conn, corpus)
 
+    async def find_op(self, corpus: str, op_id: str) -> JournalRow | None:
+        """The committed row for ``op_id`` (read connection: committed rows only)."""
+        rows = list(
+            await self.read_conn.execute_fetchall(
+                f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND op_id = ?",
+                (corpus, op_id),
+            )
+        )
+        return _row(tuple(rows[0])) if rows else None
+
     async def rows_after(self, corpus: str, after: int, *, limit: int) -> list[JournalRow]:
         rows = await self.read_conn.execute_fetchall(
             f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND position > ? "
