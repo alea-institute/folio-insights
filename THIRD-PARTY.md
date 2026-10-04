@@ -27,6 +27,7 @@ Project-authored vocab/SHACL (`vocab/classes.ttl`, `predicates.ttl`,
 | instructor | MIT | structured LLM calls |
 | folio-python | MIT | FOLIO ontology access |
 | folio-resolve | MIT | deterministic label→IRI resolution, entity ruler, reconciler, match gates |
+| folio-propositions | MIT | proposition models imported by the folio-enrich bridge (git dependency, pinned to a commit in `uv.lock` / `requirements.vcs.lock`) |
 | fastapi, python-multipart | MIT / Apache-2.0 | web tier + uploads |
 | uvicorn, sse-starlette | BSD-3-Clause | ASGI server + progress streaming |
 | httpx, click, lxml, rdflib | BSD-3-Clause | HTTP, CLI, XML, RDF graph |
@@ -60,6 +61,19 @@ Project-authored vocab/SHACL (`vocab/classes.ttl`, `predicates.ttl`,
 | hypothesis | MPL-2.0 (file-level copyleft; test-only, not distributed) |
 | ruff | MIT |
 | dagger-io, opentelemetry-exporter-otlp-proto-grpc | Apache-2.0 |
+
+## Image build tooling (`requirements.build.lock`, `apk.worker-build.lock`, `UV_IMAGE`)
+
+Pinned so container rebuilds are reproducible over time (Gate 5). These run only
+inside builder stages; none of them is installed in a shipped image.
+
+| Component | License | Used for |
+|-----------|---------|----------|
+| uv (`ghcr.io/astral-sh/uv`) | MIT OR Apache-2.0 | installs the hash-pinned locks in both images |
+| hatchling (+ packaging, pathspec, pluggy, trove-classifiers, tomlkit) | MIT (packaging: Apache-2.0 OR BSD-2-Clause; pathspec: MPL-2.0; trove-classifiers: Apache-2.0) | builds the folio-insights and folio-propositions wheels |
+| setuptools, wheel | MIT | build owlready2's sdist (worker) |
+| Cython | Apache-2.0 | generates owlready2's C optimizer; the generated code ships compiled inside owlready2 |
+| gcc, binutils, musl-dev (Alpine) | GPL-3.0-or-later (GCC Runtime Library Exception) / MIT (musl) | compile owlready2's C optimizer in the worker deps-builder; not shipped |
 
 ## Frontend (`viewer/package.json`)
 

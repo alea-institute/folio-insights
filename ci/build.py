@@ -11,17 +11,46 @@ Stage ordering (Claude's discretion per CONTEXT.md line 64):
 Invoke: ``python -m ci.build [--tag <tag>]``
 
 Gate 5 discipline (10 techniques):
-  1. ``@sha256:`` base pins            — sourced via ``.env.docker(.example)``
+  1. ``@sha256:`` image pins           — every ``FROM`` base and the uv image
+                                         (``UV_IMAGE``) are ``tag@sha256`` ARGs in the
+                                         Dockerfiles; ``.env.docker(.example)`` mirrors them
   2. SOURCE_DATE_EPOCH env+arg         — process env AND ``--build-arg`` (Pitfall 4)
   3. BuildKit rewrite-timestamp        — ``docker buildx`` exporter clamps layer mtimes and
                                          config/history timestamps (see ``_build_image``)
   4. Fixed UID 1001                    — Dockerfiles set numeric UID
-  5. Hash-pinned pip                   — ``requirements.lock`` (web) + ``requirements.worker.lock``
+  5. Hash-pinned installs              — uv ``--require-hashes`` from ``requirements.lock``
+                                         (web) and ``requirements.worker.lock``; see below
   6. ``--no-install-recommends``       — Dockerfiles already set
   7. ``PYTHONDONTWRITEBYTECODE=1``     — Dockerfiles already set
   8. Ordered explicit COPY             — Dockerfiles already follow
   9. ``.dockerignore`` excludes        — image context; ``BUILD_CTX_EXCLUDE`` for Dagger lint/test
  10. No attestations                   — provenance stamps build times, so it is disabled
+
+Reproducible over time, not just back to back. Gate 5's two builds run minutes
+apart, so they cannot see inputs that float between releases. Every input that
+reaches the image bytes is therefore pinned, and ``tests/test_image_pins.py``
+keeps it that way:
+
+  * Web Python deps — ``requirements.lock`` is exported from ``uv.lock`` (the set
+    local dev and tests use) by ``scripts/export_image_locks.py``: every
+    third-party package with all its hashes, installed ``--only-binary :all:`` so
+    nothing compiles. The ``folio-propositions`` git dependency cannot carry a
+    hash, so ``requirements.vcs.lock`` pins it to the full commit SHA and it
+    installs ``--no-deps``.
+  * Build backends — sdist and local builds (hatchling for folio-insights and
+    folio-propositions; setuptools/wheel/Cython for owlready2) run under
+    ``--build-constraints requirements.build.lock``, which uv hash-verifies.
+  * Worker toolchain — ``apk.worker-build.lock`` pins the full apk install closure
+    of gcc + musl-dev (``scripts/resolve_apk_pins.sh``), because the compiler
+    builds owlready2's C optimizer, which ships. The runtime stage installs no
+    apk packages. Alpine keeps only the newest build per branch, so a retired pin
+    fails the build loudly; refresh with the script, then re-run Gate 5.
+  * Web builder apt ``git`` stays unpinned: it only checks out the pinned commit
+    and never reaches the image.
+
+Refresh any pin by regenerating its lock with the named tool, then rebuild and
+re-run Gate 5 (``GATE5_REQUIRED=1 python -m pytest -m gate5
+tests/bench/test_gate5_digest.py``).
 
 Images build with ``docker buildx`` (BuildKit's reproducible exporter); lint and
 test stages run in Dagger.
