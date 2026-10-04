@@ -13,15 +13,13 @@
    - **Phases 12 and 13.5:** build them after Phase 11.
    - **Phases 9 and 10:** plan only.
    - **Review UI (14/15):** re-scope it with mockups.
-3. **Agent-doable follow-ups:**
-   - **Cold rebuild timestamp:** a cold `--no-cache` worker rebuild can differ from Gate 5 by an `app/src/` directory timestamp when both images build in parallel (it reproduces on master).
-   - **Web runtime stage:** it lacks the epoch-keyed `RUN` ordering (tracked by a strict xfail).
-   - **Dagger `_test` container:** it lacks `uv`, `git` and folio-enrich.
-   - **PII patterns:** they miss unseparated 10-digit numbers.
+3. **Remaining follow-ups (mostly design choices):**
+   - **PII coverage:** the PII patterns miss unseparated 10-digit numbers. A bare pattern would also flag 10-digit epoch timestamps, so it needs context rules.
    - **Signed decisions:** `decided_by` is self-asserted.
-   - **API authentication:** the proposed-class routes are opt-in, loopback-only for now.
+   - **API authentication:** the proposed-class routes are opt-in and loopback-only for now.
    - **U17 open questions:** subtype restructuring and span offsets.
    - **CORPUS-04:** needs Phase 11 and the real corpora.
+   - **Old worktree:** the stale `~/worktrees/folio-insights-docker-git` worktree holds untracked agent notes. It needs Damien's OK to delete.
 
 ## Closed 2026-10-04 (later)
 - **Governance pipeline:**
@@ -31,6 +29,7 @@
 - **Long-term reproducible images:** PR #18. Every image input is pinned (uv digest, hashed locks, apk closure, build backends), and builds use a normalized HEAD context.
 - **HermiT in the worker JRE:** PR #19, which also refreshes `requirements.dev.lock` and fixes the worker stage ordering.
 - **Review status:** each PR passed an independent adversarial review with every finding fixed. The fast suite stands at 1620 passed.
+- **Gate 5 cold reproducibility** (PR #21): unique build contexts per image (the cause was BuildKit caching contexts by basename), web stage ordering, and a green Dagger `_test`.
 - **Process lesson:** a worker ran a box-wide `docker image prune`. Worker briefs now forbid broad Docker cleanup.
 
 ## Closed 2026-10-04
