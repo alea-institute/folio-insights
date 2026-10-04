@@ -308,7 +308,9 @@ proposed-class governance pipeline (`folio_insights.proposals`,
   not move its watermark. TTL dumps and the RDF export formats do not include
   them (see "Approved-only backlog" below for why).
 - **Decisions.** `decision` operations record explicit human review
-  decisions (`scripts/apply_approvals.py apply`). A proposal stays `pending`
+  decisions (`scripts/apply_approvals.py apply`, or the review API; see
+  "One approval surface" below). The ledger is the only store of record for
+  proposal decisions. A proposal stays `pending`
   until one names it; judgments never change it. The whole batch is
   validated first (unknown IDs, invalid statuses and extra keys refuse it
   all), `decided_by` must be a reviewer handle `human:<handle>` (letters,
@@ -359,6 +361,100 @@ It is deliberately separate from `storage export` and `storage dump`:
   whose labels come from pipeline output, must never be committed (R5);
 - snapshots already copy the ledger and verify its per-corpus head, so a
   restore recovers every decision, and the backlog is regenerated from it.
+
+### One approval surface: the review API
+
+The review API records and reads proposed-class decisions in the same ledger
+(`api/services/proposals.py`), so a decision made in the viewer reaches the
+approved-only backlog.
+
+- **Write.** `POST /api/v1/proposed-classes/{label}/review?corpus=C` with
+  `{"status": "approved", "note": "..."}`. It also accepts every status the
+  ledger accepts: `approve`/`approved`, `reject`/`rejected`, `needs_work`, and
+  `merge`/`merged` with `merge_into` naming the surviving proposal ID. The
+  label resolves to the corpus's proposal ID through the registry, so case and
+  punctuation variants find the same proposal. The decision is recorded
+  through `ProposalStore.record_decisions`, with the same validation, the PII
+  gate and the decision history. Every refusal writes nothing:
+
+  | Refusal | Status |
+  |---|---|
+  | Invalid status, malformed corpus ID or `op_id`, or a merge without a valid target | 400 |
+  | No reviewer configured, or an invalid one | 403 |
+  | Unknown label (or no ledger yet) | 404 |
+  | `op_id` reused for a different decision, or the ledger moved mid-request | 409 |
+  | A body field outside the model (`decided_by`, for instance) | 422 |
+  | The PII gate matched the note | 422 |
+  | The storage root sits inside the served output directory, or storage cannot open | 503 |
+- **Reviewer.** `decided_by` is `human:<handle>` from server configuration:
+  `api.main.configure(reviewer=...)`, else `$FOLIO_INSIGHTS_REVIEWER`. A bare
+  handle gets the `human:` prefix. The API has no authentication, so the
+  reviewer is never taken from the request. When authentication lands, it
+  must come from the authenticated principal. As with the CLI, the handle is
+  self-asserted.
+- **Operation IDs.** The body may carry `op_id`, a client idempotency key
+  (1-100 of letters, digits, `.`, `_`, `:`, `-`), stored as
+  `api:review:key:<op_id>`. A retry with it replays the original result and
+  appends nothing. Without one, the server derives
+  `api:review:auto:<digest>` over the corpus, reviewer, decision and ledger
+  head. A repeat of a current decision is then a no-op batch that keeps the
+  original `decided_at`.
+- **Read.** `GET /api/v1/proposed-classes?corpus=C` lists every proposal with
+  its current decision, and `GET /api/v1/proposed-classes/{label}?corpus=C`
+  returns one. Both read the folded ledger, never `review.db`.
+- **Corpus mapping (conservative).** The ledger corpus is the API corpus ID
+  verbatim. That is the `output/<corpus>/` directory name, and
+  `judge_proposals.py collect --corpus` must use the same name. IDs that are
+  not 1-128 characters of letters, digits, `.`, `_` or `-` are refused.
+  Proposal IDs hash the corpus, so collecting under a different name leaves
+  the API with no proposals (404). It can never decide another corpus's
+  proposal.
+- **Storage root.** `api.main.configure(corpus_root=...)`, else
+  `$FOLIO_INSIGHTS_CORPUS_ROOT`, else `~/.folio-insights/corpora`, the same
+  resolution as the CLI. The API never creates a storage root: with no
+  `journal.sqlite3`, reads return an empty list and writes find no label.
+- **Reset.** `POST /api/v1/review/reset` resets unit review only. Ledger
+  decisions are append-only, and the legacy table is read-only.
+
+### Legacy review.db decisions
+
+Before the ledger, the API upserted proposed-class decisions into the
+`proposed_class_decisions` table of `output/<corpus>/review.db`, keyed by
+label, with no reviewer. That table is now **read-only legacy**:
+
+- the review.db schema (`folio_insights.persistence.review_db.SCHEMA_SQL`,
+  run on every open) adds triggers that refuse INSERT, UPDATE and DELETE on
+  it;
+- nothing drops it, and nothing migrates it on startup.
+
+Its rows reach the ledger only through an explicit, idempotent import:
+
+```bash
+python scripts/apply_approvals.py import-legacy --corpus C \
+    --review-db output/C/review.db [--legacy-corpus NAME] [--dry-run]
+```
+
+- **What it records.** It opens the database read-only and imports the
+  `approved` and `rejected` rows of the corpus. Rows are matched by
+  `corpus_name`, which defaults to `--corpus`. They go in as one decision
+  batch by `human:legacy-review-db`, with op_id `legacy-review-db:<digest>`.
+- **Provenance.** Each decision carries `source`, `legacy_row_id`,
+  `legacy_row_digest` and the original `legacy_reviewed_at`. The ledger's
+  `decided_at` is the import's commit time. The approved-only backlog shows
+  the provenance.
+- **Never overrides.** A proposal that already has a ledger decision is left
+  alone (`already_decided`), because the ledger is newer than the legacy
+  table.
+- **Idempotent.** A row already imported is found by its digest
+  (`already_imported`), so a second run appends nothing.
+- **Skipped rows.** These are reported by legacy row ID, never by label or
+  note:
+  - `pending` rows;
+  - rows with another status or an invalid note (`invalid_rows`);
+  - labels that resolve to no proposal of the corpus (`unresolved_rows`);
+  - all but the latest of several rows for one proposal (`superseded_rows`);
+  - rows the PII gate refuses (`pii_refused_rows`).
+- **Dry run.** `--dry-run` reports `would_import` and writes nothing.
 
 ## Deploying extraction: the deterministic IRI path
 

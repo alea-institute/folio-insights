@@ -74,3 +74,16 @@ Focused: `pytest tests/proposals tests/storage tests/governance tests/test_revie
 ## Definition of Done
 
 One store of record for proposal decisions (the ledger); the API writes and reads it; the legacy table is read-only with a tested idempotent import; docs describe the mapping, the reviewer configuration and the import; the follow-up is marked done.
+
+## Execution Evidence
+
+- **Branch.** `fix/single-approval-surface` from `origin/master` `5a92df3`. Commits: plan `dd4f2bf`; U1 `8843060` (ledger provenance, read-only legacy table, `import-legacy`); U2 `5cd6019` (API through the ledger); U3 is the docs commit that follows.
+- **Viewer.** No viewer code calls the proposed-class routes (`grep -rn proposed viewer/src` finds only unit-review stores), so no viewer change and no `npm run check`.
+- **Tests (synthetic only, temp corpus roots).**
+  - `tests/proposals/test_legacy_import.py` (14): import with original timestamps in provenance and into the backlog; idempotent second run (head unchanged); a ledger decision is never overridden; dry run writes nothing; the legacy file's bytes are unchanged; the table refuses INSERT, UPDATE and DELETE once the schema runs; the `import-legacy` CLI; bad provenance refused by `record_decisions` and ignored by the fold.
+  - `tests/test_proposed_class_review_api.py` (25): an API decision appears in the approved-only backlog; unknown label 404, invalid status 400, missing or invalid reviewer 403, `decided_by` in the body 422, PII 422, bad corpus 400, each leaving the ledger head unchanged; client op_id replay and 409 on reuse; repeat without op_id keeps `decided_at`; reads come from the ledger; reset keeps legacy rows and ledger decisions; no storage root is created; a root inside served output is 503. With the pre-change `api/routes/review.py` restored, 21 of the 25 fail.
+  - **Focused:** `tests/proposals tests/storage tests/governance` plus `test_review_api`, `test_task_review_api`, `test_proposed_class_review_api`, `test_discovery_api`, `test_discovery_persistence`, `test_export_api`: 581 passed.
+  - **Full** (`-m "not gate5 and not slow" --benchmark-skip -p no:cacheprovider`): 1561 passed, 34 skipped, 18 deselected (baseline 1522; +39 new).
+- **Ruff:** clean on every changed Python file.
+- **Exclusion check:** `scripts/check_exclusions.py --history origin/master`: 0 tree findings, 0 history findings; 168 advisory shape findings, the same count as `--rev origin/master`.
+- **Ignored output:** `git status --short --ignored output data` is empty.
