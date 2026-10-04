@@ -10,6 +10,14 @@ runner persist through ``persist_discovery``. Before this, the CLI wrote JSON bu
 mutable reviewer state (statuses, edited labels, notes) that the API routes update in
 place, which the append-only Phase 13 corpus journal is not designed to hold; moving it
 there would be a separate migration.
+
+Exception: proposed-class decisions. The ``proposed_class_decisions`` table is read-only
+legacy. Proposal decisions live in the append-only proposal ledger of the corpus storage
+root (``folio_insights.proposals``), which the API route writes and reads. Triggers refuse
+every INSERT, UPDATE and DELETE on the legacy table, and nothing drops it. Its rows reach
+the ledger only through the explicit import ``scripts/apply_approvals.py import-legacy``
+(``folio_insights.proposals.legacy``), never on startup; ``read_legacy_proposed_class_rows``
+reads them without opening the database for writing.
 """
 
 from __future__ import annotations
@@ -43,6 +51,23 @@ CREATE TABLE IF NOT EXISTS proposed_class_decisions (
     reviewed_at TEXT,
     UNIQUE(concept_label, corpus_name)
 );
+
+-- Read-only legacy: proposed-class decisions live in the proposal ledger (see module doc).
+CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_insert
+BEFORE INSERT ON proposed_class_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
+END;
+CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_update
+BEFORE UPDATE ON proposed_class_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
+END;
+CREATE TRIGGER IF NOT EXISTS proposed_class_decisions_read_only_delete
+BEFORE DELETE ON proposed_class_decisions
+BEGIN
+    SELECT RAISE(ABORT, 'proposed_class_decisions is read-only legacy; proposal decisions live in the proposal ledger');
+END;
 
 CREATE INDEX IF NOT EXISTS idx_review_corpus ON review_decisions(corpus_name);
 CREATE INDEX IF NOT EXISTS idx_review_status ON review_decisions(status);
@@ -213,4 +238,42 @@ async def persist_discovery(db_path: Path, corpus_name: str, job: Any) -> None:
     logger.info("Persisted discovery results to review.db for corpus '%s'", corpus_name)
 
 
-__all__ = ["SCHEMA_SQL", "persist_discovery"]
+LEGACY_PROPOSED_CLASS_COLUMNS = (
+    "id", "concept_label", "corpus_name", "status", "reviewer_note", "reviewed_at",
+)
+
+
+def read_legacy_proposed_class_rows(db_path: Path) -> list[dict[str, Any]]:
+    """Every row of the legacy ``proposed_class_decisions`` table, ordered by ``id``.
+
+    The database is opened read-only (``mode=ro``), so reading never creates the file,
+    the table or the read-only triggers. A missing file raises ``FileNotFoundError``;
+    a database without the table returns no rows.
+    """
+    import sqlite3
+
+    path = Path(db_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"no review database at {path}")
+    conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'proposed_class_decisions'"
+        ).fetchone()
+        if exists is None:
+            return []
+        cursor = conn.execute(
+            f"SELECT {', '.join(LEGACY_PROPOSED_CLASS_COLUMNS)} "
+            "FROM proposed_class_decisions ORDER BY id"
+        )
+        return [dict(zip(LEGACY_PROPOSED_CLASS_COLUMNS, row)) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+__all__ = [
+    "LEGACY_PROPOSED_CLASS_COLUMNS",
+    "SCHEMA_SQL",
+    "persist_discovery",
+    "read_legacy_proposed_class_rows",
+]

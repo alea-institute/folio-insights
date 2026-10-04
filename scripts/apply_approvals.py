@@ -19,6 +19,14 @@ append-only proposal ledger of one corpus. Both subcommands are offline.
           bytes. The output passes the PII gate and the forbidden-key check,
           and the file must sit outside every git work tree and outside the
           corpus root.
+  import-legacy
+          Import the decided rows of the read-only legacy ``review.db`` table
+          ``proposed_class_decisions`` into the ledger, as decisions by
+          ``human:legacy-review-db`` with each row's original ``reviewed_at``
+          in provenance. Explicit and idempotent: a second run imports nothing,
+          and a proposal that already has a ledger decision is never overridden.
+          The database is opened read-only. ``--dry-run`` reports without
+          writing. Reports name legacy row IDs, never labels or notes.
 
 Decisions file (``proposed-class-approvals/v1``)::
 
@@ -30,6 +38,8 @@ Usage:
   python scripts/apply_approvals.py apply  --corpus C --decisions FILE \\
       --decided-by human:REVIEWER [--op-id ID]
   python scripts/apply_approvals.py export --corpus C --out /outside/repo/backlog.json
+  python scripts/apply_approvals.py import-legacy --corpus C \\
+      --review-db OUTPUT/C/review.db [--legacy-corpus NAME] [--dry-run]
 """
 from __future__ import annotations
 
@@ -57,10 +67,12 @@ from folio_insights.proposals import (  # noqa: E402
     check_backlog,
 )
 from folio_insights.proposals.decisions import DecisionInvalid  # noqa: E402
+from folio_insights.persistence.review_db import read_legacy_proposed_class_rows  # noqa: E402
 from folio_insights.proposals.destinations import (  # noqa: E402
     check_generated_destination,
     write_json_atomic,
 )
+from folio_insights.proposals.legacy import import_legacy_decisions  # noqa: E402
 from folio_insights.storage import CorpusStorageContext  # noqa: E402
 
 DECISIONS_SCHEMAS = frozenset({"proposed-class-approvals/v1"})
@@ -122,6 +134,13 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         return {"approved": backlog["count"], "backlog": str(out_path),
                 "ledger_head": backlog["ledger_head"]}
 
+    if args.command == "import-legacy":
+        rows = read_legacy_proposed_class_rows(Path(args.review_db))
+        async with await CorpusStorageContext.open(root, args.corpus) as ctx:
+            return await import_legacy_decisions(
+                ctx, rows, legacy_corpus=args.legacy_corpus, dry_run=args.dry_run
+            )
+
     items = read_decisions(Path(args.decisions), args.corpus)
     async with await CorpusStorageContext.open(root, args.corpus) as ctx:
         op_id = args.op_id or default_op_id(
@@ -156,6 +175,17 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("export", help="write the approved-only backlog")
     common(e)
     e.add_argument("--out", required=True)
+
+    m = sub.add_parser(
+        "import-legacy", help="import review.db proposed_class_decisions rows (idempotent)"
+    )
+    common(m)
+    m.add_argument("--review-db", required=True, help="the legacy per-corpus review.db")
+    m.add_argument(
+        "--legacy-corpus", default=None,
+        help="the review.db corpus_name to import (default: --corpus)",
+    )
+    m.add_argument("--dry-run", action="store_true", help="report without writing")
     return ap
 
 
@@ -163,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         result = asyncio.run(_run(args))
+    except FileNotFoundError as exc:
+        raise SystemExit(f"refused: {exc}") from None
     except DecisionInvalid as exc:
         # The message names the item index and the rule (never a value); nothing was recorded.
         raise SystemExit(f"refused: {exc}") from None

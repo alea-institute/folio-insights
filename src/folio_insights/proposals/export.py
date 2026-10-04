@@ -77,6 +77,9 @@ def _row(p: Proposal) -> dict[str, Any]:
             "decided_at": d.get("decided_at"),
             "ledger_position": d.get("ledger_position"),
             "op_id": d.get("op_id"),
+            # Where the decision came from, when recorded (for instance the original row
+            # and time of a decision imported from the legacy review.db table).
+            "provenance": d.get("provenance"),
         },
         "decision_history_length": len(p.decision_history),
     }

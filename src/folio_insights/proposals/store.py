@@ -44,6 +44,7 @@ from folio_insights.proposals.decisions import (
     DecisionInvalid,
     validate_decided_by,
     validate_decision,
+    validate_provenance,
 )
 from folio_insights.proposals.dedupe import DeterministicDeduper
 from folio_insights.proposals.judgments import JudgmentInvalid, validate_judgment
@@ -199,9 +200,15 @@ class ProposalStore:
         *,
         op_id: str,
         decided_by: str,
+        provenance: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Record explicit review decisions ``{proposal_id, status, note?,
         merge_into?}`` by the human reviewer ``decided_by`` (``human:<name>``).
+
+        ``provenance`` optionally maps proposal IDs of this batch to a small
+        map of scalar fields (``decisions.validate_provenance``) stored on that
+        item, for instance the original row and time of an imported legacy
+        decision. A key that names no decision of the batch refuses it all.
 
         Returns ``{recorded, unchanged, position, replayed, results,
         superseded_since}``. ``results`` maps each proposal ID to its ``status``
@@ -232,6 +239,17 @@ class ProposalStore:
             items.append(item)
         if not items:
             raise DecisionInvalid("a decision batch must hold at least one decision")
+        if provenance:
+            if not isinstance(provenance, Mapping) or not set(provenance) <= seen:
+                raise DecisionInvalid(
+                    "provenance may only name proposals decided in this batch; nothing was "
+                    "recorded"
+                )
+            for index, item in enumerate(items):
+                if item["proposal_id"] in provenance:
+                    item["provenance"] = validate_provenance(
+                        provenance[item["proposal_id"]], where=f"decision item {index}"
+                    )
         items.sort(key=lambda i: i["proposal_id"])
         committed = {e.op_id for e in await self._ctx.proposals.entries()}
         # Every batch is appended, including one whose decisions all equal the current ones
