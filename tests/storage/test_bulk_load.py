@@ -41,6 +41,23 @@ async def _load(root: Path, records: list, **kwargs) -> list[tuple[str, ...]]:
         await ctx.close()
 
 
+class _BulkLoadSpy:
+    """Counts ``bulk_load`` calls on a projection store. Module-level and
+    closure-free, so dropping the handle frees the RocksDB store (and its
+    lock) by reference counting, exactly as without the spy."""
+
+    def __init__(self, store, seen: dict[str, int]) -> None:  # noqa: ANN001
+        self._store = store
+        self._seen = seen
+
+    def __getattr__(self, name: str):  # noqa: ANN204
+        return getattr(self._store, name)
+
+    def bulk_load(self, *args, **kwargs):  # noqa: ANN002, ANN003, ANN201
+        self._seen["bulk_load"] += 1
+        return self._store.bulk_load(*args, **kwargs)
+
+
 @pytest.fixture(scope="module")
 def records() -> list:
     return [
@@ -92,17 +109,7 @@ async def test_bulk_load_uses_bulk_store_path_and_pool(
 
     def init(self, root):  # noqa: ANN001, ANN202
         real_handle_init(self, root)
-        store = self._wrapper._store
-
-        class Spy:
-            def __getattr__(self, name):  # noqa: ANN001, ANN202
-                return getattr(store, name)
-
-            def bulk_load(self, *a, **k):  # noqa: ANN002, ANN003, ANN202
-                seen["bulk_load"] += 1
-                return store.bulk_load(*a, **k)
-
-        self._wrapper._store = Spy()
+        self._wrapper._store = _BulkLoadSpy(self._wrapper._store, seen)
 
     monkeypatch.setattr(projection.ProjectionHandle, "__init__", init)
     ctx = await CorpusStorageContext.open(tmp_path, "corpus-a")
