@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from folio_insights.storage.context import (
     FULL_SHACL_STATUS,
+    BulkLoadResult,
     CorpusStorageContext,
     StorageConfig,
     StorageStatus,
@@ -39,6 +40,7 @@ from folio_insights.storage.shards import PersistentShardStore
 __all__ = [
     "DEFAULT_PII_PATTERNS",
     "FULL_SHACL_STATUS",
+    "BulkLoadResult",
     "CorpusIsolationError",
     "CorpusStorageContext",
     "GovernanceEventReplayed",

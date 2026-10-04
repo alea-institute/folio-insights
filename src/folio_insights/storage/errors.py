@@ -108,6 +108,10 @@ class PiiRejected(ValueError):
         self.field_path = field_path
         self.pattern_name = pattern_name
 
+    def __reduce__(self) -> tuple:
+        # Rebuild from the two names (never the message) across processes.
+        return (type(self), (self.field_path, self.pattern_name))
+
 
 __all__ = [
     "CorpusIsolationError",

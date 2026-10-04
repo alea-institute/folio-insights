@@ -11,8 +11,27 @@ Named graphs per corpus (``<corpus-ns><quoted corpus>``):
 
 * ``<corpus graph>``             — current shard state (ABox), the Gate-2 layout.
 * ``<corpus graph>/governance``  — governance events.
-* ``urn:folio-insights:storage:projection`` — per-corpus watermark and adapter
+* ``<TBOX_GRAPH>``                — the shared TBox (the ``folio_insights.vocab``
+  TTL files), one graph for every corpus in the store. It is derived from
+  code, not the journal: loaded with deterministic blank-node labels and
+  reloaded when the vocabulary bytes change.
+* ``urn:folio-insights:storage:projection`` — per-corpus watermark, the
+  payload sha256 of the journal row at the watermark, and the adapter
   version (storage-internal; never in the corpus dataset a query sees).
+
+Watermark integrity (U4): the watermark records the journal position AND the
+``payload_sha256`` of the row at that position. Recovery compares both with
+the journal, so a journal restored with the same length but different content
+is detected and the corpus graphs are rebuilt instead of trusted.
+
+Apply paths. A normal batch is ONE SPARQL update (quads + watermark,
+transactional). A large catch-up whose rows only add new subjects (a bulk
+load into an empty or disjoint projection) uses ``Store.bulk_load`` for the
+quads and then moves the watermark in a second, transactional update. That
+pair is not atomic, and it does not need to be: the projection lock excludes
+every reader and writer while it runs, and a crash between the two leaves
+quads past the watermark that the next catch-up replays idempotently (a
+shard row replaces its subject's quads; governance quads are sets).
 
 Writes go through pyoxigraph only (never rdflib). RocksDB allows one open
 handle per path per process, and readers cannot open it while another process
@@ -23,18 +42,31 @@ rebuilds the corpus graphs from the journal.
 """
 from __future__ import annotations
 
+import dataclasses
 import fcntl
+import hashlib
 import json
 import os
 import time
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from pyoxigraph import Literal, NamedNode, QueryBoolean, QuerySolutions, QueryTriples
+from pyoxigraph import (
+    BlankNode,
+    Literal,
+    NamedNode,
+    Quad,
+    QueryBoolean,
+    QuerySolutions,
+    QueryTriples,
+    RdfFormat,
+)
+from pyoxigraph import parse as rdf_parse
 
 from folio_insights.revision.content_edit import canonical_content_hash
 from folio_insights.shards import ShardEnvelope, load_shard_record
@@ -50,6 +82,8 @@ PROJECTION_ADAPTER_VERSION = 1
 
 CORPUS_NS = "https://folio-insights.aleainstitute.ai/corpus/"
 META_GRAPH = NamedNode("urn:folio-insights:storage:projection")
+TBOX_GRAPH = NamedNode("https://folio-insights.aleainstitute.ai/tbox")
+_TBOX_META = NamedNode("urn:folio-insights:storage:projection#tbox")
 
 _XSD = "http://www.w3.org/2001/XMLSchema#"
 _RDF_TYPE = NamedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
@@ -191,38 +225,104 @@ def _triples_block(triples: Iterable[tuple[Any, Any, Any]]) -> str:
     return " ".join(f"{s} {p} {o} ." for s, p, o in triples)
 
 
-def _apply_update(corpus: str, rows: Sequence[JournalRow], new_watermark: int) -> str:
-    abox = corpus_graph(corpus)
-    gov = governance_graph(corpus)
-    ops: list[str] = []
-    for row in rows:
-        if row.kind == KIND_SHARD:
-            shard = load_shard_record(row.payload).shard
-            s = NamedNode(shard.shard_iri)
-            ops.append(f"DELETE WHERE {{ GRAPH {abox} {{ {s} ?p ?o }} }}")
-            block = _triples_block(shard_triples(shard, journal_position=row.position))
-            ops.append(f"INSERT DATA {{ GRAPH {abox} {{ {block} }} }}")
-        elif row.kind == KIND_GOVERNANCE:
-            event_json = json.loads(row.payload)
-            block = _triples_block(
-                governance_triples(corpus, event_json, journal_position=row.position)
-            )
-            ops.append(f"INSERT DATA {{ GRAPH {gov} {{ {block} }} }}")
-        else:  # pragma: no cover - the journal CHECK constraint forbids this
-            raise UnsupportedStorageSchema(f"unknown journal row kind {row.kind!r}")
-    ops.append(_watermark_update(abox, new_watermark))
-    return " ;\n".join(ops)
+ShardLoader = Callable[[JournalRow], ShardEnvelope]
 
 
-def _watermark_update(node: NamedNode, watermark: int) -> str:
+def load_row_shard(row: JournalRow) -> ShardEnvelope:
+    """The validated shard of a journal shard row (full U17 adapter)."""
+    return load_shard_record(row.payload).shard
+
+
+def row_triples(
+    corpus: str, row: JournalRow, *, load: ShardLoader = load_row_shard
+) -> tuple[NamedNode, str | None, list[tuple[Any, Any, Any]]]:
+    """``(graph, replaced subject IRI or None, triples)`` for one journal row."""
+    if row.kind == KIND_SHARD:
+        shard = load(row)
+        return (
+            corpus_graph(corpus),
+            shard.shard_iri,
+            shard_triples(shard, journal_position=row.position),
+        )
+    if row.kind == KIND_GOVERNANCE:
+        event_json = json.loads(row.payload)
+        return (
+            governance_graph(corpus),
+            None,
+            governance_triples(corpus, event_json, journal_position=row.position),
+        )
+    raise UnsupportedStorageSchema(  # pragma: no cover - the journal CHECK forbids this
+        f"unknown journal row kind {row.kind!r}"
+    )
+
+
+def _watermark_update(node: NamedNode, watermark: int, payload_sha256: str) -> str:
     wm = Literal(str(watermark), datatype=_XSD_INT)
     ver = Literal(str(PROJECTION_ADAPTER_VERSION), datatype=_XSD_INT)
+    sha = Literal(payload_sha256)
     return (
         f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedPosition')} ?w }} }} ;\n"
+        f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedPayloadSha256')} ?h }} }} ;\n"
         f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} {fi('adapterVersion')} ?v }} }} ;\n"
         f"INSERT DATA {{ GRAPH {META_GRAPH} {{ {node} {fi('appliedPosition')} {wm} . "
+        f"{node} {fi('appliedPayloadSha256')} {sha} . "
         f"{node} {fi('adapterVersion')} {ver} . }} }}"
     )
+
+
+# ── shared TBox (derived from the vocab package, not the journal) ─────────
+
+_TBOX_FILES: tuple[str, ...] = (
+    "predicates.ttl",
+    "classes.ttl",
+    "bfo_spine.ttl",
+    "bfo_mapping.ttl",
+    "shapes.ttl",
+)
+
+
+def tbox_sources() -> list[tuple[str, bytes]]:
+    """The vocab TTL files that make up the shared TBox, in load order."""
+    pkg = files("folio_insights.vocab")
+    return [(name, (pkg / name).read_bytes()) for name in _TBOX_FILES]
+
+
+def tbox_digest(sources: Sequence[tuple[str, bytes]] | None = None) -> str:
+    h = hashlib.sha256()
+    for name, data in sources if sources is not None else tbox_sources():
+        h.update(name.encode("utf-8") + b"\0" + hashlib.sha256(data).digest())
+    return h.hexdigest()
+
+
+def tbox_quads(sources: Sequence[tuple[str, bytes]] | None = None) -> list[Quad]:
+    """TBox quads in ``TBOX_GRAPH`` with deterministic blank-node labels.
+
+    Blank nodes are relabelled ``<file stem>-<n>`` in document order, so the
+    same vocabulary always yields byte-identical dumps (nightly diffs stay
+    empty when nothing changed). Parsed with pyoxigraph, never rdflib.
+    """
+    out: list[Quad] = []
+    for name, data in sources if sources is not None else tbox_sources():
+        stem = name.removesuffix(".ttl").replace("_", "-")
+        labels: dict[str, BlankNode] = {}
+
+        def relabel(term: Any, _labels: dict[str, BlankNode] = labels, _stem: str = stem) -> Any:
+            if isinstance(term, BlankNode):
+                if term.value not in _labels:
+                    _labels[term.value] = BlankNode(f"tbox-{_stem}-{len(_labels)}")
+                return _labels[term.value]
+            return term
+
+        for triple in rdf_parse(data, format=RdfFormat.TURTLE):
+            out.append(
+                Quad(
+                    relabel(triple.subject),
+                    triple.predicate,
+                    relabel(triple.object),
+                    TBOX_GRAPH,
+                )
+            )
+    return out
 
 
 # ── projection handle ─────────────────────────────────────────────────────
@@ -232,6 +332,12 @@ def _watermark_update(node: NamedNode, watermark: int) -> str:
 class ProjectionState:
     watermark: int
     adapter_version: int | None
+    payload_sha256: str | None = None
+
+
+# Rows applied per transactional update, and the size from which a catch-up
+# of add-only rows uses ``Store.bulk_load`` (U4 bulk-load path).
+BULK_LOAD_MIN_ROWS = 2048
 
 
 class ProjectionHandle:
@@ -240,21 +346,29 @@ class ProjectionHandle:
     def __init__(self, root: Path) -> None:
         self._wrapper = PyoxigraphStore(path=str(root / PROJECTION_DIRNAME))
 
+    @property
+    def store(self) -> Any:
+        """The pyoxigraph ``Store`` (storage-internal: exports and backups)."""
+        return self._wrapper.store
+
     def state(self, corpus: str) -> ProjectionState:
         node = corpus_graph(corpus)
         rows = [
-            (sol["w"], sol["v"])
+            (sol["w"], sol["v"], sol["h"])
             for sol in self._wrapper.store.query(
-                f"SELECT ?w ?v WHERE {{ GRAPH {META_GRAPH} {{ "
+                f"SELECT ?w ?v ?h WHERE {{ GRAPH {META_GRAPH} {{ "
                 f"{node} {fi('appliedPosition')} ?w . "
-                f"OPTIONAL {{ {node} {fi('adapterVersion')} ?v }} }} }}"
+                f"OPTIONAL {{ {node} {fi('adapterVersion')} ?v }} "
+                f"OPTIONAL {{ {node} {fi('appliedPayloadSha256')} ?h }} }} }}"
             )
         ]
         if not rows:
             return ProjectionState(watermark=-1, adapter_version=None)
-        w, v = rows[0]
+        w, v, h = rows[0]
         return ProjectionState(
-            watermark=int(w.value), adapter_version=None if v is None else int(v.value)
+            watermark=int(w.value),
+            adapter_version=None if v is None else int(v.value),
+            payload_sha256=None if h is None else h.value,
         )
 
     def reset(self, corpus: str) -> None:
@@ -266,8 +380,53 @@ class ProjectionHandle:
             f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} ?p ?o }} }}"
         )
 
-    def apply(self, corpus: str, rows: Sequence[JournalRow]) -> int:
-        """Apply contiguous ``rows`` plus the watermark in one transaction."""
+    # ── TBox ──────────────────────────────────────────────────────────────
+
+    def tbox_digest(self) -> str | None:
+        rows = list(
+            self._wrapper.store.quads_for_pattern(
+                _TBOX_META, fi("tboxDigest"), None, META_GRAPH
+            )
+        )
+        return rows[0].object.value if rows else None
+
+    def ensure_tbox(self) -> bool:
+        """Load (or reload) the shared TBox graph when the vocab changed.
+
+        Ordered so every crash point is safe: the digest is removed first and
+        written last, so an interrupted load is redone on the next catch-up.
+        Returns whether the graph was (re)loaded.
+        """
+        sources = tbox_sources()
+        digest = tbox_digest(sources)
+        if self.tbox_digest() == digest:
+            return False
+        store = self._wrapper.store
+        store.update(
+            f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {_TBOX_META} {fi('tboxDigest')} ?d }} }} ;\n"
+            f"DROP SILENT GRAPH {TBOX_GRAPH}"
+        )
+        store.extend(tbox_quads(sources))
+        store.update(
+            f"INSERT DATA {{ GRAPH {META_GRAPH} {{ {_TBOX_META} {fi('tboxDigest')} "
+            f"{Literal(digest)} }} }}"
+        )
+        return True
+
+    # ── journal replay ────────────────────────────────────────────────────
+
+    def apply(
+        self,
+        corpus: str,
+        rows: Sequence[JournalRow],
+        *,
+        load: ShardLoader = load_row_shard,
+    ) -> int:
+        """Apply contiguous ``rows`` and move the watermark to the last one.
+
+        ``load`` turns a shard row into its validated envelope (the context
+        passes a cache of the envelopes it just validated for this commit).
+        """
         if not rows:
             return self.state(corpus).watermark
         current = self.state(corpus).watermark
@@ -279,13 +438,88 @@ class ProjectionHandle:
         for prev, nxt in zip(rows, rows[1:]):
             if nxt.position != prev.position + 1:
                 raise UnsupportedStorageSchema("projection replay rows are not contiguous")
-        self._wrapper.store.update(_apply_update(corpus, rows, rows[-1].position))
-        return rows[-1].position
 
-    def query(self, corpus: str, sparql: str) -> Any:
-        """Read-only SPARQL over this corpus's graphs only; results materialized."""
+        store = self._wrapper.store
+        # A subject needs its old quads deleted if the store already has it or
+        # an earlier row of this batch inserts it (a revision in the batch).
+        # A shard row's journal ``subject`` is its shard IRI.
+        abox = corpus_graph(corpus)
+        # An empty ABox graph (a first load) has no subject to probe for.
+        abox_empty = next(store.quads_for_pattern(None, None, None, abox), None) is None
+        seen: set[str] = set()
+        replaced: set[str] = set()
+        for row in rows:
+            if row.kind != KIND_SHARD:
+                continue
+            if row.subject in seen or (
+                not abox_empty
+                and next(
+                    store.quads_for_pattern(NamedNode(row.subject), None, None, abox), None
+                )
+                is not None
+            ):
+                replaced.add(row.subject)
+            seen.add(row.subject)
+
+        last = rows[-1]
+        node = corpus_graph(corpus)
+        if not replaced and len(rows) >= BULK_LOAD_MIN_ROWS:
+            # Add-only catch-up: non-transactional bulk load, then the watermark
+            # (see the module docstring for why the pair is crash-safe).
+            from folio_insights.storage._parallel import (
+                PARALLEL_MIN_ITEMS,
+                map_chunks,
+                render_chunk,
+            )
+
+            if len(rows) >= PARALLEL_MIN_ITEMS:
+                slim = [
+                    r if r.original_bytes is None else dataclasses.replace(r, original_bytes=None)
+                    for r in rows
+                ]
+                nquads = b"".join(map_chunks(render_chunk, slim, corpus))
+            else:
+                nquads = "".join(
+                    f"{s} {p} {o} {graph} .\n"
+                    for graph, _, triples in (row_triples(corpus, r, load=load) for r in rows)
+                    for s, p, o in triples
+                ).encode("utf-8")
+            store.bulk_load(nquads, format=RdfFormat.N_QUADS)
+            store.update(_watermark_update(node, last.position, last.payload_sha256))
+            return last.position
+
+        rendered = [row_triples(corpus, row, load=load) for row in rows]
+        ops: list[str] = []
+        if replaced:
+            # Subjects are replayed in row order, so an in-batch revision is
+            # applied as delete-then-insert per row (never merged).
+            for graph, subject, triples in rendered:
+                if subject is not None and subject in replaced:
+                    ops.append(f"DELETE WHERE {{ GRAPH {graph} {{ <{subject}> ?p ?o }} }}")
+                ops.append(f"INSERT DATA {{ GRAPH {graph} {{ {_triples_block(triples)} }} }}")
+        else:
+            by_graph: dict[str, list[str]] = {}
+            for graph, _, triples in rendered:
+                by_graph.setdefault(str(graph), []).append(_triples_block(triples))
+            ops = [
+                f"INSERT DATA {{ GRAPH {graph} {{ {' '.join(blocks)} }} }}"
+                for graph, blocks in by_graph.items()
+            ]
+        ops.append(_watermark_update(node, last.position, last.payload_sha256))
+        store.update(" ;\n".join(ops))
+        return last.position
+
+    def query(
+        self, corpus: str, sparql: str, *, include_tbox: bool = False
+    ) -> Any:
+        """Read-only SPARQL over this corpus's graphs only; results materialized.
+
+        ``include_tbox`` adds the shared TBox graph to both the default graph
+        and the named graphs, so ``GRAPH ?g`` returns ABox, governance and
+        TBox partitions.
+        """
         _refuse_service(sparql)
-        graphs = [corpus_graph(corpus), governance_graph(corpus)]
+        graphs = corpus_graphs(corpus, include_tbox=include_tbox)
         raw = self._wrapper.store.query(sparql, default_graph=graphs, named_graphs=graphs)
         if isinstance(raw, QueryBoolean):
             return bool(raw)
@@ -295,6 +529,15 @@ class ProjectionHandle:
         if isinstance(raw, QueryTriples):
             return list(raw)
         return raw  # pragma: no cover
+
+    def graph_quads(self, graph: NamedNode) -> list[Quad]:
+        """Every quad of one named graph (materialized)."""
+        return list(self._wrapper.store.quads_for_pattern(None, None, None, graph))
+
+    def backup(self, target: Path) -> None:
+        """RocksDB backup of the whole projection into a new ``target`` dir."""
+        self._wrapper.store.flush()
+        self._wrapper.store.backup(str(target))
 
     def dependents(self, corpus: str, shard_iri: str) -> list[str]:
         """Shard IRIs in ``corpus`` whose ``depends_on_*`` lists name ``shard_iri``."""
@@ -311,6 +554,15 @@ class ProjectionHandle:
         self._wrapper.store.flush()
         # Drop the only reference so RocksDB releases its process lock now.
         del self._wrapper
+
+
+def corpus_graphs(corpus: str, *, include_tbox: bool = False) -> list[NamedNode]:
+    """The named graphs a corpus query sees (ABox, governance, optional TBox)."""
+    graphs = [corpus_graph(corpus), governance_graph(corpus)]
+    if include_tbox:
+        graphs.append(TBOX_GRAPH)
+    return graphs
+
 
 
 def _refuse_service(sparql: str) -> None:
@@ -358,9 +610,11 @@ class ProjectionLock:
 
 
 __all__ = [
+    "BULK_LOAD_MIN_ROWS",
     "CORPUS_NS",
     "DEPENDENCY_PREDICATES",
     "META_GRAPH",
+    "TBOX_GRAPH",
     "PROJECTION_ADAPTER_VERSION",
     "PROJECTION_DIRNAME",
     "PROJECTION_LOCKNAME",
@@ -368,9 +622,15 @@ __all__ = [
     "ProjectionLock",
     "ProjectionState",
     "corpus_graph",
+    "corpus_graphs",
     "governance_event_iri",
     "governance_graph",
     "governance_triples",
     "iri_or_literal",
+    "load_row_shard",
+    "row_triples",
     "shard_triples",
+    "tbox_digest",
+    "tbox_quads",
+    "tbox_sources",
 ]

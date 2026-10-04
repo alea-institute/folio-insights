@@ -29,7 +29,9 @@ see only committed rows even while this process holds an open
 
 Shard rows keep the U17 adapter's ``original_bytes`` and
 ``source_schema_version`` next to the current-version ``payload`` written by
-``dump_shard_record`` (KTD5). Writers serialize through ``BEGIN IMMEDIATE``;
+``dump_shard_record`` (KTD5). ``original_bytes`` is NULL exactly when the
+original bytes are byte-identical to ``payload`` (a current-version record);
+readers substitute ``payload`` (``context._stored``), so nothing is lost. Writers serialize through ``BEGIN IMMEDIATE``;
 SQLite's write lock covers every corpus in the file, which is a superset of
 per-corpus serialization.
 """
@@ -121,17 +123,22 @@ _DDL: tuple[str, ...] = (
         SELECT RAISE(ABORT, 'governance position must be contiguous per corpus');
     END
     """,
+    # v1 of this guard OR-ed three conditions inside one EXISTS, which SQLite
+    # answers with a scan of the corpus's rows: bulk ingest was quadratic. v2
+    # keeps the same refusal as three indexed probes (the primary key and the
+    # two UNIQUE indexes). Existing journals swap v1 for v2 on open.
+    "DROP TRIGGER IF EXISTS journal_refuse_replace",
     """
-    CREATE TRIGGER IF NOT EXISTS journal_refuse_replace
+    CREATE TRIGGER IF NOT EXISTS journal_refuse_replace_v2
     BEFORE INSERT ON journal
     WHEN EXISTS (
-        SELECT 1 FROM journal WHERE corpus = NEW.corpus AND (
-            position = NEW.position
-            OR op_id = NEW.op_id
-            OR (NEW.governance_position IS NOT NULL
-                AND governance_position = NEW.governance_position)
-        )
-    )
+        SELECT 1 FROM journal WHERE corpus = NEW.corpus AND position = NEW.position
+    ) OR EXISTS (
+        SELECT 1 FROM journal WHERE corpus = NEW.corpus AND op_id = NEW.op_id
+    ) OR (NEW.governance_position IS NOT NULL AND EXISTS (
+        SELECT 1 FROM journal
+        WHERE corpus = NEW.corpus AND governance_position = NEW.governance_position
+    ))
     BEGIN
         SELECT RAISE(ABORT, 'journal is append-only: insert over a committed row refused');
     END
@@ -165,6 +172,10 @@ _COLUMNS = (
     "record_schema_version, source_schema_version, payload, original_bytes, "
     "payload_sha256, committed_at"
 )
+
+
+# SQLite's default bound-parameter limit is 32766; stay far below it.
+_IN_CHUNK = 500
 
 
 def sha256_hex(data: bytes) -> str:
@@ -233,29 +244,57 @@ class JournalTransaction:
     async def latest_shard(self, shard_iri: str) -> JournalRow | None:
         return await _latest_shard(self._conn, self.corpus, shard_iri, None)
 
+    async def latest_shards_for(self, shard_iris: list[str]) -> dict[str, JournalRow]:
+        """The newest committed revision of each of ``shard_iris`` (bulk
+        ingest: one query per chunk instead of one per record)."""
+        out: dict[str, JournalRow] = {}
+        unique = list(dict.fromkeys(shard_iris))
+        for start in range(0, len(unique), _IN_CHUNK):
+            chunk = unique[start : start + _IN_CHUNK]
+            marks = ", ".join("?" * len(chunk))
+            rows = await self._conn.execute_fetchall(
+                f"SELECT {_COLUMNS} FROM journal AS j WHERE corpus = ? AND kind = 'shard' "
+                f"AND subject IN ({marks}) AND position = (SELECT MAX(position) FROM "
+                "journal WHERE corpus = j.corpus AND kind = 'shard' AND subject = j.subject)",
+                (self.corpus, *chunk),
+            )
+            for values in rows:
+                row = _row(tuple(values))
+                out[row.subject] = row
+        return out
+
     async def append(self, pending: PendingRow) -> JournalRow:
+        return (await self.append_many([pending]))[0]
+
+    async def append_many(self, pendings: list[PendingRow]) -> list[JournalRow]:
+        """Append ``pendings`` at the next contiguous positions in one
+        ``executemany`` (the insert triggers still check every row)."""
         position = await self.head() + 1
         now = datetime.now(UTC).isoformat()
-        values = (
-            self.corpus,
-            position,
-            pending.op_id,
-            pending.request_sha256,
-            pending.kind,
-            pending.subject,
-            pending.governance_position,
-            pending.record_schema_version,
-            pending.source_schema_version,
-            pending.payload,
-            pending.original_bytes,
-            sha256_hex(pending.payload),
-            now,
-        )
-        await self._conn.execute(
-            f"INSERT INTO journal ({_COLUMNS}) VALUES ({', '.join('?' * len(values))})",
-            values,
-        )
-        return _row(values)
+        rows = [
+            (
+                self.corpus,
+                position + index,
+                pending.op_id,
+                pending.request_sha256,
+                pending.kind,
+                pending.subject,
+                pending.governance_position,
+                pending.record_schema_version,
+                pending.source_schema_version,
+                pending.payload,
+                pending.original_bytes,
+                sha256_hex(pending.payload),
+                now,
+            )
+            for index, pending in enumerate(pendings)
+        ]
+        if rows:
+            await self._conn.executemany(
+                f"INSERT INTO journal ({_COLUMNS}) VALUES ({', '.join('?' * len(rows[0]))})",
+                rows,
+            )
+        return [_row(values) for values in rows]
 
 
 async def _head(conn: aiosqlite.Connection, corpus: str) -> int:
@@ -409,9 +448,34 @@ class Journal:
         )
         return _row(tuple(rows[0])) if rows else None
 
-    async def rows_after(self, corpus: str, after: int, *, limit: int) -> list[JournalRow]:
+    async def row_at(self, corpus: str, position: int) -> JournalRow | None:
+        """The committed row at ``(corpus, position)``, or ``None``."""
+        rows = list(
+            await self.read_conn.execute_fetchall(
+                f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND position = ?",
+                (corpus, position),
+            )
+        )
+        return _row(tuple(rows[0])) if rows else None
+
+    async def corpora(self) -> list[str]:
+        """Every corpus with at least one committed row, sorted."""
         rows = await self.read_conn.execute_fetchall(
-            f"SELECT {_COLUMNS} FROM journal WHERE corpus = ? AND position > ? "
+            "SELECT DISTINCT corpus FROM journal ORDER BY corpus"
+        )
+        return [str(r[0]) for r in rows]
+
+    async def rows_after(
+        self, corpus: str, after: int, *, limit: int, with_original: bool = True
+    ) -> list[JournalRow]:
+        """Rows past ``after`` in position order. ``with_original=False``
+        leaves ``original_bytes`` unread (``None``): the projection replays
+        the current-version ``payload`` only."""
+        columns = _COLUMNS if with_original else _COLUMNS.replace(
+            "original_bytes", "NULL AS original_bytes"
+        )
+        rows = await self.read_conn.execute_fetchall(
+            f"SELECT {columns} FROM journal WHERE corpus = ? AND position > ? "
             "ORDER BY position LIMIT ?",
             (corpus, after, limit),
         )
