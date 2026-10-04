@@ -1,4 +1,12 @@
-"""Review workflow endpoints: approve, reject, edit, bulk-approve, stats."""
+"""Review workflow endpoints: approve, reject, edit, bulk-approve, stats.
+
+Proposed-class decisions are the exception to review.db: they live in the
+append-only proposal ledger of the corpus storage root, which these routes
+write through ``ProposalStore.record_decisions`` and read from the folded
+registry (``api/services/proposals.py``). The review.db table
+``proposed_class_decisions`` is read-only legacy; its rows reach the ledger
+only through ``scripts/apply_approvals.py import-legacy``.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +14,9 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
+from api.services import proposals as proposal_svc
 
 router = APIRouter()
 
@@ -27,8 +37,17 @@ class BulkApproveRequest(BaseModel):
 
 
 class ProposedClassReviewRequest(BaseModel):
-    status: str  # "approved" | "rejected"
+    """A decision on one proposed class. The reviewer is server configuration, so a
+    body that names ``decided_by`` (or any other extra field) is refused."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # "approve"/"approved", "reject"/"rejected", "merge"/"merged" (with merge_into),
+    # or "needs_work".
+    status: str
     note: str | None = None
+    merge_into: str | None = None  # the surviving proposal ID of a merge
+    op_id: str | None = None  # client idempotency key; a retry with it replays
 
 
 # ---------------------------------------------------------------------------
@@ -263,43 +282,140 @@ async def review_stats(
         await db.close()
 
 
-@router.post("/proposed-classes/{label}/review")
+@router.get("/proposed-classes")
+async def list_proposed_classes(
+    corpus: str = Query("default"),
+) -> dict[str, Any]:
+    """Every proposed class of the corpus with its current decision, from the ledger."""
+    from folio_insights.proposals import ProposalStore
+
+    ledger = proposal_svc.ledger_corpus(corpus)
+    async with proposal_svc.open_ledger(ledger) as ctx:
+        registry = None if ctx is None else await ProposalStore(ctx).load()
+    return proposal_svc.registry_view(ledger, registry)
+
+
+@router.get("/proposed-classes/{label:path}")
+async def get_proposed_class(
+    label: str,
+    corpus: str = Query("default"),
+) -> dict[str, Any]:
+    """One proposed class (resolved by label) with its current decision, from the ledger."""
+    from folio_insights.proposals import ProposalStore
+
+    ledger = proposal_svc.ledger_corpus(corpus)
+    async with proposal_svc.open_ledger(ledger) as ctx:
+        registry = None if ctx is None else await ProposalStore(ctx).load()
+    proposal = None if registry is None else registry.by_label(label)
+    if proposal is None:
+        raise HTTPException(
+            status_code=404, detail="no proposed class with this label in this corpus"
+        )
+    return {"corpus": ledger, **proposal_svc.proposal_view(proposal)}
+
+
+@router.post("/proposed-classes/{label:path}/review")
 async def review_proposed_class(
     label: str,
     body: ProposedClassReviewRequest,
     corpus: str = Query("default"),
 ) -> dict[str, Any]:
-    """Submit a review decision for a proposed new FOLIO class."""
-    from api.main import get_db_for_corpus
+    """Record a review decision for a proposed new FOLIO class in the proposal ledger.
 
-    if body.status not in ("approved", "rejected"):
-        raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
+    The label resolves to the corpus's proposal ID through the registry. The decision is
+    recorded by the configured human reviewer through ``ProposalStore.record_decisions``
+    (whole-item validation, the PII gate, decision history), so it reaches the
+    approved-only backlog. Every refusal writes nothing.
+    """
+    from folio_insights.proposals import ProposalStore
+    from folio_insights.proposals.decisions import INPUT_STATUSES, DecisionInvalid
+    from folio_insights.storage.errors import (
+        JournalStateChanged,
+        OperationIdConflict,
+        PiiRejected,
+    )
+    from folio_insights.storage.proposals import ProposalPayloadRefused
 
-    db = await get_db_for_corpus(corpus)
-    try:
-        now = _now_iso()
-        await db.execute(
-            """
-            INSERT INTO proposed_class_decisions (concept_label, corpus_name, status, reviewer_note, reviewed_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(concept_label, corpus_name) DO UPDATE SET
-                status = excluded.status,
-                reviewer_note = excluded.reviewer_note,
-                reviewed_at = excluded.reviewed_at
-            """,
-            (label, corpus, body.status, body.note or "", now),
+    decided_by = proposal_svc.configured_reviewer()
+    ledger = proposal_svc.ledger_corpus(corpus)
+    if body.status not in INPUT_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status: must be one of {sorted(INPUT_STATUSES)}; nothing was recorded",
         )
-        await db.commit()
-        return {"label": label, "status": body.status, "reviewed_at": now}
-    finally:
-        await db.close()
+    explicit_op_id = None if body.op_id is None else proposal_svc.client_op_id(body.op_id)
+
+    async with proposal_svc.open_ledger(ledger) as ctx:
+        if ctx is None:
+            raise HTTPException(
+                status_code=404,
+                detail="no proposed class with this label in this corpus; nothing was recorded",
+            )
+        store = ProposalStore(ctx)
+        registry = await store.load()
+        proposal = registry.by_label(label)
+        if proposal is None:
+            raise HTTPException(
+                status_code=404,
+                detail="no proposed class with this label in this corpus; nothing was recorded",
+            )
+        pid = proposal.proposal_id
+        item: dict[str, Any] = {"proposal_id": pid, "status": body.status,
+                                "note": body.note or ""}
+        if body.merge_into is not None:
+            item["merge_into"] = body.merge_into
+        op_id = explicit_op_id or proposal_svc.derived_op_id(
+            ledger, decided_by, item, registry.head
+        )
+        try:
+            result = await store.record_decisions([item], op_id=op_id, decided_by=decided_by)
+        except DecisionInvalid as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from None
+        except (PiiRejected, ProposalPayloadRefused) as exc:
+            raise HTTPException(
+                status_code=422, detail=f"refused: {exc}; nothing was recorded"
+            ) from None
+        except OperationIdConflict:
+            raise HTTPException(
+                status_code=409,
+                detail="op_id was already used for a different decision; nothing was recorded",
+            ) from None
+        except JournalStateChanged:
+            raise HTTPException(
+                status_code=409,
+                detail="the proposal ledger changed during the request; retry. Nothing was recorded",
+            ) from None
+        current = (await store.load()).get(pid)
+
+    outcome = result["results"][pid]
+    return {
+        "label": label,
+        "corpus": ledger,
+        "proposal_id": pid,
+        # The decision as of this operation (the original outcome on a replay).
+        "status": outcome["status"],
+        "decided_at": outcome["decided_at"],
+        "reviewed_at": outcome["decided_at"],
+        # The current decision, which a later operation may have changed since.
+        "current_status": outcome["current_status"],
+        "current_decided_at": outcome["current_decided_at"],
+        "superseded": pid in result["superseded_since"],
+        "decision": proposal_svc.decision_view(current.decision),
+        "recorded": bool(result["recorded"]),
+        "replayed": result["replayed"],
+        "op_id": op_id,
+        "ledger_position": result["position"],
+    }
 
 
 @router.post("/review/reset")
 async def reset_reviews(
     corpus: str = Query("default"),
 ) -> dict[str, Any]:
-    """Delete all review decisions for a corpus (destructive)."""
+    """Delete all unit review decisions for a corpus (destructive).
+
+    Proposed-class decisions are not reset: they live in the append-only proposal
+    ledger, and the legacy ``proposed_class_decisions`` table is read-only."""
     from api.main import get_db_for_corpus
 
     db = await get_db_for_corpus(corpus)
@@ -309,10 +425,6 @@ async def reset_reviews(
             (corpus,),
         )
         deleted = cursor.rowcount
-        await db.execute(
-            "DELETE FROM proposed_class_decisions WHERE corpus_name = ?",
-            (corpus,),
-        )
         await db.commit()
         return {"deleted": deleted, "corpus": corpus}
     finally:

@@ -79,15 +79,30 @@ app.include_router(timeline.router)
 _extraction_data: dict[str, dict[str, Any]] = {}
 _output_dir: Path = Path("./output")
 _default_corpus: str = "default"
+# Proposed-class decisions (api/services/proposals.py): the corpus storage root holding
+# the proposal ledger (None: $FOLIO_INSIGHTS_CORPUS_ROOT, else ~/.folio-insights/corpora)
+# and the human reviewer recorded as decided_by (None: $FOLIO_INSIGHTS_REVIEWER).
+_corpus_root: Path | None = None
+_reviewer: str | None = None
 
 
-def configure(output_dir: Path | str | None = None, corpus_name: str | None = None) -> None:
+def configure(
+    output_dir: Path | str | None = None,
+    corpus_name: str | None = None,
+    *,
+    corpus_root: Path | str | None = None,
+    reviewer: str | None = None,
+) -> None:
     """Configure the server before startup (used by CLI and tests)."""
-    global _output_dir, _default_corpus
+    global _output_dir, _default_corpus, _corpus_root, _reviewer
     if output_dir is not None:
         _output_dir = Path(output_dir)
     if corpus_name is not None:
         _default_corpus = corpus_name
+    if corpus_root is not None:
+        _corpus_root = Path(corpus_root)
+    if reviewer is not None:
+        _reviewer = reviewer
 
 
 def load_extraction(corpus: str | None = None) -> dict[str, Any]:
