@@ -34,6 +34,16 @@ D-17 three-mode discipline (cascade preview):
     build_cascade_preview and refuses with ``PreviewStale`` if
     ``underlying_state_hash`` differs.
 
+Phase 13 (U3) saved-preview contract: a preview carries an explicit
+``op_id`` and, when built over a persistent store, the ``state_position``
+(corpus journal head) it was built against. ``commit_cascade`` hands both to
+the persistent log's guarded append, which re-checks the position inside its
+serialized write transaction, so a preview commits at most once and never
+over a state another writer changed. Dependents come from the typed
+``ShardStore.dependents_of`` seam (KTD4), never a private dictionary.
+Retraction appends a ``RetractionEvent`` only; historical shards are never
+deleted or rewritten.
+
 D-18 dependents classifier (locked verbatim by RESEARCH lines 1338-1353):
   * ``auto_rederive``  — prefer_latest + supersession_available.
   * ``review_needed``  — any human-judgment marker (contested/aporetic status,
@@ -43,6 +53,7 @@ D-18 dependents classifier (locked verbatim by RESEARCH lines 1338-1353):
 from __future__ import annotations
 
 import hashlib
+import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -57,6 +68,7 @@ if TYPE_CHECKING:
     )
 
     from folio_insights.governance.log import GovernanceLog
+    from folio_insights.identity.cache import DidDocCache
     from folio_insights.revision.store import ShardStore
 
 
@@ -70,6 +82,15 @@ class PreviewStale(ValueError):
     The error message MUST reference ``--preview`` so the operator knows
     the remediation: re-run ``governance retract <iri> --preview`` to
     capture a fresh cascade preview reflecting the new state.
+    """
+
+
+class RetractionTargetMissing(ValueError):
+    """The shard named for retraction does not exist in the corpus store.
+
+    Raised by ``build_cascade_preview`` (so ``--preview`` and the interactive
+    mode refuse) and therefore by ``commit_cascade`` (which re-runs it), so a
+    saved preview whose target is absent never commits.
     """
 
 
@@ -87,6 +108,15 @@ class CascadePreview(BaseModel):
     Frozen + extra="forbid" so a preview round-tripped through JSON is
     structurally identical and any extra field at ``--apply`` time
     triggers a Pydantic ValidationError before the race-check runs.
+
+    Phase 13 (U3) saved-preview fields:
+
+    * ``op_id`` — the explicit operation ID the commit is appended under.
+      Retrying an applied preview finds the committed event by this ID
+      instead of signing a second one (commit at most once).
+    * ``state_position`` — the corpus journal head the preview was built
+      against (persistent stores only; ``None`` for in-memory doubles). The
+      commit is appended only if the journal is still at this position.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -98,6 +128,8 @@ class CascadePreview(BaseModel):
     auto_rederive: list[str]
     aporetic: list[str]
     review_needed: list[str]
+    op_id: str | None = None
+    state_position: int | None = None
 
 
 # ── D-18 classifier (heuristic locked by RESEARCH lines 1338-1353) ─────────
@@ -188,21 +220,6 @@ def _extract_dep_attrs(dep_shard: Any, retracted_shard: Any) -> dict:
     }
 
 
-def _iter_store_items(store: Any) -> list[tuple[str, Any]]:
-    """Phase 7 helper: walk the InMemoryShardStore's underlying dict.
-
-    Phase 13 will replace this with a SPARQL CONSTRUCT over the persistent
-    backend. For Phase 7 we read the ``_d`` dict directly when available;
-    a store without ``_d`` yields an empty walk (the cascade preview will
-    contain zero dependents — the SHACL belt at the log layer still
-    enforces ``cascade_preview_hash`` non-empty).
-    """
-    d = getattr(store, "_d", None)
-    if d is None:
-        return []
-    return list(d.items())
-
-
 def _depends_on(dep_shard: Any, retracted_iri: str) -> bool:
     """True iff the dependent's depends_on_* lists include ``retracted_iri``."""
     for attr in (
@@ -217,6 +234,17 @@ def _depends_on(dep_shard: Any, retracted_iri: str) -> bool:
     return False
 
 
+def _record_sha256(shard: Any) -> str | None:
+    """JCS SHA-256 of a shard's full serialized record (None if absent).
+
+    Any edit to a dependent or to the retraction target changes this, so the
+    preview's state hash covers whole records, not just classifier inputs.
+    """
+    if shard is None:
+        return None
+    return hashlib.sha256(jcs.canonicalize(shard.model_dump(mode="json"))).hexdigest()
+
+
 async def _hash_underlying_state(
     retracted_iri: str,
     classified_iris: dict[str, list[str]],
@@ -228,8 +256,9 @@ async def _hash_underlying_state(
 
     Hashes the set of (dep_iri, epistemic_status, reconciliation_strategy,
     valid_time_end, superseded_by, log_position_at_signing) tuples — these
-    are the fields the classifier reads. JCS-canonical so the hash is
-    byte-stable across Python runs.
+    are the fields the classifier reads — plus the full-record digest of
+    every dependent and of the retraction target. JCS-canonical so the hash
+    is byte-stable across Python runs.
 
     The log's latest position for the corpus is included so a new event
     appended between preview and commit (even one not affecting the
@@ -263,6 +292,7 @@ async def _hash_underlying_state(
                     else None
                 ),
                 "superseded_by": getattr(shard, "superseded_by", None),
+                "record_sha256": _record_sha256(shard),
             }
         )
 
@@ -277,6 +307,7 @@ async def _hash_underlying_state(
     payload = {
         "retracted_iri": retracted_iri,
         "retracted_superseded_by": retracted_superseded_by,
+        "retracted_record_sha256": _record_sha256(retracted),
         "corpus": corpus,
         "log_latest_position": latest_pos,
         "dependents": items,
@@ -291,21 +322,32 @@ async def build_cascade_preview(
     *,
     store: "ShardStore",
     log: "GovernanceLog",
+    op_id: str | None = None,
+    state_position: int | None = None,
 ) -> CascadePreview:
     """Build the cascade preview for ``retracted_iri`` over the current state (D-17 / D-18).
 
-    Phase 7 in-memory: walks the ShardStore looking for shards whose
-    ``depends_on_*`` lists include ``retracted_iri``. For each dependent,
-    extracts the classifier-relevant attributes via ``_extract_dep_attrs``
-    and classifies via ``classify_dependent``.
+    Dependents come from the typed ``ShardStore.dependents_of`` seam (KTD4):
+    the persistent store answers it from the RDF projection at the committed
+    watermark, the in-memory double from its own records. For each
+    dependent, extracts the classifier-relevant attributes via
+    ``_extract_dep_attrs`` and classifies via ``classify_dependent``.
 
-    Phase 13 will replace the walk with the SPARQL CONSTRUCT in RESEARCH
-    lines 1294-1333; the classifier + the CascadePreview shape stay the same.
+    ``op_id`` (default: a fresh ``retract:<uuid>``) and ``state_position``
+    (the persistent journal head read BEFORE this build, or ``None``) are
+    carried on the preview for a later guarded commit. Reading the position
+    first means a write that lands mid-build makes the preview look older
+    than it is, so the guarded commit refuses rather than accepts it.
 
-    Returns an immutable ``CascadePreview`` with the three buckets sorted by
-    IRI (deterministic for the JCS-canonical underlying_state_hash).
+    Raises ``RetractionTargetMissing`` if ``retracted_iri`` is not in the
+    store. Returns an immutable ``CascadePreview`` with the three buckets
+    sorted by IRI (deterministic for the JCS-canonical underlying_state_hash).
     """
     retracted_shard = await store.get(retracted_iri)
+    if retracted_shard is None:
+        raise RetractionTargetMissing(
+            f"cannot retract {retracted_iri!r}: no such shard in corpus {corpus!r}"
+        )
 
     classified: dict[str, list[str]] = {
         "auto_rederive": [],
@@ -313,7 +355,8 @@ async def build_cascade_preview(
         "review_needed": [],
     }
 
-    for dep_iri, dep_shard in _iter_store_items(store):
+    for dep_shard in await store.dependents_of(retracted_iri):
+        dep_iri = dep_shard.shard_iri
         if dep_iri == retracted_iri:
             continue
         if not _depends_on(dep_shard, retracted_iri):
@@ -339,6 +382,8 @@ async def build_cascade_preview(
         auto_rederive=classified["auto_rederive"],
         aporetic=classified["aporetic"],
         review_needed=classified["review_needed"],
+        op_id=op_id or f"retract:{uuid.uuid4().hex}",
+        state_position=state_position,
     )
 
 
@@ -353,6 +398,16 @@ def _hash_preview(preview: CascadePreview) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
+def cascade_preview_hash(preview: CascadePreview) -> str:
+    """The ``cascade_preview_hash`` a commit of ``preview`` records.
+
+    Deterministic for a given saved preview, so a retried ``--apply`` can
+    confirm that the event committed under ``preview.op_id`` is this
+    preview's retraction.
+    """
+    return _hash_preview(preview)
+
+
 async def commit_cascade(
     preview: CascadePreview,
     *,
@@ -360,6 +415,7 @@ async def commit_cascade(
     log: "GovernanceLog",
     signing_key: "Ed25519PrivateKey",
     did: str,
+    cache: "DidDocCache | None" = None,
 ) -> RetractionEvent:
     """Commit a previously-built cascade preview (D-17).
 
@@ -371,12 +427,20 @@ async def commit_cascade(
          operator knows the remediation.
       3. Build the ``RetractionEvent`` committing the preview hash, sign
          over the canonical payload, and append to the governance log.
+         A preview carrying ``state_position`` (persistent store) is
+         appended under ``preview.op_id`` with ``expected_head`` set, so the
+         log refuses it if anything committed since the preview was built;
+         the log's own signature, authorization and SHACL gates run first.
 
     Returns the persisted RetractionEvent (with ``position`` assigned by
     ``log.append``).
     """
     current = await build_cascade_preview(
-        preview.retracted_shard_iri, preview.corpus, store=store, log=log
+        preview.retracted_shard_iri,
+        preview.corpus,
+        store=store,
+        log=log,
+        op_id=preview.op_id,
     )
     if current.underlying_state_hash != preview.underlying_state_hash:
         raise PreviewStale(
@@ -425,7 +489,7 @@ async def commit_cascade(
             signing_key_id=f"{did}#{did.removeprefix('did:key:')}",
             did_doc_snapshot_at=None,
             now=now,
-            cache=InMemoryDidDocCache(),
+            cache=cache if cache is not None else InMemoryDidDocCache(),
         )
     except InvalidSignature:
         # Re-raise unchanged — the caller (cli/retract.py) reports via the
@@ -433,7 +497,15 @@ async def commit_cascade(
         # so existing ValueError handlers still trigger.
         raise
     signed_event = event.model_copy(update={"signature": sig})
-    persisted = await log.append(signed_event)
+    if preview.state_position is not None:
+        # Persistent log: explicit op_id + in-transaction freshness check.
+        persisted = await log.append(  # type: ignore[call-arg]
+            signed_event,
+            op_id=preview.op_id,
+            expected_head=preview.state_position,
+        )
+    else:
+        persisted = await log.append(signed_event)
     return persisted
 
 
@@ -470,7 +542,9 @@ __all__ = [
     "CascadePreview",
     "PreviewStale",
     "RetractionEvent",
+    "RetractionTargetMissing",
     "build_cascade_preview",
+    "cascade_preview_hash",
     "classify_dependent",
     "commit_cascade",
     "validate_retraction",
