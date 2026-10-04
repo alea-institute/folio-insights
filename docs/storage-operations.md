@@ -305,14 +305,40 @@ proposed-class governance pipeline (`folio_insights.proposals`,
   are reduced to an exact schema with capped strings.
 - **PII gate scope.** The gate scans the operation ID as well as the payload.
 - **Not projected.** Ledger rows never enter the RDF projection, so they do
-  not move its watermark. TTL dumps and the export formats do not include
-  them yet.
+  not move its watermark. TTL dumps and the RDF export formats do not include
+  them (see "Approved-only backlog" below for why).
+- **Decisions.** `decision` operations record explicit human review
+  decisions (`scripts/apply_approvals.py apply`). A proposal stays `pending`
+  until one names it; judgments never change it. The whole batch is
+  validated first (unknown IDs, invalid statuses and extra keys refuse it
+  all), `decided_by` must be `human:<name>`, and a changed decision appends
+  to `decision_history` instead of overwriting. Retrying an op_id returns the
+  original result and decision time.
 - **Snapshots verify it.** The manifest's per-corpus entry (covering the union
   of journal and ledger corpora) records `proposal_head`,
   `proposal_head_payload_sha256` and `proposal_rows`. A snapshot or restore
   refuses an unknown `proposal_ledger_schema_version`, and a restore checks
   each corpus's ledger head. A manifest written before the ledger existed
   restores only if the journal file holds no ledger rows.
+
+### Approved-only backlog
+
+`scripts/apply_approvals.py export --corpus C --out FILE` writes the
+ontology-extension backlog: only proposals whose current decision is
+`approved`, rows sorted by proposal ID, every value from the ledger. The same
+ledger gives the same bytes, before or after a restart. The output passes the
+corpus PII gate and the forbidden-key check, carries no source text or FOLIO
+definition, and must be written outside every git work tree and outside the
+storage root (the worklist and approval-queue writers follow the same rule).
+
+It is deliberately separate from `storage export` and `storage dump`:
+
+- the export formats are verified RDF views of the projection, and ledger
+  rows are not in the projection;
+- the dump commits into a git repository, and generated proposal material,
+  whose labels come from pipeline output, must never be committed (R5);
+- snapshots already copy the ledger and verify its per-corpus head, so a
+  restore recovers every decision, and the backlog is regenerated from it.
 
 ## rdflib
 

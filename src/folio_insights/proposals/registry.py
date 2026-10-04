@@ -25,6 +25,12 @@ Ledger operation kinds folded here:
   writes them, and so do recorded human or model judgments. Every judgment
   is kept in ``judgment_history``. A later one supersedes the current one but
   never erases an earlier record.
+* ``decision``: explicit human review decisions (U3). A proposal stays
+  ``pending`` until one names it; a judgment never changes the decision. A
+  decision whose status, note, reviewer and merge target equal the current
+  one changes nothing (its original ``decided_at`` stands). A different one
+  becomes current and is appended to ``decision_history``; nothing earlier is
+  overwritten. ``decided_at`` is the ledger commit time of the operation.
 """
 from __future__ import annotations
 
@@ -35,10 +41,12 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from folio_insights.proposals.decisions import decision_core
 from folio_insights.storage.proposals import ProposalLedgerEntry
 
 KIND_COLLECT = "collect"
 KIND_JUDGMENT = "judgment"
+KIND_DECISION = "decision"
 DETERMINISTIC = "deterministic"
 SUPPORTING_UNIT_CAP = 8
 MAX_LABEL_CHARS = 200
@@ -157,6 +165,7 @@ class Proposal:
     decision: dict[str, Any] = field(
         default_factory=lambda: {"status": "pending", "note": "", "decided_at": None}
     )
+    decision_history: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -174,6 +183,7 @@ class Proposal:
             "judgment": None if self.judgment is None else dict(self.judgment),
             "judgment_history": [dict(j) for j in self.judgment_history],
             "decision": dict(self.decision),
+            "decision_history": [dict(d) for d in self.decision_history],
         }
 
 
@@ -203,6 +213,8 @@ class ProposalRegistry:
             self._apply_collect(entry)
         elif entry.kind == KIND_JUDGMENT:
             self._apply_judgment(entry)
+        elif entry.kind == KIND_DECISION:
+            self._apply_decision(entry)
         # Unknown kinds (later units) are skipped by this fold, never misread.
 
     def _apply_collect(self, entry: ProposalLedgerEntry) -> None:
@@ -279,6 +291,23 @@ class ProposalRegistry:
                 "committed_at": entry.committed_at,
             }
 
+    def _apply_decision(self, entry: ProposalLedgerEntry) -> None:
+        for item in entry.payload.get("decisions", []):
+            p = self.proposals.get(item["proposal_id"])
+            if p is None:
+                continue  # writers refuse unknown IDs; the fold stays defensive
+            core = decision_core(item)
+            if core == decision_core(p.decision):
+                continue  # an identical decision keeps its original decided_at
+            record = {
+                **core,
+                "decided_at": entry.committed_at,
+                "ledger_position": entry.position,
+                "op_id": entry.op_id,
+            }
+            p.decision_history.append(dict(record))
+            p.decision = record
+
     # ---- queries ------------------------------------------------------
 
     def get(self, pid: str) -> Proposal | None:
@@ -311,6 +340,7 @@ def judgment_core(judgment: Mapping[str, Any] | None) -> dict[str, Any] | None:
 __all__ = [
     "DETERMINISTIC",
     "KIND_COLLECT",
+    "KIND_DECISION",
     "KIND_JUDGMENT",
     "SUPPORTING_UNIT_CAP",
     "Proposal",

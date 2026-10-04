@@ -695,8 +695,14 @@ class CorpusStorageContext:
         # Work on a private copy: neither the caller, the verifier nor a hook
         # can change the event between verification and persistence.
         event = event.model_copy(deep=True)
-        request_sha = _canonical_sha(event.model_dump(mode="json"))
+        dumped = event.model_dump(mode="json")
+        request_sha = _canonical_sha(dumped)
         op = op_id or f"governance:{request_sha}"
+        # PII gate first, like shards and proposal-ledger operations: a refused
+        # event never reaches the journal, the projection or any dump. It scans
+        # the operation ID and every leaf of the event, signature objects
+        # included (only exactly-shaped signatures and digests are exempt).
+        self.config.pii_gate.check({"op_id": op, "event": dumped})
 
         verifier = self.config.event_verifier
         if verifier is not None and not await verifier(event.model_copy(deep=True)):

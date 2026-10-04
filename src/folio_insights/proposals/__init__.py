@@ -1,4 +1,4 @@
-"""Proposed-class governance: collect -> dedupe -> worklist (-> approve -> export, U3).
+"""Proposed-class governance: collect -> dedupe -> worklist -> approve -> export.
 
 The pipeline's ``proposed_class`` tags are surface concepts with no FOLIO IRI,
 honestly demoted rather than force-fit. This package turns them into a
@@ -10,7 +10,9 @@ here stores source text. See
 This is a separate top-level package, not part of ``governance/``, because the
 ``governance/`` D-04 boundary forbids storage and RDF dependencies.
 """
+from folio_insights.proposals.decisions import DecisionInvalid
 from folio_insights.proposals.dedupe import DeterministicDeduper, survivors
+from folio_insights.proposals.export import build_backlog, check_backlog
 from folio_insights.proposals.lexicon import FolioLexicon
 from folio_insights.proposals.registry import (
     Proposal,
@@ -24,12 +26,15 @@ from folio_insights.proposals.store import ProposalStore, load_run_proposals
 from folio_insights.proposals.worklist import build_worklist
 
 __all__ = [
+    "DecisionInvalid",
     "DeterministicDeduper",
     "FolioLexicon",
     "Proposal",
     "ProposalRegistry",
     "ProposalStore",
+    "build_backlog",
     "build_worklist",
+    "check_backlog",
     "collect_payload",
     "load_run_proposals",
     "normalize_label",
