@@ -99,3 +99,17 @@ class FrameworkChoice(BaseModel):
     framework_id: str | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     rationale: str = ""
+
+
+class BfoCategoryChoice(BaseModel):
+    """The BFO classifier's LLM fallback (Phase 9 U7): one of the four envelope
+    categories, or null. The Literal makes any other answer a validation error."""
+
+    category: Literal[
+        "continuant_independent",
+        "continuant_dependent",
+        "occurrent_process",
+        "occurrent_event",
+    ] | None = None
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    rationale: str = ""

@@ -852,6 +852,11 @@ from folio_insights.frameworks.cli import framework_group as _framework_group  #
 
 cli.add_command(_framework_group)
 
+# Phase 9 U7: BFO typing report.
+from folio_insights.bfo.cli import bfo_group as _bfo_group  # noqa: E402
+
+cli.add_command(_bfo_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""

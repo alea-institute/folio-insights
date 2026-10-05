@@ -252,3 +252,23 @@ FRAMEWORK_DETECT = register(PromptTemplate(
     output_schema=schemas.FrameworkChoice,
     max_tokens=512,
 ))
+
+BFO_CLASSIFY = register(PromptTemplate(
+    id="bfo.classifier_fallback", version="1", task="bfo_classifier",
+    user=(
+        "Classify the SUBJECT of a legal proposition into exactly one BFO 2020 category, "
+        "or null if you cannot tell:\n"
+        "- continuant_independent: a bearer that persists on its own (a person, an "
+        "organization, a court, a place, a physical asset)\n"
+        "- continuant_dependent: something that depends on a bearer (a role, a quality, a "
+        "status, a document, a rule, a legal doctrine, any information content)\n"
+        "- occurrent_process: something that unfolds in time (a proceeding, a service, conduct)\n"
+        "- occurrent_event: an instantaneous happening (a filing, a breach, a signing)\n\n"
+        "Subject: {subject}\n"
+        "Speech act: {speech_act}\n"
+        "FOLIO tags: {tags}\n\n"
+        "Give your confidence (0-1) and a one-sentence rationale."
+    ),
+    output_schema=schemas.BfoCategoryChoice,
+    max_tokens=512,
+))
