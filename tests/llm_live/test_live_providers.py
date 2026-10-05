@@ -8,8 +8,13 @@ Enable with::
     FOLIO_INSIGHTS_LIVE_LLM=1 pytest -m live_llm tests/llm_live -q
 
 Each provider runs only when its key is set (Ollama: ``FOLIO_INSIGHTS_LIVE_OLLAMA=1`` and a
-local server). ``FOLIO_INSIGHTS_LIVE_LLM_REPORT=<path>`` writes the per-provider usage table
-(tokens only, no prompts, no keys) for comparison against the provider's invoice export.
+local server). ``FOLIO_INSIGHTS_LIVE_LLM_REPORT=<path>`` writes the per-provider usage and cost
+table (tokens and ledger cost only; no prompts, no keys).
+
+Cost check (U3, the plan's +/-5% claim): run the smoke on a provider account/project used for
+nothing else in the window, read that window's charge from the provider's invoice or usage
+export, and pass it as ``FOLIO_INSIGHTS_LIVE_INVOICE_USD_<PROVIDER>`` (for example
+``..._GOOGLE=0.000412``). The test then asserts the ledger total is within 5% of it.
 """
 
 from __future__ import annotations
@@ -20,7 +25,11 @@ from pathlib import Path
 
 import pytest
 
+from decimal import Decimal
+
 from folio_insights.llm import Credentials, LLMPort, LLMRunContext, use_context
+from folio_insights.llm.cost import CostMeter
+from folio_insights.llm.usage import UsageLedger
 from folio_insights.llm.schemas import ClassificationOutput, ConceptOutput, DistilledOutput
 from folio_insights.llm.templates import CLASSIFY, CONCEPT, DISTILL
 
@@ -55,11 +64,13 @@ def _skip_without_access(provider: str, creds: Credentials) -> None:
 
 
 @pytest.mark.parametrize("provider", sorted(LIVE_MODELS))
-async def test_live_synthetic_extraction(provider: str) -> None:
+async def test_live_synthetic_extraction(provider: str, tmp_path: Path) -> None:
     creds = Credentials.from_env()
     _skip_without_access(provider, creds)
+    run_id = f"live-smoke-{provider}"
+    ledger = UsageLedger(tmp_path / "ledger.sqlite3")
     ctx = LLMRunContext(credentials=creds, provider=provider, model=LIVE_MODELS[provider],
-                        run_id=f"live-smoke-{provider}")
+                        run_id=run_id, meter=CostMeter(run_id=run_id, ledger=ledger))
     port = LLMPort()
     with use_context(ctx):
         distilled, _ = await port.structured(
@@ -72,11 +83,17 @@ async def test_live_synthetic_extraction(provider: str) -> None:
     assert classified.unit_type
     assert isinstance(concepts.concepts, list)
     assert all(r.usage.input_tokens > 0 for r in ctx.records)
+    total = ledger.run_total(run_id)
+
+    invoice = os.environ.get(f"FOLIO_INSIGHTS_LIVE_INVOICE_USD_{provider.upper()}")
+    if invoice:
+        expected = Decimal(invoice)
+        assert abs(total - expected) <= expected * Decimal("0.05"), (total, expected)
 
     report = os.environ.get("FOLIO_INSIGHTS_LIVE_LLM_REPORT")
     if report:
         path = Path(report)
         rows = json.loads(path.read_text()) if path.exists() else []
         rows.append({"provider": provider, "model": LIVE_MODELS[provider],
-                     "summary": ctx.usage_summary()})
+                     "ledger_total_usd": str(total), "summary": ctx.usage_summary()})
         path.write_text(json.dumps(rows, indent=2))

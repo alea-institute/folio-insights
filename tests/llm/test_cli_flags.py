@@ -21,6 +21,7 @@ def captured(monkeypatch):
         ctx = current_context()
         seen["provider"], seen["model"] = ctx.provider, ctx.model
         seen["key"] = ctx.credentials.get("anthropic")
+        seen["cap"] = ctx.meter.cap if ctx.meter is not None else "no meter"
         seen["routes"] = {t: resolve_route(t) for t in ("distiller", "concept", "contradiction")}
 
     async def fake_extract_run(self, source_dir, corpus_name=None, resume=True, **kw):
@@ -79,3 +80,17 @@ def test_discover_accepts_the_same_flags(tmp_path, captured) -> None:
 def test_unknown_provider_flag_is_rejected(tmp_path) -> None:
     result = CliRunner().invoke(cli, ["extract", str(tmp_path), "--llm-provider", "nonesuch"])
     assert result.exit_code != 0 and "nonesuch" in result.output
+
+
+def test_max_spend_flag_sets_the_run_cap(tmp_path, captured, monkeypatch) -> None:
+    from decimal import Decimal
+
+    monkeypatch.setenv("FOLIO_INSIGHTS_QUEUE_DB", str(tmp_path / "q.sqlite3"))
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "synthetic.md").write_text("# Synthetic\n\nObject before the answer.\n")
+    result = CliRunner().invoke(cli, ["extract", str(src), "--corpus", "c", "--output",
+                                      str(tmp_path / "out"), "--max-spend-usd", "2.5"])
+    assert result.exit_code == 0, result.output
+    assert captured["cap"] == Decimal("2.5")
+    assert not (tmp_path / "q.sqlite3").exists()  # no LLM call, no ledger write

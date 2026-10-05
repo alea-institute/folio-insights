@@ -33,8 +33,8 @@ class UsageMeter(Protocol):
     def before_call(self, planned: Any) -> None:
         """Raise :class:`~folio_insights.llm.errors.RunHalted` to refuse the call."""
 
-    def after_call(self, record: UsageRecord) -> None:
-        """Account for a completed (or failed-but-billed) call."""
+    def after_call(self, record: UsageRecord, planned: Any = None) -> None:
+        """Account for a completed (or failed-but-billed) call and release its reservation."""
 
 
 @dataclass(eq=False)
@@ -72,7 +72,7 @@ class LLMRunContext:
             g["input_tokens"] += rec.usage.input_tokens
             g["output_tokens"] += rec.usage.output_tokens
             g["cached_input_tokens"] += rec.usage.cached_input_tokens
-        return {
+        summary: dict[str, Any] = {
             "calls": len(self.records),
             "by_task": [
                 {"task": t, "provider": p, "model": m, **vals}
@@ -80,6 +80,10 @@ class LLMRunContext:
             ],
             "templates": dict(sorted(self.templates_used.items())),
         }
+        report = getattr(self.meter, "report", None)
+        if report is not None:
+            summary["cost"] = report()
+        return summary
 
 
 _CURRENT: contextvars.ContextVar[LLMRunContext | None] = contextvars.ContextVar(

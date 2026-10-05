@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import json
 import logging
 import os
 import weakref
@@ -294,7 +295,7 @@ class LLMPort:
             template_id=template.id,
             template_hash=template.hash,
             messages=tuple((m.get("role", ""), m.get("content", "")) for m in messages),
-            output_schema_json="" if schema is None else str(schema.model_json_schema()),
+            output_schema_json="" if schema is None else json.dumps(schema.model_json_schema()),
             max_tokens=cap,
             max_attempts=self.max_attempts,
         )
@@ -305,7 +306,14 @@ class LLMPort:
                 ctx.halt(exc)
                 raise
 
-        client = self._client_for(spec, key)
+        try:
+            client = self._client_for(spec, key)
+        except Exception:
+            # Never reached the provider: drop the meter's reservation for this call.
+            release = getattr(ctx.meter, "release", None)
+            if release is not None:
+                release(planned)
+            raise
         retrying = self._retrying()
         kwargs: dict[str, Any] = {
             "model": route.model,
@@ -322,7 +330,8 @@ class LLMPort:
             result, completion = await client.chat.completions.create_with_completion(**kwargs)
         except Exception as exc:  # noqa: BLE001 - every failure is mapped below
             mapped, usage = self._map_failure(exc, spec, route, retrying, secrets)
-            self._record(ctx, task, template, usage, status="error", error_kind=mapped.kind)
+            self._record(ctx, task, template, usage, planned, status="error",
+                         error_kind=mapped.kind)
             raise mapped from None
 
         if schema is None:
@@ -331,7 +340,7 @@ class LLMPort:
         usage = Usage.from_openai_usage(
             spec.name, route.model, getattr(completion, "usage", None), attempts=attempts
         )
-        self._record(ctx, task, template, usage)
+        self._record(ctx, task, template, usage, planned)
         if schema is None:
             return completion, usage
         return result, usage
@@ -372,6 +381,7 @@ class LLMPort:
         task: str,
         template: PromptTemplate,
         usage: Usage,
+        planned: PlannedCall | None = None,
         *,
         status: str = "ok",
         error_kind: str = "",
@@ -383,7 +393,7 @@ class LLMPort:
         ctx.records.append(record)
         ctx.templates_used[template.id] = template.hash
         if ctx.meter is not None:
-            ctx.meter.after_call(record)
+            ctx.meter.after_call(record, planned)
 
 
 def _is_transport_fault(exc: BaseException) -> bool:

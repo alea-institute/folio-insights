@@ -42,6 +42,13 @@ def _llm_options(func):
         help="Model for every LLM task (default: settings, or the provider's default model).",
     )(func)
     func = click.option(
+        "--max-spend-usd",
+        default=None,
+        type=float,
+        help="Spend cap for this run's LLM calls (USD; default $FOLIO_INSIGHTS_LLM_MAX_SPEND_USD). "
+        "A call that could exceed it is refused and the run stops, resumable from its checkpoint.",
+    )(func)
+    func = click.option(
         "--llm-provider",
         default=None,
         type=click.Choice(supported_providers(), case_sensitive=False),
@@ -50,19 +57,33 @@ def _llm_options(func):
     return func
 
 
-def _install_cli_llm_context(provider: str | None, model: str | None):
+def _install_cli_llm_context(
+    provider: str | None, model: str | None, max_spend_usd: float | None = None,
+    corpus: str = "",
+):
     """Use the invoking user's own keys (their environment) for this CLI command.
 
     Only CLI commands that run LLM work on the user's behalf call this, and the context lives
     only as long as the command (``click`` closes it as a resource). ``serve`` never does: the API
     process takes keys per request and must not hold an ambient one (R2).
     """
-    from folio_insights.llm import Credentials, LLMRunContext, use_context
+    import os
+    import uuid
 
+    from folio_insights.jobs.queue import default_queue_path
+    from folio_insights.llm import Credentials, LLMRunContext, use_context
+    from folio_insights.llm.cost import SPEND_CAP_ENV, CostMeter
+    from folio_insights.llm.usage import UsageLedger
+
+    run_id = f"cli-{uuid.uuid4().hex}"
+    cap = max_spend_usd if max_spend_usd is not None else (os.environ.get(SPEND_CAP_ENV) or None)
     ctx = LLMRunContext(
         credentials=Credentials.from_env(),
         provider=provider.lower() if provider else None,
         model=model or None,
+        run_id=run_id,
+        meter=CostMeter(run_id=run_id, ledger=UsageLedger(default_queue_path()), cap_usd=cap,
+                        corpus_id=corpus),
     )
     click.get_current_context().with_resource(use_context(ctx))
     return ctx
@@ -79,6 +100,23 @@ def _echo_llm_usage(ctx) -> None:
             f"{row['input_tokens']} in / {row['output_tokens']} out tokens"
             + (f", {row['errors']} failed" if row["errors"] else "")
         )
+    cost = summary.get("cost")
+    if cost:
+        cap = f" (cap ${cost['cap_usd']})" if cost.get("cap_usd") else ""
+        click.echo(f"Cost: ${cost['spent_usd']}{cap}, price table {cost['price_table_version']}, "
+                   f"run {ctx.run_id}"
+                   + (f"; {cost['unpriced_calls']} unpriced call(s)" if cost["unpriced_calls"] else ""))
+
+
+def _echo_halt_hint(exc: BaseException) -> None:
+    kind = getattr(exc, "kind", "")
+    if kind == "budget_exhausted":
+        click.echo("The spend cap stopped the run before a call that could exceed it. Re-run "
+                   "with a higher --max-spend-usd to resume from the last completed stage.",
+                   err=True)
+    elif kind == "needs_credentials":
+        click.echo("Set the provider's API key in your environment and re-run; completed "
+                   "stages resume from their checkpoints.", err=True)
 
 
 @click.group()
@@ -142,6 +180,7 @@ def extract(
     verbose: bool,
     llm_provider: str | None,
     llm_model: str | None,
+    max_spend_usd: float | None,
 ) -> None:
     """Extract knowledge units from source files in SOURCE_DIR.
 
@@ -179,7 +218,7 @@ def extract(
         confidence_medium=confidence_medium,
     )
 
-    llm_ctx = _install_cli_llm_context(llm_provider, llm_model)
+    llm_ctx = _install_cli_llm_context(llm_provider, llm_model, max_spend_usd, corpus)
 
     # Create and run pipeline
     from folio_insights.pipeline.orchestrator import PipelineOrchestrator
@@ -197,6 +236,8 @@ def extract(
         )
     except Exception as exc:
         click.echo(f"Error: Pipeline failed: {exc}", err=True)
+        _echo_halt_hint(exc)
+        _echo_llm_usage(llm_ctx)
         logger.debug("Pipeline error details", exc_info=True)
         sys.exit(1)
 
@@ -264,6 +305,7 @@ def discover(
     verbose: bool,
     llm_provider: str | None,
     llm_model: str | None,
+    max_spend_usd: float | None,
 ) -> None:
     """Discover advocacy tasks from extracted knowledge units in CORPUS_NAME.
 
@@ -295,7 +337,7 @@ def discover(
         corpus_name=corpus_name,
     )
 
-    llm_ctx = _install_cli_llm_context(llm_provider, llm_model)
+    llm_ctx = _install_cli_llm_context(llm_provider, llm_model, max_spend_usd, corpus_name)
 
     # Create and run discovery pipeline
     from folio_insights.pipeline.discovery.orchestrator import (
@@ -322,6 +364,8 @@ def discover(
         sys.exit(1)
     except Exception as exc:
         click.echo(f"Error: Discovery pipeline failed: {exc}", err=True)
+        _echo_halt_hint(exc)
+        _echo_llm_usage(llm_ctx)
         logger.debug("Discovery error details", exc_info=True)
         sys.exit(1)
 

@@ -173,9 +173,11 @@ class JobRuntime:
     def build_worker(self, **kwargs: Any) -> JobWorker:
         from api.services.discovery_runner import run_discovery_job
         from api.services.pipeline_runner import run_extraction_job
+        from folio_insights.llm.cost import job_meter_factory
 
         handlers = {EXTRACT_KIND: run_extraction_job, DISCOVER_KIND: run_discovery_job}
         kwargs.setdefault("lease_seconds", float(os.environ.get("FOLIO_INSIGHTS_JOB_LEASE_SECONDS", 120)))
+        kwargs.setdefault("meter_factory", job_meter_factory)
         self.worker = JobWorker(
             self.queue, handlers, owner=self.owner, secret_store=self.secret_store, **kwargs
         )

@@ -58,18 +58,15 @@ async def _serve(args: argparse.Namespace) -> None:
 
     queue = SQLiteJobQueue(args.db)
     handlers = _load_handlers(args.handlers or [DEFAULT_HANDLERS])
-    meter_factory = None
-    try:  # the cost meter needs pydantic-free modules only, but stay tolerant of a lean image
-        from folio_insights.llm.cost import job_meter_factory as meter_factory  # type: ignore[no-redef]
-    except ImportError:
-        meter_factory = None
+    from folio_insights.llm.cost import job_meter_factory  # stdlib-only: fine in the lean image
+
     worker = JobWorker(
         queue,
         handlers,
         secret_store=SecretStore(),  # empty: this process never holds a user's key
         lease_seconds=args.lease_seconds,
         poll_interval=args.poll_interval,
-        meter_factory=meter_factory,
+        meter_factory=job_meter_factory,
     )
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

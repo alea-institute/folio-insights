@@ -198,3 +198,45 @@ async def test_heartbeat_keeps_a_blocked_loop_from_losing_its_lease(env) -> None
                        lease_seconds=0.3, poll_interval=0.05)
     await worker.run(until_idle=True)
     assert queue.get(job.id).status is JobStatus.SUCCEEDED
+
+
+async def test_spend_cap_pauses_the_job_resumably_and_counts_prior_spend(env, monkeypatch) -> None:
+    """U3 through the worker: a cap below the next call's worst case pauses the job as
+    budget_exhausted before any request; raising the cap resumes it from the last checkpoint and
+    the ledger books exactly what the provider reported."""
+    from decimal import Decimal
+
+    from folio_insights.llm.cost import job_meter_factory
+    from folio_insights.llm.pricing import default_price_table
+    from folio_insights.llm.usage import UsageLedger
+
+    env["release"].touch()
+    monkeypatch.setenv("FAKE_LLM_KEY", "1")
+    store = SecretStore()
+    worker = _worker(env["queue"], store, meter_factory=job_meter_factory)
+    payload = _payload(env["output"])
+    payload["llm"]["max_spend_usd"] = 0.000001
+    job, _ = env["queue"].enqueue("extract", corpus_id="synthetic", payload=payload,
+                                  requires_credentials=True, credential_holder=worker.owner)
+    store.put(job.id, Credentials.single("google", FAKE_KEY))
+    await worker.run(until_idle=True)
+
+    paused = env["queue"].get(job.id)
+    assert paused.status is JobStatus.BUDGET_EXHAUSTED and "spend cap" in paused.error
+    assert env["requests"] == []
+    assert job.id in store  # resumable without re-supplying the key
+
+    env["queue"].update_payload(job.id, {"llm": {**payload["llm"], "max_spend_usd": 1.0}})
+    env["queue"].resume(job.id)
+    await worker.run(until_idle=True)
+    done = env["queue"].get(job.id)
+    assert done.status is JobStatus.SUCCEEDED, done.error
+    assert _lines(env["log"]).count("fake_ingest") == 1
+
+    ledger = UsageLedger(env["queue"].path)
+    rows = ledger.rows(job.id)
+    assert len(rows) == 1 and rows[0]["corpus_id"] == "synthetic"
+    expected = default_price_table().lookup("google", "gemini-2.5-flash-lite").cost(120, 30)
+    assert Decimal(rows[0]["cost_usd"]) == expected
+    cost = done.result["llm_usage"]["cost"]
+    assert Decimal(cost["spent_usd"]) == expected and cost["cap_usd"] == "1.0"
