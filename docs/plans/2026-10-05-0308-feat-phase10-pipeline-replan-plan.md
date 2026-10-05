@@ -12,9 +12,10 @@ execution: code
 ## Goal Capsule
 
 - **Objective:** Extraction runs on any supported LLM provider through one tested port. It turns only grounded, verified units into shards in the Phase 13 corpus store, through durable jobs that survive restarts and report their cost.
-- **Authority:** Damien's Decision Sheet `folio-insights-2026-10-04-1531-v2-next-phases`, question `q3-phase9-10-pipeline`, was answered "Plan only, then ask" by Chief, the automated first responder. This document is that plan. Building waits for a later yes.
+- **Authority:** Damien's Decision Sheet `folio-insights-2026-10-04-1531-v2-next-phases`, question `q3-phase9-10-pipeline`, was answered "Plan only, then ask" by Chief, the automated first responder. This document is that plan.
+  - **Build authorized (2026-10-05):** Decision Sheet `folio-insights-2026-10-05-0814-p10-build-and-calls` was answered by Chief (q1–q4, recommended options). U1–U3 are authorized now. U5 (minter) waits for Phase 9 Wave A and Phase 11. The four product calls are recorded under Open Questions below.
   - **Lineage:** migration-plan U8 (`docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`) declared the April Phase 10 obsolete as written, and directed a re-plan from the current folio-resolve tagger, `docs/evidence/books/` and `docs/rubrics/extraction-quality-v1.md`.
-- **Execution profile:** Plan only. No code, dependency or deployment change is authorized by this document.
+- **Execution profile:** U1–U3 are authorized for build (Decision Sheet q1, 2026-10-05). U4–U7 still need their dependencies, and no deployment is authorized.
 - **Stop conditions:**
   - Any unit that would weaken a tagger invariant stops: the LLM never mints IRIs, B9 evidence verification, B5 deterministic-path integrity, anchor verification, B6 substance guard or empty-IRI non-voting.
   - Any run on real, non-public source text outside a private or local-only corpus stops.
@@ -310,7 +311,17 @@ stateDiagram-v2
 
 ## Open Questions
 
-### For Damien (product, taste or judgment)
+### For Damien (product, taste or judgment) — resolved 2026-10-05
+
+Chief answered all four on Decision Sheet `folio-insights-2026-10-05-0814-p10-build-and-calls` with the recommended option. Damien's own answer displaces Chief's if he gives a different one.
+
+- **Q1 → q2-minted-status:** hypothesis until a reviewer promotes it; never auto-attested.
+- **Q2 → q3-private-sources:** non-public sources mint only into Phase 13.5 private corpora or local-only roots; public corpora take openly licensed text only.
+- **Q3 → q4-mint-bar:** per-unit checks (anchor verified, substance guard, verified IRIs) to mint; a full RUB-EXTRACT pass (all gates green, ≥0.80) to publish.
+- **Q4 → q4-mint-bar scope:** `SimpleAssertionShard` first; routing for other subtypes waits on U17 Open Question 1.
+
+The original questions follow for the record.
+
 
 1. **What epistemic status does a machine-minted shard get?** Governance promotes hypotheses to attested status by citation (PRD §3.1.2).
    - **Recommended:** machine extraction enters as `epistemic_status="hypothesis"` with `verification_method="extractor_assertion"`. It is queryable and exportable, but is never treated as attested until a reviewer promotes it. The alternative, attested-by-default, would put unreviewed model output on the same footing as reviewed law.
