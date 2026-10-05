@@ -23,8 +23,10 @@ Values are rendered from their JSON type, with two lossless schema-guided
 coercions Pydantic itself accepts: an integer in a ``float`` field becomes an
 ``xsd:double``, and a string in a ``datetime`` field becomes an
 ``xsd:dateTime`` literal (ill-formed text stays ill-formed, so the datatype
-constraint reports it). Keys the model does not declare are rendered too, so
-a closed shape reports them, exactly like ``extra="forbid"``.
+constraint reports it). Keys the model does not declare, null-valued ones
+included, are rendered under ``fis:undeclared#<key>``: a closed shape reports
+them exactly like ``extra="forbid"``, and a camelCase alias of a declared
+field (``sourceSpan``) can never satisfy that field's constraints.
 
 Terms are plain tuples for speed: ``("I", iri)``, ``("B", label)`` and
 ``("L", lexical, datatype_iri)``. No RDF library is imported here.
@@ -35,15 +37,16 @@ import json
 import math
 import re
 from collections.abc import Mapping
+from urllib.parse import quote
 from typing import Any
 
 from pydantic import BaseModel
 
 from folio_insights.shapes.fields import (
+    SHAPES_NS,
     DICT_ENTRY_CLASS,
     ENTRY_KEY,
     ENTRY_VALUE,
-    FI,
     LIST_INDEX,
     RDF_JSON,
     RDF_TYPE,
@@ -55,7 +58,6 @@ from folio_insights.shapes.fields import (
     XSD_STRING,
     FieldSpec,
     ModelSpec,
-    camel,
     model_spec,
 )
 from folio_insights.shards.envelope import ShardEnvelope
@@ -223,10 +225,12 @@ def _render_model(g: ValidationGraph, node: Term, spec: ModelSpec, data: Mapping
     for key, value in data.items():
         field = by_name.get(key)
         if field is None:
-            # Undeclared key: rendered so the closed shape reports it.
-            term = _scalar(value, None)
-            if term is not None:
-                g.add(node, f"{FI}{camel(str(key))}", term)
+            # Undeclared key: rendered so the closed shape reports it, under
+            # its own namespace so a camelCase alias ("sourceSpan") can never
+            # stand in for the declared field's predicate, and null included
+            # (Pydantic's extra="forbid" refuses {"bogus": null} too).
+            term = _scalar(value, None) if value is not None else lit("null", RDF_JSON)
+            g.add(node, undeclared_predicate(key), term)
             continue
         if field.kind == "scalar" and value is not None:
             # Hot path (most fields): same terms as _render_field, inline.
@@ -252,6 +256,15 @@ def _render_model(g: ValidationGraph, node: Term, spec: ModelSpec, data: Mapping
         _render_field(g, node, field, value)
 
 
+UNDECLARED_NS = f"{SHAPES_NS}undeclared#"
+
+
+def undeclared_predicate(key: Any) -> str:
+    """The predicate of a key the model does not declare (never allowed by
+    a closed shape, never equal to a declared field's predicate)."""
+    return UNDECLARED_NS + quote(str(key), safe="")
+
+
 def shard_node(data: Mapping[str, Any], g: ValidationGraph) -> Term:
     shard_iri = data.get("shard_iri")
     if isinstance(shard_iri, str) and _IRI_RE.match(shard_iri):
@@ -275,7 +288,8 @@ def render_shard(
     g = graph if graph is not None else ValidationGraph(bnode_prefix)
     node = shard_node(data, g)
     g.add(node, RDF_TYPE, iri(SHARD_CLASS))
-    model = SUBTYPE_BY_TAG.get(data.get("shard_type"))  # type: ignore[arg-type]
+    tag = data.get("shard_type")
+    model = SUBTYPE_BY_TAG.get(tag) if isinstance(tag, str) else None
     spec = model_spec(model if model is not None else ShardEnvelope)
     _render_model(g, node, spec, data)
     if model is None:

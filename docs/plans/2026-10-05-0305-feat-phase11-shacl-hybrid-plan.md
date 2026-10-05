@@ -344,6 +344,55 @@ runs in one process are the reliable evidence.
   found 0 findings.
 - **Output and data:** `git status --short --ignored output data` is clean.
 
+### Review fixes (2026-10-05)
+
+An independent review found 2 P1, 5 P2 and some nits. Each has a regression
+test that fails on the pre-fix source: `tests/storage/test_phase11_review_findings.py`,
+`tests/shapes/test_review_findings.py`, the `p1_2` / `p2_3` tests in
+`tests/test_validate_api.py`, and `test_failed_extraction_kills_and_reaps_git`.
+
+- **P1-1 truncation.** An incremental write keeps `failing_truncated` on both
+  branches, so it can no longer report a false `pass`. Only `validate_corpus`
+  clears the flag.
+- **P1-2 /validate amplification.** Input caps (depth, list items, JSON
+  values, rendered triples) are checked before pyshacl. Output caps are 200
+  results and 50 model errors, with totals; `report_text` is gone. There is a
+  15 s deadline. Probe: n=2,000 signatures went from 200 in 23.2 s with a
+  1,092 MB response to 413 in 0.0 s.
+- **P2-1 datetime parity.** The compiled engine now reproduces pyshacl's
+  ordering exactly. Range checks use `compare_literal`, and `lessThan` uses
+  rdflib `Literal` `<` / `==`: a naive value sorts before an aware one,
+  differing datatypes order by IRI, and NaN is neither equal nor greater. The
+  model normalizes naive valid-time bounds to UTC, and the Hypothesis
+  strategies and mutations now cover these values. The NaN case mirrors
+  pyshacl (min fails, max passes) rather than returning None, because the
+  engines must agree and the model already refuses NaN confidence.
+- **P2-2 post-commit errors.** A marker failure is logged and never raised.
+  Marker steps of one context also run in commit order, so concurrent writes
+  stay `pass` (conc.py probe).
+- **P2-3 /validate robustness.**
+  - A non-string `shard_type` renders.
+  - `RecursionError` and over-deep input return 422.
+  - `Content-Length` is checked first, then the body is streamed with a cap.
+  - No `value` is echoed.
+- **P2-4 unsupported SHACL.** The compiler now refuses:
+  - implicit `owl:Class` targets;
+  - custom constraint components (`sh:ConstraintComponent` or
+    `sh:parameter`);
+  - non-integer counts;
+  - unknown regex flags;
+  - extra terms on `sh:sparql`.
+
+  It honours `sh:deactivated` (`true` or `1`) on shapes and on `sh:sparql`
+  constraints.
+- **P2-5 replay.** A committed explicit `op_id` (and `#0` for batches), or an
+  implicit batch op, is replayed before the suite and hooks run.
+- **Nits.**
+  - Undeclared keys, including camelCase aliases and null values, render
+    under `fis:undeclared#<key>` and are reported.
+  - `shacl_warnings` is cleared after later writes.
+  - `ci/build.py` kills and reaps git when extraction raises.
+
 ### Deviations
 
 - **Severity policy (KTD4).** The PRD lists contested votes, unsigned

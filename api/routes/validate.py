@@ -14,8 +14,19 @@ the vocab shapes). Nothing is stored and nothing is logged.
   reciprocity) need a corpus, so this endpoint does not check them.
   ``folio-insights storage validate`` covers them for a stored corpus.
 
+Bounded by construction (review P1-2 / P2-3):
+
+* **Input.** The body is capped at 1 MiB, by ``Content-Length`` and again while
+  streaming. JSON nesting is capped at ``MAX_DEPTH``, every list at
+  ``MAX_LIST_ITEMS`` and the whole document at ``MAX_JSON_VALUES``. The
+  rendered graph is capped at ``MAX_TRIPLES``. All of this is checked before
+  pyshacl runs: 413 for size, 422 for depth or malformed input. pyshacl also
+  runs under a ``TIMEOUT_S`` deadline (503).
+* **Output.** At most ``MAX_RESULTS`` results and ``MAX_MODEL_ERRORS`` model
+  errors, each with a total count. No ``sh:value`` and no pyshacl text report
+  is returned, so an input value (a reflected SSN, say) is never echoed back.
+
 Valid and invalid candidates both return 200: the report is the answer.
-A body that is not a JSON object returns 422, and a body over 1 MiB 413.
 """
 from __future__ import annotations
 
@@ -29,6 +40,21 @@ from pydantic import BaseModel, Field
 router = APIRouter(tags=["validation"])
 
 MAX_BODY_BYTES = 1 << 20
+MAX_DEPTH = 32
+MAX_LIST_ITEMS = 128
+MAX_JSON_VALUES = 20_000
+MAX_TRIPLES = 5_000
+MAX_RESULTS = 200
+MAX_MODEL_ERRORS = 50
+TIMEOUT_S = 15.0
+
+
+class _Refused(Exception):
+    def __init__(self, status: int, detail: str) -> None:
+        super().__init__(detail)
+        self.status = status
+        self.detail = detail
+
 
 _EXAMPLE = {
     "summary": "A minimal simple assertion",
@@ -65,8 +91,7 @@ class ShaclResultOut(BaseModel):
     path: str | None = Field(None, description="The property path, when the constraint has one.")
     component: str = Field(description="The SHACL constraint component, e.g. MinCountConstraintComponent.")
     severity: Literal["Violation", "Warning", "Info"]
-    message: str
-    value: str | None = Field(None, description="The offending value node, when there is one.")
+    message: str = Field(description="The shape's fixed message (never contains input values).")
     source_shape: str | None = None
 
 
@@ -75,17 +100,38 @@ class ValidationReportOut(BaseModel):
     engine: Literal["pyshacl"] = "pyshacl"
     tier: Literal["local"] = "local"
     model_valid: bool = Field(description="Whether the candidate passes the Pydantic shard model.")
-    model_errors: list[str] = Field(default_factory=list, description="Model error locations and types (no values).")
+    model_errors: list[str] = Field(default_factory=list, description="Model error locations and types (no values), at most 50.")
+    model_errors_total: int = 0
     source_schema_version: int | None = None
     suite_digest: str
-    violations: int
-    warnings: int
-    results: list[ShaclResultOut]
-    report_text: str = Field(description="pyshacl's text report.")
+    violations: int = Field(description="Total Violations (all of them, not only those listed).")
+    warnings: int = Field(description="Total Warnings and Infos.")
+    results: list[ShaclResultOut] = Field(description="At most 200 results, Violations first.")
+    results_total: int
+    results_truncated: bool
     note: str = (
         "Local tier only: cross-shard rules (supersession) need a corpus; "
         "run `folio-insights storage validate` on a stored corpus for those."
     )
+
+
+def _check_structure(candidate: Any) -> None:
+    """Iterative bounds walk (no recursion, so hostile nesting cannot crash it)."""
+    stack: list[tuple[Any, int]] = [(candidate, 1)]
+    seen = 0
+    while stack:
+        value, depth = stack.pop()
+        seen += 1
+        if seen > MAX_JSON_VALUES:
+            raise _Refused(413, f"candidate has more than {MAX_JSON_VALUES} JSON values")
+        if depth > MAX_DEPTH:
+            raise _Refused(422, f"candidate nests deeper than {MAX_DEPTH} levels")
+        if isinstance(value, dict):
+            stack.extend((v, depth + 1) for v in value.values())
+        elif isinstance(value, list):
+            if len(value) > MAX_LIST_ITEMS:
+                raise _Refused(413, f"a list in the candidate has more than {MAX_LIST_ITEMS} items")
+            stack.extend((v, depth + 1) for v in value)
 
 
 def _model_errors(exc: Exception) -> list[str]:
@@ -116,9 +162,12 @@ def _validate(candidate: dict[str, Any]) -> ValidationReportOut:
         loaded = load_shard_record(candidate)
         data = json.loads(dump_shard_record(loaded.shard))
         version = loaded.source_schema_version
-    except (ValidationError, UnsupportedEnvelopeVersion, MalformedEnvelopeRecord) as exc:
+    except (ValidationError, UnsupportedEnvelopeVersion, MalformedEnvelopeRecord, TypeError) as exc:
         model_valid, errors = False, _model_errors(exc)
     graph, _node = render_shard(data)
+    triples = sum(len(v) for props in graph.nodes.values() for v in props.values())
+    if triples > MAX_TRIPLES:
+        raise _Refused(413, f"candidate renders to {triples} triples (limit {MAX_TRIPLES})")
     report = pyshacl_adapter.validate(graph, suite.paths, local_only=True)
     results = []
     for r in report.results:
@@ -130,7 +179,6 @@ def _validate(candidate: dict[str, Any]) -> ValidationReportOut:
                 component=str(r["component"]).rsplit("#", 1)[-1],
                 severity=severity,  # type: ignore[arg-type]
                 message=(r["message"] or [""])[0],
-                value=term_text(r["value"]) if r["value"] else None,
                 source_shape=str(r["source_shape"]) if r["source_shape"] is not None else None,
             )
         )
@@ -139,13 +187,15 @@ def _validate(candidate: dict[str, Any]) -> ValidationReportOut:
     return ValidationReportOut(
         conforms=report.conforms,
         model_valid=model_valid,
-        model_errors=errors,
+        model_errors=errors[:MAX_MODEL_ERRORS],
+        model_errors_total=len(errors),
         source_schema_version=version,
         suite_digest=suite.digest,
         violations=violations,
         warnings=len(results) - violations,
-        results=results,
-        report_text=report.text,
+        results=results[:MAX_RESULTS],
+        results_total=len(results),
+        results_truncated=len(results) > MAX_RESULTS,
     )
 
 
@@ -154,8 +204,9 @@ def _validate(candidate: dict[str, Any]) -> ValidationReportOut:
     response_model=ValidationReportOut,
     summary="Validate a candidate shard against the SHACL suite",
     responses={
-        413: {"description": "Body larger than 1 MiB."},
-        422: {"description": "Body is not a JSON object."},
+        413: {"description": "Body over 1 MiB, or a list, document or rendered graph over its cap."},
+        422: {"description": "Body is not a JSON object, or nests too deeply."},
+        503: {"description": "Validation exceeded its time bound."},
     },
     openapi_extra={
         "requestBody": {
@@ -178,16 +229,35 @@ def _validate(candidate: dict[str, Any]) -> ValidationReportOut:
 )
 async def validate_shard(request: Request) -> ValidationReportOut:
     """Return the pyshacl report for one candidate shard (nothing is stored)."""
-    body = await request.body()
-    if len(body) > MAX_BODY_BYTES:
-        raise HTTPException(status_code=413, detail="candidate shard larger than 1 MiB")
+    declared = request.headers.get("content-length")
+    if declared is not None:
+        try:
+            if int(declared) > MAX_BODY_BYTES:
+                raise HTTPException(status_code=413, detail="candidate shard larger than 1 MiB")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid Content-Length") from None
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > MAX_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="candidate shard larger than 1 MiB")
+        chunks.append(chunk)
     try:
-        candidate = json.loads(body)
-    except (UnicodeDecodeError, ValueError):
+        candidate = json.loads(b"".join(chunks))
+    except (UnicodeDecodeError, ValueError, RecursionError):
         raise HTTPException(status_code=422, detail="body is not valid JSON") from None
     if not isinstance(candidate, dict):
         raise HTTPException(status_code=422, detail="body must be a JSON object (one shard)")
-    return await asyncio.to_thread(_validate, candidate)
+    try:
+        _check_structure(candidate)
+        return await asyncio.wait_for(asyncio.to_thread(_validate, candidate), timeout=TIMEOUT_S)
+    except _Refused as refused:
+        raise HTTPException(status_code=refused.status, detail=refused.detail) from None
+    except RecursionError:
+        raise HTTPException(status_code=422, detail="candidate nests too deeply") from None
+    except TimeoutError:
+        raise HTTPException(status_code=503, detail="validation exceeded its time bound") from None
 
 
 __all__ = ["router"]

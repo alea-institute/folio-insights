@@ -41,6 +41,9 @@ _IRI = st.from_regex(r"\Aurn:x:[a-z0-9]{1,8}\Z")
 _DID = st.from_regex(r"\Adid:key:z[1-9A-HJ-NP-Za-km-z]{4,12}\Z")
 _T0 = datetime(2026, 1, 1, tzinfo=UTC)
 _TIMES = st.integers(min_value=0, max_value=10**7).map(lambda s: _T0 + timedelta(seconds=s))
+# Review P2-1: valid-time bounds are drawn naive as well as aware (the model
+# normalizes naive ones to UTC; the differential test then compares engines).
+_MAYBE_NAIVE_TIMES = _TIMES | _TIMES.map(lambda d: d.replace(tzinfo=None))
 _ACTIONS = st.sampled_from([
     "extract", "promote", "demote", "contest", "supersede", "retract", "distinguo",
     "role_assertion", "role_revocation", "resolve_contest", "content_edit",
@@ -94,8 +97,8 @@ def content_edits(draw: Any) -> list[ContentEdit]:
 def envelope_fields(draw: Any, epistemic: Any) -> dict[str, Any]:
     uri, span = draw(_IRI), draw(_TEXT)
     shard_iri, prov = mint_shard_iri(uri, span)
-    start = draw(st.none() | _TIMES)
-    end = draw(st.none() | _TIMES)
+    start = draw(st.none() | _MAYBE_NAIVE_TIMES)
+    end = draw(st.none() | _MAYBE_NAIVE_TIMES)
     contested = draw(st.booleans())
     return {
         "shard_iri": shard_iri,

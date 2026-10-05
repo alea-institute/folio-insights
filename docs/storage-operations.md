@@ -316,6 +316,27 @@ shapes in `src/folio_insights/shapes/ttl/`, the Pydantic-generated shapes in
 - **Validation API.** `POST /validate` (FastAPI) checks one candidate shard
   JSON with pyshacl and returns the report. It applies the local tier only: a
   lone candidate has no corpus to check cross-shard rules against.
+  - **Input bounds.** The body is capped at 1 MiB, checked against
+    `Content-Length` and again while streaming. Nesting is capped at 32
+    levels, every list at 128 items, the document at 20,000 JSON values, and
+    the rendered graph at 5,000 triples. All checks run before pyshacl, which
+    also has a 15 s deadline.
+  - **Output bounds.** At most 200 results and 50 model errors are returned,
+    each with a total count.
+  - **No echo.** No offending value and no pyshacl text report is returned,
+    so input values (for example, PII) are never reflected back.
+- **Retries.** Retrying an already-committed explicit `op_id`, or an identical
+  implicit batch, returns the committed result without re-running the suite
+  or the hooks. They judge new appends only.
+- **Status-marker failures.** Updating the marker runs after commit and never
+  raises. On failure it logs a warning, and `full_shacl` reads `unvalidated`.
+  The marker steps of one context run in commit order. A truncated failing
+  list (over 1,000 entries) keeps `full_shacl` at `fail` until
+  `storage validate` runs. `shacl_warnings` is the Warning count of the full
+  validation that covers the head, and `None` after any later write.
+- **Valid-time bounds.** A naive `valid_time_start` / `valid_time_end` is
+  normalized to UTC by the model. Stored naive records still load and gain an
+  explicit offset.
 
 ## Proposed-class ledger
 

@@ -77,6 +77,14 @@ _MUTATIONS = [
     lambda d: mutate(d, contested=True, epistemic_status="contested", contest_votes={}),
     lambda d: mutate(d, triple={"subject": "s", "predicate": "p", "object": "o", "extra": 1}),
     lambda d: mutate(d, signatures=[{"did": "", "signature": "x", "verified": True}]),
+    # Review P2-1: exotic values where naive ordering semantics diverge.
+    lambda d: mutate(d, confidence=float("nan")),
+    lambda d: mutate(d, confidence=True),
+    lambda d: mutate(d, confidence=False),
+    lambda d: mutate(d, valid_time_start="2026-01-01T00:00:00", valid_time_end="2027-01-01T00:00:00Z"),
+    lambda d: mutate(d, valid_time_start="2027-01-01T00:00:00", valid_time_end="2026-01-01T00:00:00Z"),
+    lambda d: mutate(d, valid_time_start="2026-01-01T05:00:00Z", valid_time_end="2026-01-01T03:00:00"),
+    lambda d: mutate(d, sourceSpan="alias", bogus=None),
 ]
 
 

@@ -76,6 +76,25 @@ class UnsupportedShaclConstruct(ValueError):
     """A shape uses SHACL the compiled engine does not implement."""
 
 
+_FLAGS = {"i": re.I, "m": re.M, "s": re.S, "x": re.X}
+_OWL_CLASS = "http://www.w3.org/2002/07/owl#Class"
+_RDFS_CLASS = "http://www.w3.org/2000/01/rdf-schema#Class"
+
+
+def _regex_flags(flags_term: Term | None) -> int:
+    flags = 0
+    for flag in (flags_term[1] if flags_term else ""):
+        if flag not in _FLAGS:
+            raise UnsupportedShaclConstruct(f"unsupported sh:flags character {flag!r}")
+        flags |= _FLAGS[flag]
+    return flags
+
+
+def _true(term: Term | None) -> bool:
+    """An xsd:boolean ``true`` (lexical ``true`` or ``1``)."""
+    return term is not None and term[0] == "L" and term[1] in ("true", "1")
+
+
 @dataclass(frozen=True)
 class ShaclResult:
     focus: Term
@@ -213,24 +232,128 @@ def well_formed(term: Term) -> bool:
     return cached
 
 
-def _compare(a: Term, b: Term) -> int | None:
-    """-1/0/1, or None when the two values are not comparable."""
-    if a[0] != "L" or b[0] != "L":
-        return None
+# ── ordering: pyshacl's semantics, reproduced exactly ─────────────────────
+#
+# pyshacl orders literals with rdflib's ``Literal`` rules (``rdfutil.compare.
+# compare_literal`` for the range components, ``<`` / ``<=`` for sh:lessThan /
+# sh:lessThanOrEquals). Those rules are not plain value comparison: a naive
+# dateTime sorts before every aware one, two different datatypes order by
+# their datatype IRIs (so ``true`` vs ``0.0`` is "less"), NaN is never equal
+# or greater, and an ill-typed literal falls back to its lexical form. The
+# compiled engine reproduces them so the two engines agree on every input
+# (review P2-1; ``tests/shapes/test_compiled_differential.py``).
+
+_RDF_NUMERIC = {f"{XSD}{t}" for t in (
+    "integer", "decimal", "double", "float", "byte", "int", "long",
+    "negativeInteger", "nonNegativeInteger", "nonPositiveInteger",
+    "positiveInteger", "short", "unsignedByte", "unsignedInt", "unsignedLong",
+    "unsignedShort",
+)}
+
+
+def _value_or_none(term: Term) -> Any:
     try:
-        va, vb = literal_value(a), literal_value(b)
+        return literal_value(term)
     except (ValueError, TypeError, OverflowError):
         return None
-    numeric = (int, float)
-    if isinstance(va, bool) or isinstance(vb, bool):
-        if not (isinstance(va, bool) and isinstance(vb, bool)):
-            return None
-    elif isinstance(va, numeric) != isinstance(vb, numeric):
+
+
+def _aware(value: datetime) -> bool:
+    return value.tzinfo is not None and value.tzinfo.utcoffset(value) is not None
+
+
+def _rd_eq(a: Term, b: Term) -> bool:
+    """rdflib ``Literal.eq``; raises TypeError where rdflib does."""
+    va, vb = _value_or_none(a), _value_or_none(b)
+    if a[2] in _RDF_NUMERIC and b[2] in _RDF_NUMERIC and va is not None and vb is not None:
+        return va == vb
+    if a[2].startswith("@") or b[2].startswith("@"):
+        return a[1] == b[1] and a[2].lower() == b[2].lower()
+    if a[2] == XSD_STRING and b[2] == XSD_STRING:
+        return a[1] == b[1]
+    if a[2] != b[2]:
+        return False
+    if va is not None and vb is not None:
+        return va == vb
+    if a[1] == b[1]:
+        return True
+    raise TypeError("lexical forms of unknown value")
+
+
+def _rd_gt(a: Term, b: Term) -> bool:
+    """rdflib ``Literal.__gt__`` (non-DAWG collation)."""
+    va, vb = _value_or_none(a), _value_or_none(b)
+    if a[2] in _RDF_NUMERIC and b[2] in _RDF_NUMERIC and va is not None and vb is not None:
+        return va > vb
+    if a[2] != b[2]:
+        return a[2] > b[2]
+    if va is not None and vb is not None:
+        if type(va) is datetime and type(vb) is datetime:
+            return (_aware(va), va) > (_aware(vb), vb)
+        try:
+            return va > vb
+        except TypeError:
+            pass
+    return a[1] > b[1]
+
+
+def _rd_lt(a: Term, b: Term) -> bool:
+    """rdflib ``Literal.__lt__``: not greater and not equal; when eq raises,
+    Python falls back to the reflected ``b > a``."""
+    try:
+        return not _rd_gt(a, b) and not _rd_eq(a, b)
+    except TypeError:
+        return _rd_gt(b, a)
+
+
+def _stringish(term: Term) -> bool:
+    return term[0] == "I" or (term[0] == "L" and term[2] == XSD_STRING)
+
+
+def _range_cmp(v: Term, bound: Term) -> int | None:
+    """pyshacl's range-component comparison of value ``v`` against ``bound``:
+    -1/0/1, or None where pyshacl reports a failure outright (blank node or
+    IRI value, string vs non-string, or a TypeError in ``compare_literal``)."""
+    if v[0] != "L" or bound[0] != "L":
+        return None
+    if _stringish(v) != _stringish(bound):
         return None
     try:
-        return (va > vb) - (va < vb)
+        if _rd_eq(v, bound):
+            return 0
     except TypeError:
         return None
+    va = _value_or_none(v)
+    if type(va) is datetime:
+        vb = _value_or_none(bound)
+        if va == vb:
+            return 0
+        try:
+            if va > vb:
+                return 1
+        except TypeError:
+            return None
+        return -1
+    return 1 if _rd_gt(v, bound) else -1
+
+
+def _pair_ok(v: Term, o: Term, kind: str) -> bool:
+    """pyshacl sh:lessThan / sh:lessThanOrEquals for one value pair."""
+    if v[0] == "B" or o[0] == "B":
+        return False
+    vs, os_ = _stringish(v), _stringish(o)
+    if vs != os_:
+        return False
+    if vs:
+        return v[1] < o[1] if kind == "lessThan" else v[1] <= o[1]
+    if kind == "lessThan":
+        return _rd_lt(v, o)
+    if _rd_lt(v, o):
+        return True
+    try:
+        return _rd_eq(v, o)
+    except TypeError:
+        return _rd_gt(o, v)
 
 
 # ── compiled shapes ───────────────────────────────────────────────────────
@@ -316,7 +439,7 @@ def _fuse(
                     if not regex.search(v[1]):
                         return False
             for bound, good in range_checks:
-                cmp = _compare(v, bound)
+                cmp = _range_cmp(v, bound)
                 if cmp is None or not good(cmp):
                     return False
             for shape in nodes:
@@ -410,7 +533,7 @@ def _range_check(bound: Term, kind: str) -> Check:
     def check(_e, _g, _f, values):  # noqa: ANN001
         out = []
         for v in values:
-            cmp = _compare(v, bound)
+            cmp = _range_cmp(v, bound)
             if cmp is None or not ok(cmp):
                 out.append((component, v))
         return out
@@ -476,8 +599,7 @@ def _pair_check(other: str, kind: str) -> Check:
         else:
             for v in values:
                 for o in others:
-                    cmp = _compare(v, o)
-                    if cmp is None or (cmp >= 0 if kind == "lessThan" else cmp > 0):
+                    if not _pair_ok(v, o, kind):
                         out.append((component, v))
         return out
     return check
@@ -489,6 +611,14 @@ class CompiledSuite:
     def __init__(self, paths: Sequence[Path]) -> None:
         self.paths = tuple(paths)
         self._g = load_triples(self.paths)
+        # SHACL-SPARQL custom constraint components (sh:ConstraintComponent
+        # with sh:parameter) attach constraints through arbitrary predicates
+        # the compiler cannot see; refuse the whole graph rather than skip them.
+        for s_node, props in self._g.nodes.items():
+            if ("I", f"{SH}ConstraintComponent") in props.get(RDF_TYPE, ()) or f"{SH}parameter" in props:
+                raise UnsupportedShaclConstruct(
+                    f"custom constraint components are not supported ({s_node})"
+                )
         self._compiled: dict[Term, Shape] = {}
         self.targets: list[tuple[str, Term, Shape]] = []
         self.sparql: list[SparqlConstraint] = []
@@ -505,9 +635,12 @@ class CompiledSuite:
         value = self._one(node, key)
         if value is None:
             return None
-        if value[0] != "L":
-            raise UnsupportedShaclConstruct(f"sh:{key} must be a literal")
-        return int(value[1])
+        if value[0] != "L" or value[2] != f"{XSD}integer":
+            raise UnsupportedShaclConstruct(f"sh:{key} must be an xsd:integer literal on {node}")
+        try:
+            return int(value[1])
+        except ValueError:
+            raise UnsupportedShaclConstruct(f"sh:{key} is not an integer on {node}") from None
 
     def _shape_nodes(self) -> list[Term]:
         nodes: list[Term] = []
@@ -542,7 +675,8 @@ class CompiledSuite:
                 local = predicate[len(SH):]
                 if local not in _EVALUATED and local not in _IGNORED:
                     raise UnsupportedShaclConstruct(f"sh:{local} is not supported (shape {node})")
-        if ("I", "http://www.w3.org/2000/01/rdf-schema#Class") in props.get(RDF_TYPE, ()):
+        types = props.get(RDF_TYPE, ())
+        if ("I", _RDFS_CLASS) in types or ("I", _OWL_CLASS) in types:
             raise UnsupportedShaclConstruct(f"implicit class target on {node} is not supported")
         path_term = self._one(node, "path")
         if path_term is not None and path_term[0] != "I":
@@ -560,7 +694,7 @@ class CompiledSuite:
             path=path_term[1] if path_term is not None else None,
             severity=severity,
             messages=messages,
-            deactivated=deactivated is not None and deactivated[1] == "true",
+            deactivated=_true(deactivated),
         )
         self._compiled[node] = shape  # before recursion (guards sh:node cycles)
         self._compile_constraints(node, shape)
@@ -575,10 +709,7 @@ class CompiledSuite:
             return
         g = self._g
         in_list = self._one(node, "in")
-        flags_term = self._one(node, "flags")
-        flags = 0
-        for flag in (flags_term[1] if flags_term else ""):
-            flags |= {"i": re.I, "m": re.M, "s": re.S, "x": re.X}[flag]
+        flags = _regex_flags(self._one(node, "flags"))
         datatype = self._one(node, "datatype")
         shape.fused = _fuse(
             min_count=self._int(node, "minCount") or 0,
@@ -621,11 +752,8 @@ class CompiledSuite:
             checks.append(_in_check(frozenset(_rdf_list(g, in_list))))
         for expected in g.values(node, f"{SH}hasValue"):
             checks.append(_has_value_check(expected))
-        flags_term = self._one(node, "flags")
+        flags = _regex_flags(self._one(node, "flags"))
         for pattern in g.values(node, f"{SH}pattern"):
-            flags = 0
-            for flag in (flags_term[1] if flags_term else ""):
-                flags |= {"i": re.I, "m": re.M, "s": re.S, "x": re.X}[flag]
             checks.append(_pattern_check(re.compile(pattern[1], flags)))
         for key, minimum in (("minLength", True), ("maxLength", False)):
             n = self._int(node, key)
@@ -684,6 +812,17 @@ class CompiledSuite:
                 for value in g.values(node, f"{SH}{kind}")
             )
             for constraint in shape.sparql:
+                for predicate in g.nodes.get(constraint, {}):
+                    if predicate.startswith(SH) and predicate[len(SH):] not in (
+                        "select", "message", "prefixes", "deactivated", "severity",
+                    ):
+                        raise UnsupportedShaclConstruct(
+                            f"sh:{predicate[len(SH):]} on a sh:sparql constraint is not supported"
+                        )
+                if self._one(constraint, "severity") is not None:
+                    raise UnsupportedShaclConstruct("sh:severity on a sh:sparql constraint node")
+                if _true(self._one(constraint, "deactivated")):
+                    continue
                 select = self._one(constraint, "select")
                 if select is None:
                     raise UnsupportedShaclConstruct(f"sh:sparql without sh:select on {node}")

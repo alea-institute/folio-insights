@@ -235,15 +235,22 @@ def export_build_context(
         cwd=repo_root, stdout=subprocess.PIPE,
     )
     assert archive.stdout is not None
-    with tarfile.open(fileobj=archive.stdout, mode="r|") as tar:
-        # "tar", not "data": the data filter drops directory modes, so
-        # directories would follow the local umask again.
-        tar.extractall(dest, filter="tar")
-    # tarfile's stream mode stops at the end-of-archive marker, but git still
-    # writes the record padding (up to ~10 KiB). Drain it, or git blocks on a
-    # full pipe and wait() never returns (pipes shrink to 1-2 pages once the
-    # user exceeds fs.pipe-user-pages-soft).
-    archive.stdout.read()
+    try:
+        with tarfile.open(fileobj=archive.stdout, mode="r|") as tar:
+            # "tar", not "data": the data filter drops directory modes, so
+            # directories would follow the local umask again.
+            tar.extractall(dest, filter="tar")
+        # tarfile's stream mode stops at the end-of-archive marker, but git
+        # still writes the record padding (up to ~10 KiB). Drain it, or git
+        # blocks on a full pipe and wait() never returns (pipes shrink to 1-2
+        # pages once the user exceeds fs.pipe-user-pages-soft).
+        archive.stdout.read()
+    except BaseException:
+        # Extraction failed: stop git and reap it rather than leave it blocked.
+        archive.kill()
+        archive.stdout.close()
+        archive.wait()
+        raise
     archive.stdout.close()
     if archive.wait() != 0:
         raise SystemExit(f"git archive failed (exit {archive.returncode})")

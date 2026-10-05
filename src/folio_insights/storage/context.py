@@ -59,6 +59,7 @@ Seams for the CLI (U3, wired) and later units:
 from __future__ import annotations
 
 import asyncio
+import logging
 import hashlib
 import json
 import re
@@ -89,6 +90,7 @@ from folio_insights.storage.errors import (
     OperationIdConflict,
     ProjectionRecoveryFailed,
     ProjectionRecoveryPending,
+    ShaclViolation,
     ShardIdentityViolation,
     ShardRecordInvalid,
     StorageClosed,
@@ -142,6 +144,7 @@ if TYPE_CHECKING:
     from folio_insights.identity.cache import DidDocCache
 
 T = TypeVar("T")
+logger = logging.getLogger(__name__)
 
 # Above this many written shards the post-commit corpus tier runs over the
 # whole corpus instead of a VALUES-restricted focus set (cheaper and complete).
@@ -400,6 +403,11 @@ class CorpusStorageContext:
         self._verified_chain: tuple[int, str] | None = None
         self._closed = True
         self._write_lock = asyncio.Lock()
+        # First journal positions this context committed whose SHACL marker
+        # step has not finished: marker advances run in commit order, so
+        # concurrent writes through one context stay contiguous.
+        self._unmarked: set[int] = set()
+        self._marker_cv = asyncio.Condition()
         from folio_insights.storage.governance import PersistentGovernanceLog
         from folio_insights.storage.proposals import PersistentProposalLedger
         from folio_insights.storage.shards import PersistentShardStore
@@ -798,14 +806,16 @@ class CorpusStorageContext:
                             governance_position=persisted.position,
                         )
                     )
-        await self._after_commit(op, row.position)
-        if appended:
-            await self._shacl_after_write(row.position, row.position, [])
+            if appended:
+                self._unmarked.add(row.position)
+        await self._committed(op, row.position, row.position, [] if appended else None)
         return _event_from_row(row)
 
     # ── shard writes ──────────────────────────────────────────────────────
 
-    def _prepare(self, raw: bytes | str | Mapping[str, Any]) -> tuple[LoadedShardRecord, bytes]:
+    def _prepare(
+        self, raw: bytes | str | Mapping[str, Any], *, checks: bool = True
+    ) -> tuple[LoadedShardRecord, bytes]:
         """Every check a shard write passes before any journal transaction:
 
         1. the PII gate over the parsed raw input, BEFORE model validation;
@@ -822,8 +832,9 @@ class CorpusStorageContext:
         Returns the loaded record and the current-version payload.
         """
         loaded, prepared = prepare_one(raw, self.config.pii_gate)
-        self._check_shacl(prepared.payload)
-        self._run_shard_hook(loaded.shard)
+        if checks:  # False only to replay an already-committed operation
+            self._check_shacl(prepared.payload)
+            self._run_shard_hook(loaded.shard)
         return loaded, prepared.payload
 
     def _check_shacl(self, payload: bytes) -> None:
@@ -842,7 +853,11 @@ class CorpusStorageContext:
             self.config.shard_validator(shard.model_copy(deep=True))
 
     def _prepare_many(
-        self, raws: list[bytes | str | Mapping[str, Any]], *, parallel: bool = False
+        self,
+        raws: list[bytes | str | Mapping[str, Any]],
+        *,
+        parallel: bool = False,
+        checks: bool = True,
     ) -> list[tuple[PreparedRecord, ShardEnvelope | None]]:
         """``_prepare`` for a batch, in input order.
 
@@ -856,11 +871,12 @@ class CorpusStorageContext:
         out: list[tuple[PreparedRecord, ShardEnvelope | None]] = []
         if parallel and len(raws) >= PARALLEL_MIN_ITEMS:
             for records, failure in map_chunks(
-                prepare_chunk, raws, self.config.pii_gate, self._shacl_paths()
+                prepare_chunk, raws, self.config.pii_gate,
+                self._shacl_paths() if checks else None,
             ):
                 # Hook the records of this chunk that precede its first
                 # built-in refusal: an earlier hook refusal wins.
-                hooked = self.config.shard_validator is not None
+                hooked = checks and self.config.shard_validator is not None
                 for record in records:
                     if hooked:
                         self._run_shard_hook(load_shard_record(record.payload).shard)
@@ -870,8 +886,9 @@ class CorpusStorageContext:
             return out
         for raw in raws:
             loaded, prepared = prepare_one(raw, self.config.pii_gate)
-            self._check_shacl(prepared.payload)
-            self._run_shard_hook(loaded.shard)
+            if checks:
+                self._check_shacl(prepared.payload)
+                self._run_shard_hook(loaded.shard)
             # Cache only when the committed payload IS the validated input.
             out.append((prepared, loaded.shard if prepared.original_bytes is None else None))
         return out
@@ -916,7 +933,13 @@ class CorpusStorageContext:
             raise ShardIdentityViolation(
                 f"put key {shard_iri!r} does not match shard_iri {shard.shard_iri!r}"
             )
-        loaded, payload = self._prepare(dump_shard_record(shard))  # full validation
+        # Review P2-5: retrying a committed explicit op_id returns the
+        # committed result; the suite and hooks judge new appends only (the
+        # row may predate the suite, or the suite may have changed since).
+        replaying = op_id is not None and (
+            await self._journal.find_op(self.corpus, op_id)
+        ) is not None
+        loaded, payload = self._prepare(dump_shard_record(shard), checks=not replaying)
         payload_sha = sha256_hex(payload)
         request_sha = sha256_hex(f"{shard_iri}\n{payload_sha}".encode("utf-8"))
 
@@ -951,9 +974,9 @@ class CorpusStorageContext:
                         appended = True
                         if payload == loaded.original_bytes:
                             self._remember(loaded.shard, row)
-        await self._after_commit(op, row.position)
-        if appended:
-            await self._shacl_after_write(row.position, row.position, [shard_iri])
+            if appended:
+                self._unmarked.add(row.position)
+        await self._committed(op, row.position, row.position, [shard_iri] if appended else None)
         return load_shard_record(row.payload).shard
 
     async def ingest_shards(
@@ -1007,18 +1030,28 @@ class CorpusStorageContext:
     ) -> list[JournalRow]:
         self._ensure_open()
         parallel = parallel or self.config.process_pool
-        prepared = self._prepare_many(
-            [dump_shard_record(r) if isinstance(r, ShardEnvelope) else r for r in records],
-            parallel=parallel,
-        )
+        raws = [dump_shard_record(r) if isinstance(r, ShardEnvelope) else r for r in records]
+        # Review P2-5: a retried, already-committed batch replays without the
+        # suite or hooks; they judge new appends only.
+        replaying = op_id is not None and (
+            await self._journal.find_op(self.corpus, f"{op_id}#0")
+        ) is not None
+        try:
+            prepared = self._prepare_many(raws, parallel=parallel, checks=not replaying)
+        except ShaclViolation:
+            if op_id is not None:
+                raise
+            # An implicit op ID is derived from the prepared batch: rebuild
+            # it without the suite and replay only if that batch committed.
+            unchecked = self._prepare_many(raws, parallel=parallel, checks=False)
+            if await self._journal.find_op(
+                self.corpus, f"ingest:{_batch_sha(unchecked)}#0"
+            ) is None:
+                raise
+            prepared = unchecked
         if not prepared:
             return []
-        request_sha = sha256_hex(
-            "\n".join(
-                f"{rec.shard_iri}:{sha256_hex(rec.original)}:{sha256_hex(rec.payload)}"
-                for rec, _ in prepared
-            ).encode("utf-8")
-        )
+        request_sha = _batch_sha(prepared)
         op = op_id or f"ingest:{request_sha}"
 
         appended = False
@@ -1067,11 +1100,15 @@ class CorpusStorageContext:
                     for (_, cached), row in zip(prepared, rows):
                         self._remember(cached, row)
                     appended = True
-        await self._after_commit(op, rows[-1].position, parallel=parallel)
-        if appended:
-            await self._shacl_after_write(
-                rows[0].position, rows[-1].position, [rec.shard_iri for rec, _ in prepared]
-            )
+            if appended:
+                self._unmarked.add(rows[0].position)
+        await self._committed(
+            op,
+            rows[0].position,
+            rows[-1].position,
+            [rec.shard_iri for rec, _ in prepared] if appended else None,
+            parallel=parallel,
+        )
         return rows
 
     # ── Phase 11 SHACL: status, incremental corpus tier, full validation ──
@@ -1138,10 +1175,64 @@ class CorpusStorageContext:
         _, out = await self._read_projection(read)
         return out
 
+    async def _committed(
+        self,
+        op: str,
+        first: int,
+        last: int,
+        written: list[str] | None,
+        *,
+        parallel: bool = False,
+    ) -> None:
+        """After a journal commit: projection catch-up, then (for a new
+        append, ``written`` not None) the SHACL marker step. The marker turn
+        registered at commit is always released, even if catch-up fails."""
+        try:
+            if parallel:
+                await self._after_commit(op, last, parallel=True)
+            else:
+                await self._after_commit(op, last)
+        except BaseException:
+            if written is not None:
+                await self._release_marker_turn(first)
+            raise
+        if written is not None:
+            await self._shacl_after_write(first, last, written)
+
+    async def _release_marker_turn(self, first: int) -> None:
+        async with self._marker_cv:
+            self._unmarked.discard(first)
+            self._marker_cv.notify_all()
+
     async def _shacl_after_write(self, first: int, last: int, written: list[str]) -> None:
         """Advance the status marker over rows ``first..last`` when it is
         contiguous with them under the current suite; otherwise leave it
-        behind (``full_shacl`` then reads ``unvalidated``)."""
+        behind (``full_shacl`` then reads ``unvalidated``).
+
+        Runs after the write committed, so it never raises to the caller
+        (review P2-2): any failure here (corpus-tier query, marker I/O) is
+        logged and the marker is left where it was. The journal head has
+        moved past it, so ``full_shacl`` reads ``unvalidated`` until a later
+        contiguous write or ``validate_corpus`` re-establishes it.
+        """
+        try:
+            # Wait for this context's earlier commits to finish their marker
+            # step, so its writes advance the marker in commit order.
+            async with self._marker_cv:
+                await self._marker_cv.wait_for(
+                    lambda: not any(p < first for p in self._unmarked)
+                )
+            await self._advance_shacl_marker(first, last, written)
+        except Exception as exc:  # noqa: BLE001 - post-commit, best effort by design
+            logger.warning(
+                "SHACL status marker for corpus %r not advanced past journal position "
+                "%d (%s: %s); full_shacl reads 'unvalidated' until revalidated",
+                self.corpus, last, type(exc).__name__, exc,
+            )
+        finally:
+            await self._release_marker_turn(first)
+
+    async def _advance_shacl_marker(self, first: int, last: int, written: list[str]) -> None:
         suite = self.config.shacl
         if suite is None:
             return
@@ -1175,7 +1266,10 @@ class CorpusStorageContext:
                 and not (e.get("tier") == "local" and e.get("focus") in written_set)
             ]
         failing, truncated = cap_failing(kept + new_entries)
-        truncated = truncated or bool(current is not None and current.failing_truncated and rechecked is not None)
+        # Review P1-1: a truncated list hides failures nobody re-checked, on
+        # BOTH branches (a complete corpus-tier run says nothing about the
+        # unlisted local-tier failures). Only validate_corpus may clear it.
+        truncated = truncated or bool(current is not None and current.failing_truncated)
         row = await self._journal.row_at(self.corpus, last)
         if row is None:  # pragma: no cover - the row was just committed
             return
@@ -1190,7 +1284,9 @@ class CorpusStorageContext:
                 payload_sha256=row.payload_sha256,
                 failing=failing,
                 failing_truncated=truncated,
-                warnings=marker.warnings if marker is not None else None,
+                # The Warning count is a full-validation fact; after any later
+                # write it is unknown rather than stale (review nit).
+                warnings=None,
                 updated_by="incremental",
             )
 
@@ -1302,6 +1398,15 @@ class CorpusStorageContext:
 
     async def _current_shard_rows(self, upto: int) -> list[JournalRow]:
         return await self._journal.latest_shards(self.corpus, upto=upto)
+
+
+def _batch_sha(prepared: list[tuple[PreparedRecord, ShardEnvelope | None]]) -> str:
+    return sha256_hex(
+        "\n".join(
+            f"{rec.shard_iri}:{sha256_hex(rec.original)}:{sha256_hex(rec.payload)}"
+            for rec, _ in prepared
+        ).encode("utf-8")
+    )
 
 
 def _prepared_record(loaded: LoadedShardRecord, payload: bytes) -> PreparedRecord:

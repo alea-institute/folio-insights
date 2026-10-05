@@ -32,7 +32,7 @@ from folio_insights.shapes.pydantic_to_shacl import (
     check_generated,
     generate_ttl,
 )
-from folio_insights.shapes.rendering import SHARD_MODELS, render_shard
+from folio_insights.shapes.rendering import SHARD_MODELS, UNDECLARED_NS, render_shard
 from folio_insights.storage.projection import DEPENDENCY_PREDICATES
 from tests.shapes.cases import dumped, mutate
 from tests.shapes.strategies import SUBTYPE_STRATEGIES
@@ -118,7 +118,9 @@ MUTATIONS = {
     "wrong_datatype": (lambda d: mutate(d, confidence="high"), "DatatypeConstraintComponent", "confidence"),
     "ill_formed_datetime": (lambda d: mutate(d, extracted_at="not-a-time"), "DatatypeConstraintComponent", "extractedAt"),
     "two_values": (lambda d: mutate(d, sense=["a", "b"]), "MaxCountConstraintComponent", "sense"),
-    "unknown_field": (lambda d: mutate(d, smuggled=1), "ClosedConstraintComponent", "smuggled"),
+    "unknown_field": (
+        lambda d: mutate(d, smuggled=1), "ClosedConstraintComponent", f"{UNDECLARED_NS}smuggled",
+    ),
     "nested_missing": (
         lambda d: mutate(d, triple={"predicate": "p", "object": "o"}),
         "NodeConstraintComponent", "triple",
@@ -134,11 +136,12 @@ MUTATIONS = {
 @pytest.mark.parametrize("mutation", list(MUTATIONS))
 def test_seeded_mutations_are_reported_by_both_engines(tag: str, cls: type, mutation: str) -> None:
     fn, component, local = MUTATIONS[mutation]
+    path = local if "://" in local else f"{FI}{local}"
     graph, _ = render_shard(fn(dumped(cls)))
     compiled = {(r.component, r.path) for r in GENERATED_ONLY.validate(graph)}
-    assert (component, f"{FI}{local}") in compiled
+    assert (component, path) in compiled
     report = pyshacl_adapter.validate(graph, [GENERATED_PATH])
     assert not report.conforms
-    assert (f"http://www.w3.org/ns/shacl#{component}", f"{FI}{local}") in {
+    assert (f"http://www.w3.org/ns/shacl#{component}", path) in {
         (r["component"], r["path"]) for r in report.results
     }
