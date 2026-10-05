@@ -221,4 +221,144 @@ flowchart TD
 
 ## Execution Evidence
 
-(Filled per unit as work lands.)
+Hardware for every number below: Intel Core 7 240H (16 logical CPUs),
+61 GiB RAM, Linux 7.0.0-38-generic, Python 3.12.12, pyoxigraph 0.5.7,
+pyshacl 0.31.0, rdflib 7.6.0. **The box was shared with other heavy jobs
+throughout** (a video render plus other agents; 1-minute load average 4-15),
+so absolute timings are noisy. Where the target is a ratio, interleaved A/B
+runs in one process are the reliable evidence.
+
+### U1-U3 (2026-10-05) — `3aeee92`
+
+- **Generator.** `shapes/pydantic_to_shacl.py` and `scripts/generate_shapes.py`
+  emit 1,945 lines of TTL. Coverage: one closed shape per subtype (all
+  fields, inherited ones included), one per nested model (`Triple`,
+  `AttestedSignature`, `ContentEdit` rendered as `fi:ContentEditRecord`,
+  `Objection`, `Reply`, `AuthorityPosition`), a map-entry shape, and a
+  `fi:Shard` discriminator. Output is byte-deterministic, and `--check` fails
+  on drift.
+- **Property test.** The Hypothesis round trip covers 25 examples per
+  subtype across every optional variant, and found two real bugs, both fixed:
+  - a `dict` field rendered one node per key but was emitted with
+    `sh:maxCount 1`;
+  - `Any`-typed `null` (a content edit's `old_value`) was rendered as
+    absence.
+- **Hand-written shapes.** The six shapes are in `shapes/ttl/`. The fixtures
+  found that `sh:severity` on a node shape does NOT reach its nested property
+  shapes, so the Warning-intended identity rules would have refused writes.
+  Severity now sits on each property shape.
+- **Engines.** The compiled engine (`shapes/compiled.py`) agrees with pyshacl
+  on:
+  - every fixture;
+  - 60 Hypothesis instances with mutations;
+  - all 60 mutation × subtype combinations;
+  - the six corpus-tier cases.
+  Unimplemented SHACL refuses to compile.
+
+### U4 (2026-10-05) — `f90710b`
+
+- **Write path.** `StorageConfig.shacl` defaults to the suite. Violations
+  refuse put, ingest, bulk load in-process and pooled (2,100 records), and
+  governance appends, with storage left unchanged. Warnings never refuse.
+- **Status and validation.** The `full_shacl` life cycle, cross-shard
+  `fail -> pass`, the restore/digest/swapped-row `unvalidated` cases, racing
+  writers, the pyshacl engine agreeing with the compiled one, export
+  manifests and the CLI are covered by `tests/storage/test_phase11_shacl.py`
+  (15 tests).
+- **Existing tests.** Every existing storage test passes with the suite on by
+  default. The four Phase 13 assertions on `deferred-to-phase-11` were
+  updated: three now read `pass`, and the restored root reads `unvalidated`.
+
+### U5 (2026-10-05) — `e22600b`
+
+- **Tests.** `POST /validate` is covered by `tests/test_validate_api.py`
+  (17 tests).
+- **Live check.** A real uvicorn on port 9171 returned:
+  - a valid candidate: `conforms: true`, 0 violations;
+  - a candidate with `layer=L9` and `confidence=2`: `conforms: false` with
+    `InConstraintComponent` and `MaxInclusiveConstraintComponent`;
+  - a `[1]` body: HTTP 422;
+  - `/openapi.json` lists `/validate`.
+
+### U6 (2026-10-05) — `42ed973`, `7336e5d`
+
+- **Dagger.** `_shapes_check` runs `scripts/generate_shapes.py --check` before
+  `_test`, pinned by `tests/test_ci_shapes_stage.py`. The Dagger pipeline
+  itself was not run: it builds and publishes images to ttl.sh.
+- **CORPUS-04 harness.** `bench/corpus04.py` (`tests/bench/test_corpus04_harness.py`,
+  3 tests). The three synthetic stand-ins load, fully validate (`pass`, 0
+  Violations) and report cluster validation `unavailable`.
+  **CORPUS-04 remains UNMET**: the real v1 advocacy, FRE and Restatement
+  corpora are not in the repository, and the Phase 9.P1 cluster validator is
+  not built.
+- **Incremental validation at 1M triples** (`tests/bench/test_shacl_incremental.py`,
+  43,479 shards = 1,000,017 triples, 200 revisions that each add a
+  supersession link). **Target met.**
+  - **Validation:** P50 9.9 ms, **P95 13.7 ms**, max 15.3 ms, against a 50 ms
+    target.
+  - **Local tier alone:** P95 0.23 ms.
+  - **Full `shards.put`** (not gated): P95 71.6 ms.
+- **Gate 1:** 32 passed.
+- **Gate 2:** run on `fixtures/bench.nq` (seed 42, 1M; sha256 `842066a0…7c7837`,
+  identical to Phase 13). 16 passed. Slowest warm max is q13 at 158.7 ms
+  (load average 12.8), against 500 ms. Gate 2 queries do not touch SHACL
+  code.
+- **Bulk load (Phase 13 exit criterion 1, ≥ 200K triples/s).**
+  - **Interleaved A/B** (same process, 4 runs each, load ~5-8): suite off,
+    median **249,504** triples/s (matching Phase 13's 250-260K); suite on,
+    median **220,723** triples/s. The full suite costs about 11.5% of bulk
+    throughput.
+  - **Where the cost goes:** the local tier in the pool workers, about
+    50 µs per record. The post-commit corpus tier plus the marker cost
+    about 0.05 s per load.
+  - **Official benchmark** (`pytest -m slow -k bulk tests/bench`): medians
+    of 192,889 (load ~6), 167,964 (load ~7), 161,732 (load ~8-9) and 169,792
+    triples/s (load 6.6 -> 11.2; that run's three loads were 136,273,
+    169,792 and 200,505). Under the same load the suite-off path fell to 157-170K, so
+    the official benchmark could not be run clean on this shared box.
+  - **Stated trade-off:** with the suite on, bulk load runs about 11-12%
+    below the suite-off path. On an unloaded box the A/B projects ~220-230K
+    triples/s, above the 200K floor. Under contention it falls below 200K
+    together with the suite-off path. Re-run the official benchmark on a
+    quiet box before treating Phase 13 exit criterion 1 as re-confirmed.
+  - `StorageConfig(shacl=None)` restores the Phase 13 path, and
+    `full_shacl` then reads `disabled`.
+
+### Verification (2026-10-05)
+
+- **Full suite:** `-m "not gate5 and not slow" --benchmark-skip` gave
+  **1909 passed**, 16 skipped, 20 deselected (baseline 1622). The 16 skips
+  are bench tests that need Docker, Dagger or an image.
+- **Earlier failures:** two earlier full runs each failed one test,
+  `tests/test_ci_build_context.py::test_export_builds_head_and_warns_on_uncommitted`,
+  on a 30 s timeout. That was a pre-existing CI bug, fixed in `fee30c4`:
+  - `git archive` blocked writing tar padding that `tarfile` never read;
+  - this user was over `fs.pipe-user-pages-soft`, so new pipes got
+    8,192 bytes;
+  - the fix drains the pipe before `wait()`.
+- **Ruff:** clean on every changed file. Repo-wide counts are unchanged from
+  `origin/master`.
+- **Locks:** `scripts/export_image_locks.py --check` unchanged. No new
+  dependency.
+- **Exclusion scan:** `scripts/check_exclusions.py --history origin/master`
+  found 0 findings.
+- **Output and data:** `git status --short --ignored output data` is clean.
+
+### Deviations
+
+- **Severity policy (KTD4).** The PRD lists contested votes, unsigned
+  shards, superseded without a successor, demonstrable without dependencies,
+  and identity forms as hard rules. They ship as Warnings, because no code
+  enforces them today and refusing would break writes that succeed now.
+  Promoting them is a product decision.
+- **Corpus tier reports, never refuses (KTD5).** Cross-shard supersession
+  rules set `full_shacl: fail` instead of refusing the write.
+- **Role-based PRD fixtures stay in code.** "Promotion without reviewer
+  role" and "arbiter action with reviewer DID" stay with
+  `governance.authorize()`; SHACL cannot see time-indexed role state.
+  Cryptographic signature failure stays with `identity/verifier.py`.
+- **Outside the suite.** The governance-event, content-edit-chain and v1
+  OWL-export shapes keep their existing runners.
+- **`FULL_SHACL_STATUS` removed.** The constant (always
+  `"deferred-to-phase-11"`) is replaced by `FULL_SHACL_STATES`. Export and
+  dump manifests now carry the real state.
