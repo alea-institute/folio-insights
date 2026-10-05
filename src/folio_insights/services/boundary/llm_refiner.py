@@ -10,26 +10,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pydantic import BaseModel, Field
-
+from folio_insights.llm.schemas import BoundaryRefinement, BoundaryRefinementResponse
+from folio_insights.llm.templates import BOUNDARY
 from folio_insights.services.boundary.structural import Boundary
-from folio_insights.services.prompts.boundary import BOUNDARY_REFINEMENT_PROMPT
 
 logger = logging.getLogger(__name__)
 
 
-class BoundaryRefinement(BaseModel):
-    """An LLM-suggested boundary split within a text segment."""
-
-    start_char: int
-    end_char: int
-    rationale: str = ""
-
-
-class BoundaryRefinementResponse(BaseModel):
-    """Structured response from the LLM boundary refinement call."""
-
-    boundaries: list[BoundaryRefinement] = Field(default_factory=list)
+__all__ = ["BoundaryRefinement", "BoundaryRefinementResponse", "refine_boundaries_with_llm"]
 
 
 async def refine_boundaries_with_llm(
@@ -39,7 +27,8 @@ async def refine_boundaries_with_llm(
 ) -> list[Boundary]:
     """Refine boundaries using LLM for ambiguous text segments.
 
-    Uses instructor for structured output. Temperature=0 for consistency.
+    Calls the LLM port (validated structured output, ``boundary.llm_refine`` template).
+    Temperature=0 for consistency.
     Each refined boundary gets confidence based on LLM agreement with
     structural cues.
 
@@ -59,34 +48,12 @@ async def refine_boundaries_with_llm(
     section_path = candidate_boundaries[0].section_path if candidate_boundaries else []
     base_offset = candidate_boundaries[0].start if candidate_boundaries else 0
 
-    prompt = BOUNDARY_REFINEMENT_PROMPT.format(text=text)
+    prompt = BOUNDARY.render(text=text)
 
     try:
-        import instructor
-
         llm_provider = llm_bridge.get_llm_for_task("boundary")
-
-        # Use instructor for structured output with the LLM
         result = await llm_provider.structured(
-            prompt,
-            schema={
-                "type": "object",
-                "properties": {
-                    "boundaries": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "start_char": {"type": "integer"},
-                                "end_char": {"type": "integer"},
-                                "rationale": {"type": "string"},
-                            },
-                            "required": ["start_char", "end_char"],
-                        },
-                    }
-                },
-            },
-            temperature=0,
+            prompt, schema=BoundaryRefinementResponse, temperature=0
         )
 
         refinements = result.get("boundaries", [])

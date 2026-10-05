@@ -35,6 +35,11 @@ class ConceptTag(BaseModel):
     confidence: float
     extraction_path: str  # "entity_ruler", "llm", "semantic", "heading_context"
     branch: str = ""
+    # LLM-judge outcome for a non-ruler IRI (Phase 10 KTD7): "judged" when the judge ruled on it,
+    # "unjudged" when the judge was down or skipped it (the tag is kept, but a minter must treat
+    # it as unverified). None when no judge applies (ruler / proposed-class tags) or the judge
+    # stage was not enabled for the run (see ``metadata.folio_tagger.judge_enabled``).
+    judge_status: str | None = None
 
 
 class StageEvent(BaseModel):

@@ -1,21 +1,21 @@
-"""Discovery pipeline execution wrapper with progress callbacks.
+"""Discovery job handler for the durable queue (Phase 10 U2).
 
-Iterates through TaskDiscoveryOrchestrator stages individually, updating
-the ProcessingJob between each stage so the SSE stream can report
-real-time progress to the browser.
-
-Follows the same pattern as pipeline_runner.py for extraction.
+``POST /corpus/{id}/discover`` enqueues a ``discover`` job; a worker leases it and calls
+:func:`run_discovery_job`, which runs ``TaskDiscoveryOrchestrator.run`` -- the CLI's
+checkpointed path, including the diff and the ``review.db`` persistence -- with a job-scoped
+checkpoint directory and stage-boundary progress, instead of the API's former private stage loop.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
+import shutil
 from pathlib import Path
+from typing import Any
 
-from api.models.processing import ActivityEntry, ProcessingStatus
-from api.services.job_manager import JobManager
+from api.services.pipeline_runner import job_checkpoint_dir, stage_reporter
+from folio_insights.config import get_settings
+from folio_insights.jobs import JobRunContext, PermanentJobError
 
 logger = logging.getLogger(__name__)
 
@@ -30,165 +30,49 @@ _DISCOVERY_STAGE_DISPLAY: dict[str, str] = {
 }
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _discovery_detail(stage_name: str, job: Any) -> str:
+    if stage_name == "hierarchy_construction":
+        return f"{len(job.discovered_tasks)} tasks discovered"
+    if stage_name == "contradiction_detection":
+        return f"{len(job.contradictions)} contradictions found"
+    return f"{len(job.task_candidates)} candidates"
 
 
-async def run_discovery_with_progress(
-    corpus_id: str,
-    corpus_name: str,
-    job_manager: JobManager,
-) -> None:
-    """Run the 6-stage task discovery pipeline with per-stage progress updates.
-
-    Same pattern as run_pipeline_with_progress: iterates orchestrator._stages
-    individually, updating the job between each stage for SSE polling.
-
-    After completion, persists discovered tasks to SQLite (insert into
-    task_decisions, task_unit_links, contradictions tables).
-    """
-    job = await job_manager.load_by_corpus(f"{corpus_id}_discovery")
-    if job is None:
-        logger.error("No discovery job found for corpus %s; aborting", corpus_id)
-        return
-
-    from folio_insights.config import get_settings
-    from folio_insights.models.knowledge_unit import KnowledgeUnit
-    from folio_insights.models.task import DiscoveryJob as PipelineDiscoveryJob
+async def run_discovery_job(ctx: JobRunContext) -> dict[str, Any]:
+    """Queue handler for ``discover`` jobs."""
     from folio_insights.pipeline.discovery.orchestrator import TaskDiscoveryOrchestrator
 
-    settings = get_settings()
-    corpus_dir = settings.output_dir / corpus_name
-    extraction_path = corpus_dir / "extraction.json"
-
+    payload = ctx.payload
     try:
-        job.status = ProcessingStatus.PROCESSING
-        await job_manager.save(job)
-
-        # Check extraction output exists
-        if not extraction_path.exists():
-            raise FileNotFoundError(
-                f"No extraction output at {extraction_path}. "
-                "Run extraction pipeline first."
-            )
-
-        # Load extraction data for unit count
-        data = json.loads(extraction_path.read_text(encoding="utf-8"))
-        units = data.get("units", [])
-
-        # Check for SQLite DB for decision persistence
-        db_path = corpus_dir / "review.db"
-        orchestrator = TaskDiscoveryOrchestrator(
-            settings,
-            db_path=db_path if db_path.exists() else None,
+        corpus_name = str(payload["corpus_name"])
+        output_dir = Path(payload["output_dir"])
+    except KeyError as exc:
+        raise PermanentJobError(f"discover job payload lacks {exc}") from None
+    corpus_dir = output_dir / corpus_name
+    if not (corpus_dir / "extraction.json").exists():
+        raise PermanentJobError(
+            f"No extraction output for corpus {corpus_name!r}. Run extraction pipeline first."
         )
-        stages = orchestrator._stages
-        total_stages = len(stages)
+    checkpoints = job_checkpoint_dir(corpus_dir, ctx.job.id, discovery=True)
 
-        # Create the DiscoveryJob that flows through the pipeline stages
-        ku_list = [KnowledgeUnit(**u) for u in units]
+    settings = get_settings().model_copy(update={"output_dir": output_dir, "corpus_name": corpus_name})
+    orchestrator = TaskDiscoveryOrchestrator(settings, db_path=corpus_dir / "review.db")
+    ctx.report(stage="discovery", progress_pct=0, message="Discovery started")
 
-        # Load approved decisions
-        approved_tasks = await orchestrator._load_approved_decisions(corpus_name)
-        pre_run_task_ids = {t.id for t in approved_tasks}
+    pipeline_job = await orchestrator.run(
+        corpus_name,
+        resume=True,
+        checkpoint_dir=checkpoints,
+        progress=stage_reporter(ctx, _DISCOVERY_STAGE_DISPLAY, _discovery_detail),
+    )
 
-        pipeline_job = PipelineDiscoveryJob(
-            corpus_name=corpus_name,
-            source_dir=corpus_dir / "sources",
-            knowledge_units=ku_list,
-            discovered_tasks=list(approved_tasks),
-            metadata={
-                "locked_task_ids": list(pre_run_task_ids),
-            },
-        )
-
-        for i, stage in enumerate(stages):
-            display = _DISCOVERY_STAGE_DISPLAY.get(stage.name, stage.name)
-
-            # Pre-stage update
-            job.current_stage = stage.name
-            job.progress_pct = int((i / total_stages) * 100)
-            job.activity_log.append(
-                ActivityEntry(
-                    timestamp=_now_iso(),
-                    stage=stage.name,
-                    message=f"Starting {display}...",
-                )
-            )
-            await job_manager.save(job)
-
-            # Execute stage
-            pipeline_job = await stage.execute(pipeline_job)
-
-            # Post-stage update
-            task_count = len(pipeline_job.task_candidates)
-            discovered_count = len(pipeline_job.discovered_tasks)
-            if stage.name == "hierarchy_construction":
-                detail = f"{discovered_count} tasks discovered"
-            elif stage.name == "contradiction_detection":
-                detail = f"{len(pipeline_job.contradictions)} contradictions found"
-            else:
-                detail = f"{task_count} candidates"
-
-            job.activity_log.append(
-                ActivityEntry(
-                    timestamp=_now_iso(),
-                    stage=stage.name,
-                    message=f"Completed {display} ({detail})",
-                )
-            )
-            await job_manager.save(job)
-
-        # Write output files (discovery.json, task_tree.json, discovery_diff.json)
-        pre_run_tasks = {t.id: t for t in approved_tasks}
-        diff = orchestrator._compute_diff(pipeline_job, pre_run_tasks)
-        orchestrator._write_output(pipeline_job, corpus_dir, diff)
-
-        # Persist discovered tasks to SQLite
-        await _persist_discovery_to_sqlite(
-            corpus_dir / "review.db",
-            corpus_name,
-            pipeline_job,
-        )
-
-        # Count final tasks
-        final_task_count = len(
-            pipeline_job.task_hierarchy.tasks
-            if pipeline_job.task_hierarchy
-            else []
-        )
-
-        # Mark complete
-        job.status = ProcessingStatus.COMPLETED
-        job.progress_pct = 100
-        job.total_units = final_task_count
-        job.activity_log.append(
-            ActivityEntry(
-                timestamp=_now_iso(),
-                stage="discovery",
-                message=f"Discovery complete: {final_task_count} tasks discovered",
-            )
-        )
-        await job_manager.save(job)
-
-        logger.info(
-            "Discovery complete for corpus %s: %d tasks",
-            corpus_id,
-            final_task_count,
-        )
-
-    except Exception as exc:
-        logger.exception("Discovery failed for corpus %s", corpus_id)
-        job.status = ProcessingStatus.FAILED
-        job.error = str(exc)
-        job.activity_log.append(
-            ActivityEntry(
-                timestamp=_now_iso(),
-                stage=job.current_stage or "unknown",
-                message=f"Discovery failed: {exc}",
-            )
-        )
-        await job_manager.save(job)
+    final_task_count = len(
+        pipeline_job.task_hierarchy.tasks if pipeline_job.task_hierarchy else []
+    )
+    ctx.report(stage="discovery", progress_pct=100,
+               message=f"Discovery complete: {final_task_count} tasks discovered", check=False)
+    shutil.rmtree(checkpoints, ignore_errors=True)
+    return {"total_units": final_task_count, "corpus_name": corpus_name}
 
 
 async def _persist_discovery_to_sqlite(

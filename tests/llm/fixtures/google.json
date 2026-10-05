@@ -1,0 +1,132 @@
+{
+  "_note": "Synthetic contract fixture in the shape of the provider's OpenAI-compatible chat-completions endpoint. No real credentials, prompts or source text.",
+  "auth_error": {
+    "body": [
+      {
+        "error": {
+          "code": 400,
+          "message": "API key not valid. Please pass a valid API key.",
+          "status": "INVALID_ARGUMENT"
+        }
+      }
+    ],
+    "status": 400
+  },
+  "bad_request": {
+    "body": [
+      {
+        "error": {
+          "code": 404,
+          "message": "models/gemini-nonexistent is not found for API version v1beta",
+          "status": "NOT_FOUND"
+        }
+      }
+    ],
+    "status": 404
+  },
+  "body_keys": [
+    "tools",
+    "tool_choice"
+  ],
+  "expected_usage": {
+    "cached_input_tokens": 0,
+    "input_tokens": 389,
+    "output_tokens": 41
+  },
+  "host": "generativelanguage.googleapis.com",
+  "malformed": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"preserved_nuances\": \"not-a-list\"}",
+                  "name": "DistilledOutput"
+                },
+                "id": "call_0",
+                "type": "function"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "synthetic-gemini-2",
+      "model": "gemini-2.5-flash-lite",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 8,
+        "prompt_tokens": 380,
+        "total_tokens": 388
+      }
+    },
+    "status": 200
+  },
+  "max_tokens_param": "max_tokens",
+  "model": "gemini-2.5-flash-lite",
+  "path": "/v1beta/openai/chat/completions",
+  "rate_limit": {
+    "body": [
+      {
+        "error": {
+          "code": 429,
+          "message": "Resource has been exhausted (e.g. check quota).",
+          "status": "RESOURCE_EXHAUSTED"
+        }
+      }
+    ],
+    "status": 429
+  },
+  "server_error": {
+    "body": [
+      {
+        "error": {
+          "code": 503,
+          "message": "The model is overloaded. Please try again later.",
+          "status": "UNAVAILABLE"
+        }
+      }
+    ],
+    "status": 503
+  },
+  "valid": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"distilled_text\": \"Object before the answer, not after.\", \"preserved_nuances\": [\"timing\"]}",
+                  "name": "DistilledOutput"
+                },
+                "id": "call_0",
+                "type": "function"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "synthetic-gemini-1",
+      "model": "gemini-2.5-flash-lite",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 41,
+        "prompt_tokens": 389,
+        "total_tokens": 430
+      }
+    },
+    "status": 200
+  }
+}

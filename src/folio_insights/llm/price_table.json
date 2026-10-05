@@ -1,0 +1,197 @@
+{
+  "version": "2026-10-05",
+  "currency": "USD",
+  "unit": "per 1,000,000 tokens",
+  "note": "List prices recorded from each provider's public price page on the effective_date. Cache-write surcharges and batch discounts are not modelled. The opt-in live smoke compares the ledger against invoice exports (within 5%).",
+  "rows": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "input_per_mtok": "1.00",
+      "cached_input_per_mtok": "0.10",
+      "output_per_mtok": "5.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "input_per_mtok": "1.00",
+      "cached_input_per_mtok": "0.10",
+      "output_per_mtok": "5.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output); dated snapshot of claude-haiku-4-5, same list price"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-5",
+      "input_per_mtok": "5.00",
+      "cached_input_per_mtok": "0.50",
+      "output_per_mtok": "25.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-6",
+      "input_per_mtok": "5.00",
+      "cached_input_per_mtok": "0.50",
+      "output_per_mtok": "25.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5",
+      "input_per_mtok": "3.00",
+      "cached_input_per_mtok": "0.30",
+      "output_per_mtok": "15.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5-20250929",
+      "input_per_mtok": "3.00",
+      "cached_input_per_mtok": "0.30",
+      "output_per_mtok": "15.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output); dated snapshot of claude-sonnet-4-5, same list price"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "input_per_mtok": "3.00",
+      "cached_input_per_mtok": "0.30",
+      "output_per_mtok": "15.00",
+      "effective_date": "2026-10-05",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing (base input / cache hits / output)"
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "input_per_mtok": "0.30",
+      "cached_input_per_mtok": "0.03",
+      "output_per_mtok": "2.50",
+      "effective_date": "2026-10-05",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing (paid tier, text, prompts <=200k)"
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.5-flash-lite",
+      "input_per_mtok": "0.10",
+      "cached_input_per_mtok": "0.01",
+      "output_per_mtok": "0.40",
+      "effective_date": "2026-10-05",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing (paid tier, text, prompts <=200k)"
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.5-pro",
+      "input_per_mtok": "1.25",
+      "cached_input_per_mtok": "0.125",
+      "output_per_mtok": "10.00",
+      "effective_date": "2026-10-05",
+      "source": "https://ai.google.dev/gemini-api/docs/pricing (paid tier, text, prompts <=200k); prompts over 200k tokens bill at a higher tier not modelled here"
+    },
+    {
+      "provider": "ollama",
+      "model": "*",
+      "input_per_mtok": "0",
+      "cached_input_per_mtok": "0",
+      "output_per_mtok": "0",
+      "effective_date": "2026-10-05",
+      "source": "local inference on operator hardware; no provider charge"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "input_per_mtok": "2.00",
+      "cached_input_per_mtok": "0.50",
+      "output_per_mtok": "8.00",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier)"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-2025-04-14",
+      "input_per_mtok": "2.00",
+      "cached_input_per_mtok": "0.50",
+      "output_per_mtok": "8.00",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier); dated snapshot of gpt-4.1, same list price"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "input_per_mtok": "0.40",
+      "cached_input_per_mtok": "0.10",
+      "output_per_mtok": "1.60",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier)"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "input_per_mtok": "0.40",
+      "cached_input_per_mtok": "0.10",
+      "output_per_mtok": "1.60",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier); dated snapshot of gpt-4.1-mini, same list price"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano",
+      "input_per_mtok": "0.10",
+      "cached_input_per_mtok": "0.025",
+      "output_per_mtok": "0.40",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier)"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-nano-2025-04-14",
+      "input_per_mtok": "0.10",
+      "cached_input_per_mtok": "0.025",
+      "output_per_mtok": "0.40",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier); dated snapshot of gpt-4.1-nano, same list price"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "input_per_mtok": "2.50",
+      "cached_input_per_mtok": "1.25",
+      "output_per_mtok": "10.00",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier)"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-2024-08-06",
+      "input_per_mtok": "2.50",
+      "cached_input_per_mtok": "1.25",
+      "output_per_mtok": "10.00",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier); dated snapshot of gpt-4o, same list price"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "input_per_mtok": "0.15",
+      "cached_input_per_mtok": "0.075",
+      "output_per_mtok": "0.60",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier)"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini-2024-07-18",
+      "input_per_mtok": "0.15",
+      "cached_input_per_mtok": "0.075",
+      "output_per_mtok": "0.60",
+      "effective_date": "2026-10-05",
+      "source": "https://developers.openai.com/api/docs/pricing (Standard tier); dated snapshot of gpt-4o-mini, same list price"
+    }
+  ]
+}

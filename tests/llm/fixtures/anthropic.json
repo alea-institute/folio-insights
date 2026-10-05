@@ -1,0 +1,125 @@
+{
+  "_note": "Synthetic contract fixture in the shape of the provider's OpenAI-compatible chat-completions endpoint. No real credentials, prompts or source text.",
+  "auth_error": {
+    "body": {
+      "error": {
+        "message": "invalid x-api-key",
+        "type": "authentication_error"
+      },
+      "request_id": "req_synthetic",
+      "type": "error"
+    },
+    "status": 401
+  },
+  "bad_request": {
+    "body": {
+      "error": {
+        "message": "model: claude-nonexistent",
+        "type": "not_found_error"
+      },
+      "type": "error"
+    },
+    "status": 404
+  },
+  "body_keys": [
+    "tools",
+    "tool_choice"
+  ],
+  "expected_usage": {
+    "cached_input_tokens": 0,
+    "input_tokens": 655,
+    "output_tokens": 58
+  },
+  "host": "api.anthropic.com",
+  "malformed": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"preserved_nuances\": \"not-a-list\"}",
+                  "name": "DistilledOutput"
+                },
+                "id": "call_0",
+                "type": "function"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "msg_synthetic02",
+      "model": "claude-haiku-4-5-20251001",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 12,
+        "prompt_tokens": 650,
+        "total_tokens": 662
+      }
+    },
+    "status": 200
+  },
+  "max_tokens_param": "max_tokens",
+  "model": "claude-haiku-4-5",
+  "path": "/v1/chat/completions",
+  "rate_limit": {
+    "body": {
+      "error": {
+        "message": "Number of request tokens has exceeded your per-minute rate limit",
+        "type": "rate_limit_error"
+      },
+      "type": "error"
+    },
+    "status": 429
+  },
+  "server_error": {
+    "body": {
+      "error": {
+        "message": "Overloaded",
+        "type": "overloaded_error"
+      },
+      "type": "error"
+    },
+    "status": 529
+  },
+  "valid": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"distilled_text\": \"Object before the answer, not after.\", \"preserved_nuances\": [\"timing\"]}",
+                  "name": "DistilledOutput"
+                },
+                "id": "call_0",
+                "type": "function"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "msg_synthetic01",
+      "model": "claude-haiku-4-5-20251001",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 58,
+        "prompt_tokens": 655,
+        "total_tokens": 713
+      }
+    },
+    "status": 200
+  }
+}

@@ -13,8 +13,12 @@ execution: code
 
 - **Objective:** Extraction runs on any supported LLM provider through one tested port. It turns only grounded, verified units into shards in the Phase 13 corpus store, through durable jobs that survive restarts and report their cost.
 - **Authority:** Damien's Decision Sheet `folio-insights-2026-10-04-1531-v2-next-phases`, question `q3-phase9-10-pipeline`, was answered "Plan only, then ask" by Chief, the automated first responder. This document is that plan.
-  - **Build authorized (2026-10-05):** Decision Sheet `folio-insights-2026-10-05-0814-p10-build-and-calls` was answered by Chief (q1–q4, recommended options). U1–U3 are authorized now. U5 (minter) waits for Phase 9 Wave A and Phase 11. The four product calls are recorded under Open Questions below.
   - **Lineage:** migration-plan U8 (`docs/plans/2026-09-27-1930-refactor-v2-gsd-to-ce-migration-plan.md`) declared the April Phase 10 obsolete as written, and directed a re-plan from the current folio-resolve tagger, `docs/evidence/books/` and `docs/rubrics/extraction-quality-v1.md`.
+- **Build authority (2026-10-05):** Decision Sheet `folio-insights-2026-10-05-0814-p10-build-and-calls`, answered by Chief (the automated first responder; Damien can overrule):
+  - **q1:** "Yes, U1–U3 now; minter later." U1–U3 and the KTD7 error-handling items are built (see Execution Evidence); U5 and everything depending on Phase 9 or Phase 11 waits.
+  - **q2:** Minted shards are `hypothesis` until a reviewer promotes them (resolves Open Question 1; applies from U5).
+  - **q3:** Real non-public sources only in private corpora or local-only roots (resolves Open Question 2; applies from U7).
+  - **q4:** Per-unit checks to mint; RUB-EXTRACT ≥ 0.80 to publish (resolves Open Question 3; applies from U5/U6).
 - **Execution profile:** U1–U3 are authorized for build (Decision Sheet q1, 2026-10-05). U4–U7 still need their dependencies, and no deployment is authorized.
 - **Stop conditions:**
   - Any unit that would weaken a tagger invariant stops: the LLM never mints IRIs, B9 evidence verification, B5 deterministic-path integrity, anchor verification, B6 substance guard or empty-IRI non-voting.
@@ -298,6 +302,70 @@ stateDiagram-v2
 - **Restart tests:** U2's crash and restart tests run as subprocesses.
 - **Exclusion scan:** `scripts/check_exclusions.py --history origin/master` shows 0 findings on every branch, and U7 evidence adds no source text.
 - These are implementation gates, not results claimed by this plan.
+
+## Execution Evidence
+
+### U1–U3 and KTD7 (branch `feat/phase10-providers-queue-cost`, 2026-10-05)
+
+Commits, in order: U1 provider port, U2 durable job queue, U3 cost meter, then the KTD7 error-handling items from U4. The fast suite (`-m "not gate5 and not slow" --benchmark-skip`) passed after each unit. `ruff` reported no new findings against `origin/master`, `scripts/export_image_locks.py --check` was clean, `scripts/check_exclusions.py --history origin/master` reported 0 findings, and `output/` and `data/` were untouched.
+
+- **U1 (port):** `src/folio_insights/llm/`.
+  - **Provider transport:** every provider is reached through its OpenAI-compatible chat-completions endpoint, using the pinned `openai` SDK and `instructor` (TOOLS mode; JSON mode for Ollama). SDK retries are 0, so instructor's loop is the only retry layer.
+  - **BYOK:** keys are `SecretKey`/`Credentials`: redacted, unpicklable and revealed only when the SDK client is built. Port errors are scrubbed and never chain the SDK exception.
+  - **Coverage:** every LLM call site now goes through the port, with `LLMBridge.get_llm_for_task` kept as the facade.
+  - **Tests:** offline contract tests cover all four providers. The live tier is opt-in (`live_llm`).
+- **U2 (jobs):** `src/folio_insights/jobs/`.
+  - **Queue:** a SQLite lease queue with heartbeats, back-off retries, crash recovery, cancel at stage boundaries and idempotent, exclusive enqueue.
+  - **Credentials:** keys are held in memory per job; after a restart, a job pauses as `needs_credentials`.
+  - **Runners:** API jobs run through the orchestrators' checkpoint path in job-scoped directories. `worker.py` is the queue consumer.
+  - **Tests:** SIGKILL subprocess tests prove worker-kill resume and API-restart continuation, both without a key and with a per-request key.
+- **U3 (cost):** `llm/price_table.json` (dated 2026-10-05; rows verified against the OpenAI, Anthropic and Gemini price pages that day), `llm/pricing.py`, the `llm_usage` ledger table in the queue database, and the `llm/cost.py` pre-call spend cap with worst-case reservations. Exact Decimal arithmetic is tested. The ±5% invoice comparison is in the opt-in live tier and waits for an operator run (U7).
+- **KTD7:** per-unit tagger failures are counted and fail the run above 5%. A judge outage or a skipped candidate marks a tag `judge_status="unjudged"`. The B5 canary runs at job start.
+
+**Deviations from this plan, with reasons:**
+
+- **KTD1 provider SDKs:** no `anthropic` or `google-genai` extra was added. The dispatch said to prefer no new dependencies, and all four providers publish OpenAI-compatible endpoints that instructor drives through the already-locked `openai` SDK. `openai` and `tenacity` are now declared directly; both were already in the lock closure. Anthropic's compatibility layer is documented as not intended for long-term production use, so U7 should confirm it, or add a native adapter, before Anthropic becomes a default.
+- **KTD4 hash scope:** the template hash also covers the user-prompt template, not only the system prompt. It still excludes unit text.
+- **Discovery output:** the discovery call sites still parse JSON from `complete()`, keeping their existing tests. They do carry template identity, usage and the single retry layer.
+- **Standalone worker:** `python -m folio_insights.worker` never holds user keys. Jobs submitted with a key run on the API process's embedded worker, the only process that holds the key in memory. The standalone worker has no worker-tier kinds yet (Phase 9), so for now it only recovers expired leases.
+
+### Review fixes (2026-10-05)
+
+An independent review of U1–U3 found 4 P1 and 10 P2 issues plus nits. Each fix below has a regression test that fails on the pre-fix tree.
+
+**API posture (no user auth):**
+- **Open routes:** submit and read stay open, as deployed.
+- **Control token:** cancel, resume and key re-supply require the job's control token (`X-Job-Control-Token`). It is returned once on creation and stored only as a SHA-256 hash, compared in constant time; without it the routes return 403.
+- **Spend cap:** a job that hits its cap drops the key from memory, so a resume needs a key again and whoever resumes pays.
+- **Key binding:** the key is bound to the provider the request named, and the job is pinned to it, so the key never reaches another provider or host.
+- **Keyless providers:** API jobs may use them (Ollama) only with `FOLIO_INSIGHTS_API_ALLOW_KEYLESS_PROVIDERS`.
+
+**Spend cap is a true upper bound:**
+- **Per-request reservation:** a transport wrapper sees every HTTP attempt, including re-asks. Before each request it reserves `price(request_bytes + 1024, max_tokens)` and refuses to send if the cap would be exceeded.
+- **In-flight ledger rows:** the reservation is written to the ledger first, so a crash leaves the run charged at the bound.
+- **Booking at worst case:** a timeout after send, a 5xx, a cancellation or a 2xx without usage is booked at its reserved bound.
+- **Usage source:** usage is read from each response body. Gemini output counts `max(completion, total - prompt)`.
+- **Exact pricing:** price lookup is exact-match only, and snapshots are listed explicitly.
+
+**Fail loud:**
+- **Halts:** a rejected key (`LLMAuthError`) halts as `needs_credentials`, and an unknown model halts permanently.
+- **Failure ratio:** per-unit distill, classify, novelty and concept failures fail the stage above `llm_max_unit_failure_ratio` (5%).
+
+**Hygiene:**
+- **Key lifetime:** SDK clients are scoped to a run and closed at its end. Keys are discarded on cancel, lost lease and budget pause.
+- **Log scrubbing:** a scrub filter covers the instructor, openai and httpx loggers.
+- **Exception chains:** mapped errors carry no `__context__` or `__cause__`.
+- **Concurrent re-supply:** a losing re-supply restores the winner's key.
+- **Retry budget:** a pause does not consume an attempt.
+- **Malformed caps:** non-finite caps are rejected; a cap that fails to parse fails the job instead of wedging it.
+- **Lineage:** template hashes, the B5 result and the cost summary reach `extraction.json` and survive a checkpoint resume.
+- **CLI cap:** the cap is cumulative per corpus and `--spend-window`.
+- **Legacy import:** it never overwrites a live job, and maps a malformed timestamp to the epoch.
+- **Idempotency:** a replay with a different payload or key returns 409.
+- **`force`:** returns 409 while a job is active.
+- **Ledger writes:** they run off the event loop.
+- **Polysemy:** model names with an unknown prefix are refused.
+- **Output caps:** each template has its own output cap.
 
 ## Definition of Done
 

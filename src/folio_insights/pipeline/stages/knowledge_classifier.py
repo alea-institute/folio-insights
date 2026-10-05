@@ -12,18 +12,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
-from pydantic import BaseModel, Field
-
+from folio_insights.llm.schemas import ClassificationOutput, NoveltyOutput
+from folio_insights.llm.templates import CLASSIFY, NOVELTY
 from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
     InsightsPipelineStage,
+    LLMFailureTracker,
     record_lineage,
 )
-from folio_insights.services.prompts.classification import CLASSIFICATION_PROMPT
-from folio_insights.services.prompts.novelty import NOVELTY_SCORING_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -39,19 +37,9 @@ _TYPE_MAP = {
 }
 
 
-class ClassificationResult(BaseModel):
-    """Structured output from the classification LLM call."""
-
-    unit_type: str
-    confidence: float = 0.5
-    reasoning: str = ""
-
-
-class NoveltyResult(BaseModel):
-    """Structured output from the novelty scoring LLM call."""
-
-    score: float = 0.5
-    reasoning: str = ""
+# Validated output models for the two LLM calls (defined with the template registry).
+ClassificationResult = ClassificationOutput
+NoveltyResult = NoveltyOutput
 
 
 class KnowledgeClassifierStage(InsightsPipelineStage):
@@ -72,17 +60,22 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             logger.info("No units to classify")
             return job
 
+        classify_tracker = LLMFailureTracker("knowledge_classifier", "classify")
+        novelty_tracker = LLMFailureTracker("knowledge_classifier", "novelty")
+
         # Process in batches
         for batch_start in range(0, len(job.units), _BATCH_SIZE):
             batch = job.units[batch_start : batch_start + _BATCH_SIZE]
 
             # Run classification and novelty scoring in parallel
-            classify_tasks = [self._classify_unit(unit) for unit in batch]
-            novelty_tasks = [self._score_novelty(unit) for unit in batch]
+            classify_tasks = [self._classify_unit(unit, classify_tracker) for unit in batch]
+            novelty_tasks = [self._score_novelty(unit, novelty_tracker) for unit in batch]
 
             await asyncio.gather(
                 *classify_tasks, *novelty_tasks, return_exceptions=True
             )
+        classify_tracker.check(job)
+        novelty_tracker.check(job)
 
         # Post-processing: citation detection override
         await self._detect_citations(job.units)
@@ -98,15 +91,16 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
         )
         return job
 
-    async def _classify_unit(self, unit: KnowledgeUnit) -> None:
+    async def _classify_unit(
+        self, unit: KnowledgeUnit, tracker: LLMFailureTracker | None = None
+    ) -> None:
         """Classify a single unit's type via LLM."""
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
-        prompt = CLASSIFICATION_PROMPT.format(
-            text=unit.text,
-            section_path=section_context,
-        )
+        prompt = CLASSIFY.render(text=unit.text, section_path=section_context)
 
+        if tracker is not None:
+            tracker.attempt()
         try:
             from folio_insights.services.bridge.llm_bridge import LLMBridge
 
@@ -114,17 +108,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("classifier")
 
             result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "unit_type": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "reasoning": {"type": "string"},
-                    },
-                    "required": ["unit_type", "confidence"],
-                },
-                temperature=0,
+                prompt, schema=ClassificationOutput, temperature=0
             )
 
             unit_type_str = result.get("unit_type", "advice").lower().strip()
@@ -141,22 +125,25 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
                 confidence=unit.confidence,
             )
 
-        except Exception:
+        except Exception as exc:
+            if tracker is not None:
+                tracker.failure(unit.id, exc)
             logger.warning(
                 "Classification failed for unit %s; keeping default ADVICE",
                 unit.id,
                 exc_info=True,
             )
 
-    async def _score_novelty(self, unit: KnowledgeUnit) -> None:
+    async def _score_novelty(
+        self, unit: KnowledgeUnit, tracker: LLMFailureTracker | None = None
+    ) -> None:
         """Score novelty/surprise for a single unit via LLM."""
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
-        prompt = NOVELTY_SCORING_PROMPT.format(
-            text=unit.text,
-            section_path=section_context,
-        )
+        prompt = NOVELTY.render(text=unit.text, section_path=section_context)
 
+        if tracker is not None:
+            tracker.attempt()
         try:
             from folio_insights.services.bridge.llm_bridge import LLMBridge
 
@@ -164,16 +151,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("novelty")
 
             result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "score": {"type": "number"},
-                        "reasoning": {"type": "string"},
-                    },
-                    "required": ["score"],
-                },
-                temperature=0,
+                prompt, schema=NoveltyOutput, temperature=0
             )
 
             score = result.get("score", 0.5)
@@ -187,7 +165,9 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
                 confidence=unit.surprise_score,
             )
 
-        except Exception:
+        except Exception as exc:
+            if tracker is not None:
+                tracker.failure(unit.id, exc)
             logger.warning(
                 "Novelty scoring failed for unit %s; keeping default 0.0",
                 unit.id,

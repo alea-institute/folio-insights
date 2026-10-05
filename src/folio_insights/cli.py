@@ -29,6 +29,114 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
+def _llm_options(func):
+    """``--llm-provider`` / ``--llm-model``: the run-wide route for every LLM task.
+
+    Per-task ``LLM_{TASK}_PROVIDER`` / ``LLM_{TASK}_MODEL`` environment overrides still win.
+    """
+    from folio_insights.llm.providers import supported_providers
+
+    func = click.option(
+        "--llm-model",
+        default=None,
+        help="Model for every LLM task (default: settings, or the provider's default model).",
+    )(func)
+    func = click.option(
+        "--max-spend-usd",
+        default=None,
+        type=float,
+        help="Spend cap in USD (default $FOLIO_INSIGHTS_LLM_MAX_SPEND_USD), CUMULATIVE across runs "
+        "of this corpus and --spend-window: what earlier runs spent counts against it. A request "
+        "that could exceed it is never sent; the run stops, resumable from its checkpoint.",
+    )(func)
+    func = click.option(
+        "--spend-window",
+        default="default",
+        show_default=True,
+        help="Name of the cumulative spend budget for this corpus; pass a new name to start a "
+        "fresh budget.",
+    )(func)
+    func = click.option(
+        "--llm-provider",
+        default=None,
+        type=click.Choice(supported_providers(), case_sensitive=False),
+        help="LLM provider for every LLM task (default: FOLIO_INSIGHTS_LLM_PROVIDER).",
+    )(func)
+    return func
+
+
+def _install_cli_llm_context(
+    provider: str | None, model: str | None, max_spend_usd: float | None = None,
+    corpus: str = "", spend_window: str = "default",
+):
+    """Use the invoking user's own keys (their environment) for this CLI command.
+
+    Only CLI commands that run LLM work on the user's behalf call this, and the context lives
+    only as long as the command (``click`` closes it as a resource). ``serve`` never does: the API
+    process takes keys per request and must not hold an ambient one (R2).
+    """
+    import os
+
+    from folio_insights.jobs.queue import default_queue_path
+    from folio_insights.llm import Credentials, LLMRunContext, use_context
+    from folio_insights.llm.cost import SPEND_CAP_ENV, CostMeter
+    from folio_insights.llm.usage import UsageLedger
+
+    # A stable run id per (corpus, spend window): the meter seeds itself from the ledger, so the
+    # cap is cumulative across CLI runs of the corpus (a resume after the cap keeps counting).
+    run_id = f"cli:{corpus or 'default'}:{spend_window or 'default'}"
+    cap = max_spend_usd if max_spend_usd is not None else (os.environ.get(SPEND_CAP_ENV) or None)
+    ctx = LLMRunContext(
+        credentials=Credentials.from_env(),
+        provider=provider.lower() if provider else None,
+        model=model or None,
+        run_id=run_id,
+        meter=CostMeter(run_id=run_id, ledger=UsageLedger(default_queue_path()), cap_usd=cap,
+                        corpus_id=corpus),
+    )
+    click.get_current_context().with_resource(use_context(ctx))
+    return ctx
+
+
+def _echo_llm_usage(ctx) -> None:
+    summary = ctx.usage_summary()
+    if not summary["calls"]:
+        return
+    click.echo("--- LLM Usage ---")
+    for row in summary["by_task"]:
+        click.echo(
+            f"{row['task']:<18} {row['provider']}/{row['model']}: {row['calls']} call(s), "
+            f"{row['input_tokens']} in / {row['output_tokens']} out tokens"
+            + (f", {row['errors']} failed" if row["errors"] else "")
+        )
+    cost = summary.get("cost")
+    if cost:
+        cap = f" (cap ${cost['cap_usd']})" if cost.get("cap_usd") else ""
+        click.echo(f"Cost: ${cost['spent_usd']}{cap}, price table {cost['price_table_version']}, "
+                   f"run {ctx.run_id}"
+                   + (f"; {cost['unpriced_calls']} unpriced call(s)" if cost["unpriced_calls"] else ""))
+
+
+async def _closing(llm_ctx, coro):
+    """Await ``coro``, then close the SDK clients the run built (they hold the user's key)."""
+    try:
+        return await coro
+    finally:
+        await llm_ctx.aclose()
+
+
+def _echo_halt_hint(exc: BaseException) -> None:
+    kind = getattr(exc, "kind", "")
+    if kind == "budget_exhausted":
+        click.echo("The spend cap stopped the run before a request that could exceed it. The cap "
+                   "is cumulative for this corpus and --spend-window: re-run with a higher "
+                   "--max-spend-usd (or a new --spend-window) to resume from the last completed "
+                   "stage.", err=True)
+    elif kind == "needs_credentials":
+        click.echo("Set the provider's API key in your environment and re-run; completed "
+                   "stages resume from their checkpoints.", err=True)
+
+
 @click.group()
 @click.version_option(package_name="folio-insights")
 def cli() -> None:
@@ -79,6 +187,7 @@ def cli() -> None:
     default=False,
     help="Enable verbose (DEBUG) logging.",
 )
+@_llm_options
 def extract(
     source_dir: str,
     corpus: str,
@@ -87,6 +196,10 @@ def extract(
     confidence_medium: float,
     resume: bool,
     verbose: bool,
+    llm_provider: str | None,
+    llm_model: str | None,
+    max_spend_usd: float | None,
+    spend_window: str,
 ) -> None:
     """Extract knowledge units from source files in SOURCE_DIR.
 
@@ -124,6 +237,9 @@ def extract(
         confidence_medium=confidence_medium,
     )
 
+    llm_ctx = _install_cli_llm_context(llm_provider, llm_model, max_spend_usd, corpus,
+                                       spend_window)
+
     # Create and run pipeline
     from folio_insights.pipeline.orchestrator import PipelineOrchestrator
 
@@ -135,11 +251,13 @@ def extract(
     click.echo("")
 
     try:
-        job = asyncio.run(
-            orchestrator.run(source_path, corpus_name=corpus, resume=resume)
-        )
+        job = asyncio.run(_closing(
+            llm_ctx, orchestrator.run(source_path, corpus_name=corpus, resume=resume)
+        ))
     except Exception as exc:
         click.echo(f"Error: Pipeline failed: {exc}", err=True)
+        _echo_halt_hint(exc)
+        _echo_llm_usage(llm_ctx)
         logger.debug("Pipeline error details", exc_info=True)
         sys.exit(1)
 
@@ -159,6 +277,7 @@ def extract(
     click.echo(f"  Medium confidence: {len(gated['medium'])}")
     click.echo(f"  Low confidence:    {len(gated['low'])}")
     click.echo(f"Output: {output}/{corpus}/extraction.json")
+    _echo_llm_usage(llm_ctx)
 
 
 @cli.command("discover")
@@ -196,6 +315,7 @@ def extract(
     default=False,
     help="Enable verbose (DEBUG) logging.",
 )
+@_llm_options
 def discover(
     corpus_name: str,
     output: str,
@@ -203,6 +323,10 @@ def discover(
     contradiction_threshold: float,
     resume: bool,
     verbose: bool,
+    llm_provider: str | None,
+    llm_model: str | None,
+    max_spend_usd: float | None,
+    spend_window: str,
 ) -> None:
     """Discover advocacy tasks from extracted knowledge units in CORPUS_NAME.
 
@@ -234,6 +358,9 @@ def discover(
         corpus_name=corpus_name,
     )
 
+    llm_ctx = _install_cli_llm_context(llm_provider, llm_model, max_spend_usd, corpus_name,
+                                       spend_window)
+
     # Create and run discovery pipeline
     from folio_insights.pipeline.discovery.orchestrator import (
         TaskDiscoveryOrchestrator,
@@ -251,14 +378,14 @@ def discover(
     click.echo("")
 
     try:
-        job = asyncio.run(
-            orchestrator.run(corpus_name, resume=resume)
-        )
+        job = asyncio.run(_closing(llm_ctx, orchestrator.run(corpus_name, resume=resume)))
     except FileNotFoundError as exc:
         click.echo(f"Error: {exc}", err=True)
         sys.exit(1)
     except Exception as exc:
         click.echo(f"Error: Discovery pipeline failed: {exc}", err=True)
+        _echo_halt_hint(exc)
+        _echo_llm_usage(llm_ctx)
         logger.debug("Discovery error details", exc_info=True)
         sys.exit(1)
 
@@ -273,6 +400,7 @@ def discover(
     click.echo(f"Orphan units:        {orphan_count}")
     click.echo(f"Output: {output}/{corpus_name}/discovery.json")
     click.echo(f"Tree:   {output}/{corpus_name}/task_tree.json")
+    _echo_llm_usage(llm_ctx)
 
 
 @cli.command("export")
@@ -663,6 +791,54 @@ cli.add_command(_governance_group)
 from folio_insights.corpus.cli import corpus_group as _corpus_group
 
 cli.add_command(_corpus_group)
+
+# Phase 10 U2: durable job queue inspection and the one-time legacy import.
+@cli.group("jobs")
+def jobs_group() -> None:
+    """Durable job queue: list jobs, cancel one, import legacy JSON job files."""
+
+
+def _open_queue(db: str | None):
+    from folio_insights.jobs import SQLiteJobQueue
+
+    return SQLiteJobQueue(db)
+
+
+@jobs_group.command("list")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+@click.option("--limit", default=20, show_default=True, type=int)
+def jobs_list(db: str | None, limit: int) -> None:
+    """List recent jobs (newest first)."""
+    queue = _open_queue(db)
+    for job in queue.list_jobs(limit=limit):
+        click.echo(f"{job.id}  {job.kind:<9} {job.status.value:<18} {job.corpus_id}  "
+                   f"attempts={job.attempts}/{job.max_attempts}  stage={job.current_stage or '-'}")
+
+
+@jobs_group.command("cancel")
+@click.argument("job_id")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+def jobs_cancel(job_id: str, db: str | None) -> None:
+    """Cancel a job (immediately if waiting, else at its next stage boundary)."""
+    job = _open_queue(db).request_cancel(job_id)
+    click.echo(f"{job.id}: {job.status.value}"
+               + (" (cancellation requested)" if job.cancel_requested and not job.is_terminal else ""))
+
+
+@jobs_group.command("import-legacy")
+@click.option("--jobs-dir", required=True, type=click.Path(exists=True, file_okay=False),
+              help="The pre-queue job directory (the API's <output>/.jobs).")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+def jobs_import_legacy(jobs_dir: str, db: str | None) -> None:
+    """One-time import of legacy JSON job files into the queue (idempotent).
+
+    Jobs that were pending or processing were orphaned by a restart and import as failed.
+    """
+    from folio_insights.jobs.legacy import import_legacy_jobs
+
+    for row in import_legacy_jobs(Path(jobs_dir), _open_queue(db)):
+        click.echo(f"{row['file']}: {row['outcome']}")
+
 
 # Register the Phase 13 storage subgroup (export, dump, snapshot, restore).
 # Same module-bottom pattern; the storage package loads only when one of

@@ -11,8 +11,10 @@ Centroid cosine distance is an EVIDENCE SCORE surfaced on every verdict
 (RuleVerdict.evidence_score, LLMVerdict.evidence_score) — never the final
 signal. This is the Pitfall 1 discipline made mechanical.
 
-LLM fallback (OQ-5 lock): provider-agnostic via instructor.from_provider.
-Accepts 'claude-*' | 'gpt-*' | 'gemini-*' | 'ollama/*' model strings.
+LLM fallback (OQ-5 lock): provider-agnostic via the in-repo LLM port
+(``folio_insights.llm``, instructor-based). Accepts 'claude-*' | 'gpt-*' |
+'gemini-*' | 'ollama/*' model strings; the credential comes from the current
+run context (the CLI user's own key), never an ambient server key.
 Response model is a Literal-typed discriminated union — NO raw float
 confidence field (Pitfall A6: bands ≠ calibrated probabilities).
 """
@@ -23,6 +25,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
+from folio_insights.llm.schemas import PolysemyVerdict
 from folio_insights.polysemy.similarity_query import has_framework_conflicting_axiom
 from folio_insights.polysemy.whitelists import (
     DEFAULT_DISTINGUO_THRESHOLD,
@@ -70,18 +73,9 @@ class LLMVerdict(BaseModel):
     evidence_score: float = Field(ge=0.0, le=2.0)
 
 
-class PolysemyVerdict(BaseModel):
-    """Instructor response model for the LLM-fallback call.
-
-    Kept separate from LLMVerdict so that the instructor contract (what
-    the LLM is asked to produce) is decoupled from the detector output
-    contract (what downstream consumers read). LLMVerdict adds provider
-    + matched_rules + evidence_score fields that the LLM does not supply.
-    """
-
-    decision: Literal["polysemy", "homonymy", "coincidence", "uncertain"]
-    polysemy_vs_homonymy_reasoning: str
-    rationale: str
+# ``PolysemyVerdict`` (the LLM's response contract) lives with the template registry in
+# ``folio_insights.llm.schemas`` and is re-exported here for existing importers.
+__all__ = ["LLMVerdict", "PolysemyVerdict", "RuleVerdict", "detect_polysemy"]
 
 
 _PROVIDER_FAMILY_MAP = {
@@ -99,14 +93,22 @@ def _resolve_provider_family(model: str) -> str:
       - starts with 'claude' → 'anthropic'
       - starts with 'gpt'    → 'openai'
       - starts with 'gemini' → 'google'
-      - otherwise            → 'anthropic' (safe default — Claude is primary)
+      - otherwise            → refused (``UnknownProviderError``)
+
+    An unknown prefix is refused rather than guessed: routing an unrecognised model name to a
+    default provider would send the user's prompt (and key) somewhere they did not choose.
     """
     if model.startswith("ollama/"):
         return "ollama"
     for prefix, family in _PROVIDER_FAMILY_MAP.items():
         if model.startswith(prefix):
             return family
-    return "anthropic"  # safe default — Claude is Phase 1 primary
+    from folio_insights.llm.errors import UnknownProviderError
+
+    raise UnknownProviderError(
+        f"cannot tell the provider of model {model!r}; use a claude-*, gpt-*, gemini-* or "
+        "ollama/* model name"
+    )
 
 
 def _invoke_llm_fallback(
@@ -116,12 +118,11 @@ def _invoke_llm_fallback(
     matched_rules: list[str],
     extra_prompt: str = "",
 ) -> LLMVerdict:
-    """Provider-agnostic instructor call. OQ-5 per orchestrator lock.
+    """Provider-agnostic LLM-port call. OQ-5 per orchestrator lock.
 
-    Uses `instructor.from_provider(f"{family}:{model}")`. For 'ollama/llama3.2'
-    the family is 'ollama' and the model string after the '/' is forwarded
-    verbatim. For other families the full llm_provider string is forwarded
-    as the model component.
+    Routes to ``Route(family, model)``. For 'ollama/llama3.2' the family is
+    'ollama' and the model string after the '/' is forwarded verbatim. For
+    other families the full llm_provider string is forwarded as the model.
 
     The prompt includes ONE representative axiom_summary per framework (not
     extracted_text — Pitfall 1) plus explicit polysemy-vs-homonymy framing
@@ -131,7 +132,17 @@ def _invoke_llm_fallback(
     caught and converted to an LLMVerdict(decision='uncertain', ...) — the
     detector MUST NOT raise from a rule run (T-01-09 mitigation).
     """
-    provider_family = _resolve_provider_family(llm_provider)
+    try:
+        provider_family = _resolve_provider_family(llm_provider)
+    except Exception as exc:  # unknown prefix: an uncertain verdict, never a guessed provider
+        return LLMVerdict(
+            decision="uncertain",
+            polysemy_vs_homonymy_reasoning=f"LLM fallback refused: {exc}",
+            rationale="",
+            provider="unknown",
+            matched_rules=matched_rules,
+            evidence_score=max(cluster.cross_framework_cosine_distance.values(), default=0.0),
+        )
     model_for_family = (
         llm_provider.removeprefix("ollama/")
         if llm_provider.startswith("ollama/")
@@ -143,27 +154,13 @@ def _invoke_llm_fallback(
         if shard_list
     )
     evidence_score = max(cluster.cross_framework_cosine_distance.values(), default=0.0)
-    prompt = (
-        f"Term: {cluster.term!r}\n"
-        f"Framework-labeled axioms (one representative per framework):\n"
-        f"{axioms_block}\n\n"
-        "Question: Are these uses the SAME CONCEPT APPLIED DIFFERENTLY across "
-        "frameworks (polysemy — a distinguo fork is appropriate) OR DIFFERENT "
-        "CONCEPTS that happen to share the same spelling (homonymy — NOT a "
-        "fork) OR an accidental surface overlap with no semantic relation "
-        "(coincidence)?\n\n"
-        "If you cannot discriminate with high confidence, return 'uncertain' — "
-        "do not guess.\n"
-        f"{extra_prompt}"
-    )
     try:
-        import instructor  # lazy — keeps detector importable even if provider libs missing
+        from folio_insights.llm.templates import POLYSEMY_DETECTOR
 
-        client = instructor.from_provider(f"{provider_family}:{model_for_family}")
-        verdict: PolysemyVerdict = client.chat.completions.create(
-            response_model=PolysemyVerdict,
-            messages=[{"role": "user", "content": prompt}],
+        prompt = POLYSEMY_DETECTOR.render(
+            term=cluster.term, axioms_block=axioms_block, extra_prompt=extra_prompt
         )
+        verdict = _structured_call(provider_family, model_for_family, prompt)
         return LLMVerdict(
             decision=verdict.decision,
             polysemy_vs_homonymy_reasoning=verdict.polysemy_vs_homonymy_reasoning,
@@ -187,6 +184,21 @@ def _invoke_llm_fallback(
             matched_rules=matched_rules,
             evidence_score=evidence_score,
         )
+
+
+def _structured_call(provider_family: str, model: str, prompt: str) -> PolysemyVerdict:
+    """One validated ``PolysemyVerdict`` call through the LLM port (blocking).
+
+    Port errors carry scrubbed messages, so the ``uncertain`` verdict built from one can never
+    echo a credential into a disposition record.
+    """
+    from folio_insights.llm import Route, TaskLLM
+    from folio_insights.llm.templates import POLYSEMY_DETECTOR
+
+    llm = TaskLLM("polysemy_fallback", route=Route(provider=provider_family, model=model))
+    result = llm.structured_model_sync(prompt, PolysemyVerdict, template=POLYSEMY_DETECTOR)
+    assert isinstance(result, PolysemyVerdict)
+    return result
 
 
 def detect_polysemy(

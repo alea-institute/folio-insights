@@ -11,6 +11,11 @@ dependencies = [
     "lxml>=5.0",
     "sentence-transformers>=3.0.0",
     "instructor>=1.14.0",
+    # Phase 10 U1 LLM port: imported directly (provider transport + the single retry layer).
+    # Both were already in the lock closure as instructor dependencies; declaring them makes the
+    # direct import explicit. No new package enters the lock.
+    "openai>=2.32.0,<3",
+    "tenacity>=9.1.4,<10",
     "click>=8.0.0",
     "aiosqlite>=0.20.0",
     "folio-python>=0.1.5",
@@ -134,4 +139,5 @@ markers = [
     "corpus: Phase 7 corpus-init genesis + CORPUS-05 tests",
     "rfc: Phase 7 RFC lifecycle linter tests (GOV-07, D-22)",
     "storage: Phase 13 persistent storage tests (journal + projection)",
+    "live_llm: Phase 10 opt-in live provider smoke (operator keys; skipped unless FOLIO_INSIGHTS_LIVE_LLM=1)",
 ]

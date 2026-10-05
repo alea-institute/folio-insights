@@ -36,10 +36,14 @@ import os
 from collections import Counter
 from typing import Any
 
+from folio_insights.llm.schemas import ConceptOutput, JudgeOutput
+from folio_insights.llm.templates import BRANCH_JUDGE, CONCEPT
 from folio_insights.models.knowledge_unit import ConceptTag, KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
     InsightsPipelineStage,
+    LLMFailureTracker,
+    StageFailureRatioError,
     record_lineage,
 )
 from folio_insights.services.bridge.reconciliation_bridge import (
@@ -56,25 +60,6 @@ logger = logging.getLogger(__name__)
 # subjects are always active; metadata-as-signal harvest (below) appends corpus-specific ones.
 BASE_PRIOR_SUBJECTS: tuple[str, ...] = ("Litigation", "Trial Practice")
 
-# Structured-output schema for the judge (mirrors folio_resolve.build_judge_prompt's contract).
-_JUDGE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "judged": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "iri_hash": {"type": "string"},
-                    "adjusted_score": {"type": "number"},
-                    "verdict": {"type": "string"},
-                    "reasoning": {"type": "string"},
-                },
-            },
-        }
-    },
-}
-
 # Judge verdict -> calibration verdict (ScoreCalibration's correct/weak/wrong dataset).
 _VERDICT_TO_CALIBRATION = {
     "confirmed": "correct",
@@ -82,6 +67,10 @@ _VERDICT_TO_CALIBRATION = {
     "penalized": "weak",
     "rejected": "wrong",
 }
+
+
+class TaggerFailureRatioError(StageFailureRatioError):
+    """Too many units failed to tag for the run's output to be trusted (KTD7)."""
 
 
 def _judge_enabled() -> bool:
@@ -166,6 +155,11 @@ class FolioTaggerStage(InsightsPipelineStage):
         logger.info("Domain prior (%s): %s", prior.corpus_name, prior_context)
 
         # ---- Pass B: body units get the full pipeline (paths -> reconcile -> gates -> judge) -----
+        attempted = 0
+        failures: list[dict[str, str]] = []
+        tagger_meta["judge_enabled"] = _judge_enabled()
+        self._judge_outages = 0
+        self._concept_tracker = LLMFailureTracker("folio_tagger", "concept")
         for unit in job.units:
             try:
                 if not self._is_taggable_source(unit):
@@ -178,6 +172,7 @@ class FolioTaggerStage(InsightsPipelineStage):
                         detail="metadata-as-signal: mapped to prior, not emitted as insight",
                     )
                     continue
+                attempted += 1
                 await self._tag_unit(
                     unit,
                     folio_service=folio_service,
@@ -187,12 +182,27 @@ class FolioTaggerStage(InsightsPipelineStage):
                     reconciler=reconciler,
                     prior_context=prior_context,
                 )
-            except Exception:
-                logger.warning(
-                    "Failed to tag unit %s; skipping", unit.id, exc_info=True
+            except Exception as exc:
+                # KTD7: counted, recorded on the unit and in run metadata, never silently skipped.
+                logger.warning("Failed to tag unit %s", unit.id, exc_info=True)
+                failures.append({"unit_id": unit.id, "error": type(exc).__name__})
+                record_lineage(
+                    unit,
+                    stage="folio_tagger",
+                    action="tag_failed",
+                    detail=f"tagging raised {type(exc).__name__}; unit carries no tags from this run",
                 )
 
         self._flush_calibration(job)
+        tagger_meta["units_attempted"] = attempted
+        tagger_meta["unit_failures"] = len(failures)
+        tagger_meta["unit_failure_ids"] = [f["unit_id"] for f in failures]
+        tagger_meta["judge_outages"] = self._judge_outages
+        tagger_meta["unjudged_tags"] = sum(
+            1 for u in job.units for t in u.folio_tags if t.judge_status == "unjudged"
+        )
+        self._enforce_failure_ratio(attempted, failures)
+        self._concept_tracker.check(job)
         tagged_count = sum(1 for u in job.units if u.folio_tags)
         tagger_meta["units_tagged"] = tagged_count
         tagger_meta["entity_ruler_tags"] = sum(
@@ -206,6 +216,25 @@ class FolioTaggerStage(InsightsPipelineStage):
             det_status, self._iri_rejections,
         )
         return job
+
+    @staticmethod
+    def _enforce_failure_ratio(attempted: int, failures: list[dict[str, str]]) -> None:
+        """Fail the run when more than the configured fraction of tagged units raised (KTD7)."""
+        if not failures or attempted == 0:
+            return
+        from folio_insights.config import get_settings
+
+        limit = get_settings().tagger_max_unit_failure_ratio
+        ratio = len(failures) / attempted
+        if ratio > limit:
+            raise TaggerFailureRatioError(
+                f"FOLIO tagging failed on {len(failures)} of {attempted} units "
+                f"({ratio:.1%} > {limit:.1%} allowed); see metadata.folio_tagger.unit_failure_ids"
+            )
+        logger.warning(
+            "FOLIO tagging failed on %d of %d units (%.1f%%, within the %.1f%% allowance)",
+            len(failures), attempted, ratio * 100, limit * 100,
+        )
 
     async def _tag_unit(
         self,
@@ -227,6 +256,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         ruler_concepts = self._run_entity_ruler(unit.text, aho_matcher, folio_service)
 
         # Path 2: LLM Concept Identification
+        self._current_unit_id = unit.id  # units are tagged sequentially
         llm_concepts = await self._run_llm_concept(unit.text, unit.source_section)
 
         # Path 3: Semantic (embedding similarity)
@@ -299,7 +329,14 @@ class FolioTaggerStage(InsightsPipelineStage):
     async def _run_llm_concept(
         self, text: str, section_path: list[str]
     ) -> list[dict[str, Any]]:
-        """Path 2: LLM concept identification."""
+        """Path 2: LLM concept identification.
+
+        A failure leaves this unit without LLM-path candidates; it is counted, and the run fails
+        when more than ``llm_max_unit_failure_ratio`` of the units' concept calls failed.
+        """
+        tracker = getattr(self, "_concept_tracker", None)
+        if tracker is not None:
+            tracker.attempt()
         try:
             from folio_insights.services.bridge.llm_bridge import LLMBridge
 
@@ -307,32 +344,9 @@ class FolioTaggerStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("concept")
 
             context = " > ".join(section_path) if section_path else ""
-            prompt = (
-                f"Identify FOLIO legal ontology concepts in this text. "
-                f"Return concept labels and confidence scores.\n\n"
-                f"Text: {text}\n"
-                f"Section context: {context}"
-            )
+            prompt = CONCEPT.render(text=text, context=context)
 
-            result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "concepts": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "concept_text": {"type": "string"},
-                                    "confidence": {"type": "number"},
-                                },
-                            },
-                        }
-                    },
-                },
-                temperature=0,
-            )
+            result = await llm_provider.structured(prompt, schema=ConceptOutput, temperature=0)
 
             return [
                 {
@@ -344,7 +358,9 @@ class FolioTaggerStage(InsightsPipelineStage):
                 }
                 for c in result.get("concepts", [])
             ]
-        except Exception:
+        except Exception as exc:
+            if tracker is not None:
+                tracker.failure(getattr(self, "_current_unit_id", "") or "unknown", exc)
             logger.warning("LLM concept path failed", exc_info=True)
             return []
 
@@ -506,11 +522,25 @@ class FolioTaggerStage(InsightsPipelineStage):
         try:
             provider = self._get_judge_provider()
             result = await provider.structured(
-                f"{system}\n\n{user}", schema=_JUDGE_SCHEMA, temperature=0
+                BRANCH_JUDGE.render(judge_system=system, judge_user=user),
+                schema=JudgeOutput,
+                temperature=0,
             )
             self._judge_call_count += 1
         except Exception:
-            logger.warning("judge call failed for unit %s; keeping pre-judge tags", unit.id, exc_info=True)
+            # KTD7: a judge outage never passes tags off as judged. They are kept (the gates
+            # already ran) but marked unjudged, so a minter treats them as unverified.
+            logger.warning("judge call failed for unit %s; marking %d tag(s) unjudged",
+                           unit.id, len(candidates), exc_info=True)
+            self._judge_outages = getattr(self, "_judge_outages", 0) + 1
+            for tag in candidates:
+                tag.judge_status = "unjudged"
+            record_lineage(
+                unit,
+                stage="folio_tagger",
+                action="judge_unavailable",
+                detail=f"judge call failed; {len(candidates)} non-ruler tag(s) left unjudged",
+            )
             return tags
 
         judged = {j.iri: j for j in parse_judge_json(json.dumps(result), ranked)}
@@ -524,8 +554,10 @@ class FolioTaggerStage(InsightsPipelineStage):
                 continue
             verdict = judged.get(cid)
             if verdict is None:
-                kept.append(tag)  # judge did not rule on it: keep the gated tag as-is
+                tag.judge_status = "unjudged"  # the judge did not rule on it: kept, unverified
+                kept.append(tag)
                 continue
+            tag.judge_status = "judged"
             self._record_calibration(ranked[cid], verdict.verdict)
             self._judge_decisions.append({
                 "unit_id": unit.id,

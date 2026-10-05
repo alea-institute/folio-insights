@@ -55,3 +55,54 @@ def record_lineage(
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
     )
+
+
+class StageFailureRatioError(RuntimeError):
+    """Too many units failed in one stage path for the run's output to be trusted (KTD7)."""
+
+
+class LLMFailureTracker:
+    """Counts per-unit LLM-path failures in one stage and fails the run above the ratio (KTD7).
+
+    A failed call no longer just leaves the unit unprocessed: it is counted, its unit id is
+    recorded in ``job.metadata["llm_failures"]``, and :meth:`check` raises
+    :class:`StageFailureRatioError` when more than ``llm_max_unit_failure_ratio`` (default 5%) of
+    the attempted units failed. Run-halting errors (missing or rejected key, spend cap, unknown
+    model) are not counted here: they stop the whole run through the LLM run context.
+    """
+
+    def __init__(self, stage: str, path: str) -> None:
+        self.stage = stage
+        self.path = path
+        self.attempted = 0
+        self.failed: list[str] = []
+
+    def attempt(self) -> None:
+        self.attempted += 1
+
+    def failure(self, unit_id: str, exc: BaseException) -> None:
+        from folio_insights.llm.errors import RunHalted
+
+        if not isinstance(exc, RunHalted):
+            self.failed.append(unit_id)
+
+    def check(self, job: InsightsJob) -> None:
+        from folio_insights.config import get_settings
+        from folio_insights.llm.context import current_context
+
+        current_context().raise_if_halted()  # a halt outranks a ratio failure
+        job.metadata.setdefault("llm_failures", {})[f"{self.stage}.{self.path}"] = {
+            "attempted": self.attempted,
+            "failed": len(self.failed),
+            "unit_ids": list(self.failed),
+        }
+        if not self.failed or self.attempted == 0:
+            return
+        limit = get_settings().llm_max_unit_failure_ratio
+        ratio = len(self.failed) / self.attempted
+        if ratio > limit:
+            raise StageFailureRatioError(
+                f"{self.stage}: the {self.path} LLM call failed on {len(self.failed)} of "
+                f"{self.attempted} units ({ratio:.1%} > {limit:.1%} allowed); see "
+                f"metadata.llm_failures"
+            )

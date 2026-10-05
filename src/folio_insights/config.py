@@ -53,6 +53,15 @@ class Settings(BaseSettings):
     boundary_tier_concurrency: int = 8
     boundary_max_unit_chars: int = 600
 
+    # Per-unit tagging failures (Phase 10 KTD7). A unit whose tagging raises is counted and
+    # recorded, never silently skipped; the run fails when more than this fraction of the units
+    # it tried to tag failed.
+    tagger_max_unit_failure_ratio: float = 0.05
+    # Per-unit LLM-path failures (distill, classify, novelty, concept): the run fails when more
+    # than this fraction of the units a path attempted failed (KTD7). Halting errors (no key,
+    # rejected key, spend cap, unknown model) stop the run regardless.
+    llm_max_unit_failure_ratio: float = 0.05
+
     # Substantive-input guard (B6). Boundary detection drops boundaries by SHAPE only (heading,
     # contents entry, attribution); the distiller additionally skips text shorter than this.
     min_substantive_chars: int = 20

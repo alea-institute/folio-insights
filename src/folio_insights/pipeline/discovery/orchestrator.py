@@ -22,12 +22,16 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from folio_insights.config import Settings
+from folio_insights.llm.context import current_context
+from folio_insights.pipeline.orchestrator import StageProgress, notify_stage
 from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.models.task import (
     DiscoveredTask,
@@ -38,6 +42,12 @@ from folio_insights.pipeline.discovery.stages.base import DiscoveryStage
 logger = logging.getLogger(__name__)
 
 
+def _discovery_checkpoint_dir(output_dir: Path, checkpoint_dir: Path | None) -> Path:
+    if checkpoint_dir is not None:
+        return Path(checkpoint_dir)
+    return Path(output_dir) / "discovery_checkpoints"
+
+
 class DiscoveryCheckpoint:
     """Checkpoint management for task discovery pipeline stages.
 
@@ -46,9 +56,14 @@ class DiscoveryCheckpoint:
     """
 
     @staticmethod
-    def save(stage_name: str, job: DiscoveryJob, output_dir: Path) -> Path:
-        """Serialize discovery checkpoint to disk."""
-        checkpoint_dir = Path(output_dir) / "discovery_checkpoints"
+    def save(
+        stage_name: str,
+        job: DiscoveryJob,
+        output_dir: Path,
+        checkpoint_dir: Path | None = None,
+    ) -> Path:
+        """Serialize discovery checkpoint to disk (atomically: temp file, fsync, rename)."""
+        checkpoint_dir = _discovery_checkpoint_dir(output_dir, checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         checkpoint_path = checkpoint_dir / f"{stage_name}.json"
 
@@ -59,8 +74,16 @@ class DiscoveryCheckpoint:
             "job": job.model_dump(),
         }
 
-        with open(checkpoint_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, default=str)
+        fd, tmp = tempfile.mkstemp(dir=checkpoint_dir, prefix=f".{stage_name}.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, checkpoint_path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
 
         logger.info(
             "Saved discovery checkpoint: %s (%d candidates)",
@@ -70,10 +93,12 @@ class DiscoveryCheckpoint:
         return checkpoint_path
 
     @staticmethod
-    def load(stage_name: str, output_dir: Path) -> DiscoveryJob | None:
+    def load(
+        stage_name: str, output_dir: Path, checkpoint_dir: Path | None = None
+    ) -> DiscoveryJob | None:
         """Load a discovery checkpoint if it exists."""
         checkpoint_path = (
-            Path(output_dir) / "discovery_checkpoints" / f"{stage_name}.json"
+            _discovery_checkpoint_dir(output_dir, checkpoint_dir) / f"{stage_name}.json"
         )
         if not checkpoint_path.exists():
             return None
@@ -91,10 +116,12 @@ class DiscoveryCheckpoint:
             return None
 
     @staticmethod
-    def has_checkpoint(stage_name: str, output_dir: Path) -> bool:
+    def has_checkpoint(
+        stage_name: str, output_dir: Path, checkpoint_dir: Path | None = None
+    ) -> bool:
         """Check whether a discovery checkpoint file exists for a stage."""
         checkpoint_path = (
-            Path(output_dir) / "discovery_checkpoints" / f"{stage_name}.json"
+            _discovery_checkpoint_dir(output_dir, checkpoint_dir) / f"{stage_name}.json"
         )
         return checkpoint_path.exists()
 
@@ -122,10 +149,13 @@ class TaskDiscoveryOrchestrator:
         self,
         settings: Settings,
         db_path: Path | None = None,
+        stages: list[DiscoveryStage] | None = None,
     ) -> None:
         self.settings = settings
         self._db_path = db_path  # Path to SQLite DB; None = no decision persistence
-        self._stages: list[DiscoveryStage] = self._build_stages()
+        self._stages: list[DiscoveryStage] = (
+            list(stages) if stages is not None else self._build_stages()
+        )
 
     def _build_stages(self) -> list[DiscoveryStage]:
         """Instantiate all 6 discovery stages in execution order."""
@@ -230,6 +260,9 @@ class TaskDiscoveryOrchestrator:
         self,
         corpus_name: str,
         resume: bool = True,
+        *,
+        checkpoint_dir: Path | None = None,
+        progress: StageProgress | None = None,
     ) -> DiscoveryJob:
         """Load Phase 1 extraction output and run all 6 discovery stages.
 
@@ -243,6 +276,9 @@ class TaskDiscoveryOrchestrator:
         Args:
             corpus_name: Name of the corpus to discover tasks in.
             resume: Whether to resume from checkpoints if available.
+            checkpoint_dir: Where stage checkpoints live (default
+                ``<corpus>/discovery_checkpoints``); queued jobs use a job-scoped directory.
+            progress: Stage-boundary callback (``StageProgress``); may raise to stop the run.
 
         Returns:
             The completed DiscoveryJob with task hierarchy and contradictions.
@@ -285,25 +321,31 @@ class TaskDiscoveryOrchestrator:
         pipeline_start = time.monotonic()
 
         # 4. Iterate stages with checkpoint-based resume
-        for stage in self._stages:
+        total = len(self._stages)
+        for index, stage in enumerate(self._stages):
             stage_name = stage.name
 
             # Check for existing checkpoint
             if resume and DiscoveryCheckpoint.has_checkpoint(
-                stage_name, corpus_dir
+                stage_name, corpus_dir, checkpoint_dir
             ):
-                restored = DiscoveryCheckpoint.load(stage_name, corpus_dir)
+                restored = DiscoveryCheckpoint.load(stage_name, corpus_dir, checkpoint_dir)
                 if restored is not None:
                     job = restored
                     logger.info(
                         "Resumed discovery from checkpoint: %s", stage_name
                     )
+                    await notify_stage(progress, "resumed", stage_name, index, total, job)
                     continue
+
+            await notify_stage(progress, "start", stage_name, index, total, job)
 
             # Execute stage
             stage_start = time.monotonic()
             try:
                 job = await stage.execute(job)
+                # Stop on a run-halting LLM condition before checkpointing degraded output.
+                current_context().raise_if_halted()
             except Exception:
                 logger.exception("Discovery stage '%s' failed", stage_name)
                 raise
@@ -316,7 +358,8 @@ class TaskDiscoveryOrchestrator:
             )
 
             # Save checkpoint
-            DiscoveryCheckpoint.save(stage_name, job, corpus_dir)
+            DiscoveryCheckpoint.save(stage_name, job, corpus_dir, checkpoint_dir)
+            await notify_stage(progress, "done", stage_name, index, total, job)
 
         # 5. DIFF COMPUTATION: Compare new results against approved state
         diff = self._compute_diff(job, pre_run_tasks)
