@@ -238,17 +238,8 @@ export async function uploadFiles(
 // Processing
 // ---------------------------------------------------------------------------
 
-export async function triggerProcessing(
-	corpusId: string,
-	force: boolean = true
-): Promise<{ job_id: string; status: string } | { error: string }> {
-	return request<{ job_id: string; status: string }>(
-		`${API_BASE}/api/v1/corpus/${corpusId}/process${qs({ force: force ? 'true' : undefined })}`,
-		{
-			method: 'POST',
-		}
-	);
-}
+// Submitting, cancelling and resuming LLM jobs lives in $lib/api/jobs.ts
+// (the key travels only in a header there).
 
 export function getSSEUrl(corpusId: string): string {
 	return `${API_BASE}/api/v1/corpus/${corpusId}/stream`;
@@ -487,14 +478,6 @@ export async function fetchDiscoveryDiff(
 	return request<DiscoveryDiffEntry[]>(
 		`${API_BASE}/api/v1/corpus/${corpusId}/discovery/diff`
 	);
-}
-
-export async function triggerDiscovery(
-	corpusId: string
-): Promise<{ job_id: string; status: string } | { error: string }> {
-	return request(`${API_BASE}/api/v1/corpus/${corpusId}/discover`, {
-		method: 'POST',
-	});
 }
 
 export function getDiscoverySSEUrl(corpusId: string): string {

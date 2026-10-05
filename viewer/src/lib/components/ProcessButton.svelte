@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { JobUiStatus } from '$lib/stores/jobStatus';
+
 	let {
 		onclick,
 		disabled = false,
@@ -6,18 +8,20 @@
 	}: {
 		onclick: () => void;
 		disabled?: boolean;
-		status?: 'idle' | 'processing' | 'complete' | 'error';
+		status?: JobUiStatus;
 	} = $props();
 
 	let label = $derived(
 		status === 'processing'
 			? 'Processing...'
+			: status === 'paused'
+				? 'Processing paused'
 			: status === 'error'
 				? 'Retry Processing'
 				: 'Process Corpus'
 	);
 
-	let isDisabled = $derived(disabled || status === 'processing');
+	let isDisabled = $derived(disabled || status === 'processing' || status === 'paused');
 </script>
 
 <button class="process-btn" class:processing={status === 'processing'} disabled={isDisabled} {onclick}>

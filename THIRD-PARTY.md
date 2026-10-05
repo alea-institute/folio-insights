@@ -84,6 +84,7 @@ inside builder stages; none of them is installed in a shipped image.
 | Svelte 5, SvelteKit 2, `@sveltejs/adapter-static`, `@sveltejs/adapter-auto`, `@sveltejs/vite-plugin-svelte` | MIT |
 | Vite 7, TypeScript 5, svelte-check | MIT / Apache-2.0 |
 | `@keenmate/svelte-treeview` | MIT |
+| Vitest 5 (`vitest`, dev only; pinned 5.0.3) | MIT |
 
 ## Models
 

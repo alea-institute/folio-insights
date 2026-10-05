@@ -3,6 +3,8 @@
  * Follows the same pattern as processing.ts.
  */
 import { writable } from 'svelte/store';
+import { clearControlToken } from '$lib/stores/llmKey';
+import { mapJobStatus, pauseReasonOf, type JobUiStatus, type PauseReason } from '$lib/stores/jobStatus';
 import { getDiscoverySSEUrl } from '$lib/api/client';
 
 // ---------------------------------------------------------------------------
@@ -10,7 +12,10 @@ import { getDiscoverySSEUrl } from '$lib/api/client';
 // ---------------------------------------------------------------------------
 
 /** Overall discovery status. */
-export const discoveryStatus = writable<'idle' | 'processing' | 'complete' | 'error'>('idle');
+export const discoveryStatus = writable<JobUiStatus>('idle');
+
+/** Why the job is paused (set while the status is 'paused'). */
+export const discoveryPause = writable<PauseReason | null>(null);
 
 /** Current discovery stage key (e.g. 'heading_analysis', 'folio_mapping'). */
 export const discoveryStage = writable<string>('');
@@ -53,6 +58,7 @@ export function startDiscoveryStream(corpusId: string): void {
 	discoverySseState.set('connected');
 	discoveryTotalTasks.set(0);
 	discoveryError.set(null);
+	discoveryPause.set(null);
 
 	eventSource = new EventSource(getDiscoverySSEUrl(corpusId));
 
@@ -71,7 +77,10 @@ export function startDiscoveryStream(corpusId: string): void {
 		const data = JSON.parse(e.data);
 		discoveryTotalTasks.set(data.total_tasks ?? 0);
 		discoveryError.set(data.error ?? null);
-		discoveryStatus.set(data.status === 'completed' ? 'complete' : 'error');
+		discoveryPause.set(pauseReasonOf(data.status));
+		discoveryStatus.set(mapJobStatus(data.status));
+		// A finished job can no longer be controlled; a paused one keeps its token.
+		if (!pauseReasonOf(data.status)) clearControlToken('discover', corpusId);
 		discoverySseState.set('closed');
 		eventSource?.close();
 		eventSource = null;
@@ -104,4 +113,5 @@ export function resetDiscovery(): void {
 	discoveryLog.set([]);
 	discoveryTotalTasks.set(0);
 	discoveryError.set(null);
+	discoveryPause.set(null);
 }
