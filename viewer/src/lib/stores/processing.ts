@@ -2,6 +2,8 @@
  * Svelte stores for processing pipeline state and SSE connection management.
  */
 import { writable } from 'svelte/store';
+import { clearControlToken } from '$lib/stores/llmKey';
+import { mapJobStatus, pauseReasonOf, type JobUiStatus, type PauseReason } from '$lib/stores/jobStatus';
 import { getSSEUrl } from '$lib/api/client';
 
 // ---------------------------------------------------------------------------
@@ -9,7 +11,10 @@ import { getSSEUrl } from '$lib/api/client';
 // ---------------------------------------------------------------------------
 
 /** Overall processing status. */
-export const processingStatus = writable<'idle' | 'processing' | 'complete' | 'error'>('idle');
+export const processingStatus = writable<JobUiStatus>('idle');
+
+/** Why the job is paused (set while the status is 'paused'). */
+export const processingPause = writable<PauseReason | null>(null);
 
 /** Current pipeline stage key (e.g. 'ingestion', 'structure_parser'). */
 export const currentStage = writable<string>('');
@@ -52,6 +57,7 @@ export function startProcessingStream(corpusId: string): void {
 	sseState.set('connected');
 	totalUnits.set(0);
 	processingError.set(null);
+	processingPause.set(null);
 
 	eventSource = new EventSource(getSSEUrl(corpusId));
 
@@ -70,7 +76,10 @@ export function startProcessingStream(corpusId: string): void {
 		const data = JSON.parse(e.data);
 		totalUnits.set(data.total_units ?? 0);
 		processingError.set(data.error ?? null);
-		processingStatus.set(data.status === 'completed' ? 'complete' : 'error');
+		processingPause.set(pauseReasonOf(data.status));
+		processingStatus.set(mapJobStatus(data.status));
+		// A finished job can no longer be controlled; a paused one keeps its token.
+		if (!pauseReasonOf(data.status)) clearControlToken('process', corpusId);
 		sseState.set('closed');
 		eventSource?.close();
 		eventSource = null;
@@ -103,4 +112,5 @@ export function resetProcessing(): void {
 	activityLog.set([]);
 	totalUnits.set(0);
 	processingError.set(null);
+	processingPause.set(null);
 }

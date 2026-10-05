@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { JobUiStatus } from '$lib/stores/jobStatus';
+
 	let {
 		progress,
 		currentStage,
@@ -6,7 +8,7 @@
 	}: {
 		progress: number;
 		currentStage: string;
-		status: 'idle' | 'processing' | 'complete' | 'error';
+		status: JobUiStatus;
 	} = $props();
 
 	const STAGES = [
@@ -21,7 +23,7 @@
 
 	function stageState(
 		stageKey: string
-	): 'pending' | 'active' | 'complete' | 'error' {
+	): 'pending' | 'active' | 'complete' | 'error' | 'paused' {
 		if (status === 'complete') return 'complete';
 		if (status === 'idle') return 'pending';
 
@@ -30,7 +32,10 @@
 
 		if (currentIdx < 0) return 'pending';
 		if (thisIdx < currentIdx) return 'complete';
-		if (thisIdx === currentIdx) return status === 'error' ? 'error' : 'active';
+		if (thisIdx === currentIdx) {
+			if (status === 'error') return 'error';
+			return status === 'paused' ? 'paused' : 'active';
+		}
 		return 'pending';
 	}
 
@@ -39,7 +44,9 @@
 			? 'var(--green)'
 			: status === 'error'
 				? 'var(--red)'
-				: 'var(--accent)'
+				: status === 'paused'
+					? 'var(--orange)'
+					: 'var(--accent)'
 	);
 </script>
 
@@ -120,6 +127,11 @@
 	.pill.complete {
 		background: rgba(76, 175, 124, 0.2);
 		color: var(--green);
+	}
+
+	.pill.paused {
+		background: rgba(232, 165, 76, 0.2);
+		color: var(--orange);
 	}
 
 	.pill.error {
