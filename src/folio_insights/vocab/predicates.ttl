@@ -447,6 +447,11 @@ fi:frameworkId a owl:DatatypeProperty ;
 (`<jurisdiction>.<body>[.<sub>]`, e.g. us.federal.fre). The projection also
 links the shard to the framework's IRI with fi:framework.""" .
 
+fi:jurisdiction a owl:DatatypeProperty ;
+    rdfs:label "jurisdiction" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "A framework's jurisdiction prefix (us, us.federal, uk.england, ...) in the framework registry's SKOS export." .
+
 # ── Dependencies (Spinozan — PRD §7.1.3; the four depends_on_* lists) ──
 
 fi:dependsOnPrecedent a owl:ObjectProperty ;

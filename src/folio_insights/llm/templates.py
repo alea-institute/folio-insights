@@ -238,3 +238,17 @@ POLYSEMY_FP_AUDIT = register(PromptTemplate(
     output_schema=schemas.PolysemyVerdict,
     max_tokens=1024,
 ), default_for_task=False)
+
+FRAMEWORK_DETECT = register(PromptTemplate(
+    id="frameworks.detector_fallback", version="1", task="framework_detector",
+    user=(
+        "Choose the legal framework a source belongs to. Answer ONLY with one of these "
+        "registered framework ids, or null if none fits:\n{candidates}\n\n"
+        "Source title: {title}\n"
+        "Source jurisdiction: {jurisdiction}\n"
+        "Citations in the source: {citations}\n\n"
+        "Never invent a framework id. Give your confidence (0-1) and a one-sentence rationale."
+    ),
+    output_schema=schemas.FrameworkChoice,
+    max_tokens=512,
+))
