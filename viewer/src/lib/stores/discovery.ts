@@ -3,6 +3,7 @@
  * Follows the same pattern as processing.ts.
  */
 import { writable } from 'svelte/store';
+import type { JobStatus } from './llmKey';
 import { getDiscoverySSEUrl } from '$lib/api/client';
 
 // ---------------------------------------------------------------------------
@@ -10,7 +11,7 @@ import { getDiscoverySSEUrl } from '$lib/api/client';
 // ---------------------------------------------------------------------------
 
 /** Overall discovery status. */
-export const discoveryStatus = writable<'idle' | 'processing' | 'complete' | 'error'>('idle');
+export const discoveryStatus = writable<JobStatus>('idle');
 
 /** Current discovery stage key (e.g. 'heading_analysis', 'folio_mapping'). */
 export const discoveryStage = writable<string>('');
@@ -71,7 +72,11 @@ export function startDiscoveryStream(corpusId: string): void {
 		const data = JSON.parse(e.data);
 		discoveryTotalTasks.set(data.total_tasks ?? 0);
 		discoveryError.set(data.error ?? null);
-		discoveryStatus.set(data.status === 'completed' ? 'complete' : 'error');
+		discoveryStatus.set(
+			data.status === 'completed' ? 'complete'
+				: data.status === 'needs_credentials' || data.status === 'budget_exhausted'
+					? data.status : 'error'
+		);
 		discoverySseState.set('closed');
 		eventSource?.close();
 		eventSource = null;

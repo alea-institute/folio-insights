@@ -6,6 +6,9 @@
  * In production, FastAPI serves the SPA on the same origin.
  */
 
+import { llmKeyHeaders, getControlToken, setControlToken } from '$lib/stores/llmKey';
+import type { JobKind } from '$lib/stores/llmKey';
+
 const API_BASE = '';
 
 // ---------------------------------------------------------------------------
@@ -17,6 +20,12 @@ async function request<T>(url: string, init?: RequestInit): Promise<T | { error:
 		const res = await fetch(url, init);
 		if (!res.ok) {
 			const body = await res.text();
+			try {
+				const detail = JSON.parse(body).detail;
+				if (typeof detail === 'string') return { error: detail };
+			} catch {
+				// Non-JSON errors still show the server's response below.
+			}
 			return { error: `${res.status}: ${body}` };
 		}
 		return (await res.json()) as T;
@@ -238,16 +247,27 @@ export async function uploadFiles(
 // Processing
 // ---------------------------------------------------------------------------
 
+export interface JobSubmission {
+	job_id: string;
+	status: string;
+	control_token: string | null;
+}
+
 export async function triggerProcessing(
 	corpusId: string,
 	force: boolean = true
-): Promise<{ job_id: string; status: string } | { error: string }> {
-	return request<{ job_id: string; status: string }>(
+): Promise<JobSubmission | { error: string }> {
+	const result = await request<JobSubmission>(
 		`${API_BASE}/api/v1/corpus/${corpusId}/process${qs({ force: force ? 'true' : undefined })}`,
 		{
 			method: 'POST',
+			headers: llmKeyHeaders(),
 		}
 	);
+	if (!('error' in result) && result.control_token) {
+		setControlToken(corpusId, 'processing', result.control_token);
+	}
+	return result;
 }
 
 export function getSSEUrl(corpusId: string): string {
@@ -491,10 +511,45 @@ export async function fetchDiscoveryDiff(
 
 export async function triggerDiscovery(
 	corpusId: string
-): Promise<{ job_id: string; status: string } | { error: string }> {
-	return request(`${API_BASE}/api/v1/corpus/${corpusId}/discover`, {
+): Promise<JobSubmission | { error: string }> {
+	const result = await request<JobSubmission>(`${API_BASE}/api/v1/corpus/${corpusId}/discover`, {
 		method: 'POST',
+		headers: llmKeyHeaders(),
 	});
+	if (!('error' in result) && result.control_token) {
+		setControlToken(corpusId, 'discovery', result.control_token);
+	}
+	return result;
+}
+
+async function controlJob(
+	corpusId: string,
+	kind: JobKind,
+	action: 'credentials' | 'resume',
+	maxSpendUsd?: number
+): Promise<{ status: string } | { error: string }> {
+	const headers = llmKeyHeaders();
+	const token = getControlToken(corpusId, kind);
+	if (!headers['X-LLM-API-Key']) return { error: 'Enter an LLM API key to continue.' };
+	if (!token) return { error: 'This tab has no control token for this job.' };
+	headers['X-Job-Control-Token'] = token;
+	if (maxSpendUsd !== undefined) headers['Content-Type'] = 'application/json';
+	const path = kind === 'discovery' ? '/discover' : '';
+	const result = await request<{ status: string }>(`${API_BASE}/api/v1/corpus/${corpusId}${path}/job/${action}`, {
+		method: 'POST',
+		headers,
+		body: maxSpendUsd === undefined ? undefined : JSON.stringify({ max_spend_usd: maxSpendUsd }),
+	});
+	if (!('status' in result)) return result;
+	return { status: result.status as string };
+}
+
+export function resupplyCredentials(corpusId: string, kind: JobKind) {
+	return controlJob(corpusId, kind, 'credentials');
+}
+
+export function resumeJob(corpusId: string, kind: JobKind, maxSpendUsd?: number) {
+	return controlJob(corpusId, kind, 'resume', maxSpendUsd);
 }
 
 export function getDiscoverySSEUrl(corpusId: string): string {

@@ -1,9 +1,12 @@
 <script lang="ts">
+	import type { JobStatus } from '$lib/stores/llmKey';
 	let {
 		status = 'ready',
+		disabled = false,
 		onclick,
 	}: {
-		status: 'ready' | 'disabled' | 'processing' | 'complete';
+		status: JobStatus | 'ready' | 'disabled';
+		disabled?: boolean;
 		onclick: () => void;
 	} = $props();
 
@@ -15,7 +18,7 @@
 				: 'Discover Tasks'
 	);
 
-	let isDisabled = $derived(status === 'disabled' || status === 'processing');
+	let isDisabled = $derived(disabled || status === 'disabled' || status === 'processing');
 </script>
 
 {#if status === 'complete'}

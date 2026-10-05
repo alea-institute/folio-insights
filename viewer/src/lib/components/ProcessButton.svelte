@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { JobStatus } from '$lib/stores/llmKey';
 	let {
 		onclick,
 		disabled = false,
@@ -6,7 +7,7 @@
 	}: {
 		onclick: () => void;
 		disabled?: boolean;
-		status?: 'idle' | 'processing' | 'complete' | 'error';
+		status?: JobStatus;
 	} = $props();
 
 	let label = $derived(

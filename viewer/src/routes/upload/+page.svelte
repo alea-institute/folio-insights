@@ -19,16 +19,20 @@
 		discoveryStage,
 		discoveryProgress,
 		discoveryLog,
+		discoveryError,
 		startDiscoveryStream,
 		closeDiscoveryStream,
 		resetDiscovery,
 	} from '$lib/stores/discovery';
 	import { uploadFiles, fetchCorpusFiles, triggerProcessing, triggerDiscovery } from '$lib/api/client';
 	import type { CorpusFile } from '$lib/api/client';
+	import type { JobStatus } from '$lib/stores/llmKey';
 
 	import CorpusSidebar from '$lib/components/CorpusSidebar.svelte';
 	import UploadZone from '$lib/components/UploadZone.svelte';
 	import FileListView from '$lib/components/FileList.svelte';
+	import LlmKeyField from '$lib/components/LlmKeyField.svelte';
+	import PausedJobControls from '$lib/components/PausedJobControls.svelte';
 	import ProcessButton from '$lib/components/ProcessButton.svelte';
 	import ProgressDisplay from '$lib/components/ProgressDisplay.svelte';
 	import ActivityLog from '$lib/components/ActivityLog.svelte';
@@ -37,6 +41,9 @@
 
 	let files = $state<Array<{ filename: string; size_bytes: number; format: string; status: string }>>([]);
 	let uploading = $state(false);
+	let submittingProcess = $state(false);
+	let submittingDiscovery = $state(false);
+	let active = true;
 	let activityExpanded = $state(false);
 	let navTimer: ReturnType<typeof setTimeout> | null = null;
 	let discoveryNavTimer: ReturnType<typeof setTimeout> | null = null;
@@ -62,6 +69,9 @@
 			navTimer = setTimeout(() => {
 				goto(`/?corpus=${corpusId}`);
 			}, 1500);
+			return () => {
+				if (navTimer) clearTimeout(navTimer);
+			};
 		}
 	});
 
@@ -85,7 +95,13 @@
 	});
 
 	// Status announcement text for screen readers
-	let statusAnnouncement = $derived(
+	let statusAnnouncement = $derived.by(() => {
+		if ($discoveryStatus === 'needs_credentials') return 'Discovery paused: an LLM API key is needed to continue.';
+		if ($discoveryStatus === 'budget_exhausted') return 'Discovery paused: the spending budget has been exhausted.';
+		if ($discoveryStatus === 'error') return `Discovery failed. ${$discoveryError || 'Check the activity log for details.'}`;
+		if ($processingStatus === 'needs_credentials') return 'Processing paused: an LLM API key is needed to continue.';
+		if ($processingStatus === 'budget_exhausted') return 'Processing paused: the spending budget has been exhausted.';
+		return (
 		$discoveryStatus === 'processing' && $discoveryStage
 			? `Discovery stage: ${$discoveryStage}`
 			: $discoveryStatus === 'complete'
@@ -97,14 +113,15 @@
 						: $processingStatus === 'error'
 							? `Processing failed. ${$processingError || 'Check the activity log for details.'}`
 							: ''
-	);
+		);
+	});
 
 	// Derive discovery button status
-	let discoverStatus = $derived<'ready' | 'disabled' | 'processing' | 'complete'>(
+	let discoverStatus = $derived<JobStatus | 'ready' | 'disabled'>(
 		$discoveryStatus === 'complete'
 			? 'complete'
-			: $discoveryStatus === 'processing'
-				? 'processing'
+			: $discoveryStatus !== 'idle'
+				? $discoveryStatus
 				: $processingStatus === 'complete'
 					? 'ready'
 					: 'disabled'
@@ -133,18 +150,35 @@
 	}
 
 	async function handleProcess() {
-		if (!$selectedCorpus) return;
-		const result = await triggerProcessing($selectedCorpus.id);
-		if (!('error' in result)) {
-			startProcessingStream($selectedCorpus.id);
+		if (!$selectedCorpus || submittingProcess) return;
+		const corpusId = $selectedCorpus.id;
+		submittingProcess = true;
+		processingError.set(null);
+		const result = await triggerProcessing(corpusId);
+		submittingProcess = false;
+		if (!active || $selectedCorpus?.id !== corpusId) return;
+		if ('error' in result) {
+			processingError.set(result.error);
+			processingStatus.set('error');
+		} else {
+			startProcessingStream(corpusId);
 		}
 	}
 
 	async function handleDiscover() {
-		if (!$selectedCorpus) return;
-		const result = await triggerDiscovery($selectedCorpus.id);
-		if (!('error' in result)) {
-			startDiscoveryStream($selectedCorpus.id);
+		if (!$selectedCorpus || submittingDiscovery) return;
+		const corpusId = $selectedCorpus.id;
+		if (navTimer) clearTimeout(navTimer);
+		submittingDiscovery = true;
+		discoveryError.set(null);
+		const result = await triggerDiscovery(corpusId);
+		submittingDiscovery = false;
+		if (!active || $selectedCorpus?.id !== corpusId) return;
+		if ('error' in result) {
+			discoveryError.set(result.error);
+			discoveryStatus.set('error');
+		} else {
+			startDiscoveryStream(corpusId);
 		}
 	}
 
@@ -153,6 +187,7 @@
 	}
 
 	onDestroy(() => {
+		active = false;
 		closeStream();
 		closeDiscoveryStream();
 		if (navTimer) clearTimeout(navTimer);
@@ -181,7 +216,24 @@
 				<p class="success-text">
 					Processing complete &mdash; {files.length} files processed, {$totalUnits} knowledge units extracted.
 				</p>
-				<DiscoverButton status={discoverStatus} onclick={handleDiscover} />
+				<LlmKeyField />
+				<DiscoverButton status={discoverStatus} disabled={submittingDiscovery} onclick={handleDiscover} />
+				{#if $discoveryStatus === 'needs_credentials' || $discoveryStatus === 'budget_exhausted'}
+					{#key $selectedCorpus.id}
+						<PausedJobControls
+							corpusId={$selectedCorpus.id}
+							kind="discovery"
+							status={$discoveryStatus}
+							reason={$discoveryError}
+							oncontinue={() => { if ($selectedCorpus) startDiscoveryStream($selectedCorpus.id); }}
+						/>
+					{/key}
+				{/if}
+				{#if $discoveryStatus === 'error'}
+					<div aria-live="polite">
+						{#if $discoveryError}<p class="error-text">{$discoveryError}</p>{/if}
+					</div>
+				{/if}
 				{#if $discoveryStatus === 'processing' || $discoveryStatus === 'complete'}
 					<DiscoveryProgress
 						currentStage={$discoveryStage}
@@ -213,15 +265,29 @@
 			<!-- Idle / Error state: upload zone, process button, file list -->
 			<div class="upload-content">
 				<UploadZone onfiles={handleFiles} disabled={uploading} />
+				<LlmKeyField />
 				<ProcessButton
 					onclick={handleProcess}
-					disabled={files.length === 0 || uploading}
+					disabled={files.length === 0 || uploading || submittingProcess}
 					status={$processingStatus}
 				/>
+				{#if $processingStatus === 'needs_credentials' || $processingStatus === 'budget_exhausted'}
+					{#key $selectedCorpus.id}
+						<PausedJobControls
+							corpusId={$selectedCorpus.id}
+							kind="processing"
+							status={$processingStatus}
+							reason={$processingError}
+							oncontinue={() => { if ($selectedCorpus) startProcessingStream($selectedCorpus.id); }}
+						/>
+					{/key}
+				{/if}
+				<div aria-live="polite">
+					{#if $processingStatus === 'error' && $processingError}
+						<p class="error-text">{$processingError}</p>
+					{/if}
+				</div>
 				{#if $processingStatus === 'error' && $processingError}
-					<p class="error-text">
-						Processing failed. Check the activity log for details and retry.
-					</p>
 					<ActivityLog entries={$activityLog} expanded={true} />
 				{/if}
 				<FileListView {files} onremove={handleRemoveFile} />
@@ -280,6 +346,7 @@
 	}
 
 	.error-text {
+		overflow-wrap: anywhere;
 		font-size: 13px;
 		color: var(--red);
 	}

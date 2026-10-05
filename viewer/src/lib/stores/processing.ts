@@ -2,6 +2,7 @@
  * Svelte stores for processing pipeline state and SSE connection management.
  */
 import { writable } from 'svelte/store';
+import type { JobStatus } from './llmKey';
 import { getSSEUrl } from '$lib/api/client';
 
 // ---------------------------------------------------------------------------
@@ -9,7 +10,7 @@ import { getSSEUrl } from '$lib/api/client';
 // ---------------------------------------------------------------------------
 
 /** Overall processing status. */
-export const processingStatus = writable<'idle' | 'processing' | 'complete' | 'error'>('idle');
+export const processingStatus = writable<JobStatus>('idle');
 
 /** Current pipeline stage key (e.g. 'ingestion', 'structure_parser'). */
 export const currentStage = writable<string>('');
@@ -70,7 +71,11 @@ export function startProcessingStream(corpusId: string): void {
 		const data = JSON.parse(e.data);
 		totalUnits.set(data.total_units ?? 0);
 		processingError.set(data.error ?? null);
-		processingStatus.set(data.status === 'completed' ? 'complete' : 'error');
+		processingStatus.set(
+			data.status === 'completed' ? 'complete'
+				: data.status === 'needs_credentials' || data.status === 'budget_exhausted'
+					? data.status : 'error'
+		);
 		sseState.set('closed');
 		eventSource?.close();
 		eventSource = null;
