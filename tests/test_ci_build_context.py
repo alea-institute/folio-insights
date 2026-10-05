@@ -111,3 +111,31 @@ def test_each_image_gets_a_fresh_uniquely_named_context(repo: Path, tmp_path: Pa
     for ctx in contexts:
         assert (ctx / "src/pkg/mod.py").read_text() == "src/pkg/mod.py"
         assert int((ctx / "src").stat().st_mtime) == COMMIT_EPOCH
+
+
+def test_failed_extraction_kills_and_reaps_git(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Review nit: if extraction raises, the git child is killed and reaped,
+    never left blocked on a full pipe."""
+    import ci.build as build
+
+    spawned: list[subprocess.Popen] = []
+    real_popen = subprocess.Popen
+
+    def recording_popen(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        proc = real_popen(*args, **kwargs)
+        spawned.append(proc)
+        return proc
+
+    def broken_open(*_args, **_kwargs):  # noqa: ANN002, ANN003, ANN202
+        raise RuntimeError("synthetic extraction failure")
+
+    monkeypatch.setattr(build.subprocess, "Popen", recording_popen)
+    monkeypatch.setattr(build.tarfile, "open", broken_open)
+    dest = tmp_path / "ctx"
+    dest.mkdir()
+    with pytest.raises(RuntimeError, match="synthetic"):
+        export_build_context(dest, repo, ("Dockerfile.x",))
+    assert spawned and all(p.returncode is not None for p in spawned)
+    assert all(p.stdout is None or p.stdout.closed for p in spawned)

@@ -14,6 +14,7 @@ A storage root is one directory, chosen by `--corpus-root`, else
 | `journal.sqlite3` (+ `-wal`, `-shm`) | The authoritative journal: every shard revision and governance event of every corpus, append-only, with an `op_id` per operation. The same file holds the append-only `proposal_ledger` table (proposed-class governance; see below). |
 | `projection.oxigraph/` | The RDF projection (pyoxigraph/RocksDB). It is derived state: one ABox graph and one governance graph per corpus, a shared TBox graph, and a per-corpus watermark. |
 | `projection.lock` | The cross-process lock that guards the projection. |
+| `shacl-status/` | Phase 11 SHACL status markers, one JSON file (plus a lock file) per corpus. Derived: snapshots do not copy them, so a restored root reads `full_shacl: unvalidated` until `storage validate` runs. |
 
 The journal is the only thing that must survive. The projection can always
 be rebuilt from it. On every open, the projection checks its watermark: the
@@ -43,7 +44,8 @@ arrives with Phase 13.5 (private corpora).
 
 | Command | What it does |
 |---|---|
-| `status CORPUS` | (Refuses a corpus with no committed rows; never creates one.) Journal head, projection watermark, installed validation hooks, `full_shacl` (always `deferred-to-phase-11`). |
+| `status CORPUS` | (Refuses a corpus with no committed rows; never creates one.) Journal head, projection watermark, installed validation hooks, and the Phase 11 SHACL state: `full_shacl` (`disabled`, `unvalidated`, `pass` or `fail`), the suite digest, the journal position it covers, the Violation count, and the Warning count of the last full validation. |
+| `validate CORPUS [--engine compiled\|pyshacl] [--max-results N]` | Full SHACL validation of every current shard and governance event plus the cross-shard rules. Records the result (`status` then reports `pass` or `fail`) and exits 1 on any Violation. `--engine pyshacl` runs the reference engine for the per-record checks (slow; for cross-checks). |
 | `export CORPUS --out DIR [--format F]… [--construct-query Q \| --construct-file F] [--allow-partial] [--require-named-graphs]` | The export formats (below). Writes to a new or empty directory. |
 | `dump --repo DIR [--corpus C]… [--init]` | Writes a TTL dump of every corpus and records a local Git commit. This is the nightly job's entry point. |
 | `snapshot --out DIR [--no-projection]` | Snapshots the whole storage root (all corpora). |
@@ -250,7 +252,8 @@ instead of every committed record.
   subjects is written with `Store.bulk_load`, followed by a transactional
   watermark update. A crash between the two is repaired by idempotent
   replay.
-- **Parallel checks (explicit opt-in).** The per-record checks and the
+- **Parallel checks (explicit opt-in).** The per-record checks (including
+  the Phase 11 SHACL local tier; each worker compiles the suite once) and the
   N-Quads rendering run in a `forkserver` process pool for batches of 2,048
   records or more, but only when the pool is requested: `bulk_load_shards`
   (default `parallel=True`) and the storage CLI (`StorageConfig(process_pool=True)`).
@@ -263,26 +266,78 @@ instead of every committed record.
   batch is redone in-process and the pool stays disabled for the rest of
   that process.
 - **Refusal order does not depend on batch size.** The refusal raised is the
-  one with the earliest input index, whether from a built-in check or a
-  Phase 11 hook, with or without the pool.
+  one with the earliest input index, whether from a built-in check (SHACL
+  included) or a generic hook, with or without the pool.
 - **Throughput.** The recorded 1M-triple benchmark lives in the plan's U4
   evidence. It is reproduced by `pytest tests/bench/test_storage_bulk_load.py -m slow -s`.
 
-## Validation hooks and Phase 11
+## Full SHACL (Phase 11)
 
-`StorageConfig(shard_validator=..., event_validator=...)` are the Phase 11
-hooks.
+Every write is validated against one SHACL suite: the six hand-written
+shapes in `src/folio_insights/shapes/ttl/`, the Pydantic-generated shapes in
+`src/folio_insights/shapes/generated/`, and the Phase 8 vocab shapes. Plan:
+[`docs/plans/2026-10-05-0305-feat-phase11-shacl-hybrid-plan.md`](plans/2026-10-05-0305-feat-phase11-shacl-hybrid-plan.md).
 
-- **They see copies.** Each hook receives a deep copy, so a hook can refuse
-  but can never change what the identity and append-only checks, the
-  journal, the projection cache or the persisted governance event see.
-- **When they run.** They run after the built-in checks: the PII gate and
-  model validation for shards, signature verification for events. They run
-  before the journal transaction, whose identity and authorization checks
-  still follow. A hook can add a refusal; it cannot remove one.
-- **Full SHACL is still deferred.** `status().full_shacl` stays
-  `deferred-to-phase-11` even with hooks installed. A hook is a seam, not
-  the Phase 11 exit criterion.
+- **On by default.** `StorageConfig.shacl` defaults to the compiled suite.
+  `StorageConfig(shacl=None)` turns it off, and `full_shacl` then reads
+  `disabled`.
+- **Local tier (refuses).** Every shard write (put, ingest, bulk load, inside
+  the pool workers for large batches) is checked after the PII gate and model
+  validation. Every governance event is checked inside the write transaction,
+  after authorization. A **Violation** raises `ShaclViolation` and nothing is
+  written. Its message names the shard or event and the shape messages, never
+  the offending value. **Warnings** never refuse.
+- **What is a Violation.** Rules existing code already guarantees, plus two
+  integrity rules: a valid-time start at or after its end, and a signature
+  that claims `verified` without a signature value. PRD rules that no code
+  enforces yet are Warnings: unsigned shards, a contested shard with fewer
+  than two votes, `superseded` without `superseded_by`, `demonstrable`
+  without a dependency, and unminted identity forms.
+- **Corpus tier (reports).** Cross-shard rules (supersession alignment,
+  reciprocity, self-supersession, back pointers) run as SPARQL in
+  pyoxigraph over the projection after each commit, for the written shards
+  and their one-hop neighbours, or over the whole corpus when a batch writes
+  more than 256 shards. They do not refuse: the two shards of a supersession
+  are often written separately. A Violation makes `full_shacl` read `fail`
+  until a later write or `storage validate` shows it fixed.
+- **`full_shacl` never over-claims.** It reads `pass` or `fail` only when the
+  status marker covers exactly the journal head, under the current suite
+  digest, with that row's payload digest. Any of these makes it read
+  `unvalidated` until `storage validate` runs:
+  - a write from a context without the suite;
+  - a concurrent writer whose marker update lost the race;
+  - a changed shape file;
+  - a restore.
+- **Manifests.** Export and dump manifests record the same `full_shacl`
+  value at their watermark.
+- **Generic hooks.** `StorageConfig(shard_validator=..., event_validator=...)`
+  still exist. They run after the suite, receive deep copies, can add a
+  refusal but never remove one, and do not change `full_shacl`.
+- **Validation API.** `POST /validate` (FastAPI) checks one candidate shard
+  JSON with pyshacl and returns the report. It applies the local tier only: a
+  lone candidate has no corpus to check cross-shard rules against.
+  - **Input bounds.** The body is capped at 1 MiB, checked against
+    `Content-Length` and again while streaming. Nesting is capped at 32
+    levels, every list at 128 items, the document at 20,000 JSON values, and
+    the rendered graph at 5,000 triples. All checks run before pyshacl, which
+    also has a 15 s deadline.
+  - **Output bounds.** At most 200 results and 50 model errors are returned,
+    each with a total count.
+  - **No echo.** No offending value and no pyshacl text report is returned,
+    so input values (for example, PII) are never reflected back.
+- **Retries.** Retrying an already-committed explicit `op_id`, or an identical
+  implicit batch, returns the committed result without re-running the suite
+  or the hooks. They judge new appends only.
+- **Status-marker failures.** Updating the marker runs after commit and never
+  raises. On failure it logs a warning, and `full_shacl` reads `unvalidated`.
+  The marker steps of one context run in commit order. A truncated failing
+  list (over 1,000 entries) keeps `full_shacl` at `fail` until
+  `storage validate` runs. `shacl_warnings` is the Warning count of the full
+  validation that covers the head, and `None` after any later write.
+- **Naive timestamps.** A naive datetime (for example `valid_time_start`) is
+  read as UTC in the SHACL validation rendering only, so naive and aware
+  bounds compare. The shard model, the stored bytes, `canonical_content_hash`
+  and existing signatures are unchanged (U17/R18).
 
 ## Proposed-class ledger
 
@@ -519,6 +574,7 @@ never mistaken for a clean one.
 ## rdflib
 
 rdflib is adapter-only. It builds in-memory graphs for pyshacl validation
-and is never a store. Every projection, export, dump and restore write goes
+and is never a store. The Phase 11 write path does not use it at all: the
+compiled SHACL engine parses shapes with pyoxigraph (`tests/shapes/test_boundaries.py`). Every projection, export, dump and restore write goes
 through pyoxigraph. `tests/storage/test_rdflib_adapter_only.py` checks this
 by scanning the source and by running the whole life cycle.

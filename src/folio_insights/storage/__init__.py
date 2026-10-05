@@ -8,7 +8,7 @@ seams. Open one ``CorpusStorageContext`` per corpus and use its ``shards`` and
 from __future__ import annotations
 
 from folio_insights.storage.context import (
-    FULL_SHACL_STATUS,
+    FULL_SHACL_STATES,
     BulkLoadResult,
     CorpusStorageContext,
     StorageConfig,
@@ -27,6 +27,7 @@ from folio_insights.storage.errors import (
     ProjectionLockTimeout,
     ProjectionRecoveryFailed,
     ProjectionRecoveryPending,
+    ShaclViolation,
     ShardIdentityViolation,
     ShardRecordInvalid,
     StorageClosed,
@@ -36,14 +37,16 @@ from folio_insights.storage.errors import (
 from folio_insights.storage.governance import PersistentGovernanceLog
 from folio_insights.storage.pii import DEFAULT_PII_PATTERNS, PiiGate, PiiPattern
 from folio_insights.storage.proposals import PersistentProposalLedger, ProposalLedgerEntry
+from folio_insights.storage.shacl_status import CorpusValidation, ShaclStatus
 from folio_insights.storage.shards import PersistentShardStore
 
 __all__ = [
     "DEFAULT_PII_PATTERNS",
-    "FULL_SHACL_STATUS",
+    "FULL_SHACL_STATES",
     "BulkLoadResult",
     "CorpusIsolationError",
     "CorpusStorageContext",
+    "CorpusValidation",
     "GovernanceEventReplayed",
     "JournalStateChanged",
     "OperationIdConflict",
@@ -57,6 +60,8 @@ __all__ = [
     "ProjectionRecoveryFailed",
     "ProjectionRecoveryPending",
     "ProposalLedgerEntry",
+    "ShaclStatus",
+    "ShaclViolation",
     "ShardIdentityViolation",
     "ShardRecordInvalid",
     "StorageClosed",

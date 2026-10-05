@@ -113,6 +113,32 @@ class PiiRejected(ValueError):
         return (type(self), (self.field_path, self.pattern_name))
 
 
+class ShaclViolation(ValueError):
+    """The record violates the Phase 11 SHACL suite; nothing was persisted.
+
+    ``results`` holds one dict per Violation (focus node, path, constraint
+    component, source shape and the shape's message). The message names
+    the focus node and the shape messages, never the offending value.
+    Shape messages are fixed text. Warnings never raise.
+    """
+
+    def __init__(self, subject: str, results: tuple[dict, ...] | list[dict]) -> None:
+        self.subject = subject
+        self.results = tuple(results)
+        shown = "; ".join(
+            f"{r.get('component')} on {r.get('path') or 'the node'}: {r.get('message')}"
+            for r in self.results[:3]
+        )
+        more = f" (+{len(self.results) - 3} more)" if len(self.results) > 3 else ""
+        super().__init__(
+            f"refused before journal append: {subject} violates {len(self.results)} "
+            f"SHACL constraint(s): {shown}{more}"
+        )
+
+    def __reduce__(self) -> tuple:
+        return (type(self), (self.subject, self.results))
+
+
 __all__ = [
     "CorpusIsolationError",
     "GovernanceEventReplayed",
@@ -123,6 +149,7 @@ __all__ = [
     "ProjectionRecoveryFailed",
     "ProjectionRecoveryPending",
     "ShardIdentityViolation",
+    "ShaclViolation",
     "ShardRecordInvalid",
     "StorageClosed",
     "StorageError",

@@ -10,6 +10,8 @@ import the storage package (journal, projection, process pool) at
 * ``storage snapshot --out DIR``        — journal + projection snapshot.
 * ``storage restore SNAPSHOT --to DIR`` — restore into a NEW storage root.
 * ``storage status CORPUS``             — journal head, watermark, SHACL status.
+* ``storage validate CORPUS``           — full Phase 11 SHACL validation;
+  records the result (``full_shacl`` pass/fail) and exits 1 on Violations.
 
 These are operator commands over a storage root on the local filesystem
 (``--corpus-root``, else ``$FOLIO_INSIGHTS_CORPUS_ROOT``, else
@@ -192,6 +194,35 @@ def status_cmd(corpus_name: str, corpus_root: Path | None) -> None:
         click.echo(json.dumps(status.__dict__, indent=2, default=str))
 
     _run(run())
+
+
+@storage_group.command(name="validate")
+@click.argument("corpus_name")
+@click.option("--engine", type=click.Choice(["compiled", "pyshacl"]), default="compiled",
+              show_default=True,
+              help="Local-tier engine: the compiled write-path engine or the pyshacl reference.")
+@click.option("--max-results", type=int, default=50, show_default=True,
+              help="How many Violation results to print (all are counted).")
+@corpus_root_option
+def validate_cmd(corpus_name: str, engine: str, max_results: int, corpus_root: Path | None) -> None:
+    """Validate every shard and governance event against the full SHACL suite.
+
+    Records the result so `storage status` reports full_shacl pass or fail.
+    Exits 1 when any Violation is found (Warnings are counted, never fatal).
+    """
+    async def run() -> bool:
+        ctx = await _open_existing(corpus_root, corpus_name)
+        try:
+            result = await ctx.validate_corpus(engine=engine, parallel=True)
+        finally:
+            await ctx.close()
+        out = result.as_dict()
+        out["results"] = out["results"][: max(0, max_results)]
+        click.echo(json.dumps(out, indent=2, default=str))
+        return result.conforms
+
+    if not _run(run()):
+        sys.exit(1)
 
 
 __all__ = ["storage_group"]

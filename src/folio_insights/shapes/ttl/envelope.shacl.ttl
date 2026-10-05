@@ -1,0 +1,83 @@
+# Phase 11 hand-written shape 1/6 — the shard envelope (PRD §10 shared/envelope).
+#
+# The Pydantic-generated shapes (generated/shard_models.shacl.ttl) already
+# check every field's presence, cardinality, datatype, enumeration and range.
+# This file adds the cross-field rules a single field cannot state.
+#
+# Severity policy (plan KTD4): sh:Violation refuses a write. It is used only
+# for rules existing code already guarantees, plus integrity rules no valid
+# record breaks today. PRD rules that no code enforces yet are sh:Warning:
+# reported and counted, never refusing.
+#
+# sh:severity belongs to the shape that declares it. A property shape nested
+# under a node shape does NOT inherit the node shape's severity, so every
+# Warning rule states it on the property shape itself.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Valid time is a half-open interval [start, end) (PRD §21.9, Phase 2 D-03).
+# A start at or after its end is an empty or inverted interval. Null bounds
+# are unbounded and render as absence, so they never trigger this rule.
+fis:EnvelopeValidTimeShape a sh:NodeShape ;
+    rdfs:comment "valid_time_start must precede valid_time_end when both are set." ;
+    sh:targetClass fi:Shard ;
+    sh:property [
+        sh:path fi:validTimeStart ;
+        sh:lessThan fi:validTimeEnd ;
+        sh:message "fi:validTimeStart must be earlier than fi:validTimeEnd (half-open valid-time interval, PRD §21.9)" ;
+    ] .
+
+# Identity forms the PRD specifies (decision #6) but no code enforces:
+# shards built by hand and the Phase 13 test corpora use other IRI forms.
+fis:EnvelopeIdentityFormShape a sh:NodeShape ;
+    rdfs:comment "PRD §6.3 / decision #6 identity forms (Warning: not yet enforced by code)." ;
+    sh:targetClass fi:Shard ;
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:severity sh:Warning ;
+        sh:pattern "^urn:folio:shard/[a-f0-9]{32}$" ;
+        sh:message "fi:shardIri should be a minted urn:folio:shard/<32 hex> IRI (shards/minting.py)" ;
+    ] ;
+    sh:property [
+        sh:path fi:provenanceHash ;
+        sh:severity sh:Warning ;
+        sh:pattern "^[a-f0-9]{64}$" ;
+        sh:message "fi:provenanceHash should be a 64-character lowercase SHA-256 hex digest" ;
+    ] ;
+    sh:property [
+        sh:path fi:firstExtractorDid ;
+        sh:severity sh:Warning ;
+        sh:pattern "^did:(key|web|plc):.+" ;
+        sh:message "fi:firstExtractorDid should be a did:key, did:web or did:plc DID (PRD §10)" ;
+    ] .
+
+# PRD §10: "Every shard must carry at least one AttestedSignature" (decision
+# #10). Unsigned extraction is the normal state today, so this is a Warning.
+fis:EnvelopeAttestationShape a sh:NodeShape ;
+    rdfs:comment "Every asserted shard should carry at least one AttestedSignature (Warning)." ;
+    sh:targetClass fi:Shard ;
+    sh:property [
+        sh:path fi:signatures ;
+        sh:severity sh:Warning ;
+        sh:minCount 1 ;
+        sh:message "Every shard should carry at least one AttestedSignature (PRD §10, decision #10)" ;
+    ] .
+
+# PRD §10 dependencies shape: a demonstrable shard names what it is
+# demonstrated from (at least one depends_on_* edge).
+fis:EnvelopeDemonstrableDependencyShape a sh:NodeShape ;
+    rdfs:comment "epistemic_status=demonstrable needs at least one depends_on_* edge (Warning)." ;
+    sh:targetClass fi:Shard ;
+    sh:severity sh:Warning ;
+    sh:message "A demonstrable shard should name at least one dependency (fi:dependsOnAxiom/Definition/Precedent/Shard; PRD §10)" ;
+    sh:or (
+        [ sh:not [ sh:path fi:epistemicStatus ; sh:hasValue "demonstrable" ] ]
+        [ sh:path fi:dependsOnAxiom ; sh:minCount 1 ]
+        [ sh:path fi:dependsOnDefinition ; sh:minCount 1 ]
+        [ sh:path fi:dependsOnPrecedent ; sh:minCount 1 ]
+        [ sh:path fi:dependsOnShard ; sh:minCount 1 ]
+    ) .

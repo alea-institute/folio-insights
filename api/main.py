@@ -26,6 +26,7 @@ from api.routes import (
     timeline,
     tree,
     upload,
+    validate,
 )
 
 # ---------------------------------------------------------------------------
@@ -65,6 +66,8 @@ app.include_router(upload.router)
 app.include_router(processing.router)
 app.include_router(discovery.router)
 app.include_router(export.router)
+# Phase 11 SHACL-05: POST /validate (pyshacl report for one candidate shard).
+app.include_router(validate.router)
 
 # Phase 0 D-09 SSR prototype surfaces — stub payloads feeding Gate 4 (Plan 07).
 # Real payloads wire to pyoxigraph in Phase 15.
