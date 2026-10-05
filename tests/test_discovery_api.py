@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -27,11 +26,13 @@ from api.routes import discovery as discovery_mod
 
 
 @pytest.fixture(autouse=True)
-def configure_tmp_output(tmp_path: Path):
-    """Point the API at a temporary directory for each test."""
+def configure_tmp_output(tmp_path: Path, monkeypatch):
+    """Point the API (and its durable job queue) at a temporary directory for each test."""
+    monkeypatch.setenv("FOLIO_INSIGHTS_QUEUE_DB", str(tmp_path / ".queue" / "jobs.sqlite3"))
     api_main.configure(output_dir=tmp_path)
     discovery_mod.reset_discovery_job_manager()
     yield tmp_path
+    discovery_mod.reset_discovery_job_manager()
 
 
 @pytest.fixture()
@@ -150,11 +151,11 @@ async def test_discover_trigger_returns_202(
     corpus_dir = configure_tmp_output / corpus_id
     (corpus_dir / "extraction.json").write_text(json.dumps({"units": []}))
 
-    with patch(
-        "api.services.discovery_runner.run_discovery_with_progress",
-        new_callable=AsyncMock,
-    ):
-        resp = await client.post(f"/api/v1/corpus/{corpus_id}/discover")
+    # Phase 10 U2: the POST only enqueues; no worker runs in this test (no app lifespan).
+    resp = await client.post(
+        f"/api/v1/corpus/{corpus_id}/discover",
+        headers={"X-LLM-API-Key": "AIzaTestFAKEKEYdiscovery00000000000"},
+    )
 
     assert resp.status_code == 202
     data = resp.json()

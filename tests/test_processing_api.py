@@ -6,7 +6,7 @@ import asyncio
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -19,7 +19,6 @@ from api.models.processing import (
     ProcessingStatus,
 )
 from api.routes import processing as processing_mod
-from api.services.job_manager import JobManager
 
 
 # ---------------------------------------------------------------------------
@@ -28,11 +27,13 @@ from api.services.job_manager import JobManager
 
 
 @pytest.fixture(autouse=True)
-def configure_tmp_output(tmp_path: Path):
-    """Point the API at a temporary directory for each test."""
+def configure_tmp_output(tmp_path: Path, monkeypatch):
+    """Point the API (and its durable job queue) at a temporary directory for each test."""
+    monkeypatch.setenv("FOLIO_INSIGHTS_QUEUE_DB", str(tmp_path / ".queue" / "jobs.sqlite3"))
     api_main.configure(output_dir=tmp_path)
     processing_mod.reset_job_manager()
     yield tmp_path
+    processing_mod.reset_job_manager()
 
 
 @pytest.fixture()
@@ -63,16 +64,26 @@ async def test_trigger_processing(client: AsyncClient, configure_tmp_output: Pat
     """POST /api/v1/corpus/{id}/process returns 202 with a job_id."""
     corpus_id = await _create_corpus(client)
 
-    with patch(
-        "api.routes.processing.run_pipeline_with_progress",
-        new_callable=AsyncMock,
-    ):
-        resp = await client.post(f"/api/v1/corpus/{corpus_id}/process")
+    # Phase 10 U2: the POST only enqueues; no worker runs in this test (no app lifespan).
+    # Bring your own key: the caller's key travels per request (a synthetic one here).
+    resp = await client.post(
+        f"/api/v1/corpus/{corpus_id}/process",
+        headers={"X-LLM-API-Key": "AIzaTestFAKEKEYprocessing0000000000"},
+    )
 
     assert resp.status_code == 202
     data = resp.json()
     assert "job_id" in data
     assert data["status"] == "pending"
+
+
+async def test_trigger_without_a_key_waits_for_credentials(client: AsyncClient):
+    """No per-request key for a provider that needs one: queued as needs_credentials, never run
+    on an ambient server key."""
+    corpus_id = await _create_corpus(client)
+    resp = await client.post(f"/api/v1/corpus/{corpus_id}/process")
+    assert resp.status_code == 202
+    assert resp.json()["status"] == "needs_credentials"
 
 
 async def test_trigger_nonexistent_corpus(client: AsyncClient):

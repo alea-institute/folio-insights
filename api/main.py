@@ -33,11 +33,34 @@ from api.routes import (
 # ---------------------------------------------------------------------------
 
 
+def _embedded_worker_enabled() -> bool:
+    import os
+
+    return os.environ.get("FOLIO_INSIGHTS_EMBEDDED_WORKER", "1").strip().lower() not in {
+        "0", "false", "no", "off",
+    }
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """Load extraction data on startup."""
+    """Load extraction data on startup; run the embedded job worker while serving.
+
+    The embedded worker consumes this process's extraction and discovery jobs from the durable
+    queue. It is the only worker that can run a job submitted with a per-request API key: the key
+    lives in this process's memory. Set ``FOLIO_INSIGHTS_EMBEDDED_WORKER=0`` to serve without it.
+    """
     load_extraction()
-    yield
+    runtime = None
+    if _embedded_worker_enabled():
+        from api.services.job_manager import get_runtime
+
+        runtime = get_runtime()
+        runtime.start()
+    try:
+        yield
+    finally:
+        if runtime is not None:
+            await runtime.stop()
 
 
 app = FastAPI(title="folio-insights Review Viewer", lifespan=lifespan)

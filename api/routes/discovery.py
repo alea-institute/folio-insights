@@ -1,9 +1,12 @@
 """Discovery trigger, SSE stream, task CRUD, review, contradiction,
 hierarchy edit, source authority, and statistics endpoints.
 
-POST /api/v1/corpus/{corpus_id}/discover         -- Start discovery pipeline
-GET  /api/v1/corpus/{corpus_id}/discover/stream   -- SSE progress stream
+POST /api/v1/corpus/{corpus_id}/discover         -- Enqueue a discovery job (durable queue)
+GET  /api/v1/corpus/{corpus_id}/discover/stream   -- SSE progress stream (queue state)
 GET  /api/v1/corpus/{corpus_id}/discover/job      -- Current discovery job
+POST /api/v1/corpus/{corpus_id}/discover/job/cancel       -- Cancel at a stage boundary
+POST /api/v1/corpus/{corpus_id}/discover/job/credentials  -- Re-supply the API key
+POST /api/v1/corpus/{corpus_id}/discover/job/resume       -- Resume after the spend cap
 GET  /api/v1/corpus/{corpus_id}/discovery/diff    -- Latest discovery diff
 GET  /api/v1/corpus/{corpus_id}/tasks/tree        -- Task hierarchy tree
 GET  /api/v1/corpus/{corpus_id}/tasks/{task_id}   -- Single task detail
@@ -31,7 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Response
 from sse_starlette.sse import EventSourceResponse
 
 from api.models.discovery import (
@@ -47,8 +50,17 @@ from api.models.discovery import (
     TaskReviewRequest,
     TaskTreeNode,
 )
-from api.models.processing import ProcessingJob, ProcessingStatus
-from api.services.job_manager import JobManager
+from api.models.processing import STREAM_END_STATUSES
+from api.routes.processing import (
+    LLMJobOptions,
+    ResumeRequest,
+    cancel_latest,
+    llm_payload,
+    resume_latest,
+    resupply_latest,
+    submit_or_http_error,
+)
+from api.services.job_manager import DISCOVER_KIND, QueueJobView, get_queue, reset_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -71,23 +83,24 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-_discovery_job_manager: JobManager | None = None
+_discovery_job_manager: QueueJobView | None = None
 
 
-def get_discovery_job_manager() -> JobManager:
-    """Return the module-level JobManager for discovery jobs."""
+def get_discovery_job_manager() -> QueueJobView:
+    """The discovery-job view over the durable queue (keys: ``<corpus>_discovery``)."""
     global _discovery_job_manager
     if _discovery_job_manager is None:
-        jobs_dir = _output_dir() / ".jobs"
-        jobs_dir.mkdir(parents=True, exist_ok=True)
-        _discovery_job_manager = JobManager(jobs_dir)
+        _discovery_job_manager = QueueJobView(
+            get_queue(), DISCOVER_KIND, corpus_suffix="_discovery"
+        )
     return _discovery_job_manager
 
 
 def reset_discovery_job_manager() -> None:
-    """Reset the singleton (used by tests)."""
+    """Reset the singleton and the process job runtime (used by tests)."""
     global _discovery_job_manager
     _discovery_job_manager = None
+    reset_runtime()
 
 
 async def _get_db(corpus_id: str):
@@ -107,12 +120,16 @@ def _corpus_dir(corpus_id: str) -> Path:
 
 
 @router.post("/corpus/{corpus_id}/discover", status_code=202)
-async def start_discovery(corpus_id: str) -> dict:
-    """Trigger task discovery pipeline for a corpus.
+async def start_discovery(
+    corpus_id: str,
+    options: LLMJobOptions | None = None,
+    x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key"),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> dict:
+    """Enqueue the task discovery pipeline for a corpus.
 
-    Returns 202 Accepted with the job id. Discovery runs in a
-    background asyncio task. Connect to the SSE stream endpoint
-    to follow progress in real time.
+    Returns 202 Accepted with the job id. A worker runs it from the durable queue; follow it on
+    the SSE stream endpoint. The LLM key (bring your own) goes in ``X-LLM-API-Key``.
     """
     output = _output_dir()
     corpus_meta = output / corpus_id / "corpus-meta.json"
@@ -127,32 +144,20 @@ async def start_discovery(corpus_id: str) -> dict:
             detail="Extraction output not found. Run extraction pipeline first.",
         )
 
-    jm = get_discovery_job_manager()
-
-    # Check for already-running discovery
-    discovery_key = f"{corpus_id}_discovery"
-    existing = await jm.load_by_corpus(discovery_key)
-    if existing is not None and existing.status == ProcessingStatus.PROCESSING:
-        raise HTTPException(status_code=409, detail="Discovery already in progress")
-
-    # Create new job
-    now = _now_iso()
-    job = ProcessingJob(
-        corpus_id=discovery_key,
-        status=ProcessingStatus.PENDING,
-        created_at=now,
-        updated_at=now,
-    )
-    await jm.save(job)
-
-    # Launch background discovery task
-    from api.services.discovery_runner import run_discovery_with_progress
-
-    asyncio.create_task(
-        run_discovery_with_progress(corpus_id, corpus_id, jm)
-    )
-
-    return {"job_id": str(job.id), "status": "pending"}
+    payload = {
+        "corpus_name": corpus_id,
+        "output_dir": str(output.resolve()),
+        "llm": llm_payload(options),
+    }
+    try:
+        return await asyncio.to_thread(
+            submit_or_http_error, get_discovery_job_manager(), corpus_id=corpus_id,
+            payload=payload, api_key=x_llm_api_key, idempotency_key=idempotency_key,
+        )
+    except HTTPException as exc:
+        if exc.status_code == 409:
+            raise HTTPException(status_code=409, detail="Discovery already in progress") from None
+        raise
 
 
 @router.get("/corpus/{corpus_id}/discover/stream")
@@ -162,7 +167,7 @@ async def stream_discovery_progress(corpus_id: str):
 
 
 async def _discovery_event_generator(corpus_id: str):
-    """Yield SSE events by polling the discovery job file on disk."""
+    """Yield SSE events by polling the discovery job's queue state."""
     jm = get_discovery_job_manager()
     discovery_key = f"{corpus_id}_discovery"
     last_status = None
@@ -204,8 +209,8 @@ async def _discovery_event_generator(corpus_id: str):
                 }
             last_activity_count = len(job.activity_log)
 
-        # Terminal state: emit complete and exit
-        if job.status in (ProcessingStatus.COMPLETED, ProcessingStatus.FAILED):
+        # Terminal or paused state: emit complete and exit
+        if job.status in STREAM_END_STATUSES:
             yield {
                 "event": "complete",
                 "data": json.dumps({
@@ -230,6 +235,29 @@ async def get_discovery_job(corpus_id: str) -> dict:
             detail=f"No discovery job found for corpus '{corpus_id}'",
         )
     return job.model_dump()
+
+
+@router.post("/corpus/{corpus_id}/discover/job/cancel")
+async def cancel_discovery_job(corpus_id: str) -> dict:
+    """Cancel the corpus's discovery job: now if waiting, else at the next stage boundary."""
+    return await asyncio.to_thread(cancel_latest, get_discovery_job_manager(), corpus_id)
+
+
+@router.post("/corpus/{corpus_id}/discover/job/credentials")
+async def resupply_discovery_credentials(
+    corpus_id: str,
+    x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key"),
+) -> dict:
+    """Re-supply the LLM API key to a discovery job paused as ``needs_credentials``."""
+    return await asyncio.to_thread(
+        resupply_latest, get_discovery_job_manager(), corpus_id, x_llm_api_key
+    )
+
+
+@router.post("/corpus/{corpus_id}/discover/job/resume")
+async def resume_discovery_job(corpus_id: str, body: ResumeRequest | None = None) -> dict:
+    """Resume a ``budget_exhausted`` discovery job, optionally with a higher cap."""
+    return await asyncio.to_thread(resume_latest, get_discovery_job_manager(), corpus_id, body)
 
 
 @router.get("/corpus/{corpus_id}/discovery/diff")

@@ -164,6 +164,6 @@ ENV PYTHONPATH=/app/src
 
 USER 1001
 
-# Worker has no HTTP surface (polls Redis via Arq — Phase 10 cutover).
-# Phase 0 scaffold: entrypoint module stub in src/folio_insights/worker.py.
+# Worker has no HTTP surface. Phase 10 U2: it consumes the durable SQLite job queue
+# ($FOLIO_INSIGHTS_QUEUE_DB, else <corpus root>/queue/jobs.sqlite3) -- no Arq, no Redis.
 CMD ["python", "-m", "folio_insights.worker"]

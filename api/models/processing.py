@@ -22,6 +22,30 @@ class ProcessingStatus(str, enum.Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    # Durable-queue states (Phase 10 U2). The first is terminal; the other two are paused and
+    # resumable: re-supply the API key, or raise the spend cap and resume.
+    CANCELLED = "cancelled"
+    NEEDS_CREDENTIALS = "needs_credentials"
+    BUDGET_EXHAUSTED = "budget_exhausted"
+
+
+#: Statuses after which an SSE stream closes (terminal, or paused waiting on the user).
+STREAM_END_STATUSES = frozenset({
+    ProcessingStatus.COMPLETED,
+    ProcessingStatus.FAILED,
+    ProcessingStatus.CANCELLED,
+    ProcessingStatus.NEEDS_CREDENTIALS,
+    ProcessingStatus.BUDGET_EXHAUSTED,
+})
+
+#: Statuses during which a second submission is refused (409) unless it repeats the
+#: first one's idempotency key.
+IN_FLIGHT_STATUSES = frozenset({
+    ProcessingStatus.PENDING,
+    ProcessingStatus.PROCESSING,
+    ProcessingStatus.NEEDS_CREDENTIALS,
+    ProcessingStatus.BUDGET_EXHAUSTED,
+})
 
 
 # ---------------------------------------------------------------------------

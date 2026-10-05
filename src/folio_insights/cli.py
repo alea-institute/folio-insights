@@ -728,6 +728,54 @@ from folio_insights.corpus.cli import corpus_group as _corpus_group
 
 cli.add_command(_corpus_group)
 
+# Phase 10 U2: durable job queue inspection and the one-time legacy import.
+@cli.group("jobs")
+def jobs_group() -> None:
+    """Durable job queue: list jobs, cancel one, import legacy JSON job files."""
+
+
+def _open_queue(db: str | None):
+    from folio_insights.jobs import SQLiteJobQueue
+
+    return SQLiteJobQueue(db)
+
+
+@jobs_group.command("list")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+@click.option("--limit", default=20, show_default=True, type=int)
+def jobs_list(db: str | None, limit: int) -> None:
+    """List recent jobs (newest first)."""
+    queue = _open_queue(db)
+    for job in queue.list_jobs(limit=limit):
+        click.echo(f"{job.id}  {job.kind:<9} {job.status.value:<18} {job.corpus_id}  "
+                   f"attempts={job.attempts}/{job.max_attempts}  stage={job.current_stage or '-'}")
+
+
+@jobs_group.command("cancel")
+@click.argument("job_id")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+def jobs_cancel(job_id: str, db: str | None) -> None:
+    """Cancel a job (immediately if waiting, else at its next stage boundary)."""
+    job = _open_queue(db).request_cancel(job_id)
+    click.echo(f"{job.id}: {job.status.value}"
+               + (" (cancellation requested)" if job.cancel_requested and not job.is_terminal else ""))
+
+
+@jobs_group.command("import-legacy")
+@click.option("--jobs-dir", required=True, type=click.Path(exists=True, file_okay=False),
+              help="The pre-queue job directory (the API's <output>/.jobs).")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+def jobs_import_legacy(jobs_dir: str, db: str | None) -> None:
+    """One-time import of legacy JSON job files into the queue (idempotent).
+
+    Jobs that were pending or processing were orphaned by a restart and import as failed.
+    """
+    from folio_insights.jobs.legacy import import_legacy_jobs
+
+    for row in import_legacy_jobs(Path(jobs_dir), _open_queue(db)):
+        click.echo(f"{row['file']}: {row['outcome']}")
+
+
 # Register the Phase 13 storage subgroup (export, dump, snapshot, restore).
 # Same module-bottom pattern; the storage package loads only when one of
 # its commands runs.
