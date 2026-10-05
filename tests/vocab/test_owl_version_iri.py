@@ -30,12 +30,13 @@ _ONTOLOGY_LOCAL_NAMES: tuple[str, ...] = (
     "bfo_spine",
     "bfo_mapping",
     "shapes",
+    "expressive",  # Phase 9 KTD5: the OWL 2 DL layer
 )
 
 
 @pytest.fixture(scope="module")
 def vocab_graph():
-    return load_graph(include_bfo_mapping=True)
+    return load_graph(include_bfo_mapping=True, include_expressive=True)
 
 
 @pytest.mark.parametrize("name", _ONTOLOGY_LOCAL_NAMES)

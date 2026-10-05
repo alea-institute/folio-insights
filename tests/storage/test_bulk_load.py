@@ -70,7 +70,9 @@ async def test_bulk_path_matches_transactional_and_rebuild(
     tmp_path: Path, records: list, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     bulk = await _load(tmp_path / "bulk", records)
-    assert len(bulk) == N * 23 + (N - 1) // 7  # plus one dependsOnShard per 7th
+    # 27 base triples per shard (adapter v2 adds fi:framework, fi:speechAct,
+    # fi:bfoCategory, fi:subjectBfoClass), plus one dependsOnShard per 7th.
+    assert len(bulk) == N * 27 + (N - 1) // 7
 
     # Same records with the bulk path disabled: one transactional update path.
     monkeypatch.setattr(projection, "BULK_LOAD_MIN_ROWS", 10**9)

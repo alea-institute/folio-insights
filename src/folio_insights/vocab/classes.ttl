@@ -123,3 +123,18 @@ fi:ContestVote a owl:Class ;
     rdfs:subClassOf fi:Shard ;
     rdfs:label "contest vote" ;
     rdfs:comment "GOV-05: individual vote cast in a contest." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 9 U0 — classes the projection writes, and closed-world scopes
+# ──────────────────────────────────────────────────────────────────────────
+
+fi:GovernanceEvent a owl:Class ;
+    rdfs:label "governance event" ;
+    rdfs:comment """A governance event as the storage projection stores it (also a
+prov:Activity); its action is fi:action.""" .
+
+fi:ClosedWorldScope a owl:Class ;
+    rdfs:label "closed-world scope" ;
+    rdfs:comment """A declared closed-world island (PRD §8 P5): the classes and
+properties it names are complete inside it, so negation-as-failure holds there
+and only there. Subjects join a scope with fi:closedUnder (Phase 9 KTD8).""" .

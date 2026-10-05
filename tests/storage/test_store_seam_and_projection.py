@@ -135,7 +135,11 @@ async def test_phase11_validator_hook_runs_before_append(storage_root: Path) -> 
 
 
 async def test_stale_adapter_version_rebuilds_from_journal(storage_root: Path) -> None:
-    from folio_insights.storage.projection import META_GRAPH, ProjectionHandle
+    from folio_insights.storage.projection import (
+        META_GRAPH,
+        PROJECTION_ADAPTER_VERSION,
+        ProjectionHandle,
+    )
 
     ctx = await CorpusStorageContext.open(storage_root, "corpus-a")
     s = shard(1)
@@ -162,6 +166,6 @@ async def test_stale_adapter_version_rebuilds_from_journal(storage_root: Path) -
         await ctx.close()
     handle = ProjectionHandle(storage_root)
     try:
-        assert handle.state("corpus-a").adapter_version == 1
+        assert handle.state("corpus-a").adapter_version == PROJECTION_ADAPTER_VERSION
     finally:
         handle.close()
