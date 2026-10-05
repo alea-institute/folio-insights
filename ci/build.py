@@ -239,6 +239,12 @@ def export_build_context(
         # "tar", not "data": the data filter drops directory modes, so
         # directories would follow the local umask again.
         tar.extractall(dest, filter="tar")
+    # tarfile's stream mode stops at the end-of-archive marker, but git still
+    # writes the record padding (up to ~10 KiB). Drain it, or git blocks on a
+    # full pipe and wait() never returns (pipes shrink to 1-2 pages once the
+    # user exceeds fs.pipe-user-pages-soft).
+    archive.stdout.read()
+    archive.stdout.close()
     if archive.wait() != 0:
         raise SystemExit(f"git archive failed (exit {archive.returncode})")
 
