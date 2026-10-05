@@ -1,0 +1,107 @@
+{
+  "_note": "Synthetic contract fixture in the shape of the provider's OpenAI-compatible chat-completions endpoint. No real credentials, prompts or source text.",
+  "auth_error": {
+    "body": {
+      "error": {
+        "code": null,
+        "message": "unauthorized",
+        "param": null,
+        "type": "api_error"
+      }
+    },
+    "status": 401
+  },
+  "bad_request": {
+    "body": {
+      "error": {
+        "code": null,
+        "message": "model \"llama-nonexistent\" not found, try pulling it first",
+        "param": null,
+        "type": "api_error"
+      }
+    },
+    "status": 404
+  },
+  "body_keys": [
+    "response_format"
+  ],
+  "expected_usage": {
+    "cached_input_tokens": 0,
+    "input_tokens": 512,
+    "output_tokens": 44
+  },
+  "host": "localhost",
+  "malformed": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "message": {
+            "content": "Sure! Here is the distilled insight: object early.",
+            "role": "assistant"
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "chatcmpl-ollama-2",
+      "model": "llama3.2",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 14,
+        "prompt_tokens": 500,
+        "total_tokens": 514
+      }
+    },
+    "status": 200
+  },
+  "max_tokens_param": "max_tokens",
+  "model": "llama3.2",
+  "path": "/v1/chat/completions",
+  "rate_limit": {
+    "body": {
+      "error": {
+        "code": null,
+        "message": "server busy, please try again. maximum pending requests exceeded",
+        "param": null,
+        "type": "api_error"
+      }
+    },
+    "status": 429
+  },
+  "server_error": {
+    "body": {
+      "error": {
+        "code": null,
+        "message": "llama runner process has terminated: exit status 2",
+        "param": null,
+        "type": "api_error"
+      }
+    },
+    "status": 500
+  },
+  "valid": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "message": {
+            "content": "{\"distilled_text\": \"Object before the answer, not after.\", \"preserved_nuances\": [\"timing\"]}",
+            "role": "assistant"
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "chatcmpl-ollama-1",
+      "model": "llama3.2",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 44,
+        "prompt_tokens": 512,
+        "total_tokens": 556
+      }
+    },
+    "status": 200
+  }
+}

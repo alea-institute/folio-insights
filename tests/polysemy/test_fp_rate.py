@@ -225,15 +225,12 @@ def test_audit_disagreements_only(tmp_path: pathlib.Path) -> None:
 
     # Fake client: records the calls and returns canned responses by cluster_id.
     class _FakeClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(*, messages, response_model, **_kwargs):
-                    prompt = messages[0]["content"]
-                    for cid, v in verdicts_by_cluster.items():
-                        if cid in prompt:
-                            return v
-                    raise RuntimeError(f"no canned verdict for prompt: {prompt!r}")
+        @staticmethod
+        def structured_model_sync(prompt, response_model, **_kwargs):
+            for cid, v in verdicts_by_cluster.items():
+                if cid in prompt:
+                    return v
+            raise RuntimeError(f"no canned verdict for prompt: {prompt!r}")
 
     fake_bridge = mock.MagicMock()
     fake_bridge.get_llm_for_task.return_value = _FakeClient()
@@ -268,26 +265,23 @@ def test_audit_llm_swallow_exception(tmp_path: pathlib.Path) -> None:
     report_path = tmp_path / "fp-labeling-audit.md"
 
     class _FakeClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(*, messages, response_model, **_kwargs):
-                    prompt = messages[0]["content"]
-                    if "fi:C_crash" in prompt:
-                        raise RuntimeError("network blip")
-                    if "fi:C_ok1" in prompt:
-                        return PolysemyVerdict(
-                            decision="polysemy",
-                            polysemy_vs_homonymy_reasoning="agree",
-                            rationale="ok",
-                        )
-                    if "fi:C_ok2" in prompt:
-                        return PolysemyVerdict(
-                            decision="homonymy",
-                            polysemy_vs_homonymy_reasoning="agree",
-                            rationale="ok",
-                        )
-                    raise RuntimeError("unexpected")
+        @staticmethod
+        def structured_model_sync(prompt, response_model, **_kwargs):
+            if "fi:C_crash" in prompt:
+                raise RuntimeError("network blip")
+            if "fi:C_ok1" in prompt:
+                return PolysemyVerdict(
+                    decision="polysemy",
+                    polysemy_vs_homonymy_reasoning="agree",
+                    rationale="ok",
+                )
+            if "fi:C_ok2" in prompt:
+                return PolysemyVerdict(
+                    decision="homonymy",
+                    polysemy_vs_homonymy_reasoning="agree",
+                    rationale="ok",
+                )
+            raise RuntimeError("unexpected")
 
     fake_bridge = mock.MagicMock()
     fake_bridge.get_llm_for_task.return_value = _FakeClient()

@@ -118,17 +118,10 @@ def test_rule4_homonym_flag() -> None:
         rationale="Different etymologies; not a forkable polysemy.",
     )
 
-    class _FakeClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(**kwargs):
-                    return canned
-
     with patch(
         "folio_insights.polysemy.detector.has_framework_conflicting_axiom",
         return_value=True,
-    ), patch("instructor.from_provider", return_value=_FakeClient()):
+    ), patch("folio_insights.polysemy.detector._structured_call", return_value=canned):
         v = detect_polysemy(cluster, store=None)
     assert isinstance(v, LLMVerdict)
     assert v.decision == "homonymy"

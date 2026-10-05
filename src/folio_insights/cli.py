@@ -29,6 +29,58 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
+def _llm_options(func):
+    """``--llm-provider`` / ``--llm-model``: the run-wide route for every LLM task.
+
+    Per-task ``LLM_{TASK}_PROVIDER`` / ``LLM_{TASK}_MODEL`` environment overrides still win.
+    """
+    from folio_insights.llm.providers import supported_providers
+
+    func = click.option(
+        "--llm-model",
+        default=None,
+        help="Model for every LLM task (default: settings, or the provider's default model).",
+    )(func)
+    func = click.option(
+        "--llm-provider",
+        default=None,
+        type=click.Choice(supported_providers(), case_sensitive=False),
+        help="LLM provider for every LLM task (default: FOLIO_INSIGHTS_LLM_PROVIDER).",
+    )(func)
+    return func
+
+
+def _install_cli_llm_context(provider: str | None, model: str | None):
+    """Use the invoking user's own keys (their environment) for this CLI command.
+
+    Only CLI commands that run LLM work on the user's behalf call this, and the context lives
+    only as long as the command (``click`` closes it as a resource). ``serve`` never does: the API
+    process takes keys per request and must not hold an ambient one (R2).
+    """
+    from folio_insights.llm import Credentials, LLMRunContext, use_context
+
+    ctx = LLMRunContext(
+        credentials=Credentials.from_env(),
+        provider=provider.lower() if provider else None,
+        model=model or None,
+    )
+    click.get_current_context().with_resource(use_context(ctx))
+    return ctx
+
+
+def _echo_llm_usage(ctx) -> None:
+    summary = ctx.usage_summary()
+    if not summary["calls"]:
+        return
+    click.echo("--- LLM Usage ---")
+    for row in summary["by_task"]:
+        click.echo(
+            f"{row['task']:<18} {row['provider']}/{row['model']}: {row['calls']} call(s), "
+            f"{row['input_tokens']} in / {row['output_tokens']} out tokens"
+            + (f", {row['errors']} failed" if row["errors"] else "")
+        )
+
+
 @click.group()
 @click.version_option(package_name="folio-insights")
 def cli() -> None:
@@ -79,6 +131,7 @@ def cli() -> None:
     default=False,
     help="Enable verbose (DEBUG) logging.",
 )
+@_llm_options
 def extract(
     source_dir: str,
     corpus: str,
@@ -87,6 +140,8 @@ def extract(
     confidence_medium: float,
     resume: bool,
     verbose: bool,
+    llm_provider: str | None,
+    llm_model: str | None,
 ) -> None:
     """Extract knowledge units from source files in SOURCE_DIR.
 
@@ -124,6 +179,8 @@ def extract(
         confidence_medium=confidence_medium,
     )
 
+    llm_ctx = _install_cli_llm_context(llm_provider, llm_model)
+
     # Create and run pipeline
     from folio_insights.pipeline.orchestrator import PipelineOrchestrator
 
@@ -159,6 +216,7 @@ def extract(
     click.echo(f"  Medium confidence: {len(gated['medium'])}")
     click.echo(f"  Low confidence:    {len(gated['low'])}")
     click.echo(f"Output: {output}/{corpus}/extraction.json")
+    _echo_llm_usage(llm_ctx)
 
 
 @cli.command("discover")
@@ -196,6 +254,7 @@ def extract(
     default=False,
     help="Enable verbose (DEBUG) logging.",
 )
+@_llm_options
 def discover(
     corpus_name: str,
     output: str,
@@ -203,6 +262,8 @@ def discover(
     contradiction_threshold: float,
     resume: bool,
     verbose: bool,
+    llm_provider: str | None,
+    llm_model: str | None,
 ) -> None:
     """Discover advocacy tasks from extracted knowledge units in CORPUS_NAME.
 
@@ -233,6 +294,8 @@ def discover(
         output_dir=output_path,
         corpus_name=corpus_name,
     )
+
+    llm_ctx = _install_cli_llm_context(llm_provider, llm_model)
 
     # Create and run discovery pipeline
     from folio_insights.pipeline.discovery.orchestrator import (
@@ -273,6 +336,7 @@ def discover(
     click.echo(f"Orphan units:        {orphan_count}")
     click.echo(f"Output: {output}/{corpus_name}/discovery.json")
     click.echo(f"Tree:   {output}/{corpus_name}/task_tree.json")
+    _echo_llm_usage(llm_ctx)
 
 
 @cli.command("export")

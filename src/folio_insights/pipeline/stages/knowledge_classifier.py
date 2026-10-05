@@ -12,18 +12,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
-from pydantic import BaseModel, Field
-
+from folio_insights.llm.schemas import ClassificationOutput, NoveltyOutput
+from folio_insights.llm.templates import CLASSIFY, NOVELTY
 from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
     InsightsPipelineStage,
     record_lineage,
 )
-from folio_insights.services.prompts.classification import CLASSIFICATION_PROMPT
-from folio_insights.services.prompts.novelty import NOVELTY_SCORING_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -39,19 +36,9 @@ _TYPE_MAP = {
 }
 
 
-class ClassificationResult(BaseModel):
-    """Structured output from the classification LLM call."""
-
-    unit_type: str
-    confidence: float = 0.5
-    reasoning: str = ""
-
-
-class NoveltyResult(BaseModel):
-    """Structured output from the novelty scoring LLM call."""
-
-    score: float = 0.5
-    reasoning: str = ""
+# Validated output models for the two LLM calls (defined with the template registry).
+ClassificationResult = ClassificationOutput
+NoveltyResult = NoveltyOutput
 
 
 class KnowledgeClassifierStage(InsightsPipelineStage):
@@ -102,10 +89,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
         """Classify a single unit's type via LLM."""
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
-        prompt = CLASSIFICATION_PROMPT.format(
-            text=unit.text,
-            section_path=section_context,
-        )
+        prompt = CLASSIFY.render(text=unit.text, section_path=section_context)
 
         try:
             from folio_insights.services.bridge.llm_bridge import LLMBridge
@@ -114,17 +98,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("classifier")
 
             result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "unit_type": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "reasoning": {"type": "string"},
-                    },
-                    "required": ["unit_type", "confidence"],
-                },
-                temperature=0,
+                prompt, schema=ClassificationOutput, temperature=0
             )
 
             unit_type_str = result.get("unit_type", "advice").lower().strip()
@@ -152,10 +126,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
         """Score novelty/surprise for a single unit via LLM."""
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
-        prompt = NOVELTY_SCORING_PROMPT.format(
-            text=unit.text,
-            section_path=section_context,
-        )
+        prompt = NOVELTY.render(text=unit.text, section_path=section_context)
 
         try:
             from folio_insights.services.bridge.llm_bridge import LLMBridge
@@ -164,16 +135,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("novelty")
 
             result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "score": {"type": "number"},
-                        "reasoning": {"type": "string"},
-                    },
-                    "required": ["score"],
-                },
-                temperature=0,
+                prompt, schema=NoveltyOutput, temperature=0
             )
 
             score = result.get("score", 0.5)

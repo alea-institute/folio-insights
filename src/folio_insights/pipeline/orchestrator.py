@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from folio_insights.config import Settings
+from folio_insights.llm.context import current_context
 from folio_insights.models.corpus import CorpusManifest
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
@@ -196,6 +197,10 @@ class PipelineOrchestrator:
             stage_start = time.monotonic()
             try:
                 job = await stage.execute(job)
+                # A run-halting LLM condition (no credential, spend cap) is swallowed per call by
+                # the stage's own error handling; it must still stop the run here, before the
+                # degraded stage output is checkpointed, so a resume re-runs this stage.
+                current_context().raise_if_halted()
             except Exception:
                 logger.exception("Stage '%s' failed", stage_name)
                 raise
@@ -210,6 +215,12 @@ class PipelineOrchestrator:
 
             # Save checkpoint
             PipelineCheckpoint.save(stage_name, job, corpus_dir)
+
+        # LLM accounting for the run report: per-task calls/tokens and the template hashes the
+        # run actually used (no prompts, no unit text, no credentials).
+        llm_summary = current_context().usage_summary()
+        if llm_summary["calls"]:
+            job.metadata["llm"] = llm_summary
 
         # Post-pipeline: confidence gating + output formatting
         pipeline_duration = time.monotonic() - pipeline_start

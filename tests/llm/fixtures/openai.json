@@ -1,0 +1,135 @@
+{
+  "_note": "Synthetic contract fixture in the shape of the provider's OpenAI-compatible chat-completions endpoint. No real credentials, prompts or source text.",
+  "auth_error": {
+    "body": {
+      "error": {
+        "code": "invalid_api_key",
+        "message": "Incorrect API key provided: sk-test-****3333. You can find your API key at https://platform.openai.com/account/api-keys.",
+        "param": null,
+        "type": "invalid_request_error"
+      }
+    },
+    "status": 401
+  },
+  "bad_request": {
+    "body": {
+      "error": {
+        "code": "model_not_found",
+        "message": "The model `gpt-nonexistent` does not exist or you do not have access to it.",
+        "param": null,
+        "type": "invalid_request_error"
+      }
+    },
+    "status": 404
+  },
+  "body_keys": [
+    "tools",
+    "tool_choice"
+  ],
+  "expected_usage": {
+    "cached_input_tokens": 128,
+    "input_tokens": 412,
+    "output_tokens": 37
+  },
+  "host": "api.openai.com",
+  "malformed": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"preserved_nuances\": \"not-a-list\"}",
+                  "name": "DistilledOutput"
+                },
+                "id": "call_0",
+                "type": "function"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "chatcmpl-synthetic-2",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 9,
+        "prompt_tokens": 400,
+        "total_tokens": 409
+      }
+    },
+    "status": 200
+  },
+  "max_tokens_param": "max_completion_tokens",
+  "model": "gpt-4.1-mini",
+  "path": "/v1/chat/completions",
+  "rate_limit": {
+    "body": {
+      "error": {
+        "code": "rate_limit_exceeded",
+        "message": "Rate limit reached for gpt-4.1-mini on requests per min (RPM).",
+        "param": null,
+        "type": "requests"
+      }
+    },
+    "status": 429
+  },
+  "server_error": {
+    "body": {
+      "error": {
+        "code": null,
+        "message": "The server had an error while processing your request.",
+        "param": null,
+        "type": "server_error"
+      }
+    },
+    "status": 500
+  },
+  "valid": {
+    "body": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "content": null,
+            "role": "assistant",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"distilled_text\": \"Object before the answer, not after.\", \"preserved_nuances\": [\"timing\"]}",
+                  "name": "DistilledOutput"
+                },
+                "id": "call_0",
+                "type": "function"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1759622400,
+      "id": "chatcmpl-synthetic-1",
+      "model": "gpt-4.1-mini-2025-04-14",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 37,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_tokens": 412,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 128
+        },
+        "total_tokens": 449
+      }
+    },
+    "status": 200
+  }
+}

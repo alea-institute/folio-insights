@@ -81,6 +81,12 @@ console = Console()
 @click.group("polysemy")
 def polysemy() -> None:
     """Polysemy / distinguo spike: detect, review, audit."""
+    # The LLM fallback and FP audit run on the invoking user's own keys (their environment).
+    from folio_insights.llm import Credentials, LLMRunContext, use_context
+
+    click.get_current_context().with_resource(
+        use_context(LLMRunContext(credentials=Credentials.from_env()))
+    )
 
 
 # --------------------------- detect ---------------------------

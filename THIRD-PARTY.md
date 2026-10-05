@@ -24,7 +24,9 @@ Project-authored vocab/SHACL (`vocab/classes.ttl`, `predicates.ttl`,
 | Component | License | Used for |
 |-----------|---------|----------|
 | pydantic, pydantic-settings | MIT | models + settings |
-| instructor | MIT | structured LLM calls |
+| instructor | MIT | structured LLM calls (the Phase 10 LLM port's validation and single retry layer) |
+| openai | Apache-2.0 | LLM port transport: every supported provider's OpenAI-compatible chat-completions endpoint (declared directly in Phase 10; already in the lock as an instructor dependency) |
+| tenacity | Apache-2.0 | LLM port retry policy (declared directly in Phase 10; already in the lock as an instructor dependency) |
 | folio-python | MIT | FOLIO ontology access |
 | folio-resolve | MIT | deterministic label→IRI resolution, entity ruler, reconciler, match gates |
 | folio-propositions | MIT | proposition models imported by the folio-enrich bridge (git dependency, pinned to a commit in `uv.lock` / `requirements.vcs.lock`) |

@@ -1,8 +1,8 @@
 """Distiller pipeline stage: compress knowledge units to core insight.
 
 Preserves tactical nuance while stripping filler, hedging, repetition,
-and attribution phrases. Uses LLM (large model) with instructor for
-structured output.
+and attribution phrases. Calls the LLM port (``folio_insights.llm``) for validated
+structured output under the ``distiller.distill`` prompt template.
 """
 
 from __future__ import annotations
@@ -11,16 +11,15 @@ import asyncio
 import hashlib
 import logging
 
-from pydantic import BaseModel, Field
-
 from folio_insights.config import get_settings
+from folio_insights.llm.schemas import DistilledOutput
+from folio_insights.llm.templates import DISTILL
 from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
     InsightsPipelineStage,
     record_lineage,
 )
-from folio_insights.services.prompts.distillation import DISTILLATION_PROMPT
 from folio_insights.services.substance import is_substantive
 
 logger = logging.getLogger(__name__)
@@ -29,11 +28,7 @@ logger = logging.getLogger(__name__)
 _BATCH_SIZE = 15
 
 
-class DistilledOutput(BaseModel):
-    """Structured output from the distillation LLM call."""
-
-    distilled_text: str
-    preserved_nuances: list[str] = Field(default_factory=list)
+__all__ = ["DistilledOutput", "DistillerStage"]
 
 
 class DistillerStage(InsightsPipelineStage):
@@ -91,27 +86,12 @@ class DistillerStage(InsightsPipelineStage):
 
         section_context = " > ".join(unit.source_section) if unit.source_section else "N/A"
 
-        prompt = DISTILLATION_PROMPT.format(
-            text=unit.text,
-            section_path=section_context,
-        )
+        prompt = DISTILL.render(text=unit.text, section_path=section_context)
 
         try:
             llm_provider = llm_bridge.get_llm_for_task("distiller")  # type: ignore[union-attr]
             result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "distilled_text": {"type": "string"},
-                        "preserved_nuances": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                        },
-                    },
-                    "required": ["distilled_text"],
-                },
-                temperature=0,
+                prompt, schema=DistilledOutput, temperature=0
             )
 
             distilled_text = result.get("distilled_text", "").strip()

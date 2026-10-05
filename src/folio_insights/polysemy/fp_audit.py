@@ -130,12 +130,20 @@ def run_llm_audit_pass(
     reconciliation.
 
     Per OQ-5 RESOLVED: single `llm_provider` parameter carries the model
-    string (e.g. "claude-haiku-4-5"). Family is resolved by LLMBridge
-    via prefix mapping — there is NO separate `model` parameter.
+    string (e.g. "claude-haiku-4-5"). Its family is resolved with the
+    detector's prefix mapping and the call is routed through the LLM port —
+    there is NO separate `model` parameter.
     """
+    from folio_insights.llm import Route
+    from folio_insights.polysemy.detector import _resolve_provider_family
     from folio_insights.services.bridge.llm_bridge import LLMBridge
+
     bridge = llm_bridge if llm_bridge is not None else LLMBridge()
-    client = bridge.get_llm_for_task("polysemy_fallback")
+    family = _resolve_provider_family(llm_provider)
+    model = llm_provider.removeprefix("ollama/")
+    client = bridge.get_llm_for_task(
+        "polysemy_fallback", route=Route(provider=family, model=model)
+    )
 
     disagreements: list[dict[str, Any]] = []
     total = 0
@@ -177,26 +185,24 @@ def run_llm_audit_pass(
 
 
 def _invoke_audit(client: Any, record: DispositionRecord) -> Any:
-    """Dispatch an instructor call against the detector's discriminated-union schema.
+    """One validated ``PolysemyVerdict`` call through the LLM port's task facade.
 
     Embeds the canonical `detector_verdict: dict` snapshot verbatim in the
-    prompt — the LLM sees exactly what the detector reported.
+    prompt — the LLM sees exactly what the detector reported. (The previous
+    version called an instructor-style ``client.chat.completions.create`` on
+    the folio-enrich provider, which has no such method.)
     """
-    from folio_insights.polysemy.detector import PolysemyVerdict
-    prompt = (
-        f"Term: {record.term}\n"
-        f"Cluster: {record.cluster_id}\n"
-        f"Reviewer disposition: {record.decision}\n"
-        f"Reviewer rationale: {record.rationale or '(none)'}\n"
-        f"Detector verdict (snapshot): {record.detector_verdict}\n\n"
-        f"Independently classify this cluster as polysemy, homonymy, "
-        f"coincidence, or uncertain. Provide both polysemy_vs_homonymy_reasoning "
-        f"and rationale fields. Be brief."
+    from folio_insights.llm.schemas import PolysemyVerdict
+    from folio_insights.llm.templates import POLYSEMY_FP_AUDIT
+
+    prompt = POLYSEMY_FP_AUDIT.render(
+        term=record.term,
+        cluster_id=record.cluster_id,
+        decision=record.decision,
+        rationale=record.rationale or "(none)",
+        detector_verdict=record.detector_verdict,
     )
-    return client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}],
-        response_model=PolysemyVerdict,
-    )
+    return client.structured_model_sync(prompt, PolysemyVerdict, template=POLYSEMY_FP_AUDIT)
 
 
 def _is_agreement(reviewer_decision: str, llm_decision: str) -> bool:

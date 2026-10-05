@@ -36,6 +36,8 @@ import os
 from collections import Counter
 from typing import Any
 
+from folio_insights.llm.schemas import ConceptOutput, JudgeOutput
+from folio_insights.llm.templates import BRANCH_JUDGE, CONCEPT
 from folio_insights.models.knowledge_unit import ConceptTag, KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
@@ -55,25 +57,6 @@ logger = logging.getLogger(__name__)
 # an ambiguous term ("Defenses", "charge") disambiguates in a litigation context. These base
 # subjects are always active; metadata-as-signal harvest (below) appends corpus-specific ones.
 BASE_PRIOR_SUBJECTS: tuple[str, ...] = ("Litigation", "Trial Practice")
-
-# Structured-output schema for the judge (mirrors folio_resolve.build_judge_prompt's contract).
-_JUDGE_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "judged": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "iri_hash": {"type": "string"},
-                    "adjusted_score": {"type": "number"},
-                    "verdict": {"type": "string"},
-                    "reasoning": {"type": "string"},
-                },
-            },
-        }
-    },
-}
 
 # Judge verdict -> calibration verdict (ScoreCalibration's correct/weak/wrong dataset).
 _VERDICT_TO_CALIBRATION = {
@@ -307,32 +290,9 @@ class FolioTaggerStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("concept")
 
             context = " > ".join(section_path) if section_path else ""
-            prompt = (
-                f"Identify FOLIO legal ontology concepts in this text. "
-                f"Return concept labels and confidence scores.\n\n"
-                f"Text: {text}\n"
-                f"Section context: {context}"
-            )
+            prompt = CONCEPT.render(text=text, context=context)
 
-            result = await llm_provider.structured(
-                prompt,
-                schema={
-                    "type": "object",
-                    "properties": {
-                        "concepts": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "concept_text": {"type": "string"},
-                                    "confidence": {"type": "number"},
-                                },
-                            },
-                        }
-                    },
-                },
-                temperature=0,
-            )
+            result = await llm_provider.structured(prompt, schema=ConceptOutput, temperature=0)
 
             return [
                 {
@@ -506,7 +466,9 @@ class FolioTaggerStage(InsightsPipelineStage):
         try:
             provider = self._get_judge_provider()
             result = await provider.structured(
-                f"{system}\n\n{user}", schema=_JUDGE_SCHEMA, temperature=0
+                BRANCH_JUDGE.render(judge_system=system, judge_user=user),
+                schema=JudgeOutput,
+                temperature=0,
             )
             self._judge_call_count += 1
         except Exception:

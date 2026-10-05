@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from folio_insights.config import Settings
+from folio_insights.llm.context import current_context
 from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.models.task import (
     DiscoveredTask,
@@ -304,6 +305,10 @@ class TaskDiscoveryOrchestrator:
             stage_start = time.monotonic()
             try:
                 job = await stage.execute(job)
+                # A run-halting LLM condition (no credential, spend cap) is swallowed per call by
+                # the stage's own error handling; it must still stop the run here, before the
+                # degraded stage output is checkpointed, so a resume re-runs this stage.
+                current_context().raise_if_halted()
             except Exception:
                 logger.exception("Discovery stage '%s' failed", stage_name)
                 raise

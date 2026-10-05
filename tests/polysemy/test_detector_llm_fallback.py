@@ -52,20 +52,15 @@ def test_llm_fallback_returns_discriminated_union(
         rationale="Per prime-analogate reading.",
     )
 
-    class _FakeClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(**kwargs):
-                    return canned
-
     captured: dict[str, str] = {}
 
-    def _fake_from_provider(spec: str):
-        captured["spec"] = spec
-        return _FakeClient()
+    def _fake_call(family: str, model: str, prompt: str) -> PolysemyVerdict:
+        captured.update(family=family, model=model, prompt=prompt)
+        return canned
 
-    with patch("instructor.from_provider", side_effect=_fake_from_provider):
+    # Phase 10 U1: the fallback goes through the LLM port (``_structured_call``), not
+    # ``instructor.from_provider`` with an ambient key.
+    with patch("folio_insights.polysemy.detector._structured_call", side_effect=_fake_call):
         verdict = _invoke_llm_fallback(
             cluster, llm_provider=provider, matched_rules=["test"],
         )
@@ -73,17 +68,29 @@ def test_llm_fallback_returns_discriminated_union(
     assert isinstance(verdict, LLMVerdict)
     assert verdict.decision == "polysemy"
     assert verdict.provider == expected_family
-    assert captured["spec"].startswith(expected_family + ":")
+    assert captured["family"] == expected_family
+    assert captured["model"] == provider.removeprefix("ollama/")
+    assert "consideration" in captured["prompt"]
     # No raw-float confidence in verdict shape (Pitfall A6 discipline)
     assert not hasattr(verdict, "confidence_score")
 
 
 def test_llm_fallback_swallows_exceptions() -> None:
-    """If instructor raises, detector returns uncertain verdict — never propagates."""
+    """If the port call raises, detector returns uncertain verdict — never propagates."""
     cluster = _mini_cluster()
-    with patch("instructor.from_provider", side_effect=RuntimeError("network")):
+    with patch("folio_insights.polysemy.detector._structured_call",
+               side_effect=RuntimeError("network")):
         verdict = _invoke_llm_fallback(
             cluster, llm_provider="claude-haiku-4-5", matched_rules=["test"],
         )
     assert verdict.decision == "uncertain"
     assert "RuntimeError" in verdict.polysemy_vs_homonymy_reasoning
+
+
+def test_llm_fallback_without_credentials_is_uncertain_and_offline() -> None:
+    """Through the real port with no credential installed: no network, an uncertain verdict."""
+    verdict = _invoke_llm_fallback(
+        _mini_cluster(), llm_provider="claude-haiku-4-5", matched_rules=["test"],
+    )
+    assert verdict.decision == "uncertain"
+    assert "MissingCredentialsError" in verdict.polysemy_vs_homonymy_reasoning
