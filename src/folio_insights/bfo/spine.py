@@ -29,9 +29,9 @@ when neither a rule nor the LLM types a subject. Defaults are recorded as
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from folio_insights.vocab._constants import BFO_CATEGORY_SPINE_CLASS, FI_PREFIX
 
@@ -116,10 +116,69 @@ def branch_for(value: str) -> BranchMapping | None:
     return BRANCH_BY_IRI.get(value) or BRANCH_BY_LABEL.get(value.strip().casefold())
 
 
+@runtime_checkable
+class BranchResolver(Protocol):
+    """FOLIO class ancestry: the direct ``rdfs:subClassOf`` parents of an IRI."""
+
+    def parents(self, iri: str) -> Iterable[str]: ...
+
+
+class ParentMapResolver:
+    """Ancestry from an explicit ``iri -> parents`` map (tests, cached exports)."""
+
+    def __init__(self, parents: Mapping[str, Iterable[str]]) -> None:
+        self._parents = {k: tuple(v) for k, v in parents.items()}
+
+    def parents(self, iri: str) -> Iterable[str]:
+        return self._parents.get(iri, ())
+
+
+class FolioOntologyResolver:
+    """Ancestry from a loaded ``folio.FOLIO`` graph (``OWLClass.sub_class_of``).
+
+    The caller loads FOLIO (that may need the network); this adapter only reads it.
+    """
+
+    def __init__(self, folio: Any) -> None:
+        self._folio = folio
+
+    def parents(self, iri: str) -> Iterable[str]:
+        cls = self._folio[iri]
+        return () if cls is None else tuple(getattr(cls, "sub_class_of", None) or ())
+
+
+def top_level_branches(
+    iri: str, resolver: BranchResolver | None, *, max_depth: int = 64
+) -> list[BranchMapping]:
+    """The FOLIO top-level branches in ``iri``'s ancestry (itself included),
+    found by walking the resolver's parents — never taken from the caller.
+    Without a resolver only a top-level branch IRI itself resolves."""
+    found: dict[str, BranchMapping] = {}
+    frontier, seen, depth = [iri], {iri}, 0
+    while frontier and depth <= max_depth:
+        nxt: list[str] = []
+        for node in frontier:
+            if node in BRANCH_BY_IRI:
+                found[node] = BRANCH_BY_IRI[node]
+                continue  # a top-level branch: do not climb above it
+            if resolver is None:
+                continue
+            for parent in resolver.parents(node):
+                if parent not in seen:
+                    seen.add(parent)
+                    nxt.append(parent)
+        frontier, depth = nxt, depth + 1
+    return [found[k] for k in sorted(found)]
+
+
 __all__ = [
     "BRANCH_BY_IRI",
     "BRANCH_BY_LABEL",
     "BfoCategory",
+    "BranchResolver",
+    "FolioOntologyResolver",
+    "ParentMapResolver",
+    "top_level_branches",
     "BranchMapping",
     "CATEGORY_SPINE_CLASS",
     "DEFAULT_CATEGORY_BY_SPEECH_ACT",

@@ -54,8 +54,32 @@ class FakeLLM:
         return self.choice
 
 
-def _tag(branch_iri: str, n: int = 0, **kw) -> FolioTag:  # noqa: ANN003
-    return FolioTag(iri=f"https://folio.openlegalstandard.org/Rsynthetic{n}", branch=branch_iri, **kw)
+_SYN = "https://folio.openlegalstandard.org/Rsyn"
+
+
+class SyntheticFolio:
+    """Synthetic FOLIO ancestry: leaf ``Rsyn<b>x<n>`` -> ``Rsynmid<b>`` -> the
+    top-level branch ``b``. Inputs only ever carry leaf IRIs; the classifier
+    has to climb to find the branch (review P2-9)."""
+
+    def parents(self, iri: str):  # noqa: ANN201
+        local = iri.removeprefix(_SYN)
+        if local.startswith("mid"):
+            return (FOLIO_BRANCH_SPINE[int(local[3:])].iri,)
+        if "x" in local and local.split("x")[0].isdigit():
+            return (f"{_SYN}mid{local.split('x')[0]}",)
+        return ()
+
+
+RESOLVER = SyntheticFolio()
+
+
+def _leaf(branch, n: int = 0) -> str:  # noqa: ANN001
+    return f"{_SYN}{FOLIO_BRANCH_SPINE.index(branch)}x{n}"
+
+
+def _tag(branch, n: int = 0, *, verified: bool = True, **kw) -> FolioTag:  # noqa: ANN001, ANN003
+    return FolioTag(iri=_leaf(branch, n), verified=verified, **kw)
 
 
 # ── the table ─────────────────────────────────────────────────────────────
@@ -100,10 +124,10 @@ def test_rule_types_from_the_verified_tag_branch() -> None:
     event = next(b for b in FOLIO_BRANCH_SPINE if b.label == "Event")
     entity = next(b for b in FOLIO_BRANCH_SPINE if b.label == "Legal Entity")
     llm = FakeLLM("occurrent_process")
-    result = BfoClassifier(llm=llm).classify(BfoInput(
+    result = BfoClassifier(llm=llm, resolver=RESOLVER).classify(BfoInput(
         speech_act="holding",
-        folio_tags=(_tag(entity.iri, 1, verified=False), _tag(event.iri, 2, confidence=0.8),
-                    _tag(entity.iri, 3, confidence=0.6)),
+        folio_tags=(_tag(entity, 1, verified=False), _tag(event, 2, confidence=0.8),
+                    _tag(entity, 3, confidence=0.6)),
     ))
     assert (result.category, result.source, result.branch) == ("occurrent_event", "rule", event.iri)
     assert result.spine_class == FI_PREFIX + "Process"
@@ -112,10 +136,37 @@ def test_rule_types_from_the_verified_tag_branch() -> None:
     assert llm.calls == 0
 
 
-def test_branch_may_be_named_by_label() -> None:
-    result = BfoClassifier().classify(BfoInput(
-        speech_act="holding", folio_tags=(_tag("governmental body"),)))
-    assert result.category == "continuant_independent" and result.source == "rule"
+def test_branch_comes_from_ancestry_not_the_caller() -> None:
+    """Review P2-9: tags are unverified by default and carry no caller branch."""
+    from pydantic import ValidationError
+
+    gov = next(b for b in FOLIO_BRANCH_SPINE if b.label == "Governmental Body")
+    assert FolioTag(iri=_leaf(gov)).verified is False
+    with pytest.raises(ValidationError):
+        FolioTag(iri=_leaf(gov), verified=True, branch="Event")  # type: ignore[call-arg]
+    unverified = BfoClassifier(resolver=RESOLVER).classify(
+        BfoInput(speech_act="holding", folio_tags=(FolioTag(iri=_leaf(gov)),)))
+    assert unverified.source == "default"
+    typed = BfoClassifier(resolver=RESOLVER).classify(
+        BfoInput(speech_act="holding", folio_tags=(_tag(gov),)))
+    assert (typed.category, typed.source, typed.branch) == ("continuant_independent", "rule", gov.iri)
+    # without ancestry a leaf cannot be typed; a top-level branch IRI types itself
+    no_resolver = BfoClassifier().classify(BfoInput(speech_act="holding", folio_tags=(_tag(gov),)))
+    assert no_resolver.source == "default"
+    itself = BfoClassifier().classify(BfoInput(
+        speech_act="holding", folio_tags=(FolioTag(iri=gov.iri, verified=True),)))
+    assert itself.source == "rule"
+
+
+def test_tag_with_conflicting_ancestry_is_ambiguous() -> None:
+    from folio_insights.bfo.spine import ParentMapResolver
+
+    event = next(b for b in FOLIO_BRANCH_SPINE if b.label == "Event")
+    entity = next(b for b in FOLIO_BRANCH_SPINE if b.label == "Legal Entity")
+    resolver = ParentMapResolver({"urn:x:both": (event.iri, entity.iri)})
+    result = BfoClassifier(resolver=resolver).classify(BfoInput(
+        speech_act="holding", folio_tags=(FolioTag(iri="urn:x:both", verified=True),)))
+    assert result.source == "default" and any("ambiguous" in e for e in result.evidence)
 
 
 def test_llm_fallback_then_default_in_permissive_mode() -> None:
@@ -129,7 +180,8 @@ def test_llm_fallback_then_default_in_permissive_mode() -> None:
 
 
 def test_strict_mode_refuses_an_untypeable_shard() -> None:
-    item = BfoInput(speech_act="holding", folio_tags=(_tag("Not A Branch"),))
+    item = BfoInput(speech_act="holding",
+                    folio_tags=(FolioTag(iri="urn:x:no-ancestry", verified=True),))
     with pytest.raises(BfoUnclassifiable):
         BfoClassifier(mode="strict", llm=FakeLLM(None)).classify(item)
     permissive = BfoClassifier(mode="permissive", llm=FakeLLM(None)).classify(item)
@@ -158,12 +210,15 @@ def test_port_adapter_constrains_the_llm_to_four_categories() -> None:
 
 
 def _benchmark_inputs(per_branch: int = 40, untyped: int = 40) -> list[tuple[str, BfoInput]]:
-    """Every FOLIO top-level branch represented, plus subjects with no tags."""
+    """Every FOLIO top-level branch represented by LEAF tags two levels below
+    it (the branch is never given), a share of unverified noise tags, plus
+    subjects with no tags."""
     out = []
     for b_index, branch in enumerate(FOLIO_BRANCH_SPINE):
         for i in range(per_branch):
+            noise = FolioTag(iri=_leaf(FOLIO_BRANCH_SPINE[(b_index + 1) % 24], i), confidence=1.0)
             out.append((f"urn:x:source/{b_index % 5}", BfoInput(
-                speech_act="holding", folio_tags=(_tag(branch.iri, i),))))
+                speech_act="holding", folio_tags=(noise, _tag(branch, i, confidence=0.8)))))
     for i in range(untyped):
         out.append((f"urn:x:source/{i % 5}", BfoInput(speech_act="dictum", subject=f"s{i}")))
     return out
@@ -179,10 +234,13 @@ def test_synthetic_benchmark_coverage_is_at_least_95_percent() -> None:
             category, conf = next(answers)
             return BfoLLMChoice(category=category, confidence=conf)
 
-    classifier = BfoClassifier(llm=ScriptedLLM())
+    classifier = BfoClassifier(llm=ScriptedLLM(), resolver=RESOLVER)
     records = []
     for n, (source, item) in enumerate(_benchmark_inputs()):
         a = classifier.classify(item)
+        if a.source == "rule":  # the noise tag never decides: it is unverified
+            expected = FOLIO_BRANCH_SPINE[int(item.folio_tags[1].iri.removeprefix(_SYN).split("x")[0])]
+            assert a.branch == expected.iri
         records.append(BfoRecord(f"urn:x:shard/{n}", source, a.category, a.source))
     report = build_report(records)
     assert report.total == 24 * 40 + 40
@@ -197,7 +255,9 @@ def test_synthetic_benchmark_coverage_is_at_least_95_percent() -> None:
 
 @pytest.mark.parametrize("branch", FOLIO_BRANCH_SPINE, ids=lambda b: b.label)
 def test_projection_asserts_the_mapped_spine_class(branch) -> None:  # noqa: ANN001
-    assignment = BfoClassifier().classify(BfoInput(speech_act="holding", folio_tags=(_tag(branch.iri),)))
+    assignment = BfoClassifier(resolver=RESOLVER).classify(
+        BfoInput(speech_act="holding", folio_tags=(_tag(branch),)))
+    assert assignment.source == "rule" and assignment.branch == branch.iri
     s = _sample_shard(SimpleAssertionShard, bfo_category=assignment.category)
     spine = [o.value for _s, p, o in shard_triples(s, journal_position=0)
              if p.value == FI_PREFIX + "subjectBfoClass"]
@@ -207,9 +267,9 @@ def test_projection_asserts_the_mapped_spine_class(branch) -> None:  # noqa: ANN
 async def test_corpus_report_reads_shards_and_recorded_provenance(tmp_path: Path) -> None:
     ctx = await CorpusStorageContext.open(tmp_path / "storage", "corpus-a")
     try:
-        classifier = BfoClassifier()
+        classifier = BfoClassifier(resolver=RESOLVER)
         event = next(b for b in FOLIO_BRANCH_SPINE if b.label == "Event")
-        typed = classifier.classify(BfoInput(speech_act="holding", folio_tags=(_tag(event.iri),)))
+        typed = classifier.classify(BfoInput(speech_act="holding", folio_tags=(_tag(event),)))
         default = classifier.classify(BfoInput(speech_act="practitioner_advice"))
         shards = [
             shard(1, source_uri="urn:x:src/a", bfo_category=typed.category),

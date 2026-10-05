@@ -48,6 +48,9 @@ PromotionStatus = Literal[
     "authority_only",
 ]
 ContestResolutionPath = Literal["arbiter", "distinguo", "aporetic"]
+# Mirrors ``revision.policies.CascadePolicy`` (a test pins the agreement); kept
+# here so this module stays stdlib + Pydantic (D-04).
+CascadePolicyName = Literal["prefer_latest", "prefer_authority", "prefer_most_specific_jurisdiction"]
 
 # Explicit marker for the governance signed-payload format. v1 (pre-Phase 13)
 # hashed the event body only; v2 also binds the signer DID, ``signed_at`` and
@@ -254,6 +257,12 @@ class RetractionEvent(_BaseEvent):
     action: Literal["retract"] = "retract"
     shard_iri: str
     cascade_preview_hash: str
+    # Phase 9 review P2-5: the cascade policy the confirmed preview classified
+    # under, so derived state can re-apply it. Optional and additive: when
+    # unset it is EXCLUDED from every dump, so an event without it serializes
+    # (and is signed and journaled) byte-for-byte as before. Derived state
+    # treats a missing policy as "review everything" (fail closed).
+    policy: CascadePolicyName | None = Field(default=None, exclude_if=lambda v: v is None)
 
 
 class ContentEditEvent(_BaseEvent):

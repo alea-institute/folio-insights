@@ -599,6 +599,11 @@ fi:newParentIri a owl:ObjectProperty ;
     rdfs:label "new parent IRI" ;
     rdfs:comment "The new elaboration parent a reparent governance event names." .
 
+fi:cascadePolicy a owl:DatatypeProperty ;
+    rdfs:label "cascade policy" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The cascade policy a retraction event was committed under (prefer_latest, prefer_authority, prefer_most_specific_jurisdiction)." .
+
 fi:strategy a owl:DatatypeProperty ;
     rdfs:label "strategy" ;
     rdfs:range xsd:string ;

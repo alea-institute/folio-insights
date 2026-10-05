@@ -133,8 +133,8 @@ def _sanitize_iri_for_filename(iri: str) -> str:
     help=(
         "Cascade policy for direct dependents (Phase 9 KTD6): re-derive against "
         "the retracted shard's successor when the policy accepts it. Dependents "
-        "two or more hops away are always flagged review_needed. Ignored with "
-        "--apply (the saved preview records its policy)."
+        "two or more hops away are always flagged review_needed. With --apply "
+        "the saved preview's policy is used; a different --policy is refused."
     ),
 )
 @corpus_root_option
@@ -205,6 +205,15 @@ def retract_cmd(
             click.echo(
                 f"preview file is for {saved.retracted_shard_iri!r} in corpus "
                 f"{saved.corpus!r}, not {shard_iri!r} in {corpus!r}; refusing.",
+                err=True,
+            )
+            sys.exit(1)
+        explicit = click.get_current_context().get_parameter_source("policy")
+        if explicit is not click.core.ParameterSource.DEFAULT and policy != saved.policy:
+            click.echo(
+                f"--policy {policy} conflicts with the saved preview's policy "
+                f"{saved.policy!r}; --apply commits the preview as saved. Re-run "
+                "--preview with the policy you want; refusing.",
                 err=True,
             )
             sys.exit(1)

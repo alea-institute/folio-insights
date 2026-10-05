@@ -155,3 +155,38 @@ def test_el_check_never_imports_owlready2() -> None:
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
     assert out.returncode == 0 and out.stdout.strip() == "ok", out.stderr
+
+
+@pytest.mark.parametrize(
+    ("ttl", "rule"),
+    [
+        ("ex:d a owl:DatatypeProperty ; rdfs:range [ a rdfs:Datatype ; owl:intersectionOf ( xsd:boolean xsd:string ) ] .",
+         "datatype-outside-el"),
+        ("ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:d ; owl:someValuesFrom "
+         "[ a rdfs:Datatype ; owl:intersectionOf ( xsd:double xsd:decimal ) ] ] .", "datatype-outside-el"),
+        ('ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:d ; owl:hasValue "1.5"^^xsd:double ] .',
+         "datatype-outside-el"),
+        ("ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:d ; owl:hasValue true ] .",
+         "datatype-outside-el"),
+        ("ex:r owl:propertyChainAxiom ( ex:p ex:q ) . ex:q rdfs:range ex:C .", "property-chain-range"),
+    ],
+)
+def test_review_false_negatives_are_caught(ttl: str, rule: str) -> None:
+    """Review P2-8: nested data ranges, hasValue literals, the chain range rule."""
+    assert rule in {v.rule for v in _check(ttl)}
+
+
+@pytest.mark.parametrize(
+    "ttl",
+    [
+        "ex:r owl:propertyChainAxiom ( ex:p ex:q ) . ex:r rdfs:range ex:C . ex:q rdfs:range ex:C .",
+        "ex:s rdfs:range ex:C . ex:r rdfs:subPropertyOf ex:s ; owl:propertyChainAxiom ( ex:p ex:q ) . "
+        "ex:q rdfs:range ex:C .",
+        'ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:d ; owl:hasValue "x" ] .',
+        'ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:d ; owl:hasValue "x"@en ] .',
+        'ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:d ; owl:hasValue 3 ] .',
+        "ex:d rdfs:range [ a rdfs:Datatype ; owl:intersectionOf ( xsd:integer xsd:decimal ) ] .",
+    ],
+)
+def test_el_safe_variants_still_pass(ttl: str) -> None:
+    assert _check(ttl) == []

@@ -3,7 +3,9 @@
 Sources, in order; the FIRST confident one wins:
 
 1. **metadata** — an explicit framework ID in the source metadata (v1-style
-   IDs are migrated: year suffix stripped, with a warning).
+   IDs are migrated: year suffix stripped, with a warning). An explicit ID
+   that is unregistered or malformed ends detection with no framework: the
+   later stages never override what the source says.
 2. **corpus_default** — the corpus manifest's default framework.
 3. **citation** — known citation patterns in the source's citation strings;
    a single framework must dominate.
@@ -169,9 +171,22 @@ class FrameworkDetector:
                 if fid in self.registry:
                     evidence.append(f"metadata: framework_id={fid}")
                     return done(fid, "metadata", METADATA_CONFIDENCE)
-                evidence.append(f"metadata: framework_id={fid} is not registered; ignored")
+                evidence.append(
+                    f"metadata: framework_id={fid} is not registered; the source names a "
+                    "framework this corpus does not know, so no other stage overrides it "
+                    "(register it, or fix the metadata)"
+                )
             except MalformedFrameworkId:
-                evidence.append("metadata: framework_id is malformed; ignored")
+                evidence.append(
+                    "metadata: framework_id is malformed; no other stage overrides an "
+                    "explicit framework"
+                )
+            # An explicit framework is never replaced by a default, a citation
+            # vote or the LLM (review P2-3): the detection fails the gate.
+            return FrameworkDetection(
+                framework_id=None, source=None, confidence=0.0, evidence=tuple(evidence),
+                valid_time=window, migration_warnings=warnings,
+            )
 
         # 2. corpus manifest default
         if self.corpus_default is not None:

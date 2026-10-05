@@ -16,8 +16,12 @@ process-pool start-up. Pass criterion: the median of three runs. Every run's
 number is printed and, with ``FOLIO_INSIGHTS_BULK_BENCH_OUT`` set, written
 as JSON so the plan can record it verbatim.
 
-Marked ``slow`` (excluded from the quick suite). Run:
-    pytest tests/bench/test_storage_bulk_load.py -m slow -s
+Marked ``slow`` (excluded from the quick suite). It measures throughput, so
+it needs an IDLE machine: under a parallel or otherwise loaded run a single
+run can dip below the gate (one of three runs read 189,811/s on a busy box)
+without anything having regressed. It refuses to run inside a pytest-xdist
+worker; run it alone, serially (the 200K threshold is not relaxed):
+    pytest tests/bench/test_storage_bulk_load.py -m slow -s -p no:xdist
 """
 from __future__ import annotations
 
@@ -34,7 +38,14 @@ from folio_insights.storage import CorpusStorageContext
 
 from tests.storage.conftest import shard
 
-pytestmark = [pytest.mark.slow, pytest.mark.storage]
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.storage,
+    pytest.mark.skipif(
+        bool(os.environ.get("PYTEST_XDIST_WORKER")),
+        reason="throughput benchmark: run serially on an idle machine, not in a parallel run",
+    ),
+]
 
 SHARDS = 43_479
 TARGET_TRIPLES_PER_SEC = 200_000

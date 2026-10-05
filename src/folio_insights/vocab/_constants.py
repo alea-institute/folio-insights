@@ -53,8 +53,19 @@ def framework_iri(framework_id: str) -> str:
     """The IRI of a framework (``fi:Framework`` individual) for an envelope
     ``framework_id``. Percent-encodes every reserved character, so the result
     is a valid IRI for any identifier string; a pattern-valid ID
-    (``us.federal.fre``) maps to ``<framework-ns>us.federal.fre`` unchanged."""
+    (``us.federal.fre``) maps to ``<framework-ns>us.federal.fre`` unchanged.
+    The empty identifier has no framework IRI (it would be the namespace
+    itself) and raises ``ValueError``."""
+    if not framework_id:
+        raise ValueError("an empty framework_id has no framework IRI")
     return FRAMEWORK_NS + quote(framework_id, safe="")
+
+
+# TBox revision marker (Phase 9 review): the shipped TBox's entailments changed
+# in Phase 9 U0 (EL layer split, fi:inFramework subPropertyOf) while
+# VOCAB_VERSION stays pinned by every signed shard. Exports record this marker
+# and the TBox digest so consumers can tell the revisions apart.
+TBOX_REVISION: str = f"{VOCAB_VERSION}+phase9.1"
 
 
 # Phase 9 KTD2: the envelope keeps its four-value ``bfo_category`` literal; this
@@ -74,6 +85,7 @@ BFO_CATEGORY_SPINE_CLASS: Mapping[str, str] = {
 __all__ = [
     "BFO_CATEGORY_SPINE_CLASS",
     "FRAMEWORK_NS",
+    "TBOX_REVISION",
     "VOCAB_VERSION",
     "FI_PREFIX",
     "NAMESPACES",

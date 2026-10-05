@@ -40,12 +40,12 @@ class DependencyEdge:
 
 
 def shard_edges(shard: ShardEnvelope) -> list[DependencyEdge]:
-    """The dependency edges one shard declares (self-references dropped)."""
+    """The dependency edges one shard declares (a self-reference included: the
+    graph reports it as a one-node cycle)."""
     out: list[DependencyEdge] = []
     for name in DEPENDENCY_FIELDS:
         for target in getattr(shard, name):
-            if target != shard.shard_iri:
-                out.append(DependencyEdge(shard.shard_iri, target, name))
+            out.append(DependencyEdge(shard.shard_iri, target, name))
     return out
 
 
@@ -57,6 +57,7 @@ class DependencyGraph:
         self._deps: dict[str, set[str]] = {}
         self._rdeps: dict[str, set[str]] = {}
         self._edge_count = 0
+        self._self_loops: set[str] = set()
         for node in nodes:
             self._deps.setdefault(node, set())
             self._rdeps.setdefault(node, set())
@@ -64,7 +65,10 @@ class DependencyGraph:
             src, dst = (
                 (edge.dependent, edge.dependency) if isinstance(edge, DependencyEdge) else edge
             )
-            if src == dst:
+            if src == dst:  # a self-dependency: a cycle finding, not an edge to walk
+                self._self_loops.add(src)
+                self._deps.setdefault(src, set())
+                self._rdeps.setdefault(src, set())
                 continue
             bucket = self._deps.setdefault(src, set())
             if dst not in bucket:
@@ -142,7 +146,8 @@ class DependencyGraph:
         Iterative DFS with white/gray/black marking over the dependency
         direction, neighbours in sorted order (deterministic). A back edge to
         a gray node closes a cycle; it is rotated to start at its smallest IRI
-        and deduplicated.
+        and deduplicated. A shard that depends on itself is the one-node cycle
+        ``(iri,)``.
         """
         color = dict.fromkeys(self._deps, _WHITE)
         found: dict[tuple[str, ...], None] = {}
@@ -174,6 +179,8 @@ class DependencyGraph:
                     color[node] = _BLACK
                     on_path.pop(node, None)
                     path.pop()
+        for node in self._self_loops:
+            found[(node,)] = None
         return sorted(found)
 
     def is_acyclic(self) -> bool:

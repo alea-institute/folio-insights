@@ -141,7 +141,8 @@ async def test_committed_retraction_derives_state_and_keeps_journal_bytes(
         )
         assert event.action == "retract"
 
-        states = await effective_states(ctx.shards, ctx.governance, policy=preview.policy)
+        assert event.policy == "prefer_latest"  # the policy is durable on the event
+        states = await effective_states(ctx.shards, ctx.governance)
         assert states[iri(1)].status == "retracted"
         assert [states[iri(n)].status for n in (2, 3)] == ["auto_rederive", "auto_rederive"]
         assert (states[iri(4)].status, states[iri(4)].depth) == ("review_needed", 2)
@@ -314,3 +315,80 @@ def _journal_payloads(path: Path) -> dict[tuple[str, int], tuple[str, bytes, byt
                 "SELECT corpus, position, kind, payload, original_bytes FROM journal"
             )
         }
+
+
+# ── review P2-4 / P2-5 / P2-6 ──────────────────────────────────────────────
+
+
+def _retraction(n: int, position: int, policy: str | None = "prefer_latest") -> object:
+    from folio_insights.governance.events import RetractionEvent
+
+    did = new_identity().did
+    fields = {"policy": policy} if policy is not None else {}
+    return RetractionEvent(corpus="corpus-a", position=position,
+                           signature=_unsigned(did, "retract", at(position)),
+                           shard_iri=iri(n), cascade_preview_hash="0" * 64, **fields)
+
+
+async def test_preview_and_derived_state_agree_on_event_only_successors() -> None:
+    """P2-4: the successor exists only as a SupersessionEvent (records untouched)."""
+    shards = [shard(1), shard(2, depends_on_shards=[iri(1)]), shard(9, supersedes=iri(1))]
+    store = await _memory_store(shards)
+    log = InMemoryGovernanceLog()
+    admin = new_identity()
+    sup = SupersessionEvent(corpus="corpus-a", signature=_unsigned(admin.did, "supersede", at(1)),
+                            old_shard_iri=iri(1), new_shard_iri=iri(9))
+    await log.append(sign_event(sup, admin, at(1)))
+    preview = await build_cascade_preview(iri(1), "corpus-a", store=store, log=log)
+    events = [e async for e in log.iter_events("corpus-a")]
+    states = derive_effective_states(shards, [*events, _retraction(1, 5)])
+    assert preview.auto_rederive == [iri(2)]
+    assert states[iri(2)].status == "auto_rederive"  # parity
+    # and with no successor at all, both read aporetic
+    store2 = await _memory_store(shards[:2])
+    p2 = await build_cascade_preview(iri(1), "corpus-a", store=store2, log=InMemoryGovernanceLog())
+    s2 = derive_effective_states(shards[:2], [_retraction(1, 5)])
+    assert p2.aporetic == [iri(2)] and s2[iri(2)].status == "aporetic"
+
+
+def test_policy_is_read_from_each_event_and_missing_fails_closed() -> None:
+    shards = [shard(1, superseded_by=iri(9)), shard(2, depends_on_shards=[iri(1)]),
+              shard(9, supersedes=iri(1), epistemic_status="hypothesis")]
+    latest = derive_effective_states(shards, [_retraction(1, 1, "prefer_latest")])
+    authority = derive_effective_states(shards, [_retraction(1, 1, "prefer_authority")])
+    legacy = derive_effective_states(shards, [_retraction(1, 1, None)])
+    assert latest[iri(2)].status == "auto_rederive"
+    assert authority[iri(2)].status == "review_needed"  # hypothesis successor
+    assert legacy[iri(2)].status == "review_needed"  # no recorded policy
+
+
+def test_retraction_event_signature_payload_unchanged_without_policy() -> None:
+    """P2-5: an event without a policy dumps (and signs) exactly as before."""
+    from typing import get_args
+
+    from folio_insights.governance.events import CascadePolicyName
+    from folio_insights.revision.policies import CASCADE_POLICIES
+
+    event = _retraction(1, 1, None)
+    dumped = event.model_dump(mode="json")
+    assert "policy" not in dumped
+    assert set(dumped) == {"corpus", "position", "signature", "action", "shard_iri",
+                           "cascade_preview_hash"}
+    with_policy = _retraction(1, 1, "prefer_latest")
+    assert with_policy.model_dump(mode="json")["policy"] == "prefer_latest"
+    assert event.signature_payload() != with_policy.signature_payload()
+    assert set(get_args(CascadePolicyName)) == set(CASCADE_POLICIES)
+
+
+def test_effective_state_is_independent_of_retraction_order() -> None:
+    """P2-6: D depends on A (no successor) and B (successor 9), both depth 1."""
+    shards = [shard(1), shard(3, superseded_by=iri(9)), shard(9, supersedes=iri(3)),
+              shard(2, depends_on_shards=[iri(1), iri(3)])]
+    forward = derive_effective_states(shards, [_retraction(1, 1), _retraction(3, 2)])
+    backward = derive_effective_states(shards, [_retraction(3, 1), _retraction(1, 2)])
+    for states in (forward, backward):
+        assert states[iri(2)].status == "aporetic"  # more conservative than auto_rederive
+        assert states[iri(2)].causes == (iri(1), iri(3))
+        assert states[iri(2)].depth == 1
+    assert forward[iri(2)].status == backward[iri(2)].status
+    assert forward[iri(2)].cause == backward[iri(2)].cause == iri(1)

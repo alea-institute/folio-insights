@@ -5,7 +5,9 @@ the frameworks its corpus admins registered. A registration is:
 
 * **DID-signed by a corpus admin** (PRD §8 P2: "new frameworks get minted per
   corpus and are DID-signed by the corpus admin"). The signer must hold
-  ``corpus_admin`` in the corpus governance log at signing time; the Ed25519
+  ``corpus_admin`` in the corpus governance log NOW (register) and at the
+  ledger's commit time (load); the signing time must sit within
+  ``SIGNING_SKEW`` of the commit time, so it cannot be backdated; the Ed25519
   signature covers the JCS-canonical registration (framework, corpus, signer,
   time) under a domain tag. did:key signers verify offline.
 * **Persisted per corpus** as an append-only row of the corpus's ledger
@@ -27,7 +29,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -49,6 +51,10 @@ if TYPE_CHECKING:
     from folio_insights.storage.context import CorpusStorageContext, StorageConfig
 
 LEDGER_KIND = "framework_register"
+# How far a registration's signing time may sit from the moment it is
+# authorized (register) or committed (load). The admin role is checked at the
+# ledger-controlled time, never at a time the signer chose (review P1).
+SIGNING_SKEW = timedelta(minutes=5)
 REGISTRATION_FORMAT = "folio-insights/framework-registration/v1"
 ADMIN_ROLE = "corpus_admin"
 
@@ -156,11 +162,22 @@ async def load_registry(ctx: CorpusStorageContext) -> FrameworkRegistry:
         registration = FrameworkRegistration.model_validate(entry.payload)
         if registration.corpus != ctx.corpus or not verify_registration(registration):
             raise FrameworkRegistrationRefused(
-                f"ledger position {entry.position}: framework registration does not verify"
+                f"ledger position {entry.position}: framework registration does not verify "
+                "for this corpus"
             )
-        if not await _is_admin(ctx, registration.signer_did, registration.signed_at):
+        committed = datetime.fromisoformat(entry.committed_at)
+        if committed.tzinfo is None:
+            committed = committed.replace(tzinfo=UTC)
+        if abs(registration.signed_at - committed) > SIGNING_SKEW:
             raise FrameworkRegistrationRefused(
-                f"ledger position {entry.position}: signer was not a corpus admin"
+                f"ledger position {entry.position}: signed_at is not within "
+                f"{SIGNING_SKEW} of the ledger commit time"
+            )
+        # The role is checked at the ledger's commit time, not the signer's clock.
+        if not await _is_admin(ctx, registration.signer_did, committed):
+            raise FrameworkRegistrationRefused(
+                f"ledger position {entry.position}: signer was not a corpus admin "
+                "when the registration was committed"
             )
         registry.register(registration.framework)
     return registry
@@ -172,8 +189,8 @@ async def register_framework(
     *,
     signing_key: Ed25519PrivateKey,
     did: str,
-    signed_at: datetime | None = None,
     op_id: str | None = None,
+    now: datetime | None = None,
 ) -> FrameworkRegistration:
     """Register ``framework`` in ``ctx``'s corpus, signed by a corpus admin.
 
@@ -183,7 +200,18 @@ async def register_framework(
     framework returns the committed registration (``op_id`` defaults to
     ``framework:<id>``).
     """
-    when = signed_at or datetime.now(UTC)
+    # Authorized and signed at the current time; there is no caller-chosen
+    # signing time (a backdated one let a revoked admin register — review P1).
+    # ``now`` exists for tests and must itself be within SIGNING_SKEW of the
+    # wall clock, because load re-checks it against the ledger commit time.
+    wall = datetime.now(UTC)
+    when = now or wall
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    if abs(when - wall) > SIGNING_SKEW:
+        raise FrameworkRegistrationRefused(
+            f"registration time {when.isoformat()} is not within {SIGNING_SKEW} of now"
+        )
     if not await _is_admin(ctx, did, when):
         raise FrameworkRegistrationRefused(
             f"{did} does not hold {ADMIN_ROLE!r} in corpus {ctx.corpus!r}; "
@@ -193,6 +221,12 @@ async def register_framework(
     existing = registry.get(framework.id)
     if existing is not None and existing != framework:
         raise ValueError(f"framework {framework.id!r} is already registered differently")
+    if existing is not None:
+        # Identical re-registration: return the committed row, append nothing.
+        for entry in await ctx.proposals.entries():
+            if entry.kind == LEDGER_KIND and entry.payload["framework"]["id"] == framework.id:
+                return FrameworkRegistration.model_validate(entry.payload)
+        raise ValueError(f"framework {framework.id!r} is already in the starter set")
     registry.copy().register(framework)  # parent / conflict checks before signing
     registration = sign_registration(
         ctx.corpus, framework, signing_key=signing_key, did=did, signed_at=when
@@ -288,6 +322,7 @@ __all__ = [
     "FrameworkRegistrationRefused",
     "LEDGER_KIND",
     "MalformedFrameworkId",
+    "SIGNING_SKEW",
     "UnregisteredFramework",
     "guarded_config",
     "load_registry",

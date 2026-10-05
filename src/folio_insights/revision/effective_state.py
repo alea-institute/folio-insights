@@ -12,9 +12,10 @@ back:
   queryable; ``as_of_graph`` exposes the effective windows to
   ``temporal.query_as_of``.
 * **Retraction** — the shard reads ``retracted``; its direct dependents get
-  the cascade policy outcome (``auto_rederive`` / ``aporetic`` /
-  ``review_needed``), and dependents two or more hops away read
-  ``review_needed`` (flag-only; Decision Sheet q4).
+  the outcome of the cascade policy recorded on the retraction event
+  (``auto_rederive`` / ``aporetic`` / ``review_needed``; no recorded policy
+  fails closed to ``review_needed``), and dependents two or more hops away
+  read ``review_needed`` (flag-only; Decision Sheet q4).
 * **Contest** — the shard reads ``contested`` until a resolution event; a
   resolution by arbiter or distinguo reads ``resolved``, an aporetic one
   ``aporetic``.
@@ -37,10 +38,10 @@ from folio_insights.governance.events import (
 )
 from folio_insights.revision.dependency_graph import DependencyGraph
 from folio_insights.revision.policies import (
-    DEFAULT_CASCADE_POLICY,
-    CascadePolicy,
     check_policy,
     classify_at_depth,
+    resolve_successor,
+    supersession_successors,
 )
 
 if TYPE_CHECKING:
@@ -72,6 +73,8 @@ _RANK: dict[str, int] = {
     "retracted": 4,
 }
 _CASCADE = frozenset({"auto_rederive", "aporetic", "review_needed"})
+# Most conservative wins among equally close retractions (review P2-6).
+_CONSERVATIVE: dict[str, int] = {"auto_rederive": 0, "aporetic": 1, "review_needed": 2}
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,7 @@ class EffectiveState:
     superseded_by: str | None = None
     valid_time_end: datetime | None = None
     cause: str | None = None
+    causes: tuple[str, ...] = ()
     depth: int | None = None
     contest_resolution: str | None = None
     events: tuple[int, ...] = field(default_factory=tuple)
@@ -97,16 +101,18 @@ def derive_effective_states(
     shards: Iterable[ShardEnvelope],
     events: Iterable[Any],
     *,
-    policy: CascadePolicy = DEFAULT_CASCADE_POLICY,
     graph: DependencyGraph | None = None,
 ) -> dict[str, EffectiveState]:
     """The effective state of every shard, from records plus governance events.
 
-    ``events`` are applied in log-position order. ``policy`` is the cascade
-    policy the retractions were committed under (a retraction's saved preview
-    records it). ``graph`` defaults to the graph of ``shards``.
+    ``events`` are applied in log-position order. Each retraction re-applies
+    the cascade policy recorded on ITS event; a retraction without one fails
+    closed (every dependent reads ``review_needed``). The result does not
+    depend on the order of retractions: a dependent takes its outcome from
+    the closest retraction(s) reaching it, the most conservative bucket among
+    those (review_needed > aporetic > auto_rederive), and lists every cause.
+    ``graph`` defaults to the graph of ``shards``.
     """
-    policy = check_policy(policy)
     by_iri = {s.shard_iri: s for s in shards}
     graph = graph if graph is not None else DependencyGraph.from_shards(by_iri.values())
     state = {iri: EffectiveState(iri) for iri in sorted(by_iri)}
@@ -142,12 +148,11 @@ def derive_effective_states(
                 valid_time_end=end,
             )
 
+    successors = supersession_successors(ordered)
+
     def successor_of(iri: str) -> str | None:
-        derived = state.get(iri)
-        if derived is not None and derived.superseded_by is not None:
-            return derived.superseded_by
-        record = by_iri.get(iri)
-        return None if record is None else record.superseded_by
+        # Same resolution as the cascade preview (review P2-4).
+        return resolve_successor(iri, by_iri.get(iri), successors)
 
     # 2. contests and resolutions, in order
     for event in ordered:
@@ -166,26 +171,38 @@ def derive_effective_states(
                     ),
                 )
 
-    # 3. retractions and their graded cascade
+    # 3. retractions and their graded cascade (order-independent)
+    outcomes: dict[str, list[tuple[int, str, str, int]]] = {}
     for event in ordered:
         if not isinstance(event, RetractionEvent):
             continue
         target = event.shard_iri
         touch(target, event.position, status="retracted")
+        policy = getattr(event, "policy", None)
         successor_iri = successor_of(target)
         successor = by_iri.get(successor_iri) if successor_iri else None
         for dep_iri, depth in sorted(graph.transitive_dependents(target).items()):
             dep = by_iri.get(dep_iri)
             if dep is None or dep_iri == target:
                 continue
-            attrs = dependent_attrs(dep, successor_iri=successor_iri, successor=successor)
-            current = state[dep_iri]
-            if current.status == "contested":
-                attrs["epistemic_status"] = "contested"
-            bucket = classify_at_depth(depth, attrs, policy=policy)
-            if current.status in _CASCADE and current.depth is not None and current.depth < depth:
-                continue  # an earlier, closer retraction already decided it
-            touch(dep_iri, event.position, status=bucket, cause=target, depth=depth)
+            if policy is None:
+                bucket = "review_needed"  # no recorded policy: fail closed
+            else:
+                attrs = dependent_attrs(dep, successor_iri=successor_iri, successor=successor)
+                if state[dep_iri].status == "contested":
+                    attrs["epistemic_status"] = "contested"
+                bucket = classify_at_depth(depth, attrs, policy=check_policy(policy))
+            outcomes.setdefault(dep_iri, []).append((depth, bucket, target, event.position))
+    for dep_iri, found in sorted(outcomes.items()):
+        closest = min(d for d, *_ in found)
+        at_closest = [o for o in found if o[0] == closest]
+        bucket = max((b for _, b, _, _ in at_closest), key=_CONSERVATIVE.__getitem__)
+        causes = tuple(sorted({c for _, _, c, _ in found}))
+        positions = sorted({p for *_, p in found})
+        for position in positions[:-1]:
+            touch(dep_iri, position)
+        touch(dep_iri, positions[-1], status=bucket, depth=closest,
+              cause=min(c for d, b, c, _ in at_closest if b == bucket), causes=causes)
     return state
 
 
@@ -208,15 +225,13 @@ def dependent_attrs(
 async def effective_states(
     store: ShardStore,
     log: GovernanceLog,
-    *,
-    policy: CascadePolicy = DEFAULT_CASCADE_POLICY,
 ) -> dict[str, EffectiveState]:
     """``derive_effective_states`` over a store and its corpus governance log
     (the persistent store reads both at the committed watermark)."""
     shards = [s async for s in store.iter_shards()]
     events = [e async for e in log.iter_events(store.corpus)]
     graph = await DependencyGraph.from_store(store)
-    return derive_effective_states(shards, events, policy=policy, graph=graph)
+    return derive_effective_states(shards, events, graph=graph)
 
 
 def as_of_graph(

@@ -79,6 +79,8 @@ from folio_insights.revision.policies import (
     check_policy,
     classify_at_depth,
     classify_dependent,
+    resolve_successor,
+    supersession_successors,
 )
 
 if TYPE_CHECKING:
@@ -167,7 +169,7 @@ class CascadePreview(BaseModel):
 # ── Cascade preview builder + commit (D-17) ────────────────────────────────
 
 
-def _extract_dep_attrs(dep_shard: Any, retracted_shard: Any, successor: Any) -> dict:
+def _extract_dep_attrs(dep_shard: Any, successor_iri: str | None, successor: Any) -> dict:
     """Read the classifier inputs (``revision.policies``) off a dependent.
 
     Key inputs:
@@ -184,12 +186,11 @@ def _extract_dep_attrs(dep_shard: Any, retracted_shard: Any, successor: Any) -> 
         ``dependent_framework_id`` — what ``prefer_authority`` and
         ``prefer_most_specific_jurisdiction`` weigh.
     """
-    superseded_by = getattr(retracted_shard, "superseded_by", None)
     contested = bool(getattr(dep_shard, "contested", False))
     contest_votes = getattr(dep_shard, "contest_votes", {}) or {}
     unresolved_votes = len(contest_votes) if contested else 0
     return {
-        "supersession_available": superseded_by is not None,
+        "supersession_available": successor_iri is not None,
         "reconciliation_strategy": getattr(
             dep_shard, "reconciliation_strategy", None
         ),
@@ -237,6 +238,7 @@ async def _hash_underlying_state(
     state_position: int | None,
     policy: CascadePolicy = DEFAULT_CASCADE_POLICY,
     depths: dict[str, int] | None = None,
+    successor_iri: str | None = None,
 ) -> str:
     """Deterministic SHA-256 over the cascade-relevant state (D-17, RESEARCH Q6).
 
@@ -293,14 +295,13 @@ async def _hash_underlying_state(
     retracted_superseded_by = (
         getattr(retracted, "superseded_by", None) if retracted is not None else None
     )
-    successor = (
-        await store.get(retracted_superseded_by) if retracted_superseded_by else None
-    )
+    successor = await store.get(successor_iri) if successor_iri else None
 
     latest_pos = await log.latest_position(corpus)
     payload = {
         "retracted_iri": retracted_iri,
         "retracted_superseded_by": retracted_superseded_by,
+        "successor_iri": successor_iri,
         "retracted_record_sha256": _record_sha256(retracted),
         "corpus": corpus,
         "log_latest_position": latest_pos,
@@ -360,7 +361,10 @@ async def build_cascade_preview(
 
     graph = await DependencyGraph.from_store(store)
     reach = graph.transitive_dependents(retracted_iri)
-    successor_iri = getattr(retracted_shard, "superseded_by", None)
+    # The successor resolves exactly as derived state resolves it: a
+    # supersession event wins over the record's superseded_by (review P2-4).
+    successors = supersession_successors([e async for e in log.iter_events(corpus)])
+    successor_iri = resolve_successor(retracted_iri, retracted_shard, successors)
     successor = await store.get(successor_iri) if successor_iri else None
     depths: dict[str, int] = {}
     for dep_iri, depth in sorted(reach.items()):
@@ -371,7 +375,7 @@ async def build_cascade_preview(
             continue
         if depth == 1 and not _depends_on(dep_shard, retracted_iri):
             continue
-        attrs = _extract_dep_attrs(dep_shard, retracted_shard, successor)
+        attrs = _extract_dep_attrs(dep_shard, successor_iri, successor)
         bucket = classify_at_depth(depth, attrs, policy=policy)
         classified[bucket].append(dep_iri)
         depths[dep_iri] = depth
@@ -394,6 +398,7 @@ async def build_cascade_preview(
         state_position=state_position,
         policy=policy,
         depths=depths,
+        successor_iri=successor_iri,
     )
 
     return CascadePreview(
@@ -516,6 +521,7 @@ async def commit_cascade(
         signature=placeholder_sig,
         shard_iri=preview.retracted_shard_iri,
         cascade_preview_hash=_hash_preview(preview),
+        policy=preview.policy,  # durable: derived state re-applies it (review P2-5)
     )
     validate_retraction(event)
 

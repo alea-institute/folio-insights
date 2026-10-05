@@ -18,7 +18,7 @@ Stdlib + Pydantic only.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any, Literal, get_args
 
 CascadePolicy = Literal[
@@ -111,6 +111,24 @@ def classify_dependent(dep_attrs: Mapping[str, Any], *, policy: CascadePolicy) -
     )
 
 
+def supersession_successors(events: Iterable[Any]) -> dict[str, str]:
+    """``old -> new`` from supersession events, in log order (the last wins)."""
+    out: dict[str, str] = {}
+    for event in sorted(events, key=lambda e: e.position):
+        if getattr(event, "action", None) == "supersede":
+            out[event.old_shard_iri] = event.new_shard_iri
+    return out
+
+
+def resolve_successor(iri: str, record: Any, successors: Mapping[str, str]) -> str | None:
+    """The successor a cascade re-derives against: a supersession EVENT wins,
+    else the record's own ``superseded_by``. The preview and derived state both
+    use this, so they always agree (review P2-4)."""
+    if iri in successors:
+        return successors[iri]
+    return None if record is None else getattr(record, "superseded_by", None)
+
+
 def classify_at_depth(
     depth: int, dep_attrs: Mapping[str, Any], *, policy: CascadePolicy
 ) -> CascadeBucket:
@@ -132,4 +150,6 @@ __all__ = [
     "classify_at_depth",
     "classify_dependent",
     "framework_at_least_as_specific",
+    "resolve_successor",
+    "supersession_successors",
 ]

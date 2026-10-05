@@ -276,6 +276,28 @@ def expressive_tbox_quads() -> list[Quad]:
     ]
 
 
+def check_construct_profile(triples: Sequence[Any], profile_entry: dict[str, Any]) -> None:
+    """EL-check a CONSTRUCT result under the export's profile (refuse under EL,
+    warn under DL) and record the outcome in the manifest entry."""
+    violations = check_el_profile(triples)
+    profile_entry["construct_checked"] = True
+    if not violations:
+        return
+    if profile_entry["profile"] == "EL":
+        raise TBoxProfileViolation(
+            f"the CONSTRUCT result has {len(violations)} axiom(s) outside OWL 2 EL; nothing "
+            "was written. Narrow the query, or export with --expressive (OWL 2 DL):\n"
+            + format_violations(violations),
+            violations,
+        )
+    profile_entry["el_violations"] += [v.as_dict() for v in violations]
+    profile_entry["el_conformant"] = False
+    profile_entry["warnings"].append(
+        f"CONSTRUCT result exported under the expressive (OWL 2 DL) profile with "
+        f"{len(violations)} axiom(s) outside OWL 2 EL"
+    )
+
+
 def resolve_tbox_profile(tbox_profile: TBoxProfile | None, expressive: bool) -> TBoxProfile:
     """``expressive`` is shorthand for the DL profile; the default is EL."""
     if tbox_profile is not None and tbox_profile not in TBOX_PROFILES:
@@ -313,8 +335,17 @@ def apply_tbox_profile(
             f"{len(violations)} axiom(s) outside OWL 2 EL"
         )
         logger.warning("%s:\n%s", warnings[0], format_violations(violations))
+    from folio_insights.storage.projection import tbox_digest
+    from folio_insights.vocab._constants import TBOX_REVISION, VOCAB_VERSION
+
     return {
         "profile": profile,
+        # TBox revision marker: entailments can change while VOCAB_VERSION
+        # (pinned by every signed shard) stays the same.
+        "vocab_version": VOCAB_VERSION,
+        "tbox_revision": TBOX_REVISION,
+        "tbox_digest": tbox_digest(),
+        "construct_checked": False,
         "reasoner": reasoner_for_profile(profile).name,
         "checked": carries,
         "el_conformant": carries and not violations,
@@ -714,7 +745,9 @@ async def export_corpus(
     dest.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     try:
-        manifest = _write_formats(dest, dataset, chosen, construct_query, allow_partial, written)
+        manifest = _write_formats(
+            dest, dataset, chosen, construct_query, allow_partial, written, profile_entry
+        )
         manifest["tbox_profile"] = profile_entry
         manifest_path = dest / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
@@ -735,6 +768,7 @@ def _write_formats(
     construct_query: str | None,
     allow_partial: bool,
     written: list[Path],
+    profile_entry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     files: dict[str, list[dict[str, Any]]] = {}
     abox = dataset.graph(dataset.abox)
@@ -782,6 +816,10 @@ def _write_formats(
         elif fmt is ExportFormat.SPARQL_CONSTRUCT:
             assert construct_query is not None
             triples = _construct(dataset, construct_query, allow_partial=allow_partial)
+            if profile_entry is not None:
+                # A CONSTRUCT can select TBox axioms too: the same EL gate applies
+                # to its result before anything is written (review P2-7).
+                check_construct_profile(triples, profile_entry)
             path = dest / "construct.ttl"
             written.append(path)
             _write(path, _ttl(triples))

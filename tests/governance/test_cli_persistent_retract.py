@@ -605,3 +605,16 @@ def test_preview_records_policy_and_depths(corpus: Corpus, tmp_path: Path) -> No
     # --apply re-classifies under the saved policy and commits once
     applied = json.loads(ok(_apply(corpus, out)).stdout)
     assert applied["action"] == "retract"
+
+
+def test_apply_refuses_a_conflicting_policy(corpus: Corpus, tmp_path: Path) -> None:
+    """Review nit: --policy with --apply is honoured when equal, refused otherwise."""
+    out = tmp_path / "latest.json"
+    _preview(corpus, out)
+    common = ("--corpus", CORPUS, "--key-path", str(corpus.admin_key))
+    conflict = run_cli(corpus.root, "governance", "retract", corpus.target, "--apply", str(out),
+                       "--policy", "prefer_authority", *common)
+    assert conflict.returncode == 1 and "conflicts with the saved preview" in conflict.stderr
+    same = run_cli(corpus.root, "governance", "retract", corpus.target, "--apply", str(out),
+                   "--policy", "prefer_latest", *common)
+    assert same.returncode == 0, same.stderr

@@ -58,11 +58,11 @@ def test_planted_three_cycle_is_reported_not_raised() -> None:
     assert graph.transitive_dependents(iri(1)) == {iri(2): 1, iri(4): 1, iri(3): 2}
 
 
-def test_self_reference_and_duplicate_edges_are_ignored() -> None:
+def test_duplicate_edges_are_ignored_and_self_reference_is_a_cycle() -> None:
     graph = DependencyGraph(
         [("a", "a"), ("b", "a"), DependencyEdge("b", "a", "depends_on_shards")], nodes=["c"]
     )
-    assert graph.edge_count == 1 and graph.cycles() == [] and "c" in graph
+    assert graph.edge_count == 1 and graph.cycles() == [("a",)] and "c" in graph
 
 
 async def test_persistent_bulk_read_matches_in_memory(tmp_path: Path) -> None:
@@ -140,3 +140,11 @@ async def test_10k_shard_dag_from_persistent_store_under_five_seconds(tmp_path: 
           f"{elapsed:.3f}s on {_hardware()}")
     assert graph.node_count == 10_000 and len(reach) == 9_999 and cycles == []
     assert elapsed < 5.0
+
+
+def test_self_loops_are_reported_as_cycles() -> None:
+    """Review nit: a shard that depends on itself is a one-node cycle."""
+    graph = DependencyGraph.from_shards([shard(1, depends_on_shards=[iri(1)]), shard(2)])
+    assert graph.cycles() == [(iri(1),)]
+    assert graph.transitive_dependents(iri(1)) == {}
+    assert DependencyGraph([("x", "x")]).cycles() == [("x",)]

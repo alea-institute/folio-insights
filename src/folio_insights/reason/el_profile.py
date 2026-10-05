@@ -18,7 +18,11 @@ Flagged (not in OWL 2 EL):
   ``owl:datatypeComplementOf``), enumerations of more than one individual,
   and datatype facet restrictions (``owl:withRestrictions``);
 * datatypes outside the OWL 2 EL datatype map used as a range or filler
-  (``xsd:boolean``, ``xsd:double``, ``xsd:float``, the sized integers, ...).
+  (``xsd:boolean``, ``xsd:double``, ``xsd:float``, the sized integers, ...),
+  inside a data-range intersection, or as the datatype of an ``owl:hasValue``
+  literal;
+* a property chain whose last property has a range the super property does
+  not (OWL 2 Profiles §2.2.6).
 
 Allowed constructs (``owl:intersectionOf``, ``owl:someValuesFrom``,
 ``owl:hasValue``, ``owl:hasSelf``, ``owl:oneOf`` with one member,
@@ -229,6 +233,16 @@ def _is_datatype(term: str) -> bool:
     )
 
 
+def _literal_datatype(term: str) -> str:
+    """The datatype IRI (N-Triples form) of an N-Triples literal."""
+    head, sep, tail = term.rpartition('"')
+    if tail.startswith("^^"):
+        return tail[2:]
+    if tail.startswith("@"):
+        return _iri(RDF, "PlainLiteral")  # a language-tagged plain literal
+    return _iri(XSD, "string")
+
+
 def check_el_profile(triples: Iterable[Any]) -> list[ELViolation]:
     """Every OWL 2 EL violation in ``triples`` (pyoxigraph quads/triples,
     rdflib triples, or N-Triples string 3-tuples), deterministically ordered."""
@@ -259,6 +273,34 @@ def check_el_profile(triples: Iterable[Any]) -> list[ELViolation]:
             node = rests[0][2]
         return n
 
+    def list_members(node: str) -> list[str]:
+        members, seen = [], set()
+        while node != _NIL and node not in seen:
+            seen.add(node)
+            firsts = [x for x in by_subject[node] if x[1] == _FIRST]
+            rests = [x for x in by_subject[node] if x[1] == _REST]
+            if not firsts or not rests:
+                break
+            members.append(firsts[0][2])
+            node = rests[0][2]
+        return members
+
+    def objects(s: str, p: str) -> list[str]:
+        return [x[2] for x in by_subject[s] if x[1] == p]
+
+    def super_properties(prop: str) -> set[str]:
+        """``prop`` and its transitive rdfs:subPropertyOf supers."""
+        found, todo = {prop}, [prop]
+        while todo:
+            for sup in objects(todo.pop(), _iri(RDFS, "subPropertyOf")):
+                if sup not in found:
+                    found.add(sup)
+                    todo.append(sup)
+        return found
+
+    def ranges(prop: str) -> set[str]:
+        return {r for sup in super_properties(prop) for r in objects(sup, _iri(RDFS, "range"))}
+
     data_properties = {s for s, ts in types.items() if _iri(OWL, "DatatypeProperty") in ts}
     out: list[ELViolation] = []
     for t in sorted(set(graph)):
@@ -287,6 +329,46 @@ def check_el_profile(triples: Iterable[Any]) -> list[ELViolation]:
                     axiom(t),
                 )
             )
+        elif p == _iri(OWL, "intersectionOf") and any(
+            _is_datatype(m) and m not in EL_DATATYPES for m in list_members(o)
+        ):
+            bad = sorted(m for m in list_members(o) if _is_datatype(m) and m not in EL_DATATYPES)
+            out.append(
+                ELViolation(
+                    "datatype-outside-el",
+                    f"data range intersection uses {', '.join(bad)}, outside the OWL 2 EL "
+                    "datatype map",
+                    s,
+                    axiom(t),
+                )
+            )
+        elif p == _iri(OWL, "hasValue") and o.startswith('"') and _literal_datatype(o) not in EL_DATATYPES:
+            out.append(
+                ELViolation(
+                    "datatype-outside-el",
+                    f"owl:hasValue literal of datatype {_literal_datatype(o)} is outside the "
+                    "OWL 2 EL datatype map",
+                    s,
+                    axiom(t),
+                )
+            )
+        elif p == _iri(OWL, "propertyChainAxiom"):
+            # OWL 2 Profiles §2.2.6: a range on the chain's last property must be
+            # implied by a range on the super property.
+            chain = list_members(o)
+            if len(chain) > 1:
+                missing = sorted(ranges(chain[-1]) - ranges(s))
+                if missing:
+                    out.append(
+                        ELViolation(
+                            "property-chain-range",
+                            "OWL 2 EL: the last property of a property chain has range "
+                            f"{', '.join(missing)} that the super property {s} does not have "
+                            "(Profiles §2.2.6)",
+                            s,
+                            axiom(t),
+                        )
+                    )
         elif p in _DATA_RANGE_PREDICATES and _is_datatype(o) and o not in EL_DATATYPES:
             out.append(
                 ELViolation(

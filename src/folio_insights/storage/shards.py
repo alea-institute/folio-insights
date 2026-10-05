@@ -74,7 +74,7 @@ class PersistentShardStore:
         _, (nodes, edges) = await self._ctx._read_projection(
             lambda handle, _wm: handle.dependency_edges(corpus)
         )
-        return nodes, [DependencyEdge(s, t, f) for s, t, f in edges if s != t]
+        return nodes, [DependencyEdge(s, t, f) for s, t, f in edges]
 
     async def dependents_of(self, shard_iri: str) -> list[ShardEnvelope]:
         corpus = self._ctx.corpus

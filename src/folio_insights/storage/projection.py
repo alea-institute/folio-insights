@@ -165,7 +165,6 @@ def shard_triples(
         (s, fi("tripleObject"), Literal(shard.triple.object)),
         (s, fi("epistemicStatus"), Literal(shard.epistemic_status)),
         (s, fi("frameworkId"), Literal(shard.framework_id)),
-        (s, fi("framework"), NamedNode(framework_iri(shard.framework_id))),
         (s, fi("speechAct"), Literal(shard.speech_act)),
         (s, fi("bfoCategory"), Literal(shard.bfo_category)),
         (s, fi("subjectBfoClass"), NamedNode(BFO_CATEGORY_SPINE_CLASS[shard.bfo_category])),
@@ -175,6 +174,8 @@ def shard_triples(
         (s, fi("signatureCount"), Literal(str(len(shard.signatures)), datatype=_XSD_INT)),
         (s, fi("contentEditCount"), Literal(str(len(shard.content_edits)), datatype=_XSD_INT)),
     ]
+    if shard.framework_id:  # an empty identifier has no framework IRI
+        out.append((s, fi("framework"), NamedNode(framework_iri(shard.framework_id))))
     if shard.valid_time_start is not None:
         out.append((s, fi("validTimeStart"), _dt(shard.valid_time_start)))
     if shard.valid_time_end is not None:
@@ -196,7 +197,10 @@ def shard_triples(
 
 # Event keys whose camelCase name would be undeclared; they map to the term the
 # vocabulary (and the Phase 7 promotion shape) already declares.
-GOVERNANCE_PREDICATE_OVERRIDES: dict[str, str] = {"cited_iris": "citedIri"}
+GOVERNANCE_PREDICATE_OVERRIDES: dict[str, str] = {
+    "cited_iris": "citedIri",
+    "policy": "cascadePolicy",
+}
 
 
 def governance_event_iri(corpus: str, governance_position: int) -> NamedNode:

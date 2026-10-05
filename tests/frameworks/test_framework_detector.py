@@ -56,10 +56,9 @@ def test_v1_year_suffix_is_migrated_with_a_warning(registry: FrameworkRegistry) 
 
 def test_corpus_default_then_citations(registry: FrameworkRegistry) -> None:
     default = FrameworkDetector(registry, corpus_default="us.common_law").detect(
-        SourceMetadata(framework_id="us.delaware.dgcl")  # unregistered: ignored, recorded
+        SourceMetadata(title="synthetic")
     )
     assert (default.framework_id, default.source) == ("us.common_law", "corpus_default")
-    assert "not registered" in default.evidence[0]
 
     cited = FrameworkDetector(registry).detect(
         SourceMetadata(citations=("Fed. R. Evid. 702", "FRE 403", "synthetic note"))
@@ -168,3 +167,19 @@ def test_identical_inputs_give_identical_outputs(framework_id, citations, llm_id
     assert a == b and a == first.detect(meta)
     # whatever happens, a returned framework is always a registered one
     assert a.framework_id is None or a.framework_id in first.registry
+
+
+@pytest.mark.parametrize("named", ["us.delaware.dgcl", "Bad Framework Name"])
+def test_explicit_unregistered_framework_never_falls_through(
+    registry: FrameworkRegistry, named: str
+) -> None:
+    """Review P2-3: an explicit, unregistered framework must not be replaced by
+    the corpus default, a citation vote or the LLM."""
+    llm = FakeLLM("us.ucc", 0.99)
+    det = FrameworkDetector(registry, corpus_default="us.common_law", llm=llm).detect(
+        SourceMetadata(framework_id=named, citations=("Fed. R. Evid. 702",))
+    )
+    assert det.framework_id is None and det.source is None and det.confidence == 0.0
+    assert "no other stage overrides" in det.evidence[0]
+    assert llm.calls == []
+    assert not ConfidenceGate().check_framework(det).passed

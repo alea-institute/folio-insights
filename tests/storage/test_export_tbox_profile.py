@@ -177,3 +177,37 @@ async def test_hermit_reasons_over_the_expressive_tbox(tmp_path: Path) -> None:
     nt.write_bytes(serialize(owl_only, format=RdfFormat.N_TRIPLES))
     result = HermitReasoner(xmx_mb=512).check(nt, profile="DL")
     assert result.reasoner == "hermit" and result.consistent is True
+
+
+TBOX_CONSTRUCT = (
+    "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://folio-insights.aleainstitute.ai/tbox> "
+    "{ ?s ?p ?o } }"
+)
+
+
+async def test_construct_only_export_is_el_gated(tmp_path: Path) -> None:
+    """Review P2-7: a CONSTRUCT that selects a non-EL axiom is refused under EL."""
+    root = tmp_path / "storage"
+    await _corpus(root, inject_non_el=True)
+    dest = tmp_path / "out"
+    with pytest.raises(TBoxProfileViolation, match="CONSTRUCT result"):
+        await _export(root, dest, formats=[ExportFormat.SPARQL_CONSTRUCT],
+                      construct_query=TBOX_CONSTRUCT, allow_partial=True)
+    assert not dest.exists()
+    ok = await _export(root, tmp_path / "dl", formats=[ExportFormat.SPARQL_CONSTRUCT],
+                       construct_query=TBOX_CONSTRUCT, allow_partial=True, expressive=True)
+    profile = ok.manifest["tbox_profile"]
+    assert profile["construct_checked"] is True and profile["warnings"]
+    assert "inverse-functional-property" in {v["rule"] for v in profile["el_violations"]}
+
+
+async def test_export_records_a_tbox_revision_marker(tmp_path: Path) -> None:
+    from folio_insights.storage.projection import tbox_digest
+    from folio_insights.vocab._constants import TBOX_REVISION, VOCAB_VERSION
+
+    root = tmp_path / "storage"
+    await _corpus(root, inject_non_el=False)
+    profile = (await _export(root, tmp_path / "out")).manifest["tbox_profile"]
+    assert profile["vocab_version"] == VOCAB_VERSION
+    assert profile["tbox_revision"] == TBOX_REVISION != VOCAB_VERSION
+    assert profile["tbox_digest"] == tbox_digest()

@@ -32,7 +32,8 @@ FRAMEWORK_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,4}$"
 _YEAR_SUFFIX = re.compile(r"^(?P<base>.+?)(?:[._-](?P<year>1[6-9]\d\d|20\d\d|21\d\d))+$")
 
 SKOS = "http://www.w3.org/2004/02/skos/core#"
-FRAMEWORK_SCHEME_IRI = FRAMEWORK_NS + "scheme"
+# Outside the framework namespace, so no framework ID can mint the scheme IRI.
+FRAMEWORK_SCHEME_IRI = "https://folio-insights.aleainstitute.ai/framework-scheme"
 
 
 class MalformedFrameworkId(ValueError):
@@ -48,7 +49,8 @@ class UnregisteredFramework(KeyError):
 
 def check_framework_id(framework_id: object) -> str:
     """Return ``framework_id`` if it matches the ID pattern, else raise."""
-    if not isinstance(framework_id, str) or not FRAMEWORK_ID_PATTERN.match(framework_id):
+    # fullmatch: ``$`` would also accept a trailing newline (review P2-2).
+    if not isinstance(framework_id, str) or not FRAMEWORK_ID_PATTERN.fullmatch(framework_id):
         raise MalformedFrameworkId(
             f"framework id {framework_id!r} does not match <jurisdiction>.<body>[.<sub>] "
             "(lowercase snake-case segments, each starting with a letter; no year suffix)"

@@ -81,7 +81,7 @@ async def test_admin_registration_extends_the_corpus_registry(tmp_path: Path) ->
     ctx, guard = await open_framework_checked_context(root, "corpus-a")
     try:
         registration = await register_framework(
-            ctx, DGCL, signing_key=admin.sk, did=admin.did, signed_at=at(5)
+            ctx, DGCL, signing_key=admin.sk, did=admin.did
         )
         assert verify_registration(registration)
         assert registration.signer_did == admin.did
@@ -89,7 +89,7 @@ async def test_admin_registration_extends_the_corpus_registry(tmp_path: Path) ->
         await ctx.shards.put(shard(1).shard_iri, shard(1, framework_id="us.delaware.dgcl"))
         # a retry commits once; a different definition under the same ID refuses
         again = await register_framework(
-            ctx, DGCL, signing_key=admin.sk, did=admin.did, signed_at=at(5)
+            ctx, DGCL, signing_key=admin.sk, did=admin.did
         )
         assert again == registration
         entries = [e for e in await ctx.proposals.entries() if e.kind == LEDGER_KIND]
@@ -241,3 +241,109 @@ def test_cli_register_list_export(tmp_path: Path) -> None:
     missing = runner.invoke(cli, ["framework", "list", "--corpus", "nope", "--corpus-root",
                                   str(root)])
     assert missing.exit_code == 1
+
+
+# ── review P1: registration is bound to ledger-controlled time ─────────────
+
+
+async def _seed_revoked(root: Path) -> tuple[Identity, Identity]:
+    from tests.storage.conftest import role_revocation
+
+    admin, former = new_identity(), new_identity()
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        await ctx.governance.append(genesis("corpus-a", admin, at(0)))
+        await ctx.governance.append(role_assertion("corpus-a", admin, former.did, "corpus_admin", at(1)))
+        await ctx.governance.append(role_revocation("corpus-a", admin, former.did, "corpus_admin", at(10)))
+    finally:
+        await ctx.close()
+    return admin, former
+
+
+async def test_revoked_admin_cannot_register_with_a_backdated_time(tmp_path: Path) -> None:
+    root = tmp_path / "storage"
+    _admin, former = await _seed_revoked(root)
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        with pytest.raises(FrameworkRegistrationRefused):
+            await register_framework(ctx, DGCL, signing_key=former.sk, did=former.did)
+        with pytest.raises(FrameworkRegistrationRefused, match="not within"):
+            await register_framework(ctx, DGCL, signing_key=former.sk, did=former.did, now=at(5))
+        with pytest.raises(TypeError):
+            await register_framework(  # the old caller-chosen signing time is gone
+                ctx, DGCL, signing_key=former.sk, did=former.did, signed_at=at(5)  # type: ignore[call-arg]
+            )
+        # a backdated row appended straight to the ledger is refused on load
+        forged = sign_registration("corpus-a", DGCL, signing_key=former.sk, did=former.did,
+                                   signed_at=at(5))
+        await ctx.proposals.append(LEDGER_KIND, forged.model_dump(mode="json"), op_id="forged")
+        with pytest.raises(FrameworkRegistrationRefused, match="commit time"):
+            await load_registry(ctx)
+    finally:
+        await ctx.close()
+
+
+async def test_current_time_row_from_a_revoked_admin_is_refused_on_load(tmp_path: Path) -> None:
+    root = tmp_path / "storage"
+    _admin, former = await _seed_revoked(root)
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        row = sign_registration("corpus-a", DGCL, signing_key=former.sk, did=former.did)
+        await ctx.proposals.append(LEDGER_KIND, row.model_dump(mode="json"), op_id="direct")
+        with pytest.raises(FrameworkRegistrationRefused, match="not a corpus admin"):
+            await load_registry(ctx)
+    finally:
+        await ctx.close()
+
+
+async def test_non_admin_row_appended_directly_is_refused_on_load(tmp_path: Path) -> None:
+    root = tmp_path / "storage"
+    reviewer = new_identity()
+    await _seed(root, new_identity(), reviewer)
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        row = sign_registration("corpus-a", DGCL, signing_key=reviewer.sk, did=reviewer.did)
+        await ctx.proposals.append(LEDGER_KIND, row.model_dump(mode="json"), op_id="direct")
+        with pytest.raises(FrameworkRegistrationRefused, match="not a corpus admin"):
+            await load_registry(ctx)
+    finally:
+        await ctx.close()
+
+
+async def test_registration_replayed_into_another_corpus_is_refused(tmp_path: Path) -> None:
+    root = tmp_path / "storage"
+    admin = new_identity()
+    await _seed(root, admin)
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        registration = await register_framework(ctx, DGCL, signing_key=admin.sk, did=admin.did)
+    finally:
+        await ctx.close()
+    other = await CorpusStorageContext.open(root, "corpus-b")
+    try:
+        await other.governance.append(genesis("corpus-b", admin, at(0)))  # same admin there too
+        await other.proposals.append(LEDGER_KIND, registration.model_dump(mode="json"), op_id="replay")
+        with pytest.raises(FrameworkRegistrationRefused, match="this corpus"):
+            await load_registry(other)
+    finally:
+        await other.close()
+
+
+@pytest.mark.parametrize("bad", ["us.federal.fre\n", "us.federal.fre\r\n", "us.ucc\n"])
+def test_framework_ids_with_trailing_newlines_are_malformed(bad: str) -> None:
+    from folio_insights.models.framework import check_framework_id
+
+    with pytest.raises(MalformedFrameworkId):
+        check_framework_id(bad)
+    with pytest.raises(ValueError):
+        Framework(id=bad, label="x", jurisdiction="us")
+
+
+def test_framework_iris_never_collide_with_namespace_or_scheme() -> None:
+    from folio_insights.models.framework import FRAMEWORK_SCHEME_IRI
+    from folio_insights.vocab._constants import FRAMEWORK_NS, framework_iri
+
+    with pytest.raises(ValueError):
+        framework_iri("")
+    assert framework_iri("scheme") != FRAMEWORK_SCHEME_IRI
+    assert not FRAMEWORK_SCHEME_IRI.startswith(FRAMEWORK_NS)

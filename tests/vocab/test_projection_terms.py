@@ -135,6 +135,7 @@ def _event_payloads() -> list[dict]:
         "rationale": "synthetic rationale",
         "new_parent_iri": iri,
         "strategy": "sense_distinction",
+        "policy": "prefer_latest",
     }
     union = typing.get_args(typing.get_args(gov_events.GovernanceEvent)[0])
     out = []

@@ -1,7 +1,8 @@
 """Rule-first BFO typing of a shard's subject (Phase 9 U7, KTD11; PRD §8 P7).
 
-Order: the rule classifier (the subject's VERIFIED FOLIO tags through the
-branch table), then the LLM fallback (through the Phase 10 port; it can only
+Order: the rule classifier (the subject's VERIFIED FOLIO tags; each tag's
+top-level branch is derived from its FOLIO ancestry through a
+``BranchResolver``, then mapped by the branch table), then the LLM fallback (through the Phase 10 port; it can only
 answer one of the four envelope categories — the schema forbids anything
 else), then the mode's last resort:
 
@@ -23,7 +24,8 @@ from folio_insights.bfo.spine import (
     CATEGORY_SPINE_CLASS,
     DEFAULT_CATEGORY_BY_SPEECH_ACT,
     BfoCategory,
-    branch_for,
+    BranchResolver,
+    top_level_branches,
 )
 
 AssignmentSource = Literal["rule", "llm", "default"]
@@ -37,13 +39,17 @@ class BfoUnclassifiable(ValueError):
 
 
 class FolioTag(BaseModel):
-    """A FOLIO tag on the shard's subject; only verified tags type it."""
+    """A FOLIO tag on the shard's subject.
+
+    Only tags the caller explicitly marks ``verified=True`` type the subject
+    (the default is unverified), and the top-level branch is derived from the
+    tag IRI's FOLIO ancestry by the classifier's resolver — a caller cannot
+    assert it (review P2-9)."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     iri: str
-    branch: str  # the top-level branch, by IRI or label
-    verified: bool = True
+    verified: bool = False
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
@@ -106,7 +112,7 @@ class PortBfoLLM:
         prompt = BFO_CLASSIFY.render(
             subject=item.subject or "(none)",
             speech_act=item.speech_act,
-            tags="; ".join(f"{t.iri} ({t.branch})" for t in item.folio_tags) or "(none)",
+            tags="; ".join(t.iri for t in item.folio_tags) or "(none)",
         )
         reply = self._llm.structured_model_sync(  # type: ignore[attr-defined]
             prompt, BfoCategoryChoice, template=BFO_CLASSIFY
@@ -125,7 +131,9 @@ class BfoClassifier:
         mode: BfoMode = "permissive",
         llm: BfoLLM | None = None,
         llm_threshold: float = LLM_THRESHOLD,
+        resolver: BranchResolver | None = None,
     ) -> None:
+        self.resolver = resolver
         if mode not in ("permissive", "strict"):
             raise ValueError(f"unknown BFO mode {mode!r}")
         self.mode = mode
@@ -141,11 +149,17 @@ class BfoClassifier:
             if not tag.verified:
                 evidence.append(f"rule: {tag.iri} skipped (unverified)")
                 continue
-            mapping = branch_for(tag.branch)
-            if mapping is None:
-                evidence.append(f"rule: {tag.iri} has unknown branch {tag.branch!r}")
+            branches = top_level_branches(tag.iri, self.resolver)
+            if not branches:
+                evidence.append(f"rule: {tag.iri} has no FOLIO top-level branch in its ancestry")
                 continue
-            candidates.append((-tag.confidence, index, tag, mapping))
+            if len({b.category for b in branches}) > 1:
+                evidence.append(
+                    f"rule: {tag.iri} descends from branches with different categories ("
+                    + ", ".join(b.label for b in branches) + "); ambiguous, skipped"
+                )
+                continue
+            candidates.append((-tag.confidence, index, tag, branches[0]))
         if candidates:
             _, _, tag, mapping = min(candidates, key=lambda c: (c[0], c[1]))
             categories = {m.category for *_, m in candidates}
