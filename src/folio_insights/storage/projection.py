@@ -76,11 +76,16 @@ from folio_insights.storage.errors import ProjectionLockTimeout, UnsupportedStor
 from folio_insights.storage.journal import KIND_GOVERNANCE, KIND_SHARD, JournalRow
 from folio_insights.store import PyoxigraphStore
 from folio_insights.store.pyoxigraph_store import ServiceClauseBlocked
-from folio_insights.vocab._constants import FI_PREFIX
+from folio_insights.vocab._constants import BFO_CATEGORY_SPINE_CLASS, FI_PREFIX, framework_iri
 
 PROJECTION_DIRNAME = "projection.oxigraph"
 PROJECTION_LOCKNAME = "projection.lock"
-PROJECTION_ADAPTER_VERSION = 1
+# Adapter versions (a change rebuilds every corpus projection from the journal):
+#   1 — Phase 13 layout.
+#   2 — Phase 9 U0: fi:framework as an IRI (fi:frameworkId kept), fi:speechAct,
+#       fi:bfoCategory and fi:subjectBfoClass on shards; promotion citations as
+#       the declared fi:citedIri. Journal bytes and signatures are untouched.
+PROJECTION_ADAPTER_VERSION = 2
 
 CORPUS_NS = "https://folio-insights.aleainstitute.ai/corpus/"
 META_GRAPH = NamedNode("urn:folio-insights:storage:projection")
@@ -160,12 +165,17 @@ def shard_triples(
         (s, fi("tripleObject"), Literal(shard.triple.object)),
         (s, fi("epistemicStatus"), Literal(shard.epistemic_status)),
         (s, fi("frameworkId"), Literal(shard.framework_id)),
+        (s, fi("speechAct"), Literal(shard.speech_act)),
+        (s, fi("bfoCategory"), Literal(shard.bfo_category)),
+        (s, fi("subjectBfoClass"), NamedNode(BFO_CATEGORY_SPINE_CLASS[shard.bfo_category])),
         (s, fi("confidence"), Literal(repr(float(shard.confidence)), datatype=_XSD_DOUBLE)),
         (s, fi("contested"), Literal("true" if shard.contested else "false", datatype=_XSD_BOOL)),
         (s, fi("journalPosition"), Literal(str(journal_position), datatype=_XSD_INT)),
         (s, fi("signatureCount"), Literal(str(len(shard.signatures)), datatype=_XSD_INT)),
         (s, fi("contentEditCount"), Literal(str(len(shard.content_edits)), datatype=_XSD_INT)),
     ]
+    if shard.framework_id:  # an empty identifier has no framework IRI
+        out.append((s, fi("framework"), NamedNode(framework_iri(shard.framework_id))))
     if shard.valid_time_start is not None:
         out.append((s, fi("validTimeStart"), _dt(shard.valid_time_start)))
     if shard.valid_time_end is not None:
@@ -183,6 +193,14 @@ def shard_triples(
     for sig in shard.signatures:
         out.append((s, fi("signedBy"), Literal(sig.did)))
     return out
+
+
+# Event keys whose camelCase name would be undeclared; they map to the term the
+# vocabulary (and the Phase 7 promotion shape) already declares.
+GOVERNANCE_PREDICATE_OVERRIDES: dict[str, str] = {
+    "cited_iris": "citedIri",
+    "policy": "cascadePolicy",
+}
 
 
 def governance_event_iri(corpus: str, governance_position: int) -> NamedNode:
@@ -216,7 +234,7 @@ def governance_triples(
                 obj: Any = iri_or_literal(str(item))
             else:
                 obj = Literal(str(item))
-            out.append((e, fi(_camel(key)), obj))
+            out.append((e, fi(GOVERNANCE_PREDICATE_OVERRIDES.get(key) or _camel(key)), obj))
     return out
 
 
@@ -595,6 +613,27 @@ class ProjectionHandle:
         )
         return [sol["s"].value for sol in self._wrapper.store.query(sparql)]
 
+    def dependency_edges(self, corpus: str) -> tuple[list[str], list[tuple[str, str, str]]]:
+        """One bulk adjacency read (Phase 9 U3): every current shard IRI in
+        ``corpus`` and every ``(dependent, dependency, depends_on_* field)``
+        edge, from a single query over the corpus ABox."""
+        by_predicate = {str(fi(p)): field for field, p in DEPENDENCY_PREDICATES.items()}
+        values = " ".join(by_predicate)
+        sparql = (
+            f"SELECT ?s ?p ?t WHERE {{ GRAPH {corpus_graph(corpus)} {{ "
+            f"{{ ?s {_RDF_TYPE} {fi('Shard')} }} UNION "
+            f"{{ VALUES ?p {{ {values} }} ?s ?p ?t }} }} }}"
+        )
+        nodes: set[str] = set()
+        edges: list[tuple[str, str, str]] = []
+        for sol in self._wrapper.store.query(sparql):
+            subject = sol["s"].value
+            nodes.add(subject)
+            predicate = sol["p"]
+            if predicate is not None:
+                edges.append((subject, sol["t"].value, by_predicate[str(predicate)]))
+        return sorted(nodes), sorted(edges)
+
     def close(self) -> None:
         self._wrapper.store.flush()
         # Drop the only reference so RocksDB releases its process lock now.
@@ -659,6 +698,7 @@ __all__ = [
     "CHAIN_GENESIS",
     "CORPUS_NS",
     "DEPENDENCY_PREDICATES",
+    "GOVERNANCE_PREDICATE_OVERRIDES",
     "META_GRAPH",
     "TBOX_GRAPH",
     "PROJECTION_ADAPTER_VERSION",

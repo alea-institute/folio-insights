@@ -1,98 +1,136 @@
-"""D-18 cascade-preview classifier table test (07-05b Task 1).
+"""D-18 cascade-preview classifier table test (07-05b Task 1; Phase 9 U3 revision).
 
-The D-18 classifier (``classify_dependent``) maps a dependent's attribute
-tuple ``(supersession_available, reconciliation_strategy, epistemic_status,
-unresolved_contest_count)`` onto one of three buckets:
+The classifier (``classify_dependent``) maps a DIRECT dependent's attributes
+plus the retraction's cascade policy onto one of three buckets. Phase 9
+(KTD6) passes the policy explicitly — ``CascadePolicy`` is its own type —
+instead of reading ``reconciliation_strategy == "prefer_latest"`` off the
+dependent, a value the eight-value ``ReconciliationStrategy`` literal can
+never hold (so ``auto_rederive`` used to be unreachable).
 
-  * ``auto_rederive``  — ``reconciliation_strategy="prefer_latest"`` AND
-                         ``supersession_available=True``.
-  * ``review_needed``  — any of:
+  * ``review_needed``  — wins on any human-judgment marker:
                             * ``epistemic_status in {contested, aporetic}``,
                             * ``unresolved_contest_count > 0``,
-                            * ``reconciliation_strategy != prefer_latest``
-                              (when a strategy IS set).
-  * ``aporetic``       — fall-through (no supersession, no reviewer marker,
-                         no contest votes, no non-prefer_latest strategy).
+                            * a recorded ``reconciliation_strategy``;
+                         or a successor the policy rejects.
+  * ``aporetic``       — no successor to re-derive on.
+  * ``auto_rederive``  — the policy accepts the successor (``prefer_latest``
+                         always; ``prefer_authority`` when the successor is
+                         attested; ``prefer_most_specific_jurisdiction`` when
+                         its framework is as specific as the dependent's).
 
-The heuristic is locked verbatim by D-18 (RESEARCH lines 1338-1353).
 Adding a 4th bucket requires an ADR + a synchronous edit to (a) this
-table, (b) the ``classify_dependent`` body, (c) the ``CascadePreview``
-Pydantic model (the bucket lists), and (d) the human-verify rich.table
-columns in ``cli/retract.py``.
+table, (b) ``revision/policies.py``, (c) the ``CascadePreview`` Pydantic
+model (the bucket lists), and (d) the rich.table columns in
+``cli/retract.py``.
 """
 from __future__ import annotations
 
 import pytest
 
 from folio_insights.governance.retract import classify_dependent
+from folio_insights.revision.policies import (
+    CASCADE_POLICIES,
+    classify_at_depth,
+    framework_at_least_as_specific,
+)
+from folio_insights.shards.subtypes import ReconciliationStrategy
 
 pytestmark = pytest.mark.governance
 
 
-# ── D-18 truth table (>=8 rows per plan acceptance) ────────────────────────
-#
-# Each row encodes (supersession_available, reconciliation_strategy,
-# epistemic_status, unresolved_contest_count) -> expected_bucket.
-#
-# The `review_needed wins` precedence rule (status / votes / non-prefer_latest
-# strategy override an otherwise-auto_rederive case) is exercised by rows 4-6.
-_TABLE: list[tuple[bool, str | None, str | None, int, str]] = [
-    # 1. The canonical auto_rederive case: prefer_latest + supersession.
-    (True, "prefer_latest", "authority_only", 0, "auto_rederive"),
-    # 2. prefer_latest but NO supersession available → fall-through to aporetic.
-    (False, "prefer_latest", "authority_only", 0, "aporetic"),
-    # 3. No strategy at all + no marker → aporetic.
-    (False, None, "authority_only", 0, "aporetic"),
-    # 4. epistemic_status=contested wins over otherwise auto_rederive case.
-    (True, "prefer_latest", "contested", 0, "review_needed"),
-    # 5. epistemic_status=aporetic also routes to review_needed.
-    (False, None, "aporetic", 0, "review_needed"),
-    # 6. unresolved_contest_count > 0 wins, even with prefer_latest + succ.
-    (True, "prefer_latest", "authority_only", 1, "review_needed"),
-    # 7. Non-prefer_latest strategy (e.g. sense_distinction) routes to review.
-    (True, "sense_distinction", "authority_only", 0, "review_needed"),
-    # 8. Strategy set to something other than prefer_latest, no succ → still review.
-    (False, "unreconciled", "authority_only", 0, "review_needed"),
-    # 9. Status hypothesis + no strategy + no succ + no votes → aporetic.
-    (False, None, "hypothesis", 0, "aporetic"),
-    # 10. Status demonstrable + no strategy + supersession_available → aporetic
-    #     (no prefer_latest -> can't route to auto_rederive).
-    (True, None, "demonstrable", 0, "aporetic"),
+# (supersession_available, policy, strategy, status, votes, successor_status,
+#  successor_framework, dependent_framework) -> expected bucket
+_TABLE: list[tuple[bool, str, str | None, str | None, int, str | None, str | None, str | None, str]] = [
+    # 1. prefer_latest + successor: the canonical re-derive case.
+    (True, "prefer_latest", None, "authority_only", 0, "authority_only", None, None, "auto_rederive"),
+    # 2. prefer_latest, no successor -> aporetic.
+    (False, "prefer_latest", None, "authority_only", 0, None, None, None, "aporetic"),
+    # 3. contested status wins over an otherwise re-derivable case.
+    (True, "prefer_latest", None, "contested", 0, "authority_only", None, None, "review_needed"),
+    # 4. aporetic status routes to review.
+    (False, "prefer_latest", None, "aporetic", 0, None, None, None, "review_needed"),
+    # 5. unresolved contest votes win.
+    (True, "prefer_latest", None, "authority_only", 1, "authority_only", None, None, "review_needed"),
+    # 6. a recorded sic-et-non reconciliation is human judgment -> review.
+    (True, "prefer_latest", "sense_distinction", "authority_only", 0, "authority_only", None, None, "review_needed"),
+    (False, "prefer_authority", "unreconciled", "authority_only", 0, None, None, None, "review_needed"),
+    # 7. hypothesis dependent, no successor -> aporetic.
+    (False, "prefer_latest", None, "hypothesis", 0, None, None, None, "aporetic"),
+    # 8. prefer_authority: attested successor re-derives; a hypothesis successor needs review.
+    (True, "prefer_authority", None, "demonstrable", 0, "demonstrable", None, None, "auto_rederive"),
+    (True, "prefer_authority", None, "demonstrable", 0, "hypothesis", None, None, "review_needed"),
+    (False, "prefer_authority", None, "demonstrable", 0, None, None, None, "aporetic"),
+    # 9. prefer_most_specific_jurisdiction: same or narrower framework re-derives.
+    (True, "prefer_most_specific_jurisdiction", None, "authority_only", 0, "authority_only",
+     "us.federal.fre", "us.federal.fre", "auto_rederive"),
+    (True, "prefer_most_specific_jurisdiction", None, "authority_only", 0, "authority_only",
+     "us.federal.fre", "us.federal", "auto_rederive"),
+    (True, "prefer_most_specific_jurisdiction", None, "authority_only", 0, "authority_only",
+     "us.common_law", "us.federal.fre", "review_needed"),
+    (False, "prefer_most_specific_jurisdiction", None, "authority_only", 0, None,
+     None, "us.federal.fre", "aporetic"),
 ]
 
 
 @pytest.mark.parametrize(
-    "supersession_available, strategy, status, votes, expected",
+    "succ, policy, strategy, status, votes, succ_status, succ_fw, dep_fw, expected",
     _TABLE,
     ids=[f"row{i + 1}" for i in range(len(_TABLE))],
 )
 def test_classify_dependent_truth_table(
-    supersession_available: bool,
+    succ: bool,
+    policy: str,
     strategy: str | None,
     status: str | None,
     votes: int,
+    succ_status: str | None,
+    succ_fw: str | None,
+    dep_fw: str | None,
     expected: str,
 ) -> None:
-    """Exercise the D-18 classifier across the >=8 row truth table."""
     attrs = {
-        "supersession_available": supersession_available,
+        "supersession_available": succ,
         "reconciliation_strategy": strategy,
         "epistemic_status": status,
         "unresolved_contest_count": votes,
+        "successor_epistemic_status": succ_status,
+        "successor_framework_id": succ_fw,
+        "dependent_framework_id": dep_fw,
     }
-    bucket = classify_dependent(attrs)
-    assert bucket == expected, (
-        f"D-18 classifier returned {bucket!r} for attrs={attrs}; "
-        f"expected {expected!r}. The heuristic is locked verbatim by D-18 "
-        "(RESEARCH lines 1338-1353)."
-    )
+    assert classify_dependent(attrs, policy=policy) == expected  # type: ignore[arg-type]
 
 
-def test_classify_dependent_defaults_match_safe_aporetic() -> None:
-    """Empty / missing attrs route to the safe ``aporetic`` bucket.
+@pytest.mark.parametrize("policy", CASCADE_POLICIES)
+def test_classify_dependent_defaults_match_safe_aporetic(policy: str) -> None:
+    """Empty / missing attrs never auto-rederive."""
+    assert classify_dependent({}, policy=policy) == "aporetic"  # type: ignore[arg-type]
 
-    The cascade preview must NEVER auto-rederive on a missing-attribute
-    edge case — the only way to land in ``auto_rederive`` is the explicit
-    prefer_latest + supersession combination.
-    """
-    assert classify_dependent({}) == "aporetic"
+
+def test_policy_is_required_and_validated() -> None:
+    with pytest.raises(TypeError):
+        classify_dependent({})  # type: ignore[call-arg]
+    with pytest.raises(ValueError, match="unknown cascade policy"):
+        classify_dependent({}, policy="sense_distinction")  # type: ignore[arg-type]
+
+
+def test_cascade_policy_is_separate_from_reconciliation_strategy() -> None:
+    from typing import get_args
+
+    assert not set(CASCADE_POLICIES) & set(get_args(ReconciliationStrategy))
+
+
+@pytest.mark.parametrize("depth", [2, 3, 7])
+def test_deeper_dependents_are_flagged_only(depth: int) -> None:
+    attrs = {"supersession_available": True, "epistemic_status": "authority_only"}
+    assert classify_at_depth(1, attrs, policy="prefer_latest") == "auto_rederive"
+    assert classify_at_depth(depth, attrs, policy="prefer_latest") == "review_needed"
+    with pytest.raises(ValueError):
+        classify_at_depth(0, attrs, policy="prefer_latest")
+
+
+def test_framework_specificity_is_the_segment_prefix() -> None:
+    assert framework_at_least_as_specific("us.federal.fre", "us.federal")
+    assert framework_at_least_as_specific("us.federal", "us.federal")
+    assert not framework_at_least_as_specific("us.federalx", "us.federal")
+    assert not framework_at_least_as_specific("us.federal", "us.federal.fre")
+    assert not framework_at_least_as_specific(None, "us.federal")

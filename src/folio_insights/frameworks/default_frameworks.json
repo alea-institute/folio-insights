@@ -1,0 +1,17 @@
+{
+  "_comment": "Starter framework set every corpus registry ships with (Phase 9 U2). PROVISIONAL: Decision Sheet folio-insights-2026-10-05-0814-p9-build-and-calls q3 is still open with Damien; this is the recommended option ('The seven listed'), recorded with cockpit-provisional. Changing the set is a one-file change: edit this list. Corpus admins register further frameworks per corpus through signed registrations.",
+  "provisional": {
+    "decision_sheet": "folio-insights-2026-10-05-0814-p9-build-and-calls",
+    "qid": "q3",
+    "status": "open; recommended option shipped"
+  },
+  "frameworks": [
+    {"id": "us.federal.frcp", "label": "Federal Rules of Civil Procedure", "jurisdiction": "us.federal", "parent": null},
+    {"id": "us.federal.fre", "label": "Federal Rules of Evidence", "jurisdiction": "us.federal", "parent": null},
+    {"id": "us.ucc", "label": "Uniform Commercial Code", "jurisdiction": "us", "parent": null},
+    {"id": "us.restatement_2d.contracts", "label": "Restatement (Second) of Contracts", "jurisdiction": "us", "parent": null},
+    {"id": "us.common_law", "label": "United States common law", "jurisdiction": "us", "parent": null},
+    {"id": "uk.england.common_law", "label": "Common law of England and Wales", "jurisdiction": "uk.england", "parent": null},
+    {"id": "us.louisiana.civil_code", "label": "Louisiana Civil Code", "jurisdiction": "us.louisiana", "parent": null}
+  ]
+}

@@ -8,14 +8,20 @@ it into the projection would bypass the journal the projection is derived
 from.
 
 Fixture: 43,479 synthetic shards (deterministic, generated in-process; no
-book or production content) projecting to 1,000,017 ABox triples. Each run
+book or production content) projecting to 1,173,933 ABox triples (1,000,017
+under projection adapter v1; Phase 9 U0's adapter v2 adds four triples per
+shard: fi:framework, fi:speechAct, fi:bfoCategory, fi:subjectBfoClass). Each run
 loads into a fresh storage root in the same process; the first run includes
 process-pool start-up. Pass criterion: the median of three runs. Every run's
 number is printed and, with ``FOLIO_INSIGHTS_BULK_BENCH_OUT`` set, written
 as JSON so the plan can record it verbatim.
 
-Marked ``slow`` (excluded from the quick suite). Run:
-    pytest tests/bench/test_storage_bulk_load.py -m slow -s
+Marked ``slow`` (excluded from the quick suite). It measures throughput, so
+it needs an IDLE machine: under a parallel or otherwise loaded run a single
+run can dip below the gate (one of three runs read 189,811/s on a busy box)
+without anything having regressed. It refuses to run inside a pytest-xdist
+worker; run it alone, serially (the 200K threshold is not relaxed):
+    pytest tests/bench/test_storage_bulk_load.py -m slow -s -p no:xdist
 """
 from __future__ import annotations
 
@@ -32,7 +38,14 @@ from folio_insights.storage import CorpusStorageContext
 
 from tests.storage.conftest import shard
 
-pytestmark = [pytest.mark.slow, pytest.mark.storage]
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.storage,
+    pytest.mark.skipif(
+        bool(os.environ.get("PYTEST_XDIST_WORKER")),
+        reason="throughput benchmark: run serially on an idle machine, not in a parallel run",
+    ),
+]
 
 SHARDS = 43_479
 TARGET_TRIPLES_PER_SEC = 200_000
@@ -107,5 +120,5 @@ async def test_bulk_load_meets_200k_triples_per_second(tmp_path: Path) -> None:
     out = os.environ.get("FOLIO_INSIGHTS_BULK_BENCH_OUT")
     if out:
         Path(out).write_text(json.dumps(report, indent=2) + "\n")
-    assert triples == 1_000_017
+    assert triples == 1_000_017 + 4 * SHARDS  # adapter v2: +4 triples per shard
     assert median >= TARGET_TRIPLES_PER_SEC, report

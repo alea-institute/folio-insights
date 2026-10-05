@@ -78,12 +78,21 @@ fi:closureMarker a owl:DatatypeProperty ;
 
 fi:framework a owl:ObjectProperty ;
     rdfs:label "framework" ;
-    rdfs:comment "Carnap: the linguistic/conceptual framework this shard sits within." .
+    rdfs:range fi:Framework ;
+    rdfs:comment """Carnap: the linguistic/conceptual framework this shard sits within.
+The object is the framework's IRI under https://folio-insights.aleainstitute.ai/framework/
+(Phase 9 U0: the projection writes an IRI, never a literal; the identifier string
+is fi:frameworkId).""" .
 
 fi:inFramework a owl:ObjectProperty ;
     rdfs:label "in framework" ;
-    owl:inverseOf fi:framework ;
-    rdfs:comment "Inverse of fi:framework: subject is asserted relative to the referenced framework. WR-05: owl:inverseOf makes the inverse claim machine-readable so OWL reasoners + SPARQL entailment engines can derive the reverse triple (matches the fi:supersedes / fi:supersededBy D-10 pattern)." .
+    rdfs:subPropertyOf fi:framework ;
+    rdfs:comment """Subject is asserted relative to the referenced fi:Framework (an IRI
+under the framework namespace, never a literal). Phase 9 U0: this was declared
+owl:inverseOf fi:framework (WR-05), but both properties run subject -> framework,
+so the inverse axiom asserted the wrong direction (framework -> shard). It is now
+rdfs:subPropertyOf fi:framework, which states the intended entailment and stays
+inside OWL 2 EL (KTD5; OWL 2 EL has no inverse properties).""" .
 
 # ──────────────────────────────────────────────────────────────────────────
 # Epistemic status (PRD §7.1.6)
@@ -109,15 +118,15 @@ fi:predicationMode a owl:DatatypeProperty ;
 
 fi:supersedes a owl:ObjectProperty ;
     rdfs:label "supersedes" ;
-    owl:inverseOf fi:supersededBy ;
     rdfs:comment """Asserts that the subject shard supersedes the object shard.
-D-10: declared as owl:inverseOf fi:supersededBy. Phase 7 supersede.py emits ONLY
-fi:supersedes — the inverse is inferred at query time.""" .
+D-10: the owl:inverseOf fi:supersededBy axiom lives in expressive.ttl (the OWL 2
+DL layer, Phase 9 KTD5): OWL 2 EL has no inverse properties, so the shared TBox
+stays EL and the axiom ships with `export --expressive`. The projection writes
+both directions explicitly from the shard envelope, so SPARQL needs no inference.""" .
 
 fi:supersededBy a owl:ObjectProperty ;
     rdfs:label "superseded by" ;
-    owl:inverseOf fi:supersedes ;
-    rdfs:comment "Inverse of fi:supersedes (D-10 — declared explicitly for SPARQL ergonomics)." .
+    rdfs:comment "Inverse of fi:supersedes (D-10; the owl:inverseOf axiom is in expressive.ttl)." .
 
 # ──────────────────────────────────────────────────────────────────────────
 # Valid-time + transaction-time (PRD §7.1.9 — Phase 5 wired)
@@ -338,8 +347,9 @@ fi:newStatus a owl:DatatypeProperty ;
 
 fi:pending a owl:DatatypeProperty ;
     rdfs:label "pending" ;
-    rdfs:range xsd:boolean ;
-    rdfs:comment "Boolean flag marking a governance event as pending resolution (GOV-05 contest workflow)." .
+    rdfs:comment """Boolean flag marking a governance event as pending resolution (GOV-05
+contest workflow). Its rdfs:range xsd:boolean is in expressive.ttl: xsd:boolean is
+outside the OWL 2 EL datatype map (Phase 9 KTD5).""" .
 
 fi:position a owl:DatatypeProperty ;
     rdfs:label "position" ;
@@ -416,3 +426,217 @@ fi:termOfArt a owl:DatatypeProperty ;
     rdfs:label "term of art" ;
     rdfs:range xsd:string ;
     rdfs:comment "Legal term-of-art string carried on a polysemy shard fixture (polysemy/fixture_loader.py)." .
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 9 U0 — terms the storage projection and exports write
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Phase 13's projection (storage/projection.py) and exports (storage/exports.py)
+# wrote these terms without declaring them. Every fi: term the projection emits
+# is now declared here or in classes.ttl, and tests/vocab/test_projection_terms.py
+# fails on any new undeclared one. Ranges are given only where the datatype is
+# in the OWL 2 EL datatype map (xsd:boolean and xsd:double are not), so the
+# shared TBox stays inside the EL profile (KTD5).
+
+# ── Framework (Carnap — PRD §8 P2) ──
+
+fi:frameworkId a owl:DatatypeProperty ;
+    rdfs:label "framework id" ;
+    rdfs:range xsd:string ;
+    rdfs:comment """The shard envelope's framework identifier string
+(`<jurisdiction>.<body>[.<sub>]`, e.g. us.federal.fre). The projection also
+links the shard to the framework's IRI with fi:framework.""" .
+
+fi:jurisdiction a owl:DatatypeProperty ;
+    rdfs:label "jurisdiction" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "A framework's jurisdiction prefix (us, us.federal, uk.england, ...) in the framework registry's SKOS export." .
+
+# ── Dependencies (Spinozan — PRD §7.1.3; the four depends_on_* lists) ──
+
+fi:dependsOnPrecedent a owl:ObjectProperty ;
+    rdfs:label "depends on precedent" ;
+    rdfs:comment "Spinozan: this shard logically depends on the referenced precedent." .
+
+fi:dependsOnShard a owl:ObjectProperty ;
+    rdfs:label "depends on shard" ;
+    rdfs:comment "Spinozan: this shard logically depends on the referenced shard." .
+
+# ── Envelope fields the projection carries ──
+
+fi:shardType a owl:DatatypeProperty ;
+    rdfs:label "shard type" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The envelope's shard_type discriminator (simple_assertion, gloss, ...)." .
+
+fi:schemaVersion a owl:DatatypeProperty ;
+    rdfs:label "schema version" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "The envelope schema version stamp (U17), distinct from fi:vocabVersion." .
+
+fi:contentHash a owl:DatatypeProperty ;
+    rdfs:label "content hash" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "JCS-canonical SHA-256 of the shard's content (revision.canonical_content_hash)." .
+
+fi:sourceUri a owl:ObjectProperty ;
+    rdfs:label "source URI" ;
+    rdfs:comment "The source document the shard was extracted from (an IRI, or an xsd:anyURI literal when not a valid IRI)." .
+
+fi:sourceSpan a owl:DatatypeProperty ;
+    rdfs:label "source span" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Locator of the extracted span within the source document." .
+
+fi:extractedAt a owl:DatatypeProperty ;
+    rdfs:label "extracted at" ;
+    rdfs:range xsd:dateTime ;
+    rdfs:comment "Instant the shard was first extracted." .
+
+fi:firstExtractorDid a owl:DatatypeProperty ;
+    rdfs:label "first extractor DID" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "DID of the extractor that first produced the shard." .
+
+fi:sense a owl:DatatypeProperty ;
+    rdfs:label "sense" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Fregean sense of the shard's proposition." .
+
+fi:reference a owl:DatatypeProperty ;
+    rdfs:label "reference" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Fregean reference of the shard's proposition (an identifier string)." .
+
+fi:tripleSubject a owl:DatatypeProperty ;
+    rdfs:label "triple subject" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Subject of the shard's function-argument triple." .
+
+fi:triplePredicate a owl:DatatypeProperty ;
+    rdfs:label "triple predicate" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Predicate of the shard's function-argument triple." .
+
+fi:tripleObject a owl:DatatypeProperty ;
+    rdfs:label "triple object" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Object of the shard's function-argument triple." .
+
+fi:speechAct a owl:DatatypeProperty ;
+    rdfs:label "speech act" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Wittgensteinian speech-act / language-game context (envelope field 13)." .
+
+fi:bfoCategory a owl:DatatypeProperty ;
+    rdfs:label "BFO category" ;
+    rdfs:range xsd:string ;
+    rdfs:comment """The envelope's four-value BFO category (envelope field 15:
+continuant_independent, continuant_dependent, occurrent_process, occurrent_event).
+The projection maps it to a spine class with fi:subjectBfoClass.""" .
+
+fi:subjectBfoClass a owl:ObjectProperty ;
+    rdfs:label "subject BFO class" ;
+    rdfs:comment """The mini-BFO spine class (bfo_spine.ttl) of the shard's triple
+subject, mapped from fi:bfoCategory by a fixed table (Phase 9 KTD2):
+continuant_independent -> fi:IndependentContinuant, continuant_dependent ->
+fi:Continuant (the spine has no dependent-continuant umbrella; the SDC/GDC split
+is not recorded in the envelope), occurrent_process and occurrent_event ->
+fi:Process (the Phase 8 D-06 event fold). It is a link, not rdf:type on the shard:
+a shard is an information artifact, not the entity its subject denotes.""" .
+
+fi:contested a owl:DatatypeProperty ;
+    rdfs:label "contested" ;
+    rdfs:comment "Whether the shard carries an open contest (an xsd:boolean; the range axiom is in expressive.ttl)." .
+
+fi:reconciliationStrategy a owl:DatatypeProperty ;
+    rdfs:label "reconciliation strategy" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "A ConflictingAuthoritiesShard's ReconciliationStrategy value." .
+
+fi:signedBy a owl:DatatypeProperty ;
+    rdfs:label "signed by" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "DID of an attested signature carried on the shard." .
+
+fi:journalPosition a owl:DatatypeProperty ;
+    rdfs:label "journal position" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Corpus journal position of the revision the projection shows." .
+
+fi:signatureCount a owl:DatatypeProperty ;
+    rdfs:label "signature count" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Number of attested signatures on the projected revision." .
+
+fi:contentEditCount a owl:DatatypeProperty ;
+    rdfs:label "content edit count" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Number of content edits on the projected revision." .
+
+# ── Governance events as the projection stores them ──
+
+fi:logPosition a owl:DatatypeProperty ;
+    rdfs:label "log position" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Per-corpus governance log position of a projected governance event." .
+
+fi:signatureOverHash a owl:DatatypeProperty ;
+    rdfs:label "signature over hash" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Content hash a projected governance event's signature commits to." .
+
+fi:extractorModel a owl:DatatypeProperty ;
+    rdfs:label "extractor model" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Model identifier carried on an extract governance event." .
+
+fi:primeAnalogateIri a owl:ObjectProperty ;
+    rdfs:label "prime analogate IRI" ;
+    rdfs:comment "The prime analogate a distinguo governance event names." .
+
+fi:newParentIri a owl:ObjectProperty ;
+    rdfs:label "new parent IRI" ;
+    rdfs:comment "The new elaboration parent a reparent governance event names." .
+
+fi:cascadePolicy a owl:DatatypeProperty ;
+    rdfs:label "cascade policy" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The cascade policy a retraction event was committed under (prefer_latest, prefer_authority, prefer_most_specific_jurisdiction)." .
+
+fi:strategy a owl:DatatypeProperty ;
+    rdfs:label "strategy" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The reconciliation strategy a reconcile governance event sets." .
+
+# ── Signed material carried by the exports (storage/exports.py) ──
+
+fi:signedRecord a owl:DatatypeProperty ;
+    rdfs:label "signed record" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The journal's original shard record bytes (the signed input), carried by exports." .
+
+fi:signedRecordSha256 a owl:DatatypeProperty ;
+    rdfs:label "signed record SHA-256" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "SHA-256 of fi:signedRecord." .
+
+fi:recordSourceSchemaVersion a owl:DatatypeProperty ;
+    rdfs:label "record source schema version" ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Envelope schema version the stored record was written in." .
+
+fi:signedEvent a owl:DatatypeProperty ;
+    rdfs:label "signed event" ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The journaled governance event JSON with its signature, carried by exports." .
+
+# ── Closed-world islands (PRD §8 P5 — Phase 9 KTD8) ──
+
+fi:closedUnder a owl:ObjectProperty ;
+    rdfs:label "closed under" ;
+    rdfs:range fi:ClosedWorldScope ;
+    rdfs:comment """Marks the subject as a closed-world island under the referenced
+fi:ClosedWorldScope: inside that scope a negation-as-failure answer is complete.
+A new term, deliberately separate from fi:closureMarker, whose Russellian
+unit-boundary meaning is unchanged (Phase 9 KTD8).""" .

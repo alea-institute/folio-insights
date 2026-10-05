@@ -36,6 +36,10 @@ INSIGHTS_TASKS: tuple[str, ...] = (
     "orphan_assignment",
     # Phase 1 polysemy spike: detector R4 LLM fallback (OQ-5 provider-agnostic)
     "polysemy_fallback",
+    # Phase 9 U2: framework detector LLM stage (registered IDs only)
+    "framework_detector",
+    # Phase 9 U7: BFO classifier LLM fallback (the four envelope categories only)
+    "bfo_classifier",
 )
 
 

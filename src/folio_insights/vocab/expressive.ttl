@@ -1,0 +1,39 @@
+# FOLIO Insights v2 — expressive.ttl
+# Phase 9 U0/U4 (KTD5) — the OWL 2 DL layer: shipped axioms outside OWL 2 EL.
+#
+# The shared TBox (predicates, classes, bfo_spine, bfo_mapping, shapes) stays
+# inside the OWL 2 EL profile, and the storage export refuses a TBox axiom
+# outside EL unless the operator passes --expressive. The axioms below are
+# kept on purpose but are not EL, so they live in this separate layer:
+#
+#   * owl:inverseOf (D-10) — OWL 2 EL has no inverse object properties.
+#   * rdfs:range xsd:boolean — xsd:boolean is not in the OWL 2 EL datatype map.
+#
+# The layer is NOT loaded into the store's shared TBox graph. It is added to
+# the exported TBox by `storage export --expressive` (or --tbox-profile=DL),
+# and to `folio_insights.vocab.load_graph(include_expressive=True)`.
+#
+# Decision references:
+#   D-01  canonical fi: prefix
+#   D-05  owl:versionIRI carries VOCAB_VERSION = 2026.05.0
+#   D-10  fi:supersedes / fi:supersededBy declared as an owl:inverseOf pair
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+
+<https://folio-insights.aleainstitute.ai/vocab/expressive>
+    a owl:Ontology ;
+    owl:versionIRI <https://folio-insights.aleainstitute.ai/vocab/2026.05.0/expressive> ;
+    rdfs:label "FOLIO Insights v2 OWL 2 DL layer" ;
+    dc:description "Shipped axioms outside OWL 2 EL; exported only with --expressive (Phase 9 KTD5)" .
+
+# D-10 / VOCAB-05: the supersession pair is an inverse pair.
+fi:supersedes owl:inverseOf fi:supersededBy .
+fi:supersededBy owl:inverseOf fi:supersedes .
+
+# Boolean ranges (xsd:boolean is outside the OWL 2 EL datatype map).
+fi:pending rdfs:range xsd:boolean .
+fi:contested rdfs:range xsd:boolean .

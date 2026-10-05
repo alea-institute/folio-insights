@@ -7,7 +7,23 @@ while low-confidence units are flagged for manual review.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 from folio_insights.models.knowledge_unit import KnowledgeUnit
+
+if TYPE_CHECKING:
+    from folio_insights.frameworks.detector import FrameworkDetection
+
+
+@dataclass(frozen=True)
+class FrameworkGateResult:
+    """Whether a unit's framework detection passes the gate (Phase 9 U2, R5)."""
+
+    passed: bool
+    framework_id: str | None
+    confidence: float
+    reason: str
 
 
 class ConfidenceGate:
@@ -23,9 +39,31 @@ class ConfidenceGate:
         self,
         high_threshold: float = 0.8,
         medium_threshold: float = 0.5,
+        framework_threshold: float = 0.8,
     ) -> None:
         self.high_threshold = high_threshold
         self.medium_threshold = medium_threshold
+        self.framework_threshold = framework_threshold
+
+    def check_framework(self, detection: FrameworkDetection) -> FrameworkGateResult:
+        """PRD §8 P2: every new extraction records a confident framework or
+        fails this gate. There is no default framework to fall back on."""
+        if detection.framework_id is None:
+            return FrameworkGateResult(
+                False, None, detection.confidence, "no framework detected; refusing to default"
+            )
+        if detection.confidence < self.framework_threshold:
+            return FrameworkGateResult(
+                False,
+                detection.framework_id,
+                detection.confidence,
+                f"framework confidence {detection.confidence:.2f} is below "
+                f"{self.framework_threshold:.2f}",
+            )
+        return FrameworkGateResult(
+            True, detection.framework_id, detection.confidence,
+            f"framework detected from {detection.source}",
+        )
 
     def categorize(self, unit: KnowledgeUnit) -> str:
         """Return the confidence band for a single unit.

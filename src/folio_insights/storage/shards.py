@@ -9,6 +9,8 @@ Implements the typed corpus-scoped seam from ``revision/store.py``:
 * ``iter_shards`` — the current revision of every shard in the corpus.
 * ``dependents_of`` — answered by the Oxigraph projection (the dependency
   edges), then materialized from the journal at the same watermark.
+* ``dependency_edges`` — the whole corpus adjacency in one projection query
+  (Phase 9 U3; the dependency graph's bulk read).
 * ``get_record`` — the stored revision with its original bytes and source
   schema version (export/audit seam for U4).
 
@@ -22,6 +24,7 @@ from typing import TYPE_CHECKING
 from folio_insights.shards import ShardEnvelope, load_shard_record
 
 if TYPE_CHECKING:
+    from folio_insights.revision.dependency_graph import DependencyEdge
     from folio_insights.storage.context import CorpusStorageContext, StoredShardRecord
 
 
@@ -60,6 +63,18 @@ class PersistentShardStore:
         upto = await self._ctx._barrier()
         for row in await self._ctx._current_shard_rows(upto):
             yield load_shard_record(row.payload).shard
+
+    async def dependency_edges(self) -> tuple[list[str], list[DependencyEdge]]:
+        """Every current shard IRI and every dependency edge of the corpus, from
+        ONE projection query at the committed watermark (Phase 9 U3 bulk
+        adjacency read; ``DependencyGraph.from_store`` uses it)."""
+        from folio_insights.revision.dependency_graph import DependencyEdge
+
+        corpus = self._ctx.corpus
+        _, (nodes, edges) = await self._ctx._read_projection(
+            lambda handle, _wm: handle.dependency_edges(corpus)
+        )
+        return nodes, [DependencyEdge(s, t, f) for s, t, f in edges]
 
     async def dependents_of(self, shard_iri: str) -> list[ShardEnvelope]:
         corpus = self._ctx.corpus

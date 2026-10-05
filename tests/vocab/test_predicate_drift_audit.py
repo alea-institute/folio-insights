@@ -226,8 +226,11 @@ def test_GovernanceLog_class_declared() -> None:
 
 
 def test_supersedes_inverseOf_supersededBy() -> None:
-    """D-12 Suspect 4: fi:supersedes + fi:supersededBy declared + owl:inverseOf link."""
-    g = _vocab_graph_with_bfo()
+    """D-12 Suspect 4: fi:supersedes + fi:supersededBy declared + owl:inverseOf link.
+
+    The inverse axiom is in the OWL 2 DL layer (expressive.ttl, Phase 9 KTD5).
+    """
+    g = load_graph(include_bfo_mapping=True, include_expressive=True)
     sup = URIRef(FI_PREFIX + "supersedes")
     sup_by = URIRef(FI_PREFIX + "supersededBy")
 

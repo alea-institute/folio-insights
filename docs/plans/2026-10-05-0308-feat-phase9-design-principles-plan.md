@@ -158,7 +158,7 @@ Recommended overall order:
 - **Files:** `vocab/predicates.ttl`, `vocab/classes.ttl`, `storage/projection.py`, `tests/vocab/`, `tests/storage/`.
 - **Approach:**
   - Declare `fi:dependsOnPrecedent`, `fi:dependsOnShard`, `fi:speechAct`, `fi:bfoCategory`, `fi:closedUnder` and `fi:ClosedWorldScope`.
-  - Project `fi:framework` as an IRI under the framework namespace (`vocab/_constants.py:44`) and drop `fi:frameworkId`.
+  - Project `fi:framework` as an IRI under the framework namespace (`vocab/_constants.py:44`). As built, `fi:frameworkId` is kept and declared as the identifier literal, because the Phase 11 validation rendering uses the same name.
   - Project speech act and BFO category, and bump the projection adapter version.
 - **Test scenarios:**
   - A test fails whenever the projection emits an undeclared `fi:` term.
@@ -324,3 +324,24 @@ Use disposable corpus roots and generated signing identities, and never read ope
 - Rule-first BFO typing (KTD11).
 - Deterministic-first framework detection where the LLM never mints IDs (KTD12).
 - Phase 1 threshold Option B now, Option C deferred until labeled data supports it.
+
+## Phase 10 handoff (Wave A)
+
+The minter fills `framework_id` and `bfo_category` through these call sites. They live on branch `feat/phase9-wave-a`.
+
+- **v1 migration:** `folio_insights.models.framework.migrate_v1_framework_id(raw)` strips a year suffix and returns its warnings. It raises rather than guessing.
+- **Framework detection:**
+  - Build `folio_insights.frameworks.detector.FrameworkDetector(registry, corpus_default=..., llm=PortFrameworkLLM())`.
+  - Call `.detect(SourceMetadata(...))`, which returns the framework, its evidence and its valid-time window.
+  - Gate the result with `quality.confidence_gate.ConfidenceGate().check_framework(detection)`. A failed gate means no shard. There is no default framework.
+- **Corpus registry and write check:**
+  - Write shards through `frameworks.registry.open_framework_checked_context(root, corpus)`, which installs the `StorageConfig.shard_validator` guard.
+  - `load_registry(ctx)` returns the corpus registry.
+- **BFO typing:**
+  - `folio_insights.bfo.classifier.BfoClassifier(mode=..., llm=PortBfoLLM()).classify(BfoInput(speech_act=..., folio_tags=...))` fills `bfo_category`.
+  - `bfo.report.record_assignment(ctx, shard_iri, assignment)` persists its provenance.
+- **Starter frameworks:** `frameworks/default_frameworks.json` is provisional until Decision Sheet q3 is answered.
+
+## Follow-ups (from the Wave A review)
+
+- **Governance-log signer-time trust:** `governance/roles.py` windows active roles by each event's own `signature.signed_at`, which the signer chooses. Framework registration no longer trusts that time: it checks the role at the ledger commit time. The governance log's own role and authorization checks still read signer time and need the same binding. That needs its own unit, because it touches every governance event and the Phase 7 authorization tests.

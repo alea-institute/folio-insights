@@ -64,6 +64,9 @@ _CORE_TTL_FILES: tuple[str, ...] = (
     "shapes.ttl",
 )
 _BFO_MAPPING_TTL: str = "bfo_mapping.ttl"
+# Phase 9 KTD5: shipped axioms outside OWL 2 EL (owl:inverseOf, xsd:boolean
+# ranges). Never part of the shared TBox graph; opt-in for DL consumers.
+_EXPRESSIVE_TTL: str = "expressive.ttl"
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +74,9 @@ _BFO_MAPPING_TTL: str = "bfo_mapping.ttl"
 # ---------------------------------------------------------------------------
 
 
-def load_graph(*, include_bfo_mapping: bool = False) -> Graph:
+def load_graph(
+    *, include_bfo_mapping: bool = False, include_expressive: bool = False
+) -> Graph:
     """Return an ``rdflib.Graph`` parsed from the vocab TTL files.
 
     By default, parses the 4 core TTL files (``predicates.ttl``,
@@ -83,6 +88,10 @@ def load_graph(*, include_bfo_mapping: bool = False) -> Graph:
     validators that don't need BFO 2020 interop skip the bfo_mapping parse
     cost (the file is small but the principle scales to deeper alignment
     files in future phases).
+
+    ``include_expressive=True`` adds ``expressive.ttl``, the OWL 2 DL layer
+    (Phase 9 KTD5): shipped axioms outside OWL 2 EL, such as the D-10
+    ``owl:inverseOf`` pair. The default graph is the EL TBox.
     """
     g = Graph()
     pkg = files("folio_insights.vocab")
@@ -90,7 +99,14 @@ def load_graph(*, include_bfo_mapping: bool = False) -> Graph:
         g.parse(data=(pkg / name).read_bytes(), format="turtle")
     if include_bfo_mapping:
         g.parse(data=(pkg / _BFO_MAPPING_TTL).read_bytes(), format="turtle")
+    if include_expressive:
+        g.parse(data=(pkg / _EXPRESSIVE_TTL).read_bytes(), format="turtle")
     return g
+
+
+def expressive_ttl_bytes() -> bytes:
+    """The OWL 2 DL layer (``expressive.ttl``) as shipped (Phase 9 KTD5)."""
+    return (files("folio_insights.vocab") / _EXPRESSIVE_TTL).read_bytes()
 
 
 def load_pyoxigraph_store() -> "Store":
@@ -118,6 +134,7 @@ __all__ = [
     "VOCAB_VERSION",
     "FI_PREFIX",
     "NAMESPACES",
+    "expressive_ttl_bytes",
     "load_graph",
     "load_pyoxigraph_store",
 ]

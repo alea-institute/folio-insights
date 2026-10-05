@@ -29,8 +29,9 @@ CONSIDERATION_NAMED_GRAPH = "urn:folio:corpus/consideration-spike"
 # because:
 #   - `graph` is a module-level constant or caller-supplied named-graph URN
 #   - `term` comes from hand-curated ShardFixture JSON (not user input)
-#   - `fw_a`, `fw_b` are drawn from the locked Framework Literal enum
-#     (fixture_loader.Framework = CommonLaw | CivilLaw | Restatement | FRE | UCC)
+#   - `fw_a`, `fw_b` are framework IRIs built by `fixture_framework_iri` from
+#     the locked Framework Literal enum (fixture_loader.Framework = CommonLaw |
+#     CivilLaw | Restatement | FRE | UCC) and serialized as pyoxigraph NamedNodes
 # Phase 16 will parametrize this via pyoxigraph initBindings once we ship a
 # public SPARQL surface.
 _DISJOINT_ASK = """
@@ -39,8 +40,8 @@ PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
 ASK {{
   GRAPH <{graph}> {{
-    ?shard_a fi:termOfArt "{term}" ; fi:inFramework "{fw_a}" .
-    ?shard_b fi:termOfArt "{term}" ; fi:inFramework "{fw_b}" .
+    ?shard_a fi:termOfArt "{term}" ; fi:inFramework {fw_a} .
+    ?shard_b fi:termOfArt "{term}" ; fi:inFramework {fw_b} .
     ?class_a owl:disjointWith ?class_b .
     FILTER (?shard_a != ?shard_b)
   }}
@@ -71,11 +72,16 @@ def has_framework_conflicting_axiom(
     on first True. Each ASK is a cheap graph pattern; a handful of framework
     pairs is acceptable at Phase 1 (O(n^2) with n ≤ 5 Frameworks).
     """
+    from folio_insights.polysemy.fixture_loader import fixture_framework_iri
+
     sorted_fw = sorted(frameworks)
     for i, fw_a in enumerate(sorted_fw):
         for fw_b in sorted_fw[i + 1:]:
             sparql = _DISJOINT_ASK.format(
-                graph=named_graph, term=term, fw_a=fw_a, fw_b=fw_b,
+                graph=named_graph,
+                term=term,
+                fw_a=NamedNode(fixture_framework_iri(fw_a)),
+                fw_b=NamedNode(fixture_framework_iri(fw_b)),
             )
             result = store.query_rdf12(
                 sparql, named_graphs=[NamedNode(named_graph)],

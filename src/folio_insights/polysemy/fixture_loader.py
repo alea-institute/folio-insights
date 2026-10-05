@@ -19,6 +19,24 @@ CONSIDERATION_NAMED_GRAPH = "urn:folio:corpus/consideration-spike"
 
 Framework = Literal["CommonLaw", "CivilLaw", "Restatement", "FRE", "UCC"]
 
+# Phase 9 U0/U2: fi:inFramework is an ObjectProperty, so a fixture's framework
+# tag is emitted as the IRI of its registered framework, never as a literal.
+# Every ID here is in the starter set (frameworks/default_frameworks.json).
+FIXTURE_FRAMEWORK_IDS: dict[str, str] = {
+    "CommonLaw": "us.common_law",
+    "CivilLaw": "us.louisiana.civil_code",
+    "Restatement": "us.restatement_2d.contracts",
+    "FRE": "us.federal.fre",
+    "UCC": "us.ucc",
+}
+
+
+def fixture_framework_iri(framework: str) -> str:
+    """The framework IRI for a fixture framework tag (``KeyError`` if unknown)."""
+    from folio_insights.vocab._constants import framework_iri
+
+    return framework_iri(FIXTURE_FRAMEWORK_IDS[framework])
+
 
 class ShardFixture(BaseModel):
     iri: str
@@ -60,8 +78,10 @@ def consideration_fixtures_to_ttl(shards: list[ShardFixture]) -> str:
     PyoxigraphStore bulk-load into named graph `urn:folio:corpus/consideration-spike`.
 
     The shape is intentionally lean: a single `fi:ShardFixture` class per shard
-    with `fi:termOfArt`, `fi:inFramework`, `fi:sourceDoc`, `fi:axiomSummary`
-    data-properties. Full distinguo vocabulary is emitted by 01-04, not here.
+    with `fi:termOfArt`, `fi:sourceDoc`, `fi:axiomSummary` data-properties and
+    `fi:inFramework` linking the framework's IRI (an ObjectProperty — Phase 9
+    U0 fixed the literal this used to emit). Full distinguo vocabulary is
+    emitted by 01-04, not here.
     """
     header = (
         "@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .\n"
@@ -74,7 +94,7 @@ def consideration_fixtures_to_ttl(shards: list[ShardFixture]) -> str:
         lines.append(
             f"<{s.iri}> a fi:ShardFixture ;\n"
             f'    fi:termOfArt "{s.term}" ;\n'
-            f'    fi:inFramework "{s.framework}" ;\n'
+            f"    fi:inFramework <{fixture_framework_iri(s.framework)}> ;\n"
             f'    fi:sourceDoc "{src}" ;\n'
             f'    fi:axiomSummary "{axiom}" .\n\n'
         )

@@ -89,3 +89,27 @@ class PolysemyVerdict(BaseModel):
     decision: Literal["polysemy", "homonymy", "coincidence", "uncertain"]
     polysemy_vs_homonymy_reasoning: str
     rationale: str
+
+
+class FrameworkChoice(BaseModel):
+    """The framework detector's LLM stage (Phase 9 U2): one of the REGISTERED
+    framework IDs listed in the prompt, or null. The detector rejects any ID
+    that is not registered; the LLM never mints one (KTD12)."""
+
+    framework_id: str | None = None
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    rationale: str = ""
+
+
+class BfoCategoryChoice(BaseModel):
+    """The BFO classifier's LLM fallback (Phase 9 U7): one of the four envelope
+    categories, or null. The Literal makes any other answer a validation error."""
+
+    category: Literal[
+        "continuant_independent",
+        "continuant_dependent",
+        "occurrent_process",
+        "occurrent_event",
+    ] | None = None
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    rationale: str = ""

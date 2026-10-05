@@ -78,6 +78,11 @@ def storage_group() -> None:
               help="Accept a CONSTRUCT subset that drops identity/signature triples.")
 @click.option("--require-named-graphs", is_flag=True,
               help="Refuse formats that cannot carry graph membership.")
+@click.option("--tbox-profile", type=click.Choice(["EL", "DL"]), default=None,
+              help="TBox profile (default EL): an axiom outside OWL 2 EL refuses the export.")
+@click.option("--expressive", is_flag=True,
+              help="Export the TBox as OWL 2 DL (adds the expressive layer; "
+                   "non-EL axioms become a warning). Same as --tbox-profile DL.")
 @corpus_root_option
 def export_cmd(
     corpus_name: str,
@@ -87,10 +92,15 @@ def export_cmd(
     construct_file: Path | None,
     allow_partial: bool,
     require_named_graphs: bool,
+    tbox_profile: str | None,
+    expressive: bool,
     corpus_root: Path | None,
 ) -> None:
     """Export CORPUS_NAME in the Phase 13 formats (verified round trips)."""
     from folio_insights.storage.exports import ALL_FORMATS, export_corpus
+
+    if expressive and tbox_profile == "EL":
+        raise click.UsageError("--expressive conflicts with --tbox-profile EL")
 
     if construct_file is not None:
         construct_query = construct_file.read_text(encoding="utf-8")
@@ -105,11 +115,19 @@ def export_cmd(
                 construct_query=construct_query,
                 allow_partial=allow_partial,
                 require_named_graphs=require_named_graphs,
+                tbox_profile=tbox_profile,  # type: ignore[arg-type]
+                expressive=expressive,
             )
         finally:
             await ctx.close()
+        profile = result.manifest["tbox_profile"]
+        for warning in profile["warnings"]:
+            click.echo(f"warning: {warning}", err=True)
+            for violation in profile["el_violations"]:
+                click.echo(f"  - {violation['constraint']}: {violation['triples'][0]}", err=True)
         click.echo(json.dumps({
             "destination": str(result.destination),
+            "tbox_profile": profile["profile"],
             "watermark": result.manifest["watermark"],
             "formats": {k: [f["path"] for f in v["files"]]
                         for k, v in result.manifest["formats"].items()},

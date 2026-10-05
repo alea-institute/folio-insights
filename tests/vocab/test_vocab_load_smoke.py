@@ -114,6 +114,7 @@ _TTL_NAMES = (
     "bfo_spine.ttl",
     "bfo_mapping.ttl",
     "shapes.ttl",
+    "expressive.ttl",  # Phase 9 KTD5: the OWL 2 DL layer
 )
 
 
@@ -169,12 +170,18 @@ def test_bfo_spine_declares_nine_classes() -> None:
 
 
 def test_predicates_supersession_pair_is_inverseof() -> None:
-    """D-10 / VOCAB-05: fi:supersedes + fi:supersededBy declared as owl:inverseOf pair."""
+    """D-10 / VOCAB-05: fi:supersedes + fi:supersededBy declared as owl:inverseOf pair.
+
+    Phase 9 KTD5: both properties are declared in predicates.ttl (the EL TBox);
+    the owl:inverseOf axiom ships in expressive.ttl, the OWL 2 DL layer, because
+    OWL 2 EL has no inverse properties.
+    """
     text = _read_ttl("predicates.ttl")
-    assert "fi:supersedes" in text
-    assert "fi:supersededBy" in text
-    assert "owl:inverseOf" in text, (
-        "predicates.ttl must declare an owl:inverseOf between fi:supersedes and "
+    assert "fi:supersedes a owl:ObjectProperty" in text
+    assert "fi:supersededBy a owl:ObjectProperty" in text
+    dl_layer = _read_ttl("expressive.ttl")
+    assert "fi:supersedes owl:inverseOf fi:supersededBy" in dl_layer, (
+        "expressive.ttl must declare an owl:inverseOf between fi:supersedes and "
         "fi:supersededBy (D-10)"
     )
 
