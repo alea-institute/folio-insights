@@ -1,0 +1,110 @@
+# Phase 11 hand-written shape 3/6 — governance state (PRD §3.1, decisions #7, #8, #9).
+#
+# Two kinds of node are covered here:
+#
+# * Shard governance state (contest, supersession status, content-edit
+#   history), checked on the full-fidelity shard rendering.
+# * Governance events as the Phase 13 projection renders them
+#   (storage/projection.py governance_triples), checked before every
+#   governance append and by corpus validation.
+#
+# Who may sign what (role checks: reviewer for promotion, arbiter for
+# contest resolution) is enforced at append time by governance.authorize()
+# inside the write transaction. SHACL cannot reproduce that time-indexed
+# role policy without re-implementing it, so it does not try.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Decision #8 (PRD §10 contest shape): a contested shard has at least two
+# contest votes. Not enforced by code yet, so Warning.
+fis:ContestVotesShape a sh:NodeShape ;
+    rdfs:comment "contested=true needs at least two contest votes (decision #8; Warning)." ;
+    sh:targetClass fi:Shard ;
+    sh:severity sh:Warning ;
+    sh:message "A contested shard should carry at least two contest votes (PRD §10, decision #8)" ;
+    sh:or (
+        [ sh:path fi:contested ; sh:hasValue false ]
+        [ sh:path fi:contestVotes ; sh:minCount 2 ]
+    ) .
+
+# Decision #8: epistemic_status=contested implies contested=true.
+fis:ContestStatusShape a sh:NodeShape ;
+    rdfs:comment "epistemic_status=contested needs contested=true (decision #8; Warning)." ;
+    sh:targetClass fi:Shard ;
+    sh:severity sh:Warning ;
+    sh:message "fi:epistemicStatus \"contested\" should come with fi:contested true (PRD §10, decision #8)" ;
+    sh:or (
+        [ sh:not [ sh:path fi:epistemicStatus ; sh:hasValue "contested" ] ]
+        [ sh:path fi:contested ; sh:hasValue true ]
+    ) .
+
+# Decision #9: a superseded shard points at its successor.
+fis:SupersededStatusShape a sh:NodeShape ;
+    rdfs:comment "epistemic_status=superseded needs superseded_by (decision #9; Warning)." ;
+    sh:targetClass fi:Shard ;
+    sh:severity sh:Warning ;
+    sh:message "A shard with fi:epistemicStatus \"superseded\" should name its successor in fi:supersededBy (PRD §10, decision #9)" ;
+    sh:or (
+        [ sh:not [ sh:path fi:epistemicStatus ; sh:hasValue "superseded" ] ]
+        [ sh:path fi:supersededBy ; sh:minCount 1 ]
+    ) .
+
+# Decision #7 (PRD §10 content_edit shape): a content edit names a mutable
+# field. The revision gate (revision/content_edit.py IMMUTABLE_FIELD_PATHS)
+# refuses edits to these paths; this is the same list.
+fis:ContentEditMutableFieldShape a sh:NodeShape ;
+    rdfs:comment "A content edit never names an immutable field path (decision #7)." ;
+    sh:targetClass fi:ContentEditRecord ;
+    sh:property [
+        sh:path fi:fieldPath ;
+        sh:not [
+            sh:in (
+                "shard_iri" "provenance_hash" "source_uri" "source_span"
+                "extracted_at" "first_extractor_did" "schema_version"
+                "triple.subject" "triple.predicate" "content_edits" "signatures"
+            )
+        ] ;
+        sh:message "fi:fieldPath names an immutable field; identity fields and the append-only lists cannot be edited (decision #7, IMMUTABLE_FIELD_PATHS)" ;
+    ] .
+
+# Governance events as projected (storage/projection.py governance_triples).
+fis:GovernanceEventShape a sh:NodeShape ;
+    rdfs:comment "A projected governance event: one known action, one log position, a DID signer." ;
+    sh:targetClass fi:GovernanceEvent ;
+    sh:property [
+        sh:path fi:action ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in (
+            "extract" "promote" "demote" "contest" "supersede" "retract"
+            "distinguo" "role_assertion" "role_revocation" "resolve_contest"
+            "content_edit" "reparent" "reconcile"
+        ) ;
+        sh:message "A governance event carries exactly one known fi:action (SignedAction)" ;
+    ] ;
+    sh:property [
+        sh:path fi:logPosition ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:message "A governance event carries exactly one non-negative integer fi:logPosition" ;
+    ] ;
+    sh:property [
+        sh:path fi:signerDid ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^did:[a-z0-9]+:.+" ;
+        sh:message "A governance event is signed by exactly one DID (fi:signerDid)" ;
+    ] ;
+    sh:property [
+        sh:path fi:signedAt ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "fi:signedAt is at most one xsd:dateTime" ;
+    ] .

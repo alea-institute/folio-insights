@@ -1,0 +1,71 @@
+# Phase 11 hand-written shape 4/6 — supersession chains (PRD §10, decision #9).
+#
+# Corpus tier: these rules relate two shards, so they use sh:sparql and run
+# over the corpus projection (storage/projection.py names: fi:supersedes,
+# fi:supersededBy, fi:validTimeStart, fi:validTimeEnd as IRIs and dateTimes).
+# The valid-time alignment rule is the Phase 8 fi:SupersessionAlignmentShape
+# in vocab/shapes.ttl, which is part of the same suite. It is not repeated here.
+#
+# The corpus tier does not refuse writes; its result sets full_shacl
+# (plan KTD5), because the two shards of a supersession are often written in
+# separate operations.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+fis:supersession sh:declare [
+    sh:prefix "fi" ;
+    sh:namespace "https://folio-insights.aleainstitute.ai/vocab/"^^xsd:anyURI ;
+] .
+
+# A shard never supersedes itself, in either direction.
+fis:SupersessionNoSelfShape a sh:NodeShape ;
+    rdfs:comment "No shard supersedes itself or is superseded by itself." ;
+    sh:targetClass fi:Shard ;
+    sh:sparql [
+        sh:message "A shard cannot supersede itself (fi:supersedes or fi:supersededBy points at the shard)" ;
+        sh:prefixes fis:supersession ;
+        sh:select """
+            SELECT $this WHERE {
+                { $this fi:supersedes $this . } UNION { $this fi:supersededBy $this . }
+            }
+        """ ;
+    ] .
+
+# A supersedes B, and B names a different successor: the pair contradicts itself.
+fis:SupersessionReciprocityShape a sh:NodeShape ;
+    rdfs:comment "If A supersedes B and B names a successor, that successor is A." ;
+    sh:targetSubjectsOf fi:supersedes ;
+    sh:sparql [
+        sh:message "A fi:supersedes B, but B's fi:supersededBy names a different shard" ;
+        sh:prefixes fis:supersession ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this fi:supersedes ?value .
+                ?value fi:supersededBy ?other .
+                FILTER(?other != $this)
+            }
+        """ ;
+    ] .
+
+# A supersedes B, B is in the corpus, and B does not point back or is not
+# marked superseded. Allowed mid-workflow, so Warning.
+fis:SupersessionBackPointerShape a sh:NodeShape ;
+    rdfs:comment "A superseded shard in the corpus points back and is marked superseded (Warning)." ;
+    sh:targetSubjectsOf fi:supersedes ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "A fi:supersedes B, but B (in this corpus) has no fi:supersededBy or is not marked superseded" ;
+        sh:prefixes fis:supersession ;
+        sh:select """
+            SELECT $this ?value WHERE {
+                $this fi:supersedes ?value .
+                ?value a fi:Shard .
+                FILTER (NOT EXISTS { ?value fi:supersededBy ?any }
+                        || NOT EXISTS { ?value fi:epistemicStatus "superseded" })
+            }
+        """ ;
+    ] .

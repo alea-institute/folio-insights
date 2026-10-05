@@ -1,0 +1,56 @@
+# Phase 11 hand-written shape 5/6 — distinguo forks (VOCAB-02, PHILOSOPHY.md L126).
+#
+# Validates the Pattern-2 fork Turtle that polysemy/distinguo.py emit_fork_ttl
+# writes. The analogia triad is atomic (Pitfall 5): fi:analogousTo comes with
+# exactly one fi:primeAnalogate (the same IRI) and a non-blank
+# fi:proportionalRelation. The model validator guarantees all of this, so
+# every rule is a sh:Violation. The 4-value fi:distinctionKind enumeration is
+# fi:DistinctionKindEnumShape in vocab/shapes.ttl.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+fis:DistinguoForkShape a sh:NodeShape ;
+    rdfs:comment "A distinguo fork names its reviewer (an IRI) and when it was proposed." ;
+    sh:targetSubjectsOf fi:distinctionKind ;
+    sh:property [
+        sh:path fi:proposedBy ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:message "A distinguo fork has exactly one fi:proposedBy reviewer DID IRI" ;
+    ] ;
+    sh:property [
+        sh:path fi:proposedAt ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "A distinguo fork has exactly one fi:proposedAt xsd:dateTime" ;
+    ] .
+
+fis:AnalogiaTriadShape a sh:NodeShape ;
+    rdfs:comment "Analogia is atomic: analogousTo + primeAnalogate (same IRI) + proportionalRelation (Pitfall 5)." ;
+    sh:targetSubjectsOf fi:analogousTo ;
+    sh:property [
+        sh:path fi:analogousTo ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:equals fi:primeAnalogate ;
+        sh:message "fi:analogousTo must equal fi:primeAnalogate: the analogia triad is atomic (Pitfall 5)" ;
+    ] ;
+    sh:property [
+        sh:path fi:primeAnalogate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "fi:analogousTo needs exactly one fi:primeAnalogate (Pitfall 5)" ;
+    ] ;
+    sh:property [
+        sh:path fi:proportionalRelation ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "\\S" ;
+        sh:message "fi:analogousTo needs exactly one non-blank fi:proportionalRelation (Pitfall 5)" ;
+    ] .

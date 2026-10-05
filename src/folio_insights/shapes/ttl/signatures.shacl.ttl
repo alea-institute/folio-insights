@@ -1,0 +1,54 @@
+# Phase 11 hand-written shape 6/6 — attested signatures (PRD §10 attestation, decision #10).
+#
+# Covers every fi:AttestedSignature node in a shard rendering: shard
+# signatures, content-edit signatures and cosigners. The 13-value action
+# enumeration is fi:SignedActionEnumShape in vocab/shapes.ttl.
+#
+# SHACL cannot verify a signature cryptographically; identity/verifier.py
+# does. What SHACL can catch is a record that claims more than it carries.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# T-06-03 anti-spoofing: "verified" can never be claimed for an empty
+# (unsigned) signature.
+fis:SignatureVerifiedClaimShape a sh:NodeShape ;
+    rdfs:comment "verified=true requires a non-empty signature value (T-06-03)." ;
+    sh:targetClass fi:AttestedSignature ;
+    sh:message "fi:verified true on an unsigned AttestedSignature: an empty signature can never read as verified (T-06-03)" ;
+    sh:or (
+        [ sh:not [ sh:path fi:verified ; sh:hasValue true ] ]
+        [ sh:path fi:signature ; sh:minCount 1 ; sh:minLength 1 ]
+    ) .
+
+# A signed attestation names its signer DID.
+fis:SignatureSignerShape a sh:NodeShape ;
+    rdfs:comment "A non-empty signature names a DID signer." ;
+    sh:targetClass fi:AttestedSignature ;
+    sh:message "A signed AttestedSignature must name its signer DID in fi:did" ;
+    sh:or (
+        [ sh:path fi:signature ; sh:maxLength 0 ]
+        [ sh:path fi:did ; sh:minCount 1 ; sh:pattern "^did:[a-z0-9]+:.+" ]
+    ) .
+
+# PRD §10 attestation shape: a signed attestation also has a content hash, a
+# signing time and a key id. Real signing (identity/signer.py) always sets
+# them, but older stubs did not, so Warning.
+fis:SignatureCompletenessShape a sh:NodeShape ;
+    rdfs:comment "A signed attestation carries content hash, signing time and key id (PRD §10; Warning)." ;
+    sh:targetClass fi:AttestedSignature ;
+    sh:severity sh:Warning ;
+    sh:message "A signed AttestedSignature should carry a 64-hex fi:overContentHash, fi:signedAt and a non-empty fi:signingKeyId (PRD §10)" ;
+    sh:or (
+        [ sh:path fi:signature ; sh:maxLength 0 ]
+        [
+            sh:and (
+                [ sh:path fi:overContentHash ; sh:minCount 1 ; sh:pattern "^[a-f0-9]{64}$" ]
+                [ sh:path fi:signedAt ; sh:minCount 1 ]
+                [ sh:path fi:signingKeyId ; sh:minCount 1 ; sh:minLength 1 ]
+            )
+        ]
+    ) .
