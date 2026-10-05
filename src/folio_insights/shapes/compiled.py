@@ -250,6 +250,81 @@ class Shape:
     checks: list[Check] = field(default_factory=list)
     properties: list[Shape] = field(default_factory=list)
     sparql: list[Term] = field(default_factory=list)
+    # Fast conformance for property shapes made only of simple constraints:
+    # (engine, graph, value nodes) -> bool, no result objects. Detailed
+    # results still come from ``checks`` when this says "does not conform".
+    fused: Callable[[CompiledSuite, ValidationGraph, list[Term]], bool] | None = None
+
+
+# sh: terms a fused property shape may carry (anything else keeps the generic path).
+_FUSABLE = {
+    "path", "minCount", "maxCount", "datatype", "in", "minLength", "maxLength",
+    "pattern", "flags", "minInclusive", "maxInclusive", "minExclusive",
+    "maxExclusive", "node", "message", "severity", "deactivated",
+} | _IGNORED
+
+
+def _fuse(
+    *,
+    min_count: int,
+    max_count: int | None,
+    datatype: str | None,
+    allowed: frozenset[Term] | None,
+    min_length: int | None,
+    max_length: int | None,
+    patterns: tuple[re.Pattern[str], ...],
+    ranges: tuple[tuple[Term, str], ...],
+    nodes: tuple[Shape, ...],
+) -> Callable[[CompiledSuite, ValidationGraph, list[Term]], bool]:
+    """One closure doing every simple check of a property shape inline,
+    returning at the first failure (same semantics as the ``checks``)."""
+    plain_string = datatype == XSD_STRING
+    range_ok = {
+        "minInclusive": lambda c: c >= 0,
+        "maxInclusive": lambda c: c <= 0,
+        "minExclusive": lambda c: c > 0,
+        "maxExclusive": lambda c: c < 0,
+    }
+    range_checks = tuple((bound, range_ok[kind]) for bound, kind in ranges)
+    per_value = bool(
+        datatype or allowed is not None or min_length is not None or max_length is not None
+        or patterns or range_checks or nodes
+    )
+
+    def ok(engine: CompiledSuite, g: ValidationGraph, values: list[Term]) -> bool:
+        n = len(values)
+        if n < min_count or (max_count is not None and n > max_count):
+            return False
+        if not per_value:
+            return True
+        for v in values:
+            if datatype is not None and (
+                v[0] != "L" or v[2] != datatype or (not plain_string and not well_formed(v))
+            ):
+                return False
+            if allowed is not None and v not in allowed:
+                return False
+            if min_length is not None or max_length is not None or patterns:
+                if v[0] == "B":
+                    return False
+                size = len(v[1])
+                if (min_length is not None and size < min_length) or (
+                    max_length is not None and size > max_length
+                ):
+                    return False
+                for regex in patterns:
+                    if not regex.search(v[1]):
+                        return False
+            for bound, good in range_checks:
+                cmp = _compare(v, bound)
+                if cmp is None or not good(cmp):
+                    return False
+            for shape in nodes:
+                if not engine.conforms(g, v, shape):
+                    return False
+        return True
+
+    return ok
 
 
 @dataclass(frozen=True)
@@ -489,7 +564,37 @@ class CompiledSuite:
         )
         self._compiled[node] = shape  # before recursion (guards sh:node cycles)
         self._compile_constraints(node, shape)
+        self._maybe_fuse(node, shape)
         return shape
+
+    def _maybe_fuse(self, node: Term, shape: Shape) -> None:
+        if shape.path is None or shape.properties or shape.sparql:
+            return
+        locals_ = {p[len(SH):] for p in self._g.nodes.get(node, {}) if p.startswith(SH)}
+        if not locals_ <= _FUSABLE:
+            return
+        g = self._g
+        in_list = self._one(node, "in")
+        flags_term = self._one(node, "flags")
+        flags = 0
+        for flag in (flags_term[1] if flags_term else ""):
+            flags |= {"i": re.I, "m": re.M, "s": re.S, "x": re.X}[flag]
+        datatype = self._one(node, "datatype")
+        shape.fused = _fuse(
+            min_count=self._int(node, "minCount") or 0,
+            max_count=self._int(node, "maxCount"),
+            datatype=datatype[1] if datatype is not None else None,
+            allowed=frozenset(_rdf_list(g, in_list)) if in_list is not None else None,
+            min_length=self._int(node, "minLength"),
+            max_length=self._int(node, "maxLength"),
+            patterns=tuple(re.compile(p[1], flags) for p in g.values(node, f"{SH}pattern")),
+            ranges=tuple(
+                (bound, kind)
+                for kind in ("minInclusive", "maxInclusive", "minExclusive", "maxExclusive")
+                for bound in g.values(node, f"{SH}{kind}")
+            ),
+            nodes=tuple(self.compile(ref) for ref in g.values(node, f"{SH}node")),
+        )
 
     def _compile_constraints(self, node: Term, shape: Shape) -> None:
         g = self._g
@@ -673,6 +778,8 @@ class CompiledSuite:
         if shape.path is not None:
             props = g.nodes.get(focus)
             values = props.get(shape.path, _EMPTY) if props is not None else _EMPTY
+            if shape.fused is not None:
+                return shape.fused(self, g, values)
         else:
             values = [focus]
         for check in shape.checks:
@@ -706,7 +813,9 @@ class CompiledSuite:
                 nodes = self.focus_nodes(g, kind, value)
             for node in nodes:
                 if wanted is None or node in wanted:
-                    results.extend(self.validate_shape(g, node, shape))
+                    # Fast conformance first; detailed results only on failure.
+                    if not self.conforms(g, node, shape):
+                        results.extend(self.validate_shape(g, node, shape))
         return results
 
 

@@ -16,7 +16,7 @@ Pure stdlib + Pydantic: no RDF library is imported here.
 from __future__ import annotations
 
 import types
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cache
 from typing import Any, Literal, Union, get_args, get_origin
@@ -109,17 +109,18 @@ class FieldSpec:
     min_items: int | None = None         # list min_length
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class ModelSpec:
     model: type[BaseModel]
     class_iri: str
     fields: tuple[FieldSpec, ...]
+    by_name: dict[str, FieldSpec] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        self.by_name.update({spec.name: spec for spec in self.fields})
 
     def field(self, name: str) -> FieldSpec | None:
-        for spec in self.fields:
-            if spec.name == name:
-                return spec
-        return None
+        return self.by_name.get(name)
 
 
 def _predicate_for(model: type[BaseModel], name: str) -> str:

@@ -218,13 +218,36 @@ def _render_field(g: ValidationGraph, s: Term, spec: FieldSpec, value: Any) -> N
 
 def _render_model(g: ValidationGraph, node: Term, spec: ModelSpec, data: Mapping[str, Any]) -> None:
     g.add(node, RDF_TYPE, iri(spec.class_iri))
+    props = g.nodes[node]
+    by_name = spec.by_name
     for key, value in data.items():
-        field = spec.field(key)
+        field = by_name.get(key)
         if field is None:
             # Undeclared key: rendered so the closed shape reports it.
             term = _scalar(value, None)
             if term is not None:
                 g.add(node, f"{FI}{camel(str(key))}", term)
+            continue
+        if field.kind == "scalar" and value is not None:
+            # Hot path (most fields): same terms as _render_field, inline.
+            datatype = field.datatype
+            items = value if isinstance(value, list) else (value,)
+            out = []
+            for item in items:
+                if item is None:
+                    continue
+                if type(item) is str:
+                    out.append(("L", item, XSD_DATETIME if datatype == XSD_DATETIME else XSD_STRING))
+                else:
+                    term = _scalar(item, datatype)
+                    if term is not None:
+                        out.append(term)
+            if out:
+                existing = props.get(field.predicate)
+                if existing is None:
+                    props[field.predicate] = out
+                else:
+                    existing.extend(out)
             continue
         _render_field(g, node, field, value)
 

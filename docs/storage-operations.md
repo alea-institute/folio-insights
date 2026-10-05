@@ -252,7 +252,8 @@ instead of every committed record.
   subjects is written with `Store.bulk_load`, followed by a transactional
   watermark update. A crash between the two is repaired by idempotent
   replay.
-- **Parallel checks (explicit opt-in).** The per-record checks and the
+- **Parallel checks (explicit opt-in).** The per-record checks (including
+  the Phase 11 SHACL local tier; each worker compiles the suite once) and the
   N-Quads rendering run in a `forkserver` process pool for batches of 2,048
   records or more, but only when the pool is requested: `bulk_load_shards`
   (default `parallel=True`) and the storage CLI (`StorageConfig(process_pool=True)`).
@@ -265,8 +266,8 @@ instead of every committed record.
   batch is redone in-process and the pool stays disabled for the rest of
   that process.
 - **Refusal order does not depend on batch size.** The refusal raised is the
-  one with the earliest input index, whether from a built-in check or a
-  Phase 11 hook, with or without the pool.
+  one with the earliest input index, whether from a built-in check (SHACL
+  included) or a generic hook, with or without the pool.
 - **Throughput.** The recorded 1M-triple benchmark lives in the plan's U4
   evidence. It is reproduced by `pytest tests/bench/test_storage_bulk_load.py -m slow -s`.
 
