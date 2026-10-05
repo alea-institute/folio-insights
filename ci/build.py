@@ -5,6 +5,7 @@ D-08: bit-identical digest via SOURCE_DATE_EPOCH + ``--require-hashes``.
 
 Stage ordering (Claude's discretion per CONTEXT.md line 64):
   Parallel: build-web | build-worker | lint
+  Serial:   shapes-check (generated SHACL TTL == a fresh generation; SHACL-04)
   Serial:   test (needs python runtime image from build-web)
   Serial:   publish (after all above)
 
@@ -433,6 +434,16 @@ async def _test(client: dagger.Client, sde: str) -> None:
     )
 
 
+# Phase 11 SHACL-04: the Pydantic-generated SHACL shapes are committed; the
+# pipeline regenerates them and fails on any drift from the committed TTL.
+SHAPES_CHECK_CMD = ["python", "scripts/generate_shapes.py", "--check"]
+
+
+async def _shapes_check(client: dagger.Client, sde: str) -> None:
+    """Regenerate the generated SHACL TTL and fail if it differs (SHACL-04)."""
+    await _test_container(client, sde).with_exec(SHAPES_CHECK_CMD).sync()
+
+
 async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
     """Core pipeline driver — returns (sde, web_ref, worker_ref)."""
     sde = _source_date_epoch()
@@ -469,6 +480,7 @@ async def _run_pipeline(args: argparse.Namespace) -> tuple[str, str, str]:
             worker_result = results[1]
 
             if not args.no_test:
+                await _shapes_check(client, sde)
                 await _test(client, sde)
 
     return sde, web_result[1], worker_result[1]
