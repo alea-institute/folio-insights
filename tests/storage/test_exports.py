@@ -140,7 +140,7 @@ async def test_all_formats_round_trip(populated) -> None:  # noqa: ANN001
     assert manifest["graphs"] == {"abox": abox.value, "governance": gov.value,
                                   "tbox": TBOX_GRAPH.value}
     assert manifest["formats"]["abox"]["files"][0]["graph"] == abox.value
-    assert manifest["full_shacl"] == "deferred-to-phase-11"
+    assert manifest["full_shacl"] == "pass"  # written under the Phase 11 suite
     # Corpus isolation: nothing of corpus-b in any file.
     for path in dest.rglob("*"):
         if path.is_file():

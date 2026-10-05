@@ -3,9 +3,10 @@
 Two pure, deterministic stages dominate a bulk load and hold the GIL:
 
 * ``prepare_chunk`` — the per-record write checks of
-  ``CorpusStorageContext._prepare`` minus the Phase 11 hook: the PII gate over
-  the parsed raw input, the U17 adapter (full model validation), and the PII
-  gate over a migrated payload. It returns bytes only.
+  ``CorpusStorageContext._prepare`` minus the generic Phase 11 hook: the PII
+  gate over the parsed raw input, the U17 adapter (full model validation),
+  the PII gate over a migrated payload, and the local tier of the SHACL
+  suite. It returns bytes only.
 * ``render_chunk`` — journal rows to N-Quads text (the projection adapters).
 
 Both run in a ``forkserver`` process pool only for batches of at least
@@ -87,18 +88,66 @@ def prepare_one(raw: bytes | str | Any, gate: Any) -> tuple[Any, PreparedRecord]
     )
 
 
+_SUITES: dict[tuple[str, ...], Any] = {}
+
+
+def suite_for(paths: tuple[str, ...]) -> Any:
+    """The compiled SHACL suite for ``paths``, compiled once per process
+    (pool workers receive paths, not the compiled closures)."""
+    suite = _SUITES.get(paths)
+    if suite is None:
+        from pathlib import Path
+
+        from folio_insights.shapes.suite import ShaclSuite, default_suite
+
+        default = default_suite()
+        if tuple(str(p) for p in default.paths) == paths:
+            suite = default
+        else:
+            suite = ShaclSuite(Path(p) for p in paths)
+        _SUITES[paths] = suite
+    return suite
+
+
 def prepare_chunk(
-    raws: Sequence[bytes | str], gate: Any
+    raws: Sequence[bytes | str], gate: Any, shacl_paths: tuple[str, ...] | None = None
 ) -> tuple[list[PreparedRecord], tuple[int, BaseException] | None]:
     """Prepare ``raws`` in order; stop at the first refusal and return it
-    with its index in the chunk (exceptions cross the process boundary)."""
+    with its index in the chunk (exceptions cross the process boundary).
+
+    With ``shacl_paths`` each prepared payload is also checked against the
+    local tier of that SHACL suite (Phase 11), in the worker, so the bulk
+    load keeps its parallel throughput."""
+    from folio_insights.storage.shacl_status import check_shard_payload
+
+    suite = suite_for(shacl_paths) if shacl_paths else None
     out: list[PreparedRecord] = []
     for index, raw in enumerate(raws):
         try:
-            out.append(prepare_one(raw, gate)[1])
+            record = prepare_one(raw, gate)[1]
+            if suite is not None:
+                check_shard_payload(record.payload, suite)
+            out.append(record)
         except Exception as exc:  # noqa: BLE001 - re-raised by the parent
             return out, (index, exc)
     return out, None
+
+
+def validate_chunk(
+    payloads: Sequence[bytes], shacl_paths: tuple[str, ...]
+) -> tuple[list[dict[str, Any]], int]:
+    """Local-tier SHACL over committed shard payloads (full corpus
+    validation): ``(violation entries, warning count)`` for the chunk."""
+    from folio_insights.storage.shacl_status import result_entry
+
+    suite = suite_for(shacl_paths)
+    entries: list[dict[str, Any]] = []
+    warnings = 0
+    for payload in payloads:
+        report = suite.validate_shard(json.loads(payload))
+        entries.extend(result_entry(r, "local") for r in report.violations)
+        warnings += len(report.warnings)
+    return entries, warnings
 
 
 def render_chunk(rows: Sequence[Any], corpus: str) -> bytes:
@@ -193,4 +242,6 @@ __all__ = [
     "prepare_chunk",
     "prepare_one",
     "render_chunk",
+    "suite_for",
+    "validate_chunk",
 ]

@@ -1,0 +1,78 @@
+# Phase 11 hand-written shape 2/6 — subtype invariants (PRD §6.2).
+#
+# The generator sees field types, not @model_validator code. These shapes
+# restate the subtype validators in shards/subtypes.py as SHACL, so a record
+# that reaches RDF without passing the model (model_construct, raw triples,
+# a candidate posted to /validate) is still caught. Every rule here is
+# already guaranteed by the model, so every rule is a sh:Violation.
+#
+# Not restated: DisputedPropositionShard reply indices in range. That needs a
+# count over the objection list, which SHACL Core cannot express, and the
+# model validator already enforces it.
+
+@prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
+@prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# subtypes.py D-02/D-03: the epistemic 4-subset and at least one objection.
+fis:DisputedPropositionInvariantsShape a sh:NodeShape ;
+    rdfs:comment "DisputedPropositionShard: epistemic 4-subset, at least one objection (CONTEXT D-02/D-03)." ;
+    sh:targetClass fi:DisputedPropositionShard ;
+    sh:property [
+        sh:path fi:epistemicStatus ;
+        sh:in ( "hypothesis" "authority_only" "contested" "aporetic" ) ;
+        sh:message "A disputed proposition's fi:epistemicStatus must be hypothesis, authority_only, contested or aporetic (D-03)" ;
+    ] ;
+    sh:property [
+        sh:path fi:objections ;
+        sh:minCount 1 ;
+        sh:message "A disputed proposition needs at least one objection (D-02, PRD §6.2.2)" ;
+    ] .
+
+# subtypes.py D-04: sic and non each non-empty; reconciliation note non-blank.
+fis:ConflictingAuthoritiesInvariantsShape a sh:NodeShape ;
+    rdfs:comment "ConflictingAuthoritiesShard: sic and non non-empty, note non-blank (CONTEXT D-04)." ;
+    sh:targetClass fi:ConflictingAuthoritiesShard ;
+    sh:property [
+        sh:path fi:sic ;
+        sh:minCount 1 ;
+        sh:message "fi:sic needs at least one authority position (D-04)" ;
+    ] ;
+    sh:property [
+        sh:path fi:non ;
+        sh:minCount 1 ;
+        sh:message "fi:non needs at least one authority position (D-04)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reconciliationNote ;
+        sh:pattern "\\S" ;
+        sh:message "fi:reconciliationNote must not be blank (D-04)" ;
+    ] .
+
+# subtypes.py D-05: gloss target form, no self-gloss, non-blank text.
+fis:GlossInvariantsShape a sh:NodeShape ;
+    rdfs:comment "GlossShard: target IRI form, no self-gloss, non-blank text (CONTEXT D-05)." ;
+    sh:targetClass fi:GlossShard ;
+    sh:property [
+        sh:path fi:glosses ;
+        sh:pattern "^(urn:folio:shard/[a-f0-9]{32}|https?://\\S+)$" ;
+        sh:disjoint fi:shardIri ;
+        sh:message "fi:glosses must be a urn:folio:shard/<32 hex> or http(s) IRI and must not be the shard itself (D-05)" ;
+    ] ;
+    sh:property [
+        sh:path fi:glossText ;
+        sh:pattern "\\S" ;
+        sh:message "fi:glossText must not be blank (D-05)" ;
+    ] .
+
+# subtypes.py D-06: a hypothesis lives at least one day.
+fis:HypothesisInvariantsShape a sh:NodeShape ;
+    rdfs:comment "HypothesisShard: ttl_days >= 1 (CONTEXT D-06)." ;
+    sh:targetClass fi:HypothesisShard ;
+    sh:property [
+        sh:path fi:ttlDays ;
+        sh:minInclusive 1 ;
+        sh:message "fi:ttlDays must be at least 1 (D-06)" ;
+    ] .

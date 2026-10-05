@@ -242,6 +242,8 @@ class ExportDataset:
     watermark: int
     watermark_payload_sha256: str | None
     graphs: dict[str, list[Quad]] = field(default_factory=dict)
+    # Phase 11 ``full_shacl`` state of the corpus at this watermark.
+    full_shacl: str = "unvalidated"
 
     @property
     def abox(self) -> NamedNode:
@@ -277,7 +279,11 @@ async def build_export_dataset(
 
     watermark, (graphs, sha) = await ctx._read_projection(read)
     dataset = ExportDataset(
-        corpus=corpus, watermark=watermark, watermark_payload_sha256=sha, graphs=graphs
+        corpus=corpus,
+        watermark=watermark,
+        watermark_payload_sha256=sha,
+        graphs=graphs,
+        full_shacl=(await ctx._shacl_status(watermark)).state,
     )
     abox, gov = dataset.abox, dataset.governance
     for row in await ctx._current_shard_rows(watermark):
@@ -696,7 +702,7 @@ def _write_formats(
             for name, entries in files.items()
         },
         "partial": bool(allow_partial and ExportFormat.SPARQL_CONSTRUCT in formats),
-        "full_shacl": "deferred-to-phase-11",
+        "full_shacl": dataset.full_shacl,
     }
 
 

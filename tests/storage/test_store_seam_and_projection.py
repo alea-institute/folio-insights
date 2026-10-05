@@ -10,7 +10,7 @@ import pytest_asyncio
 from folio_insights.revision import InMemoryShardStore, edit_shard_content, get_shard_at
 from folio_insights.revision.store import DEPENDENCY_FIELDS, ShardStore
 from folio_insights.storage import (
-    FULL_SHACL_STATUS,
+    FULL_SHACL_STATES,
     CorpusStorageContext,
     ShardIdentityViolation,
     StorageConfig,
@@ -109,7 +109,7 @@ async def test_bad_queries_refuse_without_closing_context(ctx: CorpusStorageCont
     with pytest.raises(SyntaxError):
         await ctx.query("SELECT WHERE {")
     assert not ctx.closed
-    assert (await ctx.status()).full_shacl == FULL_SHACL_STATUS
+    assert (await ctx.status()).full_shacl in FULL_SHACL_STATES
 
 
 async def test_phase11_validator_hook_runs_before_append(storage_root: Path) -> None:
