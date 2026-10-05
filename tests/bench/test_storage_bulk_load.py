@@ -8,7 +8,9 @@ it into the projection would bypass the journal the projection is derived
 from.
 
 Fixture: 43,479 synthetic shards (deterministic, generated in-process; no
-book or production content) projecting to 1,000,017 ABox triples. Each run
+book or production content) projecting to 1,173,933 ABox triples (1,000,017
+under projection adapter v1; Phase 9 U0's adapter v2 adds four triples per
+shard: fi:framework, fi:speechAct, fi:bfoCategory, fi:subjectBfoClass). Each run
 loads into a fresh storage root in the same process; the first run includes
 process-pool start-up. Pass criterion: the median of three runs. Every run's
 number is printed and, with ``FOLIO_INSIGHTS_BULK_BENCH_OUT`` set, written
@@ -107,5 +109,5 @@ async def test_bulk_load_meets_200k_triples_per_second(tmp_path: Path) -> None:
     out = os.environ.get("FOLIO_INSIGHTS_BULK_BENCH_OUT")
     if out:
         Path(out).write_text(json.dumps(report, indent=2) + "\n")
-    assert triples == 1_000_017
+    assert triples == 1_000_017 + 4 * SHARDS  # adapter v2: +4 triples per shard
     assert median >= TARGET_TRIPLES_PER_SEC, report
