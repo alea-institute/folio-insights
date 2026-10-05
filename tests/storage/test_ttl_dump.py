@@ -171,4 +171,5 @@ def test_storage_cli_end_to_end(tmp_path: Path) -> None:
     assert out.exit_code == 0, out.output
     status = json.loads(out.output)
     assert status["journal_head"] == status["projection_watermark"] == 5
-    assert status["full_shacl"] == "deferred-to-phase-11"
+    # A restored root has no SHACL status marker until it is validated again.
+    assert status["full_shacl"] == "unvalidated"

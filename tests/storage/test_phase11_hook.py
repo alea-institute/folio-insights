@@ -1,5 +1,6 @@
-"""U4: the Phase 11 validation hook runs after, never instead of, the
-built-in write checks; full SHACL stays reported as deferred."""
+"""U4: the generic validation hooks run after, never instead of, the
+built-in write checks (Phase 11: the SHACL suite is one of those built-ins,
+and only its results set full_shacl)."""
 from __future__ import annotations
 
 import json
@@ -10,7 +11,6 @@ import pytest
 from folio_insights.governance.log import InvalidSignature
 from folio_insights.shards import dump_shard_record
 from folio_insights.storage import (
-    FULL_SHACL_STATUS,
     PiiRejected,
     ShardIdentityViolation,
     ShardRecordInvalid,
@@ -62,7 +62,8 @@ async def test_hook_only_sees_records_that_passed_the_builtin_checks(
             await ctx.shards.put(shard(3).shard_iri, shard(3, source_span="moved"))
         status = await ctx.status()
         assert status.journal_head == 0
-        assert status.full_shacl == FULL_SHACL_STATUS == "deferred-to-phase-11"
+        # A hook accepting writes says nothing about SHACL; the suite does.
+        assert status.full_shacl == "pass"
         assert status.validation_hooks == ("shard_validator", "event_validator")
     finally:
         await ctx.close()

@@ -63,7 +63,7 @@ fis:SupersessionBackPointerShape a sh:NodeShape ;
         sh:select """
             SELECT $this ?value WHERE {
                 $this fi:supersedes ?value .
-                ?value a fi:Shard .
+                FILTER EXISTS { ?value a fi:Shard }
                 FILTER (NOT EXISTS { ?value fi:supersededBy ?any }
                         || NOT EXISTS { ?value fi:epistemicStatus "superseded" })
             }

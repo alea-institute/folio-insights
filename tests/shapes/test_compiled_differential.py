@@ -190,3 +190,14 @@ def test_unimplemented_constructs_refuse_to_compile(tmp_path: Path, snippet: str
     )
     with pytest.raises(UnsupportedShaclConstruct):
         CompiledSuite([ttl])
+
+
+@pytest.mark.parametrize("mutation", range(len(_MUTATIONS)))
+@pytest.mark.parametrize("tag", ["simple_assertion", "disputed_proposition", "conflicting_authorities", "gloss", "hypothesis"])
+def test_engines_agree_on_every_mutation_of_every_subtype(tag: str, mutation: int) -> None:
+    """Deterministic coverage of the mutation table (Hypothesis samples it)."""
+    from tests.shapes.cases import dumped
+    from tests.shards.conftest import _SUBTYPE_TABLE
+
+    cls = dict(_SUBTYPE_TABLE)[tag]
+    _agree(render_shard(_MUTATIONS[mutation](dumped(cls)))[0])

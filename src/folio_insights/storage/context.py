@@ -41,13 +41,20 @@ Seams for the CLI (U3, wired) and later units:
 * U4 — exports, bulk load, dumps and restore: ``ctx.query`` (corpus-scoped,
   read-only SPARQL), ``PersistentShardStore.get_record`` (original bytes and
   source version), ``journal_path`` / ``projection_path`` for snapshots, and
-  ``rebuild_projection`` after a restore. Full SHACL is deferred to Phase 11;
-  ``StorageConfig.shard_validator`` / ``event_validator`` are the explicit
-  hooks (U4). They run only AFTER every built-in check (PII gate, model
-  validation, signature verification), can only add refusals, and
-  ``status()`` keeps reporting ``full_shacl='deferred-to-phase-11'`` even
-  when a hook is installed: a hook is a seam, not the Phase 11 exit
-  criterion.
+  ``rebuild_projection`` after a restore.
+* Phase 11 — full SHACL (``StorageConfig.shacl``, the compiled default suite
+  unless set to ``None``). The local tier runs on every shard write (put,
+  ingest, bulk load; inside the pool workers for large batches) after the
+  PII gate and model validation, and on every governance event inside the
+  write transaction; a Violation refuses with ``ShaclViolation`` and leaves
+  storage unchanged. After each commit the corpus tier (``sh:sparql``
+  supersession rules) re-checks the written shards and their one-hop
+  neighbours on the projection and advances the per-corpus status marker
+  (``shacl_status``). ``status().full_shacl`` is ``disabled``,
+  ``unvalidated``, ``pass`` or ``fail`` and never claims ``pass`` for state
+  the current suite did not validate; ``validate_corpus()`` validates
+  everything and records the result. ``StorageConfig.shard_validator`` /
+  ``event_validator`` remain generic extra hooks that run after the suite.
 """
 from __future__ import annotations
 
@@ -72,6 +79,8 @@ from folio_insights.shards import (
     dump_shard_record,
     load_shard_record,
 )
+from folio_insights.shapes.corpus import run_constraints
+from folio_insights.shapes.suite import ShaclSuite, default_suite
 from folio_insights.shards.records import IDENTITY_FIELDS
 from folio_insights.storage.errors import (
     CorpusIsolationError,
@@ -90,6 +99,7 @@ from folio_insights.storage._parallel import (
     map_chunks,
     prepare_chunk,
     prepare_one,
+    validate_chunk,
 )
 from folio_insights.storage.journal import (
     GOVERNANCE_RECORD_SCHEMA_VERSION,
@@ -104,6 +114,21 @@ from folio_insights.storage.journal import (
     sha256_hex,
 )
 from folio_insights.storage.pii import PiiGate
+from folio_insights.storage.shacl_status import (
+    DISABLED,
+    FAIL,
+    FULL_SHACL_STATES,
+    PASS,
+    UNVALIDATED,
+    CorpusValidation,
+    MarkerStore,
+    ShaclMarker,
+    ShaclStatus,
+    cap_failing,
+    check_event,
+    check_shard_payload,
+    result_entry,
+)
 from folio_insights.storage.projection import (
     BULK_LOAD_MIN_ROWS,
     PROJECTION_ADAPTER_VERSION,
@@ -118,7 +143,9 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-FULL_SHACL_STATUS = "deferred-to-phase-11"
+# Above this many written shards the post-commit corpus tier runs over the
+# whole corpus instead of a VALUES-restricted focus set (cheaper and complete).
+INCREMENTAL_FOCUS_LIMIT = 256
 
 _EVENT_ADAPTER: TypeAdapter = TypeAdapter(GovernanceEvent)
 
@@ -170,20 +197,25 @@ class StorageConfig:
     * ``pii_gate`` — the configurable ingest gate (defaults: SSN, ABA, phone).
     * ``event_verifier`` — signature check run on every governance append
       before the journal transaction; ``None`` disables it (test doubles only).
-    * ``shard_validator`` — Phase 11 full-SHACL hook for shards, called on
-      every shard write (put, ingest, bulk load) after the PII gate and model
-      validation and before the journal transaction. Raise to refuse.
+    * ``shacl`` — the Phase 11 SHACL suite (default: the compiled
+      ``shapes.default_suite()``; ``None`` disables it and ``full_shacl``
+      reads ``disabled``). Its local tier refuses Violations on every shard
+      write and governance append; its corpus tier sets ``full_shacl``.
+    * ``shard_validator`` — an extra generic hook for shards, called on
+      every shard write (put, ingest, bulk load) after the PII gate, model
+      validation and the SHACL suite, before the journal transaction.
+      Raise to refuse.
     * ``event_validator`` — the same hook for governance events, called after
       signature verification and before the journal transaction (whose
-      in-transaction authorization still runs afterwards).
+      in-transaction authorization and SHACL check still run afterwards).
 
     Neither hook replaces a built-in check, and installing one does not
-    change ``full_shacl``: Phase 11 full SHACL stays reported as deferred
-    (``FULL_SHACL_STATUS``) and is never reported as passed.
+    change ``full_shacl``, which only the SHACL suite's results set.
     """
 
     pii_gate: PiiGate = field(default_factory=PiiGate)
     event_verifier: EventVerifier | None = verify_event_signature_offline
+    shacl: ShaclSuite | None = field(default_factory=default_suite)
     shard_validator: Callable[[ShardEnvelope], None] | None = None
     event_validator: Callable[[GovernanceEvent], None] | None = None
     busy_timeout_s: float = 30.0
@@ -204,6 +236,11 @@ class StorageStatus:
     projection_adapter_version: int
     full_shacl: str
     validation_hooks: tuple[str, ...] = ()
+    # Phase 11: what the full_shacl value rests on.
+    shacl_suite_digest: str | None = None
+    shacl_validated_through: int | None = None
+    shacl_violations: int = 0
+    shacl_warnings: int | None = None
 
 
 @dataclass(frozen=True)
@@ -619,12 +656,18 @@ class CorpusStorageContext:
 
     async def status(self) -> StorageStatus:
         watermark = await self._barrier()
+        head = await self._journal.head(self.corpus)
+        shacl = await self._shacl_status(head)
         return StorageStatus(
             corpus=self.corpus,
-            journal_head=await self._journal.head(self.corpus),
+            journal_head=head,
             projection_watermark=watermark,
             projection_adapter_version=PROJECTION_ADAPTER_VERSION,
-            full_shacl=FULL_SHACL_STATUS,
+            full_shacl=shacl.state,
+            shacl_suite_digest=shacl.suite_digest,
+            shacl_validated_through=shacl.validated_through,
+            shacl_violations=shacl.violations,
+            shacl_warnings=shacl.warnings,
             validation_hooks=tuple(
                 name
                 for name, hook in (
@@ -719,6 +762,7 @@ class CorpusStorageContext:
             self._ensure_open()
             async with self._journal.write(self.corpus) as tx:
                 existing = await tx.find_op(op)
+                appended = False
                 if existing is not None:
                     row = check_replay(existing, request_sha)
                 else:
@@ -736,6 +780,13 @@ class CorpusStorageContext:
                     snapshot = InMemoryGovernanceLog._from_history(self.corpus, history)
                     await _authorize_in_transaction(event, snapshot, self.corpus)
                     persisted = await snapshot.append(event)
+                    if self.config.shacl is not None:
+                        # Phase 11: the event as the projection will store
+                        # it, with its log position now assigned.
+                        check_event(
+                            self.corpus, persisted.model_dump(mode="json"), self.config.shacl
+                        )
+                    appended = True
                     row = await tx.append(
                         PendingRow(
                             op_id=op,
@@ -748,6 +799,8 @@ class CorpusStorageContext:
                         )
                     )
         await self._after_commit(op, row.position)
+        if appended:
+            await self._shacl_after_write(row.position, row.position, [])
         return _event_from_row(row)
 
     # ── shard writes ──────────────────────────────────────────────────────
@@ -761,14 +814,25 @@ class CorpusStorageContext:
         3. the PII gate over the stored original bytes when they are not the
            text already scanned, and over the migrated payload when it
            differs from the original;
-        4. the Phase 11 hook (``shard_validator``), which runs only AFTER the
+        4. the Phase 11 SHACL suite's local tier over the current-version
+           payload (a Violation raises ``ShaclViolation``);
+        5. the generic hook (``shard_validator``), which runs only AFTER the
            built-in checks above and can add refusals, never remove them.
 
         Returns the loaded record and the current-version payload.
         """
         loaded, prepared = prepare_one(raw, self.config.pii_gate)
+        self._check_shacl(prepared.payload)
         self._run_shard_hook(loaded.shard)
         return loaded, prepared.payload
+
+    def _check_shacl(self, payload: bytes) -> None:
+        if self.config.shacl is not None:
+            check_shard_payload(payload, self.config.shacl)
+
+    def _shacl_paths(self) -> tuple[str, ...] | None:
+        suite = self.config.shacl
+        return tuple(str(p) for p in suite.paths) if suite is not None else None
 
     def _run_shard_hook(self, shard: ShardEnvelope) -> None:
         """The Phase 11 shard hook, on a deep copy: it can refuse, but cannot
@@ -791,7 +855,9 @@ class CorpusStorageContext:
         """
         out: list[tuple[PreparedRecord, ShardEnvelope | None]] = []
         if parallel and len(raws) >= PARALLEL_MIN_ITEMS:
-            for records, failure in map_chunks(prepare_chunk, raws, self.config.pii_gate):
+            for records, failure in map_chunks(
+                prepare_chunk, raws, self.config.pii_gate, self._shacl_paths()
+            ):
                 # Hook the records of this chunk that precede its first
                 # built-in refusal: an earlier hook refusal wins.
                 hooked = self.config.shard_validator is not None
@@ -804,6 +870,7 @@ class CorpusStorageContext:
             return out
         for raw in raws:
             loaded, prepared = prepare_one(raw, self.config.pii_gate)
+            self._check_shacl(prepared.payload)
             self._run_shard_hook(loaded.shard)
             # Cache only when the committed payload IS the validated input.
             out.append((prepared, loaded.shard if prepared.original_bytes is None else None))
@@ -860,6 +927,7 @@ class CorpusStorageContext:
                 # later revision returns the committed result instead of
                 # tripping the revision check against the newer row.
                 existing = await tx.find_op(op_id) if op_id is not None else None
+                appended = False
                 if existing is not None:
                     op = op_id
                     row = check_replay(existing, request_sha)
@@ -880,9 +948,12 @@ class CorpusStorageContext:
                                 request_sha=request_sha,
                             )
                         )
+                        appended = True
                         if payload == loaded.original_bytes:
                             self._remember(loaded.shard, row)
         await self._after_commit(op, row.position)
+        if appended:
+            await self._shacl_after_write(row.position, row.position, [shard_iri])
         return load_shard_record(row.payload).shard
 
     async def ingest_shards(
@@ -950,6 +1021,7 @@ class CorpusStorageContext:
         )
         op = op_id or f"ingest:{request_sha}"
 
+        appended = False
         async with self._write_lock:
             self._ensure_open()
             async with self._journal.write(self.corpus) as tx:
@@ -994,8 +1066,231 @@ class CorpusStorageContext:
                     )
                     for (_, cached), row in zip(prepared, rows):
                         self._remember(cached, row)
+                    appended = True
         await self._after_commit(op, rows[-1].position, parallel=parallel)
+        if appended:
+            await self._shacl_after_write(
+                rows[0].position, rows[-1].position, [rec.shard_iri for rec, _ in prepared]
+            )
         return rows
+
+    # ── Phase 11 SHACL: status, incremental corpus tier, full validation ──
+
+    async def shacl_status(self) -> ShaclStatus:
+        """The Phase 11 ``full_shacl`` state at the committed head."""
+        return await self._shacl_status(await self._barrier())
+
+    async def _shacl_status(self, head: int) -> ShaclStatus:
+        suite = self.config.shacl
+        if suite is None:
+            return ShaclStatus(DISABLED)
+        marker = await asyncio.to_thread(MarkerStore(self.root, self.corpus).read)
+        if marker is None:
+            if head < 0:  # an empty corpus trivially conforms
+                return ShaclStatus(PASS, suite.digest, -1)
+            return ShaclStatus(UNVALIDATED, suite.digest)
+        if marker.suite_digest != suite.digest or marker.position != head:
+            return ShaclStatus(
+                UNVALIDATED, suite.digest, None, len(marker.failing), marker.warnings
+            )
+        if head >= 0:
+            row = await self._journal.row_at(self.corpus, head)
+            if row is None or row.payload_sha256 != marker.payload_sha256:
+                return ShaclStatus(UNVALIDATED, suite.digest)
+        state = FAIL if marker.failing or marker.failing_truncated else PASS
+        return ShaclStatus(state, suite.digest, marker.position, len(marker.failing), marker.warnings)
+
+    async def _corpus_tier(
+        self, suite: ShaclSuite, focus: set[str] | None
+    ) -> tuple[list[Any], set[str] | None]:
+        """Run the suite's ``sh:sparql`` constraints over this corpus's
+        projection. With ``focus`` (small), re-check those shards and their
+        one-hop IRI neighbours and return the re-checked set; otherwise run
+        over the whole corpus and return ``None`` (complete)."""
+        constraints = suite.sparql
+        corpus = self.corpus
+
+        def read(handle: ProjectionHandle, _wm: int) -> tuple[list[Any], set[str] | None]:
+            def query(sparql: str) -> list[dict[str, Any]]:
+                return handle.query(corpus, sparql)
+
+            if focus is None or len(focus) > INCREMENTAL_FOCUS_LIMIT:
+                return run_constraints(query, constraints), None
+            from pyoxigraph import NamedNode
+
+            terms = []
+            for iri in sorted(focus):
+                try:
+                    terms.append(str(NamedNode(iri)))
+                except ValueError:
+                    continue
+            rechecked = {t[1:-1] for t in terms}
+            if terms:
+                rows = query(
+                    "SELECT DISTINCT ?n WHERE { VALUES ?t { " + " ".join(terms) + " } "
+                    "{ ?n ?p ?t } UNION { ?t ?p ?n } FILTER(isIRI(?n)) }"
+                )
+                rechecked.update(r["n"].value for r in rows)
+            if not constraints:
+                return [], rechecked
+            return run_constraints(query, constraints, focus=sorted(rechecked)), rechecked
+
+        _, out = await self._read_projection(read)
+        return out
+
+    async def _shacl_after_write(self, first: int, last: int, written: list[str]) -> None:
+        """Advance the status marker over rows ``first..last`` when it is
+        contiguous with them under the current suite; otherwise leave it
+        behind (``full_shacl`` then reads ``unvalidated``)."""
+        suite = self.config.shacl
+        if suite is None:
+            return
+        store = MarkerStore(self.root, self.corpus)
+
+        def contiguous(marker: ShaclMarker | None) -> bool:
+            if marker is None:
+                return first == 0
+            return marker.suite_digest == suite.digest and marker.position == first - 1
+
+        current = await asyncio.to_thread(store.read)
+        if not contiguous(current):
+            return
+        prior = list(current.failing) if current is not None else []
+        focus = set(written) | {
+            str(e["focus"]) for e in prior if e.get("tier") == "corpus" and e.get("focus")
+        }
+        if focus:
+            results, rechecked = await self._corpus_tier(suite, focus)
+        else:  # e.g. a governance event with no failing shards to re-check
+            results, rechecked = [], set()
+        new_entries = [result_entry(r, "corpus") for r in results if r.severity == "Violation"]
+        written_set = set(written)
+        if rechecked is None:  # complete corpus-tier run
+            kept = [e for e in prior if e.get("tier") != "corpus" and e.get("focus") not in written_set]
+        else:
+            kept = [
+                e
+                for e in prior
+                if not (e.get("tier") == "corpus" and e.get("focus") in rechecked)
+                and not (e.get("tier") == "local" and e.get("focus") in written_set)
+            ]
+        failing, truncated = cap_failing(kept + new_entries)
+        truncated = truncated or bool(current is not None and current.failing_truncated and rechecked is not None)
+        row = await self._journal.row_at(self.corpus, last)
+        if row is None:  # pragma: no cover - the row was just committed
+            return
+
+        def apply(marker: ShaclMarker | None) -> ShaclMarker | None:
+            if not contiguous(marker):  # another writer moved it meanwhile
+                return None
+            return ShaclMarker(
+                corpus=self.corpus,
+                suite_digest=suite.digest,
+                position=last,
+                payload_sha256=row.payload_sha256,
+                failing=failing,
+                failing_truncated=truncated,
+                warnings=marker.warnings if marker is not None else None,
+                updated_by="incremental",
+            )
+
+        await asyncio.to_thread(store.update, apply)
+
+    async def validate_corpus(
+        self, *, engine: str = "compiled", parallel: bool = False
+    ) -> CorpusValidation:
+        """Validate every current shard and governance event of this corpus
+        against the full suite, run the corpus tier over the whole
+        projection, and record the result in the status marker.
+
+        ``engine="pyshacl"`` runs the local tier with the reference engine
+        (slow; for cross-checks). The corpus tier always runs natively in
+        pyoxigraph. ``parallel`` uses the process pool for large corpora.
+        """
+        if engine not in ("compiled", "pyshacl"):
+            raise ValueError(f"unknown SHACL engine {engine!r}")
+        suite = self.config.shacl or default_suite()
+        upto = await self._barrier()
+        shard_rows = await self._current_shard_rows(upto)
+        event_rows = await self._journal.governance_rows(self.corpus, upto=upto)
+        entries: list[dict[str, Any]] = []
+        warnings = 0
+        payloads = [row.payload for row in shard_rows]
+        if engine == "compiled":
+            for chunk_entries, chunk_warnings in map_chunks(
+                validate_chunk,
+                payloads,
+                tuple(str(p) for p in suite.paths),
+                parallel=parallel or self.config.process_pool,
+            ):
+                entries.extend(chunk_entries)
+                warnings += chunk_warnings
+        else:
+            from folio_insights.shapes import pyshacl_adapter
+            from folio_insights.shapes.rendering import render_shard
+
+            for payload in payloads:
+                graph, _node = render_shard(json.loads(payload))
+                report = await asyncio.to_thread(pyshacl_adapter.validate, graph, suite.paths)
+                for r in report.results:
+                    severity = str(r["severity"]).rsplit("#", 1)[-1]
+                    if severity == "Violation":
+                        focus = r["focus"]
+                        entries.append({
+                            "focus": focus[1] if focus and focus[0] == "I" else str(focus),
+                            "path": r["path"],
+                            "component": str(r["component"]).rsplit("#", 1)[-1],
+                            "severity": severity,
+                            "source_shape": str(r["source_shape"]),
+                            "message": (r["message"] or [""])[0],
+                            "tier": "local",
+                        })
+                    else:
+                        warnings += 1
+        from folio_insights.storage.shacl_status import event_graph
+
+        for row in event_rows:
+            report = suite.validate_graph(event_graph(self.corpus, json.loads(row.payload)))
+            entries.extend(result_entry(r, "local") for r in report.violations)
+            warnings += len(report.warnings)
+        corpus_results, _ = await self._corpus_tier(suite, None)
+        entries.extend(result_entry(r, "corpus") for r in corpus_results if r.severity == "Violation")
+        warnings += sum(1 for r in corpus_results if r.severity != "Violation")
+
+        failing, truncated = cap_failing(entries)
+        row = await self._journal.row_at(self.corpus, upto) if upto >= 0 else None
+
+        def apply(marker: ShaclMarker | None) -> ShaclMarker | None:
+            if (
+                marker is not None
+                and marker.suite_digest == suite.digest
+                and marker.position > upto
+            ):
+                return None  # a newer write already advanced it; keep that
+            return ShaclMarker(
+                corpus=self.corpus,
+                suite_digest=suite.digest,
+                position=upto,
+                payload_sha256=row.payload_sha256 if row is not None else None,
+                failing=failing,
+                failing_truncated=truncated,
+                warnings=warnings,
+                updated_by="full",
+            )
+
+        await asyncio.to_thread(MarkerStore(self.root, self.corpus).update, apply)
+        return CorpusValidation(
+            corpus=self.corpus,
+            position=upto,
+            suite_digest=suite.digest,
+            engine=engine,
+            shards=len(shard_rows),
+            events=len(event_rows),
+            conforms=not entries,
+            violations=len(entries),
+            warnings=warnings,
+            results=tuple(failing),
+        )
 
     # ── internal reads used by the adapters ───────────────────────────────
 
@@ -1064,7 +1359,8 @@ async def open_corpus_storage(
 
 
 __all__ = [
-    "FULL_SHACL_STATUS",
+    "FULL_SHACL_STATES",
+    "INCREMENTAL_FOCUS_LIMIT",
     "BulkLoadResult",
     "CorpusStorageContext",
     "StorageConfig",

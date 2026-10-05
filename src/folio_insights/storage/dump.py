@@ -198,7 +198,7 @@ async def run_ttl_dump(
             "journal_head": dataset.watermark,
             "watermark_payload_sha256": dataset.watermark_payload_sha256,
             "files": [e for e in entries if e["path"].startswith(rel_dir)],
-            "full_shacl": "deferred-to-phase-11",
+            "full_shacl": dataset.full_shacl,
         }
         manifest_path = repo / rel_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")

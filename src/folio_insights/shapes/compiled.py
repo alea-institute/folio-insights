@@ -55,6 +55,8 @@ RDF_REST = "http://www.w3.org/1999/02/22-rdf-syntax-ns#rest"
 RDF_NIL = "http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"
 XSD = "http://www.w3.org/2001/XMLSchema#"
 
+_EMPTY: list = []  # shared, never mutated
+
 SEVERITIES = {f"{SH}Violation": "Violation", f"{SH}Warning": "Warning", f"{SH}Info": "Info"}
 
 # sh: predicates a shape may carry that this engine evaluates or may ignore.
@@ -633,19 +635,23 @@ class CompiledSuite:
     def validate_shape(self, g: ValidationGraph, focus: Term, shape: Shape) -> list[ShaclResult]:
         if shape.deactivated:
             return []
-        values = g.values(focus, shape.path) if shape.path is not None else [focus]
+        if shape.path is not None:
+            props = g.nodes.get(focus)
+            values = props.get(shape.path, _EMPTY) if props is not None else _EMPTY
+        else:
+            values = [focus]
         results: list[ShaclResult] = []
         for check in shape.checks:
-            for component, value in check(self, g, focus, values):
+            failures = check(self, g, focus, values)
+            if not failures:
+                continue
+            for component, value in failures:
                 path = shape.path
                 if component == "ClosedConstraintComponent":
                     path, value = value  # type: ignore[misc]
-                    focus_node = focus
-                else:
-                    focus_node = focus
                 results.append(
                     ShaclResult(
-                        focus=focus_node,
+                        focus=focus,
                         path=path,
                         value=value,
                         component=component,
@@ -660,7 +666,23 @@ class CompiledSuite:
         return results
 
     def conforms(self, g: ValidationGraph, focus: Term, shape: Shape) -> bool:
-        return not self.validate_shape(g, focus, shape)
+        """Short-circuit conformance (no result objects): the hot path of
+        sh:node / sh:not / sh:and / sh:or / sh:xone members."""
+        if shape.deactivated:
+            return True
+        if shape.path is not None:
+            props = g.nodes.get(focus)
+            values = props.get(shape.path, _EMPTY) if props is not None else _EMPTY
+        else:
+            values = [focus]
+        for check in shape.checks:
+            if check(self, g, focus, values):
+                return False
+        for prop in shape.properties:
+            for v in values:
+                if not self.conforms(g, v, prop):
+                    return False
+        return True
 
     def validate(
         self, g: ValidationGraph, *, focus: Iterable[Term] | None = None

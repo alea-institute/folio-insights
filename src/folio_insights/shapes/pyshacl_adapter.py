@@ -98,7 +98,14 @@ def validate(
         allow_warnings=True,
     )
     results = []
-    for result in report.subjects(RDF.type, SH.ValidationResult):
+    # Top-level results only: pyshacl also types the nested sh:detail
+    # results of sh:node / logical constraints as sh:ValidationResult.
+    top_level = [
+        result
+        for node in report.subjects(RDF.type, SH.ValidationReport)
+        for result in report.objects(node, SH.result)
+    ]
+    for result in top_level:
         focus = report.value(result, SH.focusNode)
         path = report.value(result, SH.resultPath)
         value = report.value(result, SH.value)

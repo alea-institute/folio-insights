@@ -9,11 +9,15 @@ SHACL-SPARQL pre-binds ``$this`` to each focus node. Here each constraint is
 rewritten once:
 
 * ``$this`` becomes ``?this``;
-* ``?this`` is bound by the owning shape's targets (``targetClass``,
-  ``targetSubjectsOf``, ``targetObjectsOf``, ``targetNode``), one query per
-  target;
-* an optional ``VALUES ?this { ... }`` restricts the run to given focus nodes
-  (the incremental check after a write).
+* the owning shape's target (``targetClass``, ``targetSubjectsOf``,
+  ``targetObjectsOf``, ``targetNode``) becomes a trailing ``FILTER EXISTS`` in
+  the outer group, one query per target;
+* an optional leading ``VALUES ?this { ... }`` restricts the run to given
+  focus nodes (the incremental check after a write).
+
+This relies on each constraint body binding ``$this`` in a triple pattern
+(true of every shape in the suite; the differential tests run each one). A
+body that only mentions ``$this`` inside a FILTER would need pre-binding.
 
 Every solution row is one result. Its focus node is ``?this``, its value is
 ``?value`` when the query projects it, and its severity is the owning shape's.
@@ -39,15 +43,20 @@ _PREFIX_DECL = re.compile(r"\bPREFIX\s+([A-Za-z][\w.-]*)?:", re.IGNORECASE)
 _MESSAGE_VAR = re.compile(r"\{[?$](\w+)\}")
 
 
-def _target_block(kind: str, value: Term) -> str:
+def _target_filter(kind: str, value: Term) -> str:
+    """The owning shape's target as a trailing ``FILTER EXISTS``.
+
+    A filter applies to its whole group wherever it is written, so placing it
+    last lets the constraint body (always selective here: it matches the bad
+    case) drive the join instead of a scan of every target instance."""
     if kind == "targetClass":
-        return f"{{ SELECT DISTINCT ?this WHERE {{ ?this a <{value[1]}> }} }}"
+        return f"FILTER EXISTS {{ ?this a <{value[1]}> }}"
     if kind == "targetSubjectsOf":
-        return f"{{ SELECT DISTINCT ?this WHERE {{ ?this <{value[1]}> ?__target }} }}"
+        return f"FILTER EXISTS {{ ?this <{value[1]}> ?__target }}"
     if kind == "targetObjectsOf":
-        return f"{{ SELECT DISTINCT ?this WHERE {{ ?__target <{value[1]}> ?this }} }}"
+        return f"FILTER EXISTS {{ ?__target <{value[1]}> ?this }}"
     if kind == "targetNode":
-        return f"VALUES ?this {{ {_sparql_term(value)} }}"
+        return f"FILTER (?this = {_sparql_term(value)})"
     raise ValueError(f"unknown target kind {kind}")
 
 
@@ -71,14 +80,14 @@ def rewrite(
         for prefix, namespace in constraint.prefixes
         if prefix not in declared
     )
-    inject = _target_block(kind, value)
+    head = ""
     if focus is not None:
-        inject += " VALUES ?this { " + " ".join(f"<{iri}>" for iri in focus) + " }"
+        head = " VALUES ?this { " + " ".join(f"<{iri}>" for iri in focus) + " } "
+    tail = " " + _target_filter(kind, value) + " "
     match = _WHERE.search(body)
-    if match is None:
-        brace = body.index("{")
-        return prologue + body[: brace + 1] + " " + inject + " " + body[brace + 1 :]
-    return prologue + body[: match.end()] + " " + inject + " " + body[match.end() :]
+    start = match.end() if match is not None else body.index("{") + 1
+    end = body.rindex("}")
+    return prologue + body[:start] + head + body[start:end] + tail + body[end:]
 
 
 def from_ox(term: Any) -> Term | None:
