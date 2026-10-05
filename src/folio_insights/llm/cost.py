@@ -1,26 +1,33 @@
 """Cost meter and spend cap (KTD8, R4).
 
-:class:`CostMeter` is the run context's :class:`~folio_insights.llm.context.UsageMeter`. The
-port consults it around every call:
+:class:`CostMeter` is the run context's :class:`~folio_insights.llm.context.UsageMeter`. It is
+consulted at three points of every port call:
 
-* ``before_call`` -- with a cap set, refuses the call (``BudgetExhaustedError``) when what the
-  run has spent, plus what in-flight calls have reserved, plus this call's *worst case* would
-  exceed the cap. The worst case is an upper bound, not a guess: every tokenizer the supported
-  providers use spends at least one UTF-8 byte per input token, so the prompt's byte count
-  (plus per-message and re-ask overhead) bounds its input tokens, and ``max_tokens`` bounds each
-  attempt's output. The cap therefore stops a run *before* the call that could exceed it. An
-  unpriced model under a cap is refused outright (``UnpricedModelError``).
-* ``after_call`` -- releases the reservation and books the provider-reported usage at the
-  table's price into the :class:`~folio_insights.llm.usage.UsageLedger`.
+* ``before_call`` -- refuses an unpriced model under a cap, and a call whose first attempt
+  alone could not fit;
+* ``reserve_attempt`` -- runs inside the HTTP transport immediately before EACH request
+  (first attempt and every re-ask or retry) is sent, with the exact request body in hand. The
+  attempt's worst case is ``price(request_bytes + overhead input tokens, max_tokens output
+  tokens)``: every tokenizer the supported providers use spends at least one UTF-8 byte per
+  input token, and ``max_tokens`` caps the output. If what the run has spent, plus what
+  in-flight attempts have reserved, plus this bound would exceed the cap, the request is never
+  sent (``BudgetExhaustedError``). The reservation is written to the ledger as an
+  ``in_flight`` row first, so a crash or kill mid-call leaves the run charged at that bound;
+* ``settle_call`` -- books the provider-reported usage at the table price, plus the reserved
+  worst case of every attempt that may have been billed without reporting usage (read timeout
+  after send, 5xx, cancellation, a 2xx without ``usage``). Settled spend therefore never
+  exceeds what was reserved, and reserved spend never exceeds the cap.
 
-The meter starts from the ledger's existing total for its run id, so a job resumed after
-``budget_exhausted`` (or retried after a crash) keeps counting what it already spent.
+The meter starts from the ledger's total for its run id (settled rows plus any ``in_flight``
+rows a crash left behind), so a job resumed after ``budget_exhausted`` or retried after a crash
+keeps counting what it already spent.
 
 Stdlib-only: the lean worker image imports it.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import threading
 from decimal import Decimal, InvalidOperation
@@ -28,26 +35,23 @@ from pathlib import Path
 from typing import Any
 
 from folio_insights.llm.errors import BudgetExhaustedError, UnpricedModelError
-from folio_insights.llm.pricing import PriceTable, default_price_table
+from folio_insights.llm.pricing import PriceRow, PriceTable, default_price_table
 from folio_insights.llm.usage import UsageLedger, UsageRecord
 
 SPEND_CAP_ENV = "FOLIO_INSIGHTS_LLM_MAX_SPEND_USD"
-# Per-message chat framing and tool-use system prompts, in tokens (generous: Anthropic's tool
-# system prompt is ~600 tokens, OpenAI/Gemini framing is smaller).
+# Tokens the provider adds beyond the request body (tool-use system prompts and chat framing;
+# Anthropic's tool system prompt is ~600 tokens). Generous on purpose.
 _OVERHEAD_TOKENS = 1024
-# A re-ask appends the previous reply (<= max_tokens) and the validation error text.
-_REASK_ERROR_TOKENS = 2048
 
 
-def worst_case_cost(planned: Any, price: Any) -> Decimal:
-    """Upper bound on the USD cost of a planned call, across all its retry attempts."""
-    n = int(planned.max_attempts)
-    base_in = int(planned.prompt_bytes) + _OVERHEAD_TOKENS
-    growth = int(planned.max_tokens) + _REASK_ERROR_TOKENS
-    input_tokens = n * base_in + growth * n * (n - 1) // 2
-    output_tokens = n * int(planned.max_tokens)
-    # Cached input is never dearer than fresh input, so price everything as fresh.
-    return price.cost(input_tokens, output_tokens, 0)
+def attempt_bound(price: PriceRow, request_bytes: int, max_tokens: int) -> Decimal:
+    """Upper bound on the cost of ONE request with a ``request_bytes`` body."""
+    return price.cost(int(request_bytes) + _OVERHEAD_TOKENS, int(max_tokens), 0)
+
+
+def worst_case_cost(planned: Any, price: PriceRow) -> Decimal:
+    """Upper bound on a planned call's first attempt (its prompt and schema, before framing)."""
+    return attempt_bound(price, int(planned.prompt_bytes), int(planned.max_tokens))
 
 
 def parse_cap(value: Any) -> Decimal | None:
@@ -58,7 +62,7 @@ def parse_cap(value: Any) -> Decimal | None:
     except InvalidOperation:
         raise ValueError(f"spend cap {value!r} is not a number") from None
     if not cap.is_finite() or cap <= 0:
-        raise ValueError("spend cap must be a positive number of USD")
+        raise ValueError("spend cap must be a finite, positive number of USD")
     return cap
 
 
@@ -86,47 +90,90 @@ class CostMeter:
         self._unpriced = 0
         self._lock = threading.Lock()
 
-    def before_call(self, planned: Any) -> None:
-        if self.cap is None:
-            return
+    def _committed(self) -> Decimal:
+        return self.spent + sum(self._reserved.values(), Decimal(0))
+
+    def _refuse(self, planned: Any, bound: Decimal) -> BudgetExhaustedError:
+        committed = self._committed()
+        return BudgetExhaustedError(
+            f"spend cap ${self.cap} reached: ${self.spent} spent (${committed - self.spent} "
+            f"reserved in flight); the next {planned.task} request could cost up to "
+            f"${bound.quantize(Decimal('0.000001'))}",
+            provider=planned.route.provider, model=planned.route.model,
+        )
+
+    def _price(self, planned: Any) -> PriceRow | None:
         route = planned.route
         price = self.prices.lookup(route.provider, route.model)
-        if price is None:
+        if price is None and self.cap is not None:
             raise UnpricedModelError(
                 f"spend cap ${self.cap} is set but price table {self.prices.version} has no row "
                 f"for {route.provider}/{route.model}; refusing an unbounded call",
                 provider=route.provider, model=route.model,
             )
+        return price
+
+    def before_call(self, planned: Any) -> None:
+        """Cheap pre-check: refuse an unpriced model, or a first attempt that cannot fit."""
+        price = self._price(planned)
+        if self.cap is None or price is None:
+            return
         bound = worst_case_cost(planned, price)
         with self._lock:
-            committed = self.spent + sum(self._reserved.values(), Decimal(0))
-            if committed + bound > self.cap:
-                raise BudgetExhaustedError(
-                    f"spend cap ${self.cap} reached: ${self.spent} spent"
-                    f" (${committed - self.spent} in flight); the next {planned.task} call"
-                    f" could cost up to ${bound.quantize(Decimal('0.000001'))}",
-                    provider=route.provider, model=route.model,
-                )
-            self._reserved[id(planned)] = bound
+            if self._committed() + bound > self.cap:
+                raise self._refuse(planned, bound)
 
-    def after_call(self, record: UsageRecord, planned: Any = None) -> None:
-        cost = self.prices.cost_of(record.usage)
+    def reserve_attempt(self, account: Any, request_bytes: int) -> Decimal | None:
+        """Reserve one request's worst case before it is sent; raise if it could exceed the cap."""
+        planned = account.planned
+        price = self._price(planned)
+        bound = None if price is None else attempt_bound(price, request_bytes, planned.max_tokens)
+        key = id(account)
         with self._lock:
-            if planned is not None:
-                self._reserved.pop(id(planned), None)
+            if bound is not None:
+                if self.cap is not None and self._committed() + bound > self.cap:
+                    raise self._refuse(planned, bound)
+                self._reserved[key] = self._reserved.get(key, Decimal(0)) + bound
+            reserved = self._reserved.get(key)
+        if self.ledger is not None:
+            if account.ledger_row is None:
+                account.ledger_row = self.ledger.open_in_flight(
+                    run_id=self.run_id, task=planned.task, provider=planned.route.provider,
+                    model=planned.route.model, template_id=planned.template_id,
+                    template_hash=planned.template_hash, reserved=reserved or Decimal(0),
+                    price_table_version=self.prices.version, job_id=self.job_id,
+                    corpus_id=self.corpus_id,
+                )
+            else:
+                self.ledger.raise_in_flight(account.ledger_row, reserved or Decimal(0),
+                                            account.sent_count + 1)
+        return bound
+
+    def settle_call(self, account: Any, record: UsageRecord) -> UsageRecord:
+        """Book a finished call: reported usage at price + worst case of unaccounted attempts."""
+        price = self.prices.lookup(record.usage.provider, record.usage.model)
+        worst = Decimal(0)
+        if price is None:
+            cost = None
+        else:
+            worst = sum((b for b in account.unaccounted_bounds() if b is not None), Decimal(0))
+            cost = price.cost(record.usage.input_tokens, record.usage.output_tokens,
+                              record.usage.cached_input_tokens) + worst
+        with self._lock:
+            self._reserved.pop(id(account), None)
             if cost is None:
                 self._unpriced += 1
             else:
                 self.spent += cost
+        record = dataclasses.replace(record, worst_case_usd=worst)
         if self.ledger is not None:
-            self.ledger.record(record, run_id=self.run_id, cost=cost,
-                               price_table_version=self.prices.version,
-                               job_id=self.job_id, corpus_id=self.corpus_id)
-
-    def release(self, planned: Any) -> None:
-        """Drop a reservation for a call that never reached the provider."""
-        with self._lock:
-            self._reserved.pop(id(planned), None)
+            if account.ledger_row is not None:
+                self.ledger.settle(account.ledger_row, record, cost=cost)
+            else:
+                self.ledger.record(record, run_id=self.run_id, cost=cost,
+                                   price_table_version=self.prices.version,
+                                   job_id=self.job_id, corpus_id=self.corpus_id)
+        return record
 
     def report(self) -> dict[str, Any]:
         """Cost section of a run report (exact decimal strings; no credentials)."""
@@ -142,7 +189,10 @@ class CostMeter:
 
 
 def job_meter_factory(job: Any, queue: Any) -> CostMeter:
-    """Meter for a queued job: ledger in the queue database, cap from the job or environment."""
+    """Meter for a queued job: ledger in the queue database, cap from the job or environment.
+
+    Raises ``ValueError`` for a malformed cap; the worker fails such a job permanently.
+    """
     llm = (getattr(job, "payload", None) or {}).get("llm") or {}
     cap = llm.get("max_spend_usd")
     if cap is None:

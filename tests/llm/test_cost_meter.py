@@ -15,7 +15,7 @@ from folio_insights.llm import (
     UnpricedModelError,
     use_context,
 )
-from folio_insights.llm.cost import CostMeter, worst_case_cost
+from folio_insights.llm.cost import CostMeter, attempt_bound
 from folio_insights.llm.pricing import (
     PriceRow,
     PriceTable,
@@ -81,11 +81,14 @@ def test_price_table_rejects_duplicates_and_missing_version(tmp_path) -> None:
     assert load_price_table(str(path)).lookup("openai", "gpt-x") is not None
 
 
-def test_lookup_matches_snapshots_but_not_other_models() -> None:
+def test_lookup_is_exact_and_snapshots_are_listed_explicitly() -> None:
+    """Review P2-8: no suffix fallback. gpt-4o-2024-05-13 costs more than gpt-4o."""
     table = default_price_table()
-    assert table.lookup("anthropic", "claude-haiku-4-5-20251001").model == "claude-haiku-4-5"
-    assert table.lookup("openai", "gpt-4.1-mini-2025-04-14").model == "gpt-4.1-mini"
-    assert table.lookup("openai", "gpt-4.1-turbo") is None  # not a snapshot of gpt-4.1
+    assert table.lookup("anthropic", "claude-haiku-4-5-20251001").model == "claude-haiku-4-5-20251001"
+    assert table.lookup("openai", "gpt-4.1-mini-2025-04-14").output_per_mtok == Decimal("1.60")
+    assert table.lookup("openai", "gpt-4o-2024-05-13") is None  # $5/$15, not gpt-4o's $2.50/$10
+    assert table.lookup("openai", "gpt-4.1-turbo") is None
+    assert table.lookup("openai", "gpt-4.1-mini-2099-01-01") is None
     assert table.lookup("ollama", "llama3.2").cost(10_000, 10_000) == 0
     assert table.lookup("google", "gemini-nonexistent") is None
 
@@ -147,26 +150,23 @@ def test_ledger_never_holds_a_key_or_prompt(tmp_path) -> None:
 # ---- spend cap ------------------------------------------------------------------------------------
 
 
-def _bound(provider: str, model: str, port) -> Decimal:
-    from folio_insights.llm import Route
-    from folio_insights.llm.port import PlannedCall
-
-    planned = PlannedCall(
-        task="distiller", route=Route(provider, model), template_id=DISTILL.id,
-        template_hash=DISTILL.hash, messages=tuple((m["role"], m["content"]) for m in MESSAGES),
-        output_schema_json=json.dumps(DistilledOutput.model_json_schema()),
-        max_tokens=port.max_tokens, max_attempts=port.max_attempts)
-    return worst_case_cost(planned, default_price_table().lookup(provider, model))
+async def _request_bytes(provider: str) -> int:
+    """Body size of the distiller request this provider's call sends (a dry run, no meter)."""
+    rec = Recorder([load_fixture(provider)["valid"]])
+    with use_context(make_context(provider)):
+        await make_port(rec).structured("distiller", DistilledOutput, MESSAGES)
+    return len(rec.requests[0].content)
 
 
-async def test_cap_refuses_the_call_that_could_exceed_it_before_any_request(tmp_path) -> None:
+async def test_cap_refuses_the_request_that_could_exceed_it_before_sending(tmp_path) -> None:
     fx = load_fixture("openai")
-    rec = Recorder([fx["valid"]])
-    port = make_port(rec)
-    first_cost = default_price_table().lookup("openai", fx["model"]).cost(412, 37, 128)
-    bound = _bound("openai", fx["model"], port)
+    price = default_price_table().lookup("openai", fx["model"])
+    first_cost = price.cost(412, 37, 128)
+    bound = attempt_bound(price, await _request_bytes("openai"), DISTILL.max_tokens)
     assert bound > first_cost  # the bound really is an upper bound for this fixture
     cap = first_cost + bound - Decimal("0.0000001")  # room for call 1, not for call 2's worst case
+    rec = Recorder([fx["valid"]])
+    port = make_port(rec)
     ledger = UsageLedger(tmp_path / "q.sqlite3")
     ctx = make_context("openai", meter=CostMeter(run_id="r", ledger=ledger, cap_usd=cap))
     with use_context(ctx):
@@ -181,9 +181,10 @@ async def test_cap_refuses_the_call_that_could_exceed_it_before_any_request(tmp_
 
 async def test_concurrent_calls_reserve_their_worst_case(tmp_path) -> None:
     fx = load_fixture("google")
+    price = default_price_table().lookup("google", fx["model"])
+    bound = attempt_bound(price, await _request_bytes("google"), DISTILL.max_tokens)
     rec = Recorder([fx["valid"]])
     port = make_port(rec)
-    bound = _bound("google", fx["model"], port)
     ctx = make_context("google", meter=CostMeter(run_id="r", cap_usd=bound * Decimal("1.5")))
     with use_context(ctx):
         results = await asyncio.gather(

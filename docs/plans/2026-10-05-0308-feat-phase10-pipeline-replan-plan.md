@@ -329,6 +329,44 @@ Commits, in order: U1 provider port, U2 durable job queue, U3 cost meter, then t
 - **Discovery output:** the discovery call sites still parse JSON from `complete()`, keeping their existing tests. They do carry template identity, usage and the single retry layer.
 - **Standalone worker:** `python -m folio_insights.worker` never holds user keys. Jobs submitted with a key run on the API process's embedded worker, the only process that holds the key in memory. The standalone worker has no worker-tier kinds yet (Phase 9), so for now it only recovers expired leases.
 
+### Review fixes (2026-10-05)
+
+An independent review of U1–U3 found 4 P1 and 10 P2 issues plus nits. Each fix below has a regression test that fails on the pre-fix tree.
+
+**API posture (no user auth):**
+- **Open routes:** submit and read stay open, as deployed.
+- **Control token:** cancel, resume and key re-supply require the job's control token (`X-Job-Control-Token`). It is returned once on creation and stored only as a SHA-256 hash, compared in constant time; without it the routes return 403.
+- **Spend cap:** a job that hits its cap drops the key from memory, so a resume needs a key again and whoever resumes pays.
+- **Key binding:** the key is bound to the provider the request named, and the job is pinned to it, so the key never reaches another provider or host.
+- **Keyless providers:** API jobs may use them (Ollama) only with `FOLIO_INSIGHTS_API_ALLOW_KEYLESS_PROVIDERS`.
+
+**Spend cap is a true upper bound:**
+- **Per-request reservation:** a transport wrapper sees every HTTP attempt, including re-asks. Before each request it reserves `price(request_bytes + 1024, max_tokens)` and refuses to send if the cap would be exceeded.
+- **In-flight ledger rows:** the reservation is written to the ledger first, so a crash leaves the run charged at the bound.
+- **Booking at worst case:** a timeout after send, a 5xx, a cancellation or a 2xx without usage is booked at its reserved bound.
+- **Usage source:** usage is read from each response body. Gemini output counts `max(completion, total - prompt)`.
+- **Exact pricing:** price lookup is exact-match only, and snapshots are listed explicitly.
+
+**Fail loud:**
+- **Halts:** a rejected key (`LLMAuthError`) halts as `needs_credentials`, and an unknown model halts permanently.
+- **Failure ratio:** per-unit distill, classify, novelty and concept failures fail the stage above `llm_max_unit_failure_ratio` (5%).
+
+**Hygiene:**
+- **Key lifetime:** SDK clients are scoped to a run and closed at its end. Keys are discarded on cancel, lost lease and budget pause.
+- **Log scrubbing:** a scrub filter covers the instructor, openai and httpx loggers.
+- **Exception chains:** mapped errors carry no `__context__` or `__cause__`.
+- **Concurrent re-supply:** a losing re-supply restores the winner's key.
+- **Retry budget:** a pause does not consume an attempt.
+- **Malformed caps:** non-finite caps are rejected; a cap that fails to parse fails the job instead of wedging it.
+- **Lineage:** template hashes, the B5 result and the cost summary reach `extraction.json` and survive a checkpoint resume.
+- **CLI cap:** the cap is cumulative per corpus and `--spend-window`.
+- **Legacy import:** it never overwrites a live job, and maps a malformed timestamp to the epoch.
+- **Idempotency:** a replay with a different payload or key returns 409.
+- **`force`:** returns 409 while a job is active.
+- **Ledger writes:** they run off the event loop.
+- **Polysemy:** model names with an unknown prefix are refused.
+- **Output caps:** each template has its own output cap.
+
 ## Definition of Done
 
 - U1–U6 pass their scenarios, every R1 invariant has a named passing test, and no server path reads an ambient LLM key.

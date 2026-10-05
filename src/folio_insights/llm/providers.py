@@ -36,8 +36,10 @@ from folio_insights.llm.errors import (
     LLMBadRequestError,
     LLMConnectionError,
     LLMError,
+    LLMModelNotFoundError,
     LLMProviderError,
     LLMRateLimitError,
+    RunHalted,
     UnknownProviderError,
 )
 
@@ -177,6 +179,9 @@ def map_provider_error(
 
     if isinstance(exc, LLMError):
         return exc
+    halted = halt_cause(exc)
+    if halted is not None:
+        return halted
     status = getattr(exc, "status_code", None)
     raw = _provider_message(exc)
     message = scrub(raw, secrets)[:300]
@@ -186,10 +191,12 @@ def map_provider_error(
         return LLMAuthError(f"{provider} rejected the API key (HTTP {status})", **ctx)
     if isinstance(exc, openai.RateLimitError):
         return LLMRateLimitError(f"{provider} rate limit (HTTP {status}): {message}", **ctx)
+    if isinstance(exc, openai.NotFoundError):
+        return LLMModelNotFoundError(
+            f"{provider} has no model {model!r} (HTTP {status}): {message}", **ctx)
     if isinstance(
         exc,
-        (openai.BadRequestError, openai.NotFoundError, openai.UnprocessableEntityError,
-         openai.ConflictError),
+        (openai.BadRequestError, openai.UnprocessableEntityError, openai.ConflictError),
     ):
         if _INVALID_KEY.search(raw):
             # Gemini answers a bad key with HTTP 400 "API key not valid", not 401.
@@ -202,6 +209,18 @@ def map_provider_error(
     if isinstance(exc, openai.APIStatusError):
         return LLMProviderError(f"{provider} server error (HTTP {status}): {message}", **ctx)
     return LLMProviderError(f"{provider} call failed: {type(exc).__name__}: {message}", **ctx)
+
+
+def halt_cause(exc: BaseException) -> RunHalted | None:
+    """A :class:`RunHalted` the SDK wrapped (raised by the port's send hook), if any."""
+    seen = 0
+    cur: BaseException | None = exc
+    while cur is not None and seen < 5:
+        if isinstance(cur, RunHalted):
+            return cur
+        cur = cur.__cause__ or cur.__context__
+        seen += 1
+    return None
 
 
 _INVALID_KEY = re.compile(r"api[ _-]?key", re.IGNORECASE)
@@ -235,6 +254,8 @@ def is_retryable(exc: BaseException) -> bool:
     )
     from instructor.core.exceptions import ValidationError as InstructorValidationError
 
+    if halt_cause(exc) is not None:
+        return False  # a spend-cap refusal raised before sending: never retry it
     bad_output = (
         ValidationError,
         json.JSONDecodeError,

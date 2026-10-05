@@ -14,10 +14,10 @@ reason.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
-from folio_insights.jobs.queue import JobStatus, SQLiteJobQueue
+from folio_insights.jobs.queue import JobStatus, QueueError, SQLiteJobQueue
 
 _STATUS = {
     "pending": JobStatus.FAILED,
@@ -30,10 +30,11 @@ ORPHANED = "orphaned: the process running this job stopped before the durable qu
 
 
 def _ts(iso: str | None) -> float:
+    """A legacy timestamp, or 0.0 (the epoch) when it is missing or malformed."""
     try:
         return datetime.fromisoformat(iso).timestamp() if iso else 0.0
-    except ValueError:
-        return datetime.now(timezone.utc).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def import_legacy_jobs(jobs_dir: Path, queue: SQLiteJobQueue) -> list[dict[str, str]]:
@@ -56,22 +57,26 @@ def import_legacy_jobs(jobs_dir: Path, queue: SQLiteJobQueue) -> list[dict[str, 
         error = data.get("error")
         if legacy_status in ("pending", "processing"):
             error = ORPHANED
-        queue.import_snapshot(
-            job_id=job_id,
-            kind=kind,
-            corpus_id=corpus,
-            status=status,
-            created_at=_ts(data.get("created_at")),
-            updated_at=_ts(data.get("updated_at")),
-            current_stage=data.get("current_stage"),
-            progress_pct=int(data.get("progress_pct") or 0),
-            result={"total_units": int(data.get("total_units") or 0)},
-            error=error,
-            events=[
-                (_ts(a.get("timestamp")), str(a.get("stage", "")), str(a.get("message", "")))
-                for a in data.get("activity_log") or []
-            ],
-            idempotency_key=f"legacy:{job_id}",
-        )
+        try:
+            queue.import_snapshot(
+                job_id=job_id,
+                kind=kind,
+                corpus_id=corpus,
+                status=status,
+                created_at=_ts(data.get("created_at")),
+                updated_at=_ts(data.get("updated_at")),
+                current_stage=data.get("current_stage"),
+                progress_pct=int(data.get("progress_pct") or 0),
+                result={"total_units": int(data.get("total_units") or 0)},
+                error=error,
+                events=[
+                    (_ts(a.get("timestamp")), str(a.get("stage", "")), str(a.get("message", "")))
+                    for a in data.get("activity_log") or []
+                ],
+                idempotency_key=f"legacy:{job_id}",
+            )
+        except QueueError as exc:
+            out.append({"file": path.name, "outcome": f"skipped ({exc})"})
+            continue
         out.append({"file": path.name, "outcome": f"imported as {kind}/{status.value}"})
     return out

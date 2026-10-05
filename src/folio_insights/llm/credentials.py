@@ -16,25 +16,31 @@ an SDK client. Nothing in the port logs, persists or formats a revealed value.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
+import threading
+import weakref
 from collections.abc import Mapping
 from typing import Any
 
 from folio_insights.llm.errors import MissingCredentialsError
 
 _REDACTED = "***"
+# Every SecretKey alive in this process (weakly held): the log filter scrubs all of them.
+_LIVE_SECRETS: weakref.WeakSet[Any] = weakref.WeakSet()
 
 
 class SecretKey:
     """An opaque API key. Redacted in every textual form; unpicklable; reveal-on-use only."""
 
-    __slots__ = ("_value",)
+    __slots__ = ("_value", "__weakref__")
 
     def __init__(self, value: str) -> None:
         if not isinstance(value, str) or not value.strip():
             raise ValueError("a SecretKey needs a non-empty string value")
         object.__setattr__(self, "_value", value.strip())
+        _LIVE_SECRETS.add(self)  # so the log filter can scrub it wherever it is echoed
 
     def reveal(self) -> str:
         """Return the raw key. Call only where an SDK client is constructed."""
@@ -190,3 +196,46 @@ def scrub(text: str, secrets: list[SecretKey] | tuple[SecretKey, ...] = ()) -> s
     out = _MASKED_TOKEN.sub(_REDACTED, out)
     out = _KEY_SHAPED.sub(_REDACTED, out)
     return out
+
+
+class ScrubSecretsFilter(logging.Filter):
+    """Scrub every live key (and masked or key-shaped echoes) from a log record.
+
+    SDK loggers (instructor at DEBUG, the openai client) format provider error bodies, which can
+    echo the Authorization header or a masked key. The filter rewrites the record's message and
+    any exception text before a handler sees it.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        secrets = list(_LIVE_SECRETS)
+        try:
+            message = record.getMessage()
+        except Exception:  # noqa: BLE001 - a malformed record: leave it to logging
+            return True
+        cleaned = scrub(message, secrets)
+        if cleaned != message:
+            record.msg, record.args = cleaned, None
+        if record.exc_info:
+            text = logging.Formatter().formatException(record.exc_info)
+            record.exc_text = scrub(text, secrets)
+            record.exc_info = None
+        return True
+
+
+SCRUBBED_LOGGERS = ("instructor", "openai", "httpx", "httpcore", "folio_insights")
+_SCRUB_FILTER = ScrubSecretsFilter()
+_scrub_lock = threading.Lock()
+
+
+def install_log_scrubbing() -> None:
+    """Attach the scrub filter to the SDK loggers and every existing child of them. Idempotent."""
+    with _scrub_lock:
+        names = set(SCRUBBED_LOGGERS)
+        names.update(
+            n for n in logging.root.manager.loggerDict
+            if any(n.startswith(p + ".") for p in SCRUBBED_LOGGERS)
+        )
+        for name in names:
+            log = logging.getLogger(name)
+            if _SCRUB_FILTER not in log.filters:
+                log.addFilter(_SCRUB_FILTER)

@@ -48,6 +48,11 @@ class PromptTemplate:
     user: str
     system: str = ""
     output_schema: type[BaseModel] | None = field(default=None, compare=False)
+    #: Output-token cap for this template's calls (a generation parameter, not prompt identity,
+    #: so it is outside the hash). It also bounds the spend-cap worst case. The folio-enrich
+    #: bridge sent 4096 to Anthropic and nothing to the other providers; these caps are sized
+    #: to each task's output schema instead. ``FOLIO_INSIGHTS_LLM_MAX_TOKENS`` overrides them.
+    max_tokens: int = field(default=4096, compare=False)
 
     @cached_property
     def schema_json(self) -> dict[str, Any] | None:
@@ -137,16 +142,19 @@ def _folio_resolve_version() -> str:
 DISTILL = register(PromptTemplate(
     id="distiller.distill", version="1", task="distiller",
     user=DISTILLATION_PROMPT, output_schema=schemas.DistilledOutput,
+    max_tokens=2048,
 ))
 
 CLASSIFY = register(PromptTemplate(
     id="knowledge_classifier.classify", version="1", task="classifier",
     user=CLASSIFICATION_PROMPT, output_schema=schemas.ClassificationOutput,
+    max_tokens=1024,
 ))
 
 NOVELTY = register(PromptTemplate(
     id="knowledge_classifier.novelty", version="1", task="novelty",
     user=NOVELTY_SCORING_PROMPT, output_schema=schemas.NoveltyOutput,
+    max_tokens=1024,
 ))
 
 CONCEPT = register(PromptTemplate(
@@ -158,6 +166,7 @@ CONCEPT = register(PromptTemplate(
         "Section context: {context}"
     ),
     output_schema=schemas.ConceptOutput,
+    max_tokens=2048,
 ))
 
 # The judge prompt itself is built by the pinned folio-resolve (build_judge_prompt), so its
@@ -168,26 +177,31 @@ BRANCH_JUDGE = register(PromptTemplate(
     task="branch_judge",
     user="{judge_system}\n\n{judge_user}",
     output_schema=schemas.JudgeOutput,
+    max_tokens=2048,
 ))
 
 BOUNDARY = register(PromptTemplate(
     id="boundary.llm_refine", version="1", task="boundary",
     user=BOUNDARY_REFINEMENT_PROMPT, output_schema=schemas.BoundaryRefinementResponse,
+    max_tokens=4096,
 ))
 
 CONTRADICTION = register(PromptTemplate(
     id="discovery.contradiction", version="1", task="contradiction",
     user=CONTRADICTION_ANALYSIS_PROMPT,
+    max_tokens=2048,
 ))
 
 TASK_DISCOVERY = register(PromptTemplate(
     id="discovery.task_label", version="1", task="task_discovery",
     user=TASK_DISCOVERY_PROMPT,
+    max_tokens=2048,
 ))
 
 TASK_ORDERING = register(PromptTemplate(
     id="discovery.task_ordering", version="1", task="task_ordering",
     user=TASK_ORDERING_PROMPT,
+    max_tokens=2048,
 ))
 
 POLYSEMY_DETECTOR = register(PromptTemplate(
@@ -206,6 +220,7 @@ POLYSEMY_DETECTOR = register(PromptTemplate(
         "{extra_prompt}"
     ),
     output_schema=schemas.PolysemyVerdict,
+    max_tokens=1024,
 ))
 
 POLYSEMY_FP_AUDIT = register(PromptTemplate(
@@ -221,4 +236,5 @@ POLYSEMY_FP_AUDIT = register(PromptTemplate(
         "and rationale fields. Be brief."
     ),
     output_schema=schemas.PolysemyVerdict,
+    max_tokens=1024,
 ), default_for_task=False)

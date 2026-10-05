@@ -278,6 +278,8 @@ class PipelineOrchestrator:
                 restored = PipelineCheckpoint.load(stage_name, corpus_dir, checkpoint_dir)
                 if restored is not None:
                     job = restored
+                    # Template identities of stages run before the resume stay in the record.
+                    current_context().merge_templates(job.metadata.get("llm_templates"))
                     logger.info(
                         "Resumed from checkpoint: %s (%d units)",
                         stage_name,
@@ -308,14 +310,19 @@ class PipelineOrchestrator:
                 len(job.units),
             )
 
-            # Save checkpoint
+            # Save checkpoint (with the template identities used so far, for resumes)
+            job.metadata["llm_templates"] = {
+                **(job.metadata.get("llm_templates") or {}),
+                **current_context().templates_used,
+            }
             PipelineCheckpoint.save(stage_name, job, corpus_dir, checkpoint_dir)
             await notify_stage(progress, "done", stage_name, index, total, job)
 
         # LLM accounting for the run report: per-task calls/tokens and the template hashes the
         # run actually used (no prompts, no unit text, no credentials).
+        current_context().merge_templates(job.metadata.get("llm_templates"))
         llm_summary = current_context().usage_summary()
-        if llm_summary["calls"]:
+        if llm_summary["calls"] or llm_summary["templates"]:
             job.metadata["llm"] = llm_summary
         if canary is not None:
             job.metadata["b5_canary"] = canary

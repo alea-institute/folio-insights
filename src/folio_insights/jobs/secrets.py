@@ -32,6 +32,31 @@ class SecretStore:
         with self._lock:
             return self._by_job.get(job_id)
 
+    def swap(self, job_id: str, credentials: Credentials) -> Credentials | None:
+        """Install ``credentials`` for the job; return the handle it replaced (or None)."""
+        if not isinstance(credentials, Credentials):
+            raise TypeError("SecretStore holds Credentials handles only")
+        with self._lock:
+            previous = self._by_job.get(job_id)
+            self._by_job[job_id] = credentials
+            return previous
+
+    def restore_if(self, job_id: str, expected: Credentials, previous: Credentials | None) -> None:
+        """Undo a :meth:`swap` only if the job still holds ``expected`` (our own handle)."""
+        with self._lock:
+            if self._by_job.get(job_id) is not expected:
+                return
+            if previous is None:
+                self._by_job.pop(job_id, None)
+            else:
+                self._by_job[job_id] = previous
+
+    def discard_if(self, job_id: str, expected: Credentials) -> None:
+        """Drop the job's handle only if it is ``expected`` (never someone else's)."""
+        with self._lock:
+            if self._by_job.get(job_id) is expected:
+                self._by_job.pop(job_id, None)
+
     def discard(self, job_id: str) -> None:
         with self._lock:
             self._by_job.pop(job_id, None)

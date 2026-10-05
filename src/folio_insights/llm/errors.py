@@ -32,12 +32,6 @@ class LLMError(Exception):
         self.status_code = status_code
 
 
-class LLMAuthError(LLMError):
-    """The provider rejected the credential (401/403)."""
-
-    kind = "auth"
-
-
 class LLMRateLimitError(LLMError):
     """The provider throttled the request (429)."""
 
@@ -46,7 +40,7 @@ class LLMRateLimitError(LLMError):
 
 
 class LLMBadRequestError(LLMError):
-    """The provider rejected the request itself (400/404/422): unknown model, bad params."""
+    """The provider rejected this request (400/422): a per-call problem such as bad params."""
 
     kind = "bad_request"
 
@@ -118,3 +112,19 @@ class UnpricedModelError(RunHalted):
     """
 
     kind = "budget_exhausted"
+
+
+class LLMAuthError(MissingCredentialsError):
+    """The provider rejected the credential (401/403).
+
+    A rejected key fails every later call the same way, so it halts the run (and pauses a job as
+    ``needs_credentials``) instead of degrading each unit's output one failed call at a time.
+    """
+
+    kind = "auth"
+
+
+class LLMModelNotFoundError(RunHalted, LLMBadRequestError):
+    """The routed model does not exist for this provider (404). Permanent: retrying cannot help."""
+
+    kind = "model_not_found"

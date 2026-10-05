@@ -4,7 +4,7 @@
     creates the corpus, POSTs /process (with the key from env var VAR, if given) and keeps
     serving -- the embedded worker runs the job -- until the test kills the process.
 
-``python -m tests.jobs.api_proc resume --output DIR --corpus NAME [--key-env VAR]``
+``python -m tests.jobs.api_proc resume --output DIR --corpus NAME [--key-env VAR] [--token-env V]``
     a restarted API: serves with its embedded worker, optionally re-supplies the key through
     POST /job/credentials, and exits once the job settles, printing the final job JSON.
 
@@ -32,6 +32,9 @@ async def _main(args: argparse.Namespace) -> None:
     api_main.configure(output_dir=Path(args.output))
     key = os.environ.get(args.key_env) if args.key_env else None
     headers = {"X-LLM-API-Key": key} if key else {}
+    token = os.environ.get(args.token_env) if args.token_env else None
+    if token:
+        headers["X-Job-Control-Token"] = token
     async with app.router.lifespan_context(app):  # starts the embedded worker
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://api") as client:
@@ -70,6 +73,7 @@ def main() -> None:
     parser.add_argument("--corpus", required=True)
     parser.add_argument("--provider", default="ollama")
     parser.add_argument("--key-env", default=None)
+    parser.add_argument("--token-env", default=None)
     asyncio.run(_main(parser.parse_args()))
 
 

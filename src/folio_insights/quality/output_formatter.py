@@ -85,6 +85,10 @@ class OutputFormatter:
                 # Deterministic-IRI provenance (B5): "degraded" means the entity-ruler path was
                 # unavailable and tags came from the LLM/semantic paths only.
                 "folio_tagger": metadata.get("folio_tagger", {}),
+                # Phase 10 lineage, present when the run produced it: LLM template hashes,
+                # usage and cost (``llm``), the B5 startup canary, per-path LLM failure counts.
+                **{key: metadata[key] for key in ("llm", "b5_canary", "llm_failures")
+                   if key in metadata},
             },
         }
 

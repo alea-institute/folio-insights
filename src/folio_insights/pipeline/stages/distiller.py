@@ -18,6 +18,7 @@ from folio_insights.models.knowledge_unit import KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
     InsightsPipelineStage,
+    LLMFailureTracker,
     record_lineage,
 )
 from folio_insights.services.substance import is_substantive
@@ -56,12 +57,14 @@ class DistillerStage(InsightsPipelineStage):
         from folio_insights.services.bridge.llm_bridge import LLMBridge
 
         llm_bridge = LLMBridge()
+        tracker = LLMFailureTracker("distiller", "distill")
 
         # Process in batches
         for batch_start in range(0, len(job.units), _BATCH_SIZE):
             batch = job.units[batch_start : batch_start + _BATCH_SIZE]
-            tasks = [self._distill_unit(unit, llm_bridge) for unit in batch]
+            tasks = [self._distill_unit(unit, llm_bridge, tracker) for unit in batch]
             await asyncio.gather(*tasks, return_exceptions=True)
+        tracker.check(job)
 
         logger.info("Distilled %d knowledge units", len(job.units))
         return job
@@ -70,6 +73,7 @@ class DistillerStage(InsightsPipelineStage):
         self,
         unit: KnowledgeUnit,
         llm_bridge: object,
+        tracker: LLMFailureTracker | None = None,
     ) -> None:
         """Distill a single knowledge unit's text."""
         # B6, defence in depth: never hand a heading, contents entry or attribution line to the
@@ -88,6 +92,8 @@ class DistillerStage(InsightsPipelineStage):
 
         prompt = DISTILL.render(text=unit.text, section_path=section_context)
 
+        if tracker is not None:
+            tracker.attempt()
         try:
             llm_provider = llm_bridge.get_llm_for_task("distiller")  # type: ignore[union-attr]
             result = await llm_provider.structured(
@@ -108,7 +114,9 @@ class DistillerStage(InsightsPipelineStage):
                 detail=f"compressed from {len(unit.original_span.source_file)} chars",
             )
 
-        except Exception:
+        except Exception as exc:
+            if tracker is not None:
+                tracker.failure(unit.id, exc)
             logger.warning(
                 "Distillation failed for unit %s; keeping original text",
                 unit.id,

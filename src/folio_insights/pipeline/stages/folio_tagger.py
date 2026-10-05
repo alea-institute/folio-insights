@@ -42,6 +42,8 @@ from folio_insights.models.knowledge_unit import ConceptTag, KnowledgeUnit
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
     InsightsPipelineStage,
+    LLMFailureTracker,
+    StageFailureRatioError,
     record_lineage,
 )
 from folio_insights.services.bridge.reconciliation_bridge import (
@@ -67,7 +69,7 @@ _VERDICT_TO_CALIBRATION = {
 }
 
 
-class TaggerFailureRatioError(RuntimeError):
+class TaggerFailureRatioError(StageFailureRatioError):
     """Too many units failed to tag for the run's output to be trusted (KTD7)."""
 
 
@@ -157,6 +159,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         failures: list[dict[str, str]] = []
         tagger_meta["judge_enabled"] = _judge_enabled()
         self._judge_outages = 0
+        self._concept_tracker = LLMFailureTracker("folio_tagger", "concept")
         for unit in job.units:
             try:
                 if not self._is_taggable_source(unit):
@@ -199,6 +202,7 @@ class FolioTaggerStage(InsightsPipelineStage):
             1 for u in job.units for t in u.folio_tags if t.judge_status == "unjudged"
         )
         self._enforce_failure_ratio(attempted, failures)
+        self._concept_tracker.check(job)
         tagged_count = sum(1 for u in job.units if u.folio_tags)
         tagger_meta["units_tagged"] = tagged_count
         tagger_meta["entity_ruler_tags"] = sum(
@@ -252,6 +256,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         ruler_concepts = self._run_entity_ruler(unit.text, aho_matcher, folio_service)
 
         # Path 2: LLM Concept Identification
+        self._current_unit_id = unit.id  # units are tagged sequentially
         llm_concepts = await self._run_llm_concept(unit.text, unit.source_section)
 
         # Path 3: Semantic (embedding similarity)
@@ -324,7 +329,14 @@ class FolioTaggerStage(InsightsPipelineStage):
     async def _run_llm_concept(
         self, text: str, section_path: list[str]
     ) -> list[dict[str, Any]]:
-        """Path 2: LLM concept identification."""
+        """Path 2: LLM concept identification.
+
+        A failure leaves this unit without LLM-path candidates; it is counted, and the run fails
+        when more than ``llm_max_unit_failure_ratio`` of the units' concept calls failed.
+        """
+        tracker = getattr(self, "_concept_tracker", None)
+        if tracker is not None:
+            tracker.attempt()
         try:
             from folio_insights.services.bridge.llm_bridge import LLMBridge
 
@@ -346,7 +358,9 @@ class FolioTaggerStage(InsightsPipelineStage):
                 }
                 for c in result.get("concepts", [])
             ]
-        except Exception:
+        except Exception as exc:
+            if tracker is not None:
+                tracker.failure(getattr(self, "_current_unit_id", "") or "unknown", exc)
             logger.warning("LLM concept path failed", exc_info=True)
             return []
 

@@ -166,6 +166,10 @@ class JobRuntime:
         self.queue = queue
         self.secret_store = secret_store if secret_store is not None else default_secret_store()
         self.owner = owner or new_owner_id("api")
+        # Idempotency replays compare key fingerprints: an HMAC under a per-process secret, in
+        # memory only (never the key, never persisted).
+        self.fingerprint_secret = os.urandom(32)
+        self.key_fingerprints: dict[str, bytes] = {}
         self.worker: JobWorker | None = None
         self._task: asyncio.Task[None] | None = None
         self._stop: asyncio.Event | None = None
@@ -282,21 +286,42 @@ class JobManager:
 
 
 class SubmitConflict(Exception):
-    """A job of this kind is already active for the corpus."""
+    """A job of this kind is already active for the corpus (or an idempotency replay differs)."""
 
-    def __init__(self, job: Job) -> None:
-        super().__init__(job.status.value)
+    def __init__(self, job: Job, reason: str = "") -> None:
+        super().__init__(reason or job.status.value)
         self.job = job
+        self.reason = reason
 
 
-def _route_provider(provider: str | None) -> Any:
-    from folio_insights.llm.port import resolve_route
+class SubmitRefused(Exception):
+    """The submission is not allowed by this server's configuration (HTTP 403)."""
+
+
+KEYLESS_OPT_IN_ENV = "FOLIO_INSIGHTS_API_ALLOW_KEYLESS_PROVIDERS"
+
+
+def keyless_providers_allowed() -> bool:
+    """Operator opt-in for API jobs on keyless providers (Ollama runs on the server's hardware)."""
+    return os.environ.get(KEYLESS_OPT_IN_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def request_provider(llm: dict[str, Any]) -> Any:
+    """The provider a request named (normalized), else the settings default."""
+    from folio_insights.config import get_settings
     from folio_insights.llm.providers import get_provider_spec
 
-    from folio_insights.llm import LLMRunContext
+    return get_provider_spec(llm.get("provider") or get_settings().llm_provider)
 
-    route = resolve_route("distiller", context=LLMRunContext(provider=provider))
-    return get_provider_spec(route.provider)
+
+def _key_fingerprint(runtime: JobRuntime, provider: str, api_key: str | None) -> bytes | None:
+    """An in-memory, per-process HMAC of a request's key, for idempotency replays only."""
+    import hmac
+
+    if not api_key:
+        return None
+    return hmac.new(runtime.fingerprint_secret, f"{provider}\x00{api_key}".encode(),
+                    "sha256").digest()
 
 
 def submit_job(
@@ -307,23 +332,56 @@ def submit_job(
     api_key: str | None,
     idempotency_key: str | None,
 ) -> tuple[Job, bool]:
-    """Enqueue an API job with a per-request key (BYOK, KTD3). Returns ``(job, created)``.
+    """:func:`submit_job_controlled` without the control token (library callers)."""
+    job, created, _token = submit_job_controlled(
+        view, corpus_id=corpus_id, payload=payload, api_key=api_key,
+        idempotency_key=idempotency_key,
+    )
+    return job, created
 
+
+def submit_job_controlled(
+    view: QueueJobView,
+    *,
+    corpus_id: str,
+    payload: dict[str, Any],
+    api_key: str | None,
+    idempotency_key: str | None,
+) -> tuple[Job, bool, str | None]:
+    """Enqueue an API job with a per-request key (BYOK, KTD3).
+
+    Returns ``(job, created, control_token)``. The control token is returned once, on creation;
+    only its SHA-256 is stored, and cancel / resume / re-key require it.
+
+    * The key is bound to the provider the request named (else the settings default) and the
+      job is pinned to that provider: every task routes there and per-task env provider
+      overrides are ignored, so the key is never sent to another provider or host.
     * The key goes into this process's in-memory credential store under the new job's id
-      *before* the row exists, and the row names this process's worker as the holder, so no
-      other worker can lease a job whose key it does not have.
+      *before* the row exists, and the row names this process's worker as the holder.
     * A provider that needs a key but got none enqueues the job as ``needs_credentials``.
-    * Repeating a submission with the same ``Idempotency-Key`` returns the same job.
-    * Submitting with a key while the corpus's job waits for one re-supplies it to that job.
+    * Keyless providers (Ollama) need the operator opt-in ``FOLIO_INSIGHTS_API_ALLOW_KEYLESS_PROVIDERS``.
+    * Repeating a submission with the same ``Idempotency-Key`` returns the same job; repeating
+      it with a different payload or key is a conflict.
     * Any other submission while a job is active raises :class:`SubmitConflict` (409).
     """
+    import secrets as _secrets
+
     from folio_insights.jobs import ActiveJobExists
     from folio_insights.llm import Credentials
 
     runtime = get_runtime()
     queue = runtime.queue
-    llm = payload.get("llm") or {}
-    spec = _route_provider(llm.get("provider"))
+    llm = dict(payload.get("llm") or {})
+    spec = request_provider(llm)
+    if not spec.requires_key and not keyless_providers_allowed():
+        raise SubmitRefused(
+            f"{spec.name} runs without a per-user key on this server's hardware; the operator "
+            f"has not enabled keyless providers ({KEYLESS_OPT_IN_ENV})"
+        )
+    llm["provider"] = spec.name
+    llm["pin_provider"] = True
+    payload = {**payload, "llm": llm}
+    api_key = (api_key or "").strip() or None
     idem = f"{view.kind}:{corpus_id}:{idempotency_key}" if idempotency_key else None
 
     if idem is not None:
@@ -332,18 +390,31 @@ def submit_job(
         if row is not None:
             existing = queue.get(row["id"])
             assert existing is not None
-            return existing, False
+            same_payload = json.dumps(existing.payload, sort_keys=True) == json.dumps(
+                payload, sort_keys=True)
+            import hmac
 
-    latest = view.latest(corpus_id)
-    if latest is not None and latest.status is JobStatus.NEEDS_CREDENTIALS and api_key:
-        return resupply_credentials(latest, api_key, provider=spec.name), False
+            stored = runtime.key_fingerprints.get(existing.id)
+            offered = _key_fingerprint(runtime, spec.name, api_key)
+            key_matches = (
+                stored is None and offered is None
+                or (stored is not None and offered is not None
+                    and hmac.compare_digest(stored, offered))
+            )
+            if not (same_payload and key_matches):
+                raise SubmitConflict(
+                    existing, "Idempotency-Key reused with a different payload or key")
+            return existing, False, None
 
     job_id = uuid.uuid4().hex
+    control_token = _secrets.token_urlsafe(32)
     holder: str | None = None
     status = JobStatus.QUEUED
     requires = False
+    handle = None
     if api_key:
-        runtime.secret_store.put(job_id, Credentials.single(spec.name, api_key))
+        handle = Credentials.single(spec.name, api_key)
+        runtime.secret_store.put(job_id, handle)
         holder, requires = runtime.owner, True
     elif spec.requires_key:
         status, requires = JobStatus.NEEDS_CREDENTIALS, True
@@ -358,24 +429,37 @@ def submit_job(
             job_id=job_id,
             status=status,
             exclusive=True,
+            control_token=control_token,
         )
     except ActiveJobExists as exc:
-        runtime.secret_store.discard(job_id)
+        if handle is not None:
+            runtime.secret_store.discard_if(job_id, handle)
         raise SubmitConflict(exc.job) from None
     if job.id != job_id:
-        runtime.secret_store.discard(job_id)
-    return job, created
+        if handle is not None:
+            runtime.secret_store.discard_if(job_id, handle)
+        return job, False, None
+    fingerprint = _key_fingerprint(runtime, spec.name, api_key)
+    if fingerprint is not None:
+        runtime.key_fingerprints[job.id] = fingerprint
+    return job, created, control_token
 
 
 def resupply_credentials(job: Job, api_key: str, *, provider: str | None = None) -> Job:
-    """Give a ``needs_credentials`` job a fresh in-memory key held by this process's worker."""
+    """Give a ``needs_credentials`` job a fresh in-memory key held by this process's worker.
+
+    The key is bound to the job's pinned provider. If the queue refuses the transition (the job
+    no longer waits for a key), the store is restored to the handle it held before: a losing
+    concurrent re-supply never wipes the winner's key.
+    """
     from folio_insights.llm import Credentials
 
     runtime = get_runtime()
-    name = provider or _route_provider((job.payload.get("llm") or {}).get("provider")).name
-    runtime.secret_store.put(job.id, Credentials.single(name, api_key))
+    name = provider or request_provider(job.payload.get("llm") or {}).name
+    handle = Credentials.single(name, api_key)
+    previous = runtime.secret_store.swap(job.id, handle)
     try:
         return runtime.queue.resupply_credentials(job.id, holder=runtime.owner)
     except Exception:
-        runtime.secret_store.discard(job.id)
+        runtime.secret_store.restore_if(job.id, handle, previous)
         raise

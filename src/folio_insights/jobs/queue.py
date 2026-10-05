@@ -30,6 +30,8 @@ this one if multi-host scale ever needs it.
 from __future__ import annotations
 
 import enum
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -210,7 +212,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_at           REAL NOT NULL,
     updated_at           REAL NOT NULL,
     started_at           REAL,
-    finished_at          REAL
+    finished_at          REAL,
+    control_token_sha256 TEXT
 );
 CREATE INDEX IF NOT EXISTS jobs_ready ON jobs (status, available_at, created_at);
 CREATE INDEX IF NOT EXISTS jobs_by_corpus ON jobs (kind, corpus_id, created_at);
@@ -286,6 +289,9 @@ class SQLiteJobQueue:
         with self._connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(_SCHEMA)
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(jobs)")}
+            if "control_token_sha256" not in cols:  # queues created before job control tokens
+                conn.execute("ALTER TABLE jobs ADD COLUMN control_token_sha256 TEXT")
             conn.execute(
                 "INSERT OR IGNORE INTO queue_meta (name, value) VALUES ('schema_version', ?)",
                 (str(SCHEMA_VERSION),),
@@ -390,8 +396,12 @@ class SQLiteJobQueue:
         job_id: str | None = None,
         status: JobStatus = JobStatus.QUEUED,
         exclusive: bool = False,
+        control_token: str | None = None,
     ) -> tuple[Job, bool]:
         """Add a job; with an ``idempotency_key`` already present, return that job instead.
+
+        ``control_token`` (optional) is the secret a caller must present to cancel, resume or
+        re-key the job (:meth:`verify_control`). Only its SHA-256 is stored.
 
         ``exclusive`` refuses (:class:`ActiveJobExists`) when another job of the same kind is
         active for the same corpus; the check and the insert share one ``BEGIN IMMEDIATE``
@@ -424,11 +434,11 @@ class SQLiteJobQueue:
             conn.execute(
                 """INSERT INTO jobs (id, kind, corpus_id, status, payload, idempotency_key,
                        max_attempts, requires_credentials, credential_holder, available_at,
-                       created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       created_at, updated_at, control_token_sha256)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (job_id, kind, corpus_id, status.value, encoded, idempotency_key,
                  max(1, int(max_attempts)), int(requires_credentials), credential_holder,
-                 now, now, now),
+                 now, now, now, _token_hash(control_token) if control_token else None),
             )
             self._event(conn, job_id, "queue", f"{kind} job queued")
             if status is JobStatus.NEEDS_CREDENTIALS:
@@ -587,11 +597,15 @@ class SQLiteJobQueue:
             return self._get(conn, job.id)
 
     def pause(self, lease: Lease, status: JobStatus, reason: str) -> bool:
+        """Pause a running job. A pause is not a failure: it gives the lease's attempt back.
+
+        Both pauses drop the credential holder: the worker discards the in-memory key, so
+        whoever resumes the job must supply a key again (and pays for what follows).
+        """
         if status not in PAUSED:
             raise QueueError(f"{status.value} is not a pause state")
-        holder_sql = ", credential_holder = NULL" if status is JobStatus.NEEDS_CREDENTIALS else ""
         return self._finish(lease, status, error=reason, message=f"paused ({status.value}): {reason}",
-                            extra_sets=holder_sql)
+                            extra_sets=", credential_holder = NULL, attempts = MAX(attempts - 1, 0)")
 
     def mark_cancelled(self, lease: Lease, reason: str = "cancelled") -> bool:
         return self._finish(lease, JobStatus.CANCELLED, error=reason,
@@ -665,10 +679,13 @@ class SQLiteJobQueue:
                 if job.requires_credentials and job.credential_holder is None
                 else JobStatus.QUEUED
             )
+            if new_status is JobStatus.NEEDS_CREDENTIALS:
+                conn.execute("UPDATE jobs SET error = ? WHERE id = ?",
+                             ("resumed: waiting for an API key", job_id))
             conn.execute(
-                "UPDATE jobs SET status = ?, error = NULL, available_at = ?, updated_at = ?"
-                " WHERE id = ?",
-                (new_status.value, now, now, job_id),
+                "UPDATE jobs SET status = ?, available_at = ?, updated_at = ?,"
+                " error = CASE WHEN ? = 'queued' THEN NULL ELSE error END WHERE id = ?",
+                (new_status.value, now, now, new_status.value, job_id),
             )
             self._event(conn, job_id, "queue", f"resumed after spend cap ({new_status.value})")
             out = self._get(conn, job_id)
@@ -823,9 +840,13 @@ class SQLiteJobQueue:
         """Upsert a display-only job record (the one-time JSON-file import, and test seeding).
 
         An imported record has no payload, so a worker that leased one could not run it; the
-        importer therefore never imports a runnable state.
+        importer therefore never imports a runnable state. It only ever upserts records it
+        imported: a live job with the same id is left untouched (``QueueError``).
         """
         with self._write() as conn:
+            existing_job = self._get(conn, job_id)
+            if existing_job is not None and existing_job.payload != {"imported": True}:
+                raise QueueError(f"job {job_id!r} is a live job; an import never overwrites it")
             conn.execute(
                 """INSERT INTO jobs (id, kind, corpus_id, status, payload, idempotency_key,
                        current_stage, progress_pct, result, error, available_at, created_at,
@@ -835,7 +856,8 @@ class SQLiteJobQueue:
                        current_stage = excluded.current_stage,
                        progress_pct = excluded.progress_pct, result = excluded.result,
                        error = excluded.error, updated_at = excluded.updated_at,
-                       finished_at = excluded.finished_at""",
+                       finished_at = excluded.finished_at
+                   WHERE jobs.payload = '{"imported": true}'""",
                 (job_id, kind, corpus_id, status.value, idempotency_key, current_stage,
                  progress_pct, json.dumps(result) if result is not None else None, error,
                  created_at, created_at, updated_at,
@@ -855,6 +877,24 @@ class SQLiteJobQueue:
             out = self._get(conn, job_id)
         assert out is not None
         return out
+
+    def verify_control(self, job_id: str, token: str | None) -> bool:
+        """Constant-time check of a job's control token. A job without one is never controllable."""
+        if not token:
+            return False
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT control_token_sha256 FROM jobs WHERE id = ?", (job_id,)
+            ).fetchone()
+        stored = row["control_token_sha256"] if row else None
+        if not stored:
+            hmac.compare_digest(_token_hash(token), _token_hash(""))  # even out the timing
+            return False
+        return hmac.compare_digest(stored, _token_hash(token))
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 @dataclass

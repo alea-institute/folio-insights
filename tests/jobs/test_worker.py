@@ -224,10 +224,14 @@ async def test_spend_cap_pauses_the_job_resumably_and_counts_prior_spend(env, mo
     paused = env["queue"].get(job.id)
     assert paused.status is JobStatus.BUDGET_EXHAUSTED and "spend cap" in paused.error
     assert env["requests"] == []
-    assert job.id in store  # resumable without re-supplying the key
+    assert job.id not in store  # review P1-1: the key leaves memory at the cap
+    assert paused.attempts == 0  # review P2-10: a pause does not burn the retry budget
 
     env["queue"].update_payload(job.id, {"llm": {**payload["llm"], "max_spend_usd": 1.0}})
-    env["queue"].resume(job.id)
+    resumed = env["queue"].resume(job.id)
+    assert resumed.status is JobStatus.NEEDS_CREDENTIALS  # whoever resumes supplies a key
+    store.put(job.id, Credentials.single("google", FAKE_KEY))
+    env["queue"].resupply_credentials(job.id, holder=worker.owner)
     await worker.run(until_idle=True)
     done = env["queue"].get(job.id)
     assert done.status is JobStatus.SUCCEEDED, done.error

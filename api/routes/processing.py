@@ -7,9 +7,24 @@ POST /api/v1/corpus/{corpus_id}/job/cancel           -- Cancel (at the next stag
 POST /api/v1/corpus/{corpus_id}/job/credentials      -- Re-supply the API key to a paused job
 POST /api/v1/corpus/{corpus_id}/job/resume           -- Resume a budget-exhausted job
 
-Bring your own key: the caller's LLM API key travels in the ``X-LLM-API-Key`` header of the
-request that needs it, is held in this process's memory for the job, and is never stored in the
-queue, logs, checkpoints or outputs. The server never uses an ambient key.
+Security posture (Phase 10 review, 2026-10-05):
+
+* **Bring your own key.** The caller's LLM API key travels in the ``X-LLM-API-Key`` header of
+  the request that needs it, is held only in this process's memory for that job, and is never
+  stored in the queue, logs, checkpoints or outputs. The server never uses an ambient key. The
+  key is bound to the provider the request named (else the settings default) and the job is
+  pinned to it, so the key is never sent to another provider or host.
+* **Job control tokens.** The API has no user authentication (submit and read routes stay
+  open, as deployed). Controlling a job is different: cancel, resume and key re-supply act on a
+  job that may be spending someone's key, so they require the job's control token
+  (``X-Job-Control-Token``). It is returned once, in the 202 response of the submission that
+  created the job; only its SHA-256 is stored and it is compared in constant time. Without it
+  the control routes answer 403.
+* **Who pays past a cap.** A job that hits its spend cap drops its key from memory; resuming it
+  requires a key again (``X-LLM-API-Key`` on ``/job/resume`` or ``/job/credentials``), so
+  whoever raises the cap pays for what follows.
+* **Keyless providers.** Ollama runs on the server's own hardware without a per-user key, so
+  API jobs may use it only when the operator sets ``FOLIO_INSIGHTS_API_ALLOW_KEYLESS_PROVIDERS``.
 """
 
 from __future__ import annotations
@@ -17,10 +32,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sse_starlette.sse import EventSourceResponse
 
 from api.models.processing import STREAM_END_STATUSES
@@ -28,10 +45,12 @@ from api.services.job_manager import (
     EXTRACT_KIND,
     QueueJobView,
     SubmitConflict,
+    SubmitRefused,
     get_queue,
+    get_runtime,
     reset_runtime,
     resupply_credentials,
-    submit_job,
+    submit_job_controlled,
     to_processing_job,
 )
 from folio_insights.jobs import JobStatus, QueueError
@@ -41,16 +60,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["processing"])
 
 
+def _finite_cap(data: Any) -> Any:
+    """Reject a non-finite cap before field validation, in a JSON-safe form.
+
+    JSON ``Infinity`` parses to ``float('inf')``; letting the field reject it would echo ``inf``
+    in the 422 body, which is not valid JSON.
+    """
+    if isinstance(data, dict):
+        cap = data.get("max_spend_usd")
+        if isinstance(cap, float) and not math.isfinite(cap):
+            return {**data, "max_spend_usd": "non-finite"}
+    return data
+
+
 class LLMJobOptions(BaseModel):
     """Optional per-job LLM choices. The key itself goes in the ``X-LLM-API-Key`` header."""
 
     llm_provider: str | None = Field(default=None, description="openai | anthropic | google | ollama")
     llm_model: str | None = None
-    max_spend_usd: float | None = Field(default=None, gt=0)
+    max_spend_usd: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+
+    _finite = model_validator(mode="before")(_finite_cap)
 
 
 class ResumeRequest(BaseModel):
-    max_spend_usd: float | None = Field(default=None, gt=0)
+    max_spend_usd: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+
+    _finite = model_validator(mode="before")(_finite_cap)
+
+
+CONTROL_TOKEN_HEADER = "X-Job-Control-Token"
 
 
 # ---------------------------------------------------------------------------
@@ -107,15 +146,18 @@ def llm_payload(options: LLMJobOptions | None) -> dict:
 
 def submit_or_http_error(view: QueueJobView, **kwargs) -> dict:
     try:
-        job, created = submit_job(view, **kwargs)
+        job, created, control_token = submit_job_controlled(view, **kwargs)
+    except SubmitRefused as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from None
     except SubmitConflict as exc:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Processing already in progress (job {exc.job.id} is {exc.job.status.value})",
-        ) from None
+        detail = exc.reason or (
+            f"Processing already in progress (job {exc.job.id} is {exc.job.status.value})")
+        raise HTTPException(status_code=409, detail=detail) from None
     view_job = to_processing_job(view.queue, job, kwargs["corpus_id"])
     return {"job_id": str(view_job.id), "queue_job_id": job.id,
-            "status": view_job.status.value, "duplicate": not created}
+            "status": view_job.status.value, "duplicate": not created,
+            # Returned once, on creation; needed to cancel, resume or re-key the job.
+            "control_token": control_token}
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +190,14 @@ async def start_processing(
 
     view = get_job_manager()
     latest = await asyncio.to_thread(view.latest, corpus_id)
-    if force and (latest is None or not latest.is_active):
+    if force and latest is not None and latest.is_active:
+        # force means "re-ingest everything", which must not race a job still using the corpus.
+        raise HTTPException(
+            status_code=409,
+            detail=f"force cannot apply while job {latest.id} is {latest.status.value}; "
+                   "cancel it first",
+        )
+    if force:
         registry_path = output / corpus_id / f"corpus-{corpus_id}.json"
         if registry_path.exists():
             registry_path.unlink()
@@ -262,16 +311,27 @@ def _latest_or_404(view: QueueJobView, corpus_key: str):
     return job
 
 
-def cancel_latest(view: QueueJobView, corpus_key: str) -> dict:
+def _controlled_job(view: QueueJobView, corpus_key: str, control_token: str | None):
+    """The latest job, if the caller holds its control token; else 403 (never says why)."""
     job = _latest_or_404(view, corpus_key)
+    if not view.queue.verify_control(job.id, control_token):
+        raise HTTPException(status_code=403, detail=f"{CONTROL_TOKEN_HEADER} missing or invalid")
+    return job
+
+
+def cancel_latest(view: QueueJobView, corpus_key: str, control_token: str | None = None) -> dict:
+    job = _controlled_job(view, corpus_key, control_token)
     job = view.queue.request_cancel(job.id)
+    if job.is_terminal:
+        get_runtime().secret_store.discard(job.id)
     return to_processing_job(view.queue, job, corpus_key).model_dump(mode="json")
 
 
-def resupply_latest(view: QueueJobView, corpus_key: str, api_key: str | None) -> dict:
+def resupply_latest(view: QueueJobView, corpus_key: str, api_key: str | None,
+                    control_token: str | None = None) -> dict:
+    job = _controlled_job(view, corpus_key, control_token)
     if not api_key:
         raise HTTPException(status_code=422, detail="X-LLM-API-Key header is required")
-    job = _latest_or_404(view, corpus_key)
     if job.status is not JobStatus.NEEDS_CREDENTIALS:
         raise HTTPException(status_code=409, detail=f"Job is {job.status.value}, not waiting for a key")
     try:
@@ -281,8 +341,9 @@ def resupply_latest(view: QueueJobView, corpus_key: str, api_key: str | None) ->
     return to_processing_job(view.queue, job, corpus_key).model_dump(mode="json")
 
 
-def resume_latest(view: QueueJobView, corpus_key: str, body: ResumeRequest | None) -> dict:
-    job = _latest_or_404(view, corpus_key)
+def resume_latest(view: QueueJobView, corpus_key: str, body: ResumeRequest | None,
+                  control_token: str | None = None, api_key: str | None = None) -> dict:
+    job = _controlled_job(view, corpus_key, control_token)
     if job.status is not JobStatus.BUDGET_EXHAUSTED:
         raise HTTPException(status_code=409, detail=f"Job is {job.status.value}, not budget_exhausted")
     try:
@@ -291,27 +352,44 @@ def resume_latest(view: QueueJobView, corpus_key: str, body: ResumeRequest | Non
             llm["max_spend_usd"] = body.max_spend_usd
             view.queue.update_payload(job.id, {"llm": llm})
         job = view.queue.resume(job.id)
+        if job.status is JobStatus.NEEDS_CREDENTIALS and api_key:
+            job = resupply_credentials(job, api_key)
     except QueueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from None
     return to_processing_job(view.queue, job, corpus_key).model_dump(mode="json")
 
 
 @router.post("/corpus/{corpus_id}/job/cancel")
-async def cancel_job(corpus_id: str) -> dict:
+async def cancel_job(
+    corpus_id: str,
+    x_job_control_token: str | None = Header(default=None, alias=CONTROL_TOKEN_HEADER),
+) -> dict:
     """Cancel the corpus's extraction job: now if waiting, else at the next stage boundary."""
-    return await asyncio.to_thread(cancel_latest, get_job_manager(), corpus_id)
+    return await asyncio.to_thread(cancel_latest, get_job_manager(), corpus_id, x_job_control_token)
 
 
 @router.post("/corpus/{corpus_id}/job/credentials")
 async def resupply_job_credentials(
     corpus_id: str,
     x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key"),
+    x_job_control_token: str | None = Header(default=None, alias=CONTROL_TOKEN_HEADER),
 ) -> dict:
     """Re-supply the LLM API key to a job paused as ``needs_credentials``."""
-    return await asyncio.to_thread(resupply_latest, get_job_manager(), corpus_id, x_llm_api_key)
+    return await asyncio.to_thread(resupply_latest, get_job_manager(), corpus_id, x_llm_api_key,
+                                   x_job_control_token)
 
 
 @router.post("/corpus/{corpus_id}/job/resume")
-async def resume_job(corpus_id: str, body: ResumeRequest | None = None) -> dict:
-    """Resume a ``budget_exhausted`` job, optionally with a higher ``max_spend_usd``."""
-    return await asyncio.to_thread(resume_latest, get_job_manager(), corpus_id, body)
+async def resume_job(
+    corpus_id: str,
+    body: ResumeRequest | None = None,
+    x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key"),
+    x_job_control_token: str | None = Header(default=None, alias=CONTROL_TOKEN_HEADER),
+) -> dict:
+    """Resume a ``budget_exhausted`` job, optionally with a higher ``max_spend_usd``.
+
+    The key was dropped at the cap, so the job resumes as ``needs_credentials`` unless this
+    request carries ``X-LLM-API-Key`` (the resumer pays for what follows).
+    """
+    return await asyncio.to_thread(resume_latest, get_job_manager(), corpus_id, body,
+                                   x_job_control_token, x_llm_api_key)

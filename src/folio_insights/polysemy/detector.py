@@ -93,14 +93,22 @@ def _resolve_provider_family(model: str) -> str:
       - starts with 'claude' → 'anthropic'
       - starts with 'gpt'    → 'openai'
       - starts with 'gemini' → 'google'
-      - otherwise            → 'anthropic' (safe default — Claude is primary)
+      - otherwise            → refused (``UnknownProviderError``)
+
+    An unknown prefix is refused rather than guessed: routing an unrecognised model name to a
+    default provider would send the user's prompt (and key) somewhere they did not choose.
     """
     if model.startswith("ollama/"):
         return "ollama"
     for prefix, family in _PROVIDER_FAMILY_MAP.items():
         if model.startswith(prefix):
             return family
-    return "anthropic"  # safe default — Claude is Phase 1 primary
+    from folio_insights.llm.errors import UnknownProviderError
+
+    raise UnknownProviderError(
+        f"cannot tell the provider of model {model!r}; use a claude-*, gpt-*, gemini-* or "
+        "ollama/* model name"
+    )
 
 
 def _invoke_llm_fallback(
@@ -124,7 +132,17 @@ def _invoke_llm_fallback(
     caught and converted to an LLMVerdict(decision='uncertain', ...) — the
     detector MUST NOT raise from a rule run (T-01-09 mitigation).
     """
-    provider_family = _resolve_provider_family(llm_provider)
+    try:
+        provider_family = _resolve_provider_family(llm_provider)
+    except Exception as exc:  # unknown prefix: an uncertain verdict, never a guessed provider
+        return LLMVerdict(
+            decision="uncertain",
+            polysemy_vs_homonymy_reasoning=f"LLM fallback refused: {exc}",
+            rationale="",
+            provider="unknown",
+            matched_rules=matched_rules,
+            evidence_score=max(cluster.cross_framework_cosine_distance.values(), default=0.0),
+        )
     model_for_family = (
         llm_provider.removeprefix("ollama/")
         if llm_provider.startswith("ollama/")

@@ -52,6 +52,7 @@ from api.models.discovery import (
 )
 from api.models.processing import STREAM_END_STATUSES
 from api.routes.processing import (
+    CONTROL_TOKEN_HEADER,
     LLMJobOptions,
     ResumeRequest,
     cancel_latest,
@@ -155,7 +156,7 @@ async def start_discovery(
             payload=payload, api_key=x_llm_api_key, idempotency_key=idempotency_key,
         )
     except HTTPException as exc:
-        if exc.status_code == 409:
+        if exc.status_code == 409 and str(exc.detail).startswith("Processing already"):
             raise HTTPException(status_code=409, detail="Discovery already in progress") from None
         raise
 
@@ -238,26 +239,38 @@ async def get_discovery_job(corpus_id: str) -> dict:
 
 
 @router.post("/corpus/{corpus_id}/discover/job/cancel")
-async def cancel_discovery_job(corpus_id: str) -> dict:
+async def cancel_discovery_job(
+    corpus_id: str,
+    x_job_control_token: str | None = Header(default=None, alias=CONTROL_TOKEN_HEADER),
+) -> dict:
     """Cancel the corpus's discovery job: now if waiting, else at the next stage boundary."""
-    return await asyncio.to_thread(cancel_latest, get_discovery_job_manager(), corpus_id)
+    return await asyncio.to_thread(cancel_latest, get_discovery_job_manager(), corpus_id,
+                                   x_job_control_token)
 
 
 @router.post("/corpus/{corpus_id}/discover/job/credentials")
 async def resupply_discovery_credentials(
     corpus_id: str,
     x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key"),
+    x_job_control_token: str | None = Header(default=None, alias=CONTROL_TOKEN_HEADER),
 ) -> dict:
     """Re-supply the LLM API key to a discovery job paused as ``needs_credentials``."""
     return await asyncio.to_thread(
-        resupply_latest, get_discovery_job_manager(), corpus_id, x_llm_api_key
+        resupply_latest, get_discovery_job_manager(), corpus_id, x_llm_api_key,
+        x_job_control_token,
     )
 
 
 @router.post("/corpus/{corpus_id}/discover/job/resume")
-async def resume_discovery_job(corpus_id: str, body: ResumeRequest | None = None) -> dict:
+async def resume_discovery_job(
+    corpus_id: str,
+    body: ResumeRequest | None = None,
+    x_llm_api_key: str | None = Header(default=None, alias="X-LLM-API-Key"),
+    x_job_control_token: str | None = Header(default=None, alias=CONTROL_TOKEN_HEADER),
+) -> dict:
     """Resume a ``budget_exhausted`` discovery job, optionally with a higher cap."""
-    return await asyncio.to_thread(resume_latest, get_discovery_job_manager(), corpus_id, body)
+    return await asyncio.to_thread(resume_latest, get_discovery_job_manager(), corpus_id, body,
+                                   x_job_control_token, x_llm_api_key)
 
 
 @router.get("/corpus/{corpus_id}/discovery/diff")

@@ -75,7 +75,7 @@ async def test_valid_structured_output(provider: str) -> None:
     assert body["model"] == fx["model"]
     for key in fx["body_keys"]:
         assert key in body, f"{provider} request lacks {key}"
-    assert body[fx["max_tokens_param"]] == 4096
+    assert body[fx["max_tokens_param"]] == DISTILL.max_tokens  # per-template output cap
     # Template identity reached the run context.
     assert ctx.templates_used == {DISTILL.id: DISTILL.hash}
 

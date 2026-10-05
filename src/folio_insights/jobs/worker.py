@@ -30,6 +30,7 @@ from folio_insights.jobs.secrets import SecretStore, default_secret_store
 from folio_insights.llm import (
     BudgetExhaustedError,
     Credentials,
+    LLMModelNotFoundError,
     LLMRunContext,
     MissingCredentialsError,
     UnpricedModelError,
@@ -50,6 +51,18 @@ class LeaseLost(Exception):
 
 class PermanentJobError(Exception):
     """A failure retrying cannot fix (bad payload, failed integrity canary, failure ratio)."""
+
+
+class StageFailureRatioError(RuntimeError):
+    """Placeholder replaced below by the pipeline's class when it is importable."""
+
+
+try:  # the lean worker image has no pydantic, so the pipeline package may not import
+    from folio_insights.pipeline.stages.base import (  # type: ignore[no-redef]
+        StageFailureRatioError,
+    )
+except ImportError:  # pragma: no cover - exercised by the lean-image test
+    pass
 
 
 @dataclass
@@ -202,11 +215,18 @@ class JobWorker:
             credentials = held
 
         llm_payload = job.payload.get("llm") or {}
-        meter = self.meter_factory(job, self.queue) if self.meter_factory else None
+        secrets = credentials.secrets()
+        try:
+            meter = self.meter_factory(job, self.queue) if self.meter_factory else None
+        except ValueError as exc:  # e.g. a malformed or infinite spend cap
+            self.secret_store.discard(job.id)
+            await asyncio.to_thread(self.queue.fail, lease, _error_text(exc, secrets), retry=False)
+            return
         llm_ctx = LLMRunContext(
             credentials=credentials,
             provider=llm_payload.get("provider"),
             model=llm_payload.get("model"),
+            pin_provider=bool(llm_payload.get("pin_provider")),
             run_id=job.id,
             meter=meter,
         )
@@ -215,27 +235,33 @@ class JobWorker:
                             credentials=credentials, llm=llm_ctx, lease_lost=lost)
         beat = _Heartbeat(self.queue, lease, self.owner, self.lease_seconds, lost)
         beat.start()
-        secrets = credentials.secrets()
         try:
             with use_context(llm_ctx):
-                result = await handler(ctx)
+                try:
+                    result = await handler(ctx)
+                finally:
+                    await llm_ctx.aclose()  # SDK clients hold the revealed key
         except JobCancelled as exc:
-            await asyncio.to_thread(self.queue.mark_cancelled, lease, str(exc))
             self.secret_store.discard(job.id)
+            await asyncio.to_thread(self.queue.mark_cancelled, lease, str(exc))
         except LeaseLost:
+            # Another worker owns the job now; a key handle here would only linger.
+            self.secret_store.discard(job.id)
             logger.warning("job %s: lease lost; another worker owns it now", job.id)
-        except MissingCredentialsError as exc:
+        except MissingCredentialsError as exc:  # includes a rejected key (LLMAuthError)
             self.secret_store.discard(job.id)
             await asyncio.to_thread(self.queue.pause, lease, JobStatus.NEEDS_CREDENTIALS,
                                     scrub(str(exc), secrets))
         except (BudgetExhaustedError, UnpricedModelError) as exc:
+            # Whoever resumes past the cap must supply (and pay with) a key again.
+            self.secret_store.discard(job.id)
             await asyncio.to_thread(self.queue.pause, lease, JobStatus.BUDGET_EXHAUSTED,
                                     scrub(str(exc), secrets))
-        except PermanentJobError as exc:
-            await asyncio.to_thread(self.queue.fail, lease, _error_text(exc, secrets), retry=False)
+        except (PermanentJobError, LLMModelNotFoundError, StageFailureRatioError) as exc:
             self.secret_store.discard(job.id)
+            await asyncio.to_thread(self.queue.fail, lease, _error_text(exc, secrets), retry=False)
         except Exception as exc:  # noqa: BLE001 - retried by the queue's attempt budget
-            logger.warning("job %s attempt failed", job.id, exc_info=True)
+            logger.warning("job %s attempt failed: %s", job.id, type(exc).__name__)
             settled = await asyncio.to_thread(self.queue.fail, lease, _error_text(exc, secrets),
                                               retry=True)
             if settled is not None and settled.is_terminal:
@@ -245,8 +271,7 @@ class JobWorker:
             body.setdefault("llm_usage", llm_ctx.usage_summary())
             if lost.is_set() or not await asyncio.to_thread(self.queue.complete, lease, body):
                 logger.warning("job %s finished after losing its lease; result discarded", job.id)
-            else:
-                self.secret_store.discard(job.id)
+            self.secret_store.discard(job.id)
         finally:
             beat.stop()
             beat.join(timeout=5)

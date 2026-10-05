@@ -42,6 +42,8 @@ def _env(tmp: Path, **extra: str) -> dict[str, str]:
         "FAKE_PIPELINE_LOG": str(tmp / "stages.log"),
         "FAKE_PIPELINE_RELEASE": str(tmp / "release"),
         "PYTHONUNBUFFERED": "1",
+        # The keyless-provider restart test submits an Ollama job through the API.
+        "FOLIO_INSIGHTS_API_ALLOW_KEYLESS_PROVIDERS": "1",
     })
     env.update(extra)
     return env
@@ -135,8 +137,9 @@ def test_api_restart_continues_the_job(tmp_path: Path, with_key: bool) -> None:
     assert job.status is JobStatus.RUNNING and job.requires_credentials is with_key
 
     (tmp_path / "release").touch()
-    resume_args = ["--key-env", "USER_KEY"] if with_key else []
-    api2 = subprocess.run(_api(tmp_path, "resume", *resume_args), cwd=tmp_path, env=env,
+    resume_args = ["--key-env", "USER_KEY", "--token-env", "JOB_TOKEN"] if with_key else []
+    env2 = {**env, "JOB_TOKEN": submitted["body"]["control_token"]}
+    api2 = subprocess.run(_api(tmp_path, "resume", *resume_args), cwd=tmp_path, env=env2,
                           text=True, capture_output=True, timeout=180)
     assert api2.returncode == 0, api2.stderr[-3000:]
     final = json.loads(api2.stdout.strip().splitlines()[-1])["final"]
@@ -154,3 +157,7 @@ def test_api_restart_continues_the_job(tmp_path: Path, with_key: bool) -> None:
     assert lines.count("fake_ingest") == 1, lines
     assert settled.result["total_units"] == 3
     _assert_key_nowhere(tmp_path, out1, err1, api2.stdout, api2.stderr)
+    token = submitted["body"]["control_token"]
+    for path in tmp_path.rglob("*"):  # the control token is never at rest either
+        if path.is_file():
+            assert token.encode() not in path.read_bytes(), path

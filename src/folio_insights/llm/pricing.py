@@ -12,7 +12,6 @@ This module is stdlib-only (the lean worker image imports it).
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -20,8 +19,6 @@ from importlib import resources
 from typing import Any
 
 MILLION = Decimal(1_000_000)
-# A routed model id may carry a snapshot suffix the table does not list separately.
-_SNAPSHOT_SUFFIX = re.compile(r"^-(\d{4}-\d{2}-\d{2}|\d{8}|latest|preview)$")
 
 
 class PriceTableError(ValueError):
@@ -110,21 +107,21 @@ class PriceTable:
         return cls(version=version, rows=rows)
 
     def lookup(self, provider: str, model: str) -> PriceRow | None:
-        """Exact match, else the longest listed model a snapshot id extends, else a ``*`` row."""
+        """The row for exactly this provider/model, else the provider's ``*`` row, else None.
+
+        No prefix or suffix inference: a dated snapshot can be priced differently from its alias
+        (``gpt-4o-2024-05-13`` is not ``gpt-4o``), so every snapshot is listed explicitly.
+        """
         provider = provider.strip().lower()
-        best: PriceRow | None = None
         wildcard: PriceRow | None = None
         for row in self.rows:
             if row.provider != provider:
                 continue
+            if row.model == model:
+                return row
             if row.model == "*":
                 wildcard = row
-            elif row.model == model:
-                return row
-            elif model.startswith(row.model) and _SNAPSHOT_SUFFIX.match(model[len(row.model):]):
-                if best is None or len(row.model) > len(best.model):
-                    best = row
-        return best or wildcard
+        return wildcard
 
     def cost_of(self, usage: Any) -> Decimal | None:
         """Exact cost of a :class:`~folio_insights.llm.usage.Usage`, or ``None`` if unpriced."""
