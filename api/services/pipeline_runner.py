@@ -92,13 +92,19 @@ async def run_extraction_job(ctx: JobRunContext) -> dict[str, Any]:
                message="Pipeline started" if ctx.job.attempts <= 1
                else f"Pipeline resumed (attempt {ctx.job.attempts})")
 
-    insights_job = await orchestrator.run(
-        source_dir,
-        corpus_name=corpus_name,
-        resume=True,
-        checkpoint_dir=checkpoints,
-        progress=stage_reporter(ctx, _STAGE_DISPLAY, _stage_detail),
-    )
+    from folio_insights.services.bridge.folio_bridge import BridgeIntegrityError
+
+    try:
+        insights_job = await orchestrator.run(
+            source_dir,
+            corpus_name=corpus_name,
+            resume=True,
+            checkpoint_dir=checkpoints,
+            progress=stage_reporter(ctx, _STAGE_DISPLAY, _stage_detail),
+        )
+    except BridgeIntegrityError as exc:
+        # The B5 canary failed: retrying on the same install cannot fix it.
+        raise PermanentJobError(str(exc)) from None
 
     # Invalidate cached extraction data so subsequent API reads get fresh data.
     try:

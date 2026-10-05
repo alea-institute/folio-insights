@@ -67,6 +67,10 @@ _VERDICT_TO_CALIBRATION = {
 }
 
 
+class TaggerFailureRatioError(RuntimeError):
+    """Too many units failed to tag for the run's output to be trusted (KTD7)."""
+
+
 def _judge_enabled() -> bool:
     """Whether the LLM-judge stage runs. Off unless ``FOLIO_JUDGE_ENABLED`` is truthy.
 
@@ -149,6 +153,10 @@ class FolioTaggerStage(InsightsPipelineStage):
         logger.info("Domain prior (%s): %s", prior.corpus_name, prior_context)
 
         # ---- Pass B: body units get the full pipeline (paths -> reconcile -> gates -> judge) -----
+        attempted = 0
+        failures: list[dict[str, str]] = []
+        tagger_meta["judge_enabled"] = _judge_enabled()
+        self._judge_outages = 0
         for unit in job.units:
             try:
                 if not self._is_taggable_source(unit):
@@ -161,6 +169,7 @@ class FolioTaggerStage(InsightsPipelineStage):
                         detail="metadata-as-signal: mapped to prior, not emitted as insight",
                     )
                     continue
+                attempted += 1
                 await self._tag_unit(
                     unit,
                     folio_service=folio_service,
@@ -170,12 +179,26 @@ class FolioTaggerStage(InsightsPipelineStage):
                     reconciler=reconciler,
                     prior_context=prior_context,
                 )
-            except Exception:
-                logger.warning(
-                    "Failed to tag unit %s; skipping", unit.id, exc_info=True
+            except Exception as exc:
+                # KTD7: counted, recorded on the unit and in run metadata, never silently skipped.
+                logger.warning("Failed to tag unit %s", unit.id, exc_info=True)
+                failures.append({"unit_id": unit.id, "error": type(exc).__name__})
+                record_lineage(
+                    unit,
+                    stage="folio_tagger",
+                    action="tag_failed",
+                    detail=f"tagging raised {type(exc).__name__}; unit carries no tags from this run",
                 )
 
         self._flush_calibration(job)
+        tagger_meta["units_attempted"] = attempted
+        tagger_meta["unit_failures"] = len(failures)
+        tagger_meta["unit_failure_ids"] = [f["unit_id"] for f in failures]
+        tagger_meta["judge_outages"] = self._judge_outages
+        tagger_meta["unjudged_tags"] = sum(
+            1 for u in job.units for t in u.folio_tags if t.judge_status == "unjudged"
+        )
+        self._enforce_failure_ratio(attempted, failures)
         tagged_count = sum(1 for u in job.units if u.folio_tags)
         tagger_meta["units_tagged"] = tagged_count
         tagger_meta["entity_ruler_tags"] = sum(
@@ -189,6 +212,25 @@ class FolioTaggerStage(InsightsPipelineStage):
             det_status, self._iri_rejections,
         )
         return job
+
+    @staticmethod
+    def _enforce_failure_ratio(attempted: int, failures: list[dict[str, str]]) -> None:
+        """Fail the run when more than the configured fraction of tagged units raised (KTD7)."""
+        if not failures or attempted == 0:
+            return
+        from folio_insights.config import get_settings
+
+        limit = get_settings().tagger_max_unit_failure_ratio
+        ratio = len(failures) / attempted
+        if ratio > limit:
+            raise TaggerFailureRatioError(
+                f"FOLIO tagging failed on {len(failures)} of {attempted} units "
+                f"({ratio:.1%} > {limit:.1%} allowed); see metadata.folio_tagger.unit_failure_ids"
+            )
+        logger.warning(
+            "FOLIO tagging failed on %d of %d units (%.1f%%, within the %.1f%% allowance)",
+            len(failures), attempted, ratio * 100, limit * 100,
+        )
 
     async def _tag_unit(
         self,
@@ -472,7 +514,19 @@ class FolioTaggerStage(InsightsPipelineStage):
             )
             self._judge_call_count += 1
         except Exception:
-            logger.warning("judge call failed for unit %s; keeping pre-judge tags", unit.id, exc_info=True)
+            # KTD7: a judge outage never passes tags off as judged. They are kept (the gates
+            # already ran) but marked unjudged, so a minter treats them as unverified.
+            logger.warning("judge call failed for unit %s; marking %d tag(s) unjudged",
+                           unit.id, len(candidates), exc_info=True)
+            self._judge_outages = getattr(self, "_judge_outages", 0) + 1
+            for tag in candidates:
+                tag.judge_status = "unjudged"
+            record_lineage(
+                unit,
+                stage="folio_tagger",
+                action="judge_unavailable",
+                detail=f"judge call failed; {len(candidates)} non-ruler tag(s) left unjudged",
+            )
             return tags
 
         judged = {j.iri: j for j in parse_judge_json(json.dumps(result), ranked)}
@@ -486,8 +540,10 @@ class FolioTaggerStage(InsightsPipelineStage):
                 continue
             verdict = judged.get(cid)
             if verdict is None:
-                kept.append(tag)  # judge did not rule on it: keep the gated tag as-is
+                tag.judge_status = "unjudged"  # the judge did not rule on it: kept, unverified
+                kept.append(tag)
                 continue
+            tag.judge_status = "judged"
             self._record_calibration(ranked[cid], verdict.verdict)
             self._judge_decisions.append({
                 "unit_id": unit.id,

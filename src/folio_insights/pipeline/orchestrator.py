@@ -199,6 +199,32 @@ class PipelineOrchestrator:
             DeduplicatorStage(),
         ]
 
+    def _run_b5_canary(self) -> dict[str, str] | None:
+        """Run ``verify_deterministic_bridge()`` at job start when the run includes FOLIO tagging.
+
+        With ``require_deterministic_iri`` (the default) a failure aborts the run before any
+        stage executes; otherwise the run continues degraded and the failure is recorded in the
+        output metadata (``b5_canary``).
+        """
+        if not any(stage.name == "folio_tagger" for stage in self._stages):
+            return None
+        from folio_insights.services.bridge.folio_bridge import (
+            BridgeIntegrityError,
+            verify_deterministic_bridge,
+        )
+
+        try:
+            verify_deterministic_bridge()
+        except Exception as exc:  # noqa: BLE001 - any canary failure is an integrity failure
+            reason = f"{type(exc).__name__}: {exc}"[:400]
+            if self.settings.require_deterministic_iri:
+                if isinstance(exc, BridgeIntegrityError):
+                    raise
+                raise BridgeIntegrityError(f"B5 startup canary failed: {reason}") from exc
+            logger.error("B5 startup canary failed; running DEGRADED: %s", reason)
+            return {"status": "failed", "reason": reason}
+        return {"status": "ok"}
+
     async def run(
         self,
         source_dir: Path,
@@ -238,6 +264,9 @@ class PipelineOrchestrator:
             "Starting pipeline for corpus '%s' from %s", corpus_name, source_dir
         )
         pipeline_start = time.monotonic()
+
+        # B5 startup canary (KTD7): prove the deterministic IRI path loads before any stage runs.
+        canary = self._run_b5_canary()
 
         # Execute each stage in order
         total = len(self._stages)
@@ -288,6 +317,8 @@ class PipelineOrchestrator:
         llm_summary = current_context().usage_summary()
         if llm_summary["calls"]:
             job.metadata["llm"] = llm_summary
+        if canary is not None:
+            job.metadata["b5_canary"] = canary
 
         # Post-pipeline: confidence gating + output formatting
         pipeline_duration = time.monotonic() - pipeline_start
