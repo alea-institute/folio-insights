@@ -381,22 +381,6 @@ class ShardEnvelope(BaseModel):
             )
         return v
 
-    @field_validator("valid_time_start", "valid_time_end", mode="after")
-    @classmethod
-    def _valid_time_utc(cls, v: datetime | None) -> datetime | None:
-        """Phase 11 review P2-1: a naive valid-time bound is read as UTC.
-
-        A naive and an aware bound cannot be ordered (Python refuses, and
-        SHACL engines disagree on how to fall back), so the half-open
-        [start, end) check would be undefined. Naive values are normalized to
-        UTC on construction; records stored with naive bounds still load
-        (``load_shard_record``) and simply gain an explicit ``+00:00``.
-        Aware values are untouched.
-        """
-        if v is not None and (v.tzinfo is None or v.tzinfo.utcoffset(v) is None):
-            return v.replace(tzinfo=UTC)
-        return v
-
     @field_validator("vocab_version")
     @classmethod
     def _check_vocab_pin(cls, v: str) -> str:

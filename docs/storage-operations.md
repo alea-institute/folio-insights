@@ -334,9 +334,10 @@ shapes in `src/folio_insights/shapes/ttl/`, the Pydantic-generated shapes in
   list (over 1,000 entries) keeps `full_shacl` at `fail` until
   `storage validate` runs. `shacl_warnings` is the Warning count of the full
   validation that covers the head, and `None` after any later write.
-- **Valid-time bounds.** A naive `valid_time_start` / `valid_time_end` is
-  normalized to UTC by the model. Stored naive records still load and gain an
-  explicit offset.
+- **Naive timestamps.** A naive datetime (for example `valid_time_start`) is
+  read as UTC in the SHACL validation rendering only, so naive and aware
+  bounds compare. The shard model, the stored bytes, `canonical_content_hash`
+  and existing signatures are unchanged (U17/R18).
 
 ## Proposed-class ledger
 

@@ -23,7 +23,8 @@ Values are rendered from their JSON type, with two lossless schema-guided
 coercions Pydantic itself accepts: an integer in a ``float`` field becomes an
 ``xsd:double``, and a string in a ``datetime`` field becomes an
 ``xsd:dateTime`` literal (ill-formed text stays ill-formed, so the datatype
-constraint reports it). Keys the model does not declare, null-valued ones
+constraint reports it; a naive timestamp is read as UTC so naive and aware
+bounds compare, see ``utc_datetime_lexical``). Keys the model does not declare, null-valued ones
 included, are rendered under ``fis:undeclared#<key>``: a closed shape reports
 them exactly like ``extra="forbid"``, and a camelCase alias of a declared
 field (``sourceSpan``) can never satisfy that field's constraints.
@@ -36,6 +37,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from datetime import UTC, datetime
 from collections.abc import Mapping
 from urllib.parse import quote
 from typing import Any
@@ -97,6 +99,27 @@ def lit(lexical: str, datatype: str) -> Term:
 
 def canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def utc_datetime_lexical(value: str) -> str:
+    """The validation-view lexical form of a ``datetime`` field value.
+
+    A naive timestamp (Pydantic keeps naive input naive) is rendered as UTC,
+    so every engine sees comparable, offset-carrying ``xsd:dateTime``
+    literals; aware and ill-formed values are rendered unchanged (an
+    ill-formed one stays ill-formed, so the datatype constraint reports it).
+    This affects only the validation rendering: stored records, their bytes,
+    ``canonical_content_hash`` and signatures are untouched (review P2-1).
+    """
+    if not value or value[-1] in "Zz":
+        return value
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return value
+    if parsed.tzinfo is not None and parsed.tzinfo.utcoffset(parsed) is not None:
+        return value
+    return parsed.replace(tzinfo=UTC).isoformat()
 
 
 def double_lexical(value: float) -> str:
@@ -170,7 +193,7 @@ def _scalar(value: Any, datatype: str | None) -> Term | None:
         return lit(double_lexical(value), XSD_DOUBLE)
     if isinstance(value, str):
         if datatype == XSD_DATETIME:
-            return lit(value, XSD_DATETIME)
+            return lit(utc_datetime_lexical(value), XSD_DATETIME)
         return lit(value, XSD_STRING)
     return lit(canonical_json(value), RDF_JSON)
 
@@ -241,7 +264,10 @@ def _render_model(g: ValidationGraph, node: Term, spec: ModelSpec, data: Mapping
                 if item is None:
                     continue
                 if type(item) is str:
-                    out.append(("L", item, XSD_DATETIME if datatype == XSD_DATETIME else XSD_STRING))
+                    if datatype == XSD_DATETIME:
+                        out.append(("L", utc_datetime_lexical(item), XSD_DATETIME))
+                    else:
+                        out.append(("L", item, XSD_STRING))
                 else:
                     term = _scalar(item, datatype)
                     if term is not None:

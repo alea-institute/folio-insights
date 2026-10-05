@@ -362,9 +362,15 @@ test that fails on the pre-fix source: `tests/storage/test_phase11_review_findin
 - **P2-1 datetime parity.** The compiled engine now reproduces pyshacl's
   ordering exactly. Range checks use `compare_literal`, and `lessThan` uses
   rdflib `Literal` `<` / `==`: a naive value sorts before an aware one,
-  differing datatypes order by IRI, and NaN is neither equal nor greater. The
-  model normalizes naive valid-time bounds to UTC, and the Hypothesis
-  strategies and mutations now cover these values. The NaN case mirrors
+  differing datatypes order by IRI, and NaN is neither equal nor greater. Naive
+  timestamps are read as UTC in the validation rendering only
+  (`shapes/rendering.py` `utc_datetime_lexical`), so a naive start after an
+  aware end is refused by both engines. An earlier fix normalized naive bounds
+  in the shard model instead. That changed stored record bytes (U17/R18), so
+  it was reverted; the shard model is byte-identical to origin/master. Pinned
+  test: a naive record's `canonical_content_hash` and record sha256 equal
+  origin/master's, and a signature over it still verifies. The Hypothesis
+  strategies and mutations cover these values. The NaN case mirrors
   pyshacl (min fails, max passes) rather than returning None, because the
   engines must agree and the model already refuses NaN confidence.
 - **P2-2 post-commit errors.** A marker failure is logged and never raised.
