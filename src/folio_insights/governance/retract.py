@@ -44,23 +44,42 @@ over a state another writer changed. Dependents come from the typed
 Retraction appends a ``RetractionEvent`` only; historical shards are never
 deleted or rewritten.
 
-D-18 dependents classifier (locked verbatim by RESEARCH lines 1338-1353):
-  * ``auto_rederive``  — prefer_latest + supersession_available.
+D-18 dependents classifier, Phase 9 U3 revision (KTD6/KTD7):
+  * The cascade policy is passed per retraction (``--policy``), never read
+    off a shard: ``CascadePolicy`` (``revision/policies.py``) is its own type,
+    separate from the shard-level ``ReconciliationStrategy``. The Phase 7
+    classifier looked for ``reconciliation_strategy == "prefer_latest"`` on
+    the dependent, which the eight-value literal can never hold, so
+    ``auto_rederive`` was unreachable.
+  * ``auto_rederive``  — the policy accepts the retracted shard's successor.
   * ``review_needed``  — any human-judgment marker (contested/aporetic status,
-                         non-prefer_latest strategy, unresolved contest votes).
-  * ``aporetic``       — fall-through.
+                         unresolved contest votes, a recorded reconciliation
+                         strategy), a successor the policy rejects, or a
+                         dependent two or more hops away.
+  * ``aporetic``       — a direct dependent with no successor to re-derive on.
+  * Reach is transitive (Decision Sheet q4): the preview walks the dependency
+    graph (one bulk adjacency read), records each dependent's hop depth, and
+    flags deeper dependents ``review_needed`` only — never automatic.
 """
 from __future__ import annotations
 
 import hashlib
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import jcs
 from pydantic import BaseModel, ConfigDict
 
 from folio_insights.governance.events import RetractionEvent
+from folio_insights.revision.dependency_graph import DependencyGraph
+from folio_insights.revision.policies import (
+    DEFAULT_CASCADE_POLICY,
+    CascadePolicy,
+    check_policy,
+    classify_at_depth,
+    classify_dependent,
+)
 
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -130,81 +149,40 @@ class CascadePreview(BaseModel):
     review_needed: list[str]
     op_id: str | None = None
     state_position: int | None = None
+    # Phase 9 U3: the cascade policy this preview classified under (a commit
+    # re-classifies under the same policy), each listed dependent's hop depth
+    # from the retracted shard, and any dependency cycle touching the cascade
+    # (reported as findings, never errors).
+    policy: CascadePolicy = DEFAULT_CASCADE_POLICY
+    depths: dict[str, int] = {}
+    cycles: list[list[str]] = []
 
 
-# ── D-18 classifier (heuristic locked by RESEARCH lines 1338-1353) ─────────
-
-
-def classify_dependent(
-    dep_attrs: dict,
-) -> Literal["auto_rederive", "aporetic", "review_needed"]:
-    """Classify a single dependent into one of three buckets (D-18).
-
-    Heuristic (verbatim from RESEARCH lines 1338-1353):
-
-      1. ``review_needed`` wins on any human-judgment marker:
-         * ``epistemic_status in {contested, aporetic}``;
-         * ``unresolved_contest_count > 0``;
-         * ``reconciliation_strategy`` is set AND not ``"prefer_latest"``.
-      2. ``auto_rederive`` iff ``reconciliation_strategy == "prefer_latest"``
-         AND ``supersession_available`` is True.
-      3. Fall-through: ``aporetic``.
-
-    The order of checks matters — a prefer_latest + supersession + contested
-    case correctly routes to ``review_needed`` (the contested-status marker
-    wins), not ``auto_rederive``.
-
-    Args:
-        dep_attrs: a dict that may contain any of the following keys; all
-            missing keys default to "safe" values that route to ``aporetic``:
-              * ``supersession_available: bool`` (default ``False``)
-              * ``reconciliation_strategy: str | None`` (default ``None``)
-              * ``epistemic_status: str | None`` (default ``None``)
-              * ``unresolved_contest_count: int`` (default ``0``)
-    """
-    has_succ = bool(dep_attrs.get("supersession_available", False))
-    strategy = dep_attrs.get("reconciliation_strategy")
-    status = dep_attrs.get("epistemic_status")
-    unresolved_votes = int(dep_attrs.get("unresolved_contest_count", 0) or 0)
-
-    # review_needed wins (any human-judgment marker forces review).
-    if status in {"contested", "aporetic"}:
-        return "review_needed"
-    if unresolved_votes > 0:
-        return "review_needed"
-    if strategy is not None and strategy != "prefer_latest":
-        return "review_needed"
-
-    # auto_rederive: prefer_latest + supersession available.
-    if strategy == "prefer_latest" and has_succ:
-        return "auto_rederive"
-
-    # aporetic: nothing else to go on.
-    return "aporetic"
+# ── D-18 classifier ────────────────────────────────────────────────────────
+#
+# ``classify_dependent(dep_attrs, *, policy)`` lives in ``revision.policies``
+# (re-exported here). It takes the cascade policy explicitly (Phase 9 KTD6).
 
 
 # ── Cascade preview builder + commit (D-17) ────────────────────────────────
 
 
-def _extract_dep_attrs(dep_shard: Any, retracted_shard: Any) -> dict:
-    """Read the classifier-relevant attributes off a dependent shard.
-
-    Phase 7 in-memory: duck-typed ``getattr`` walk over the shard envelope.
-    Phase 13 will read these from the SPARQL CONSTRUCT result over the
-    materialized graph (RESEARCH lines 1294-1333). The dict shape produced
-    here matches the SPARQL CONSTRUCT's output 1:1 so the classifier is
-    backend-independent.
+def _extract_dep_attrs(dep_shard: Any, retracted_shard: Any, successor: Any) -> dict:
+    """Read the classifier inputs (``revision.policies``) off a dependent.
 
     Key inputs:
       * ``supersession_available`` — derived from the RETRACTED shard's
         ``superseded_by`` (a successor exists for the retracted target,
         which is what the dependent would re-derive against).
-      * ``reconciliation_strategy`` — read from the dependent's attribute
-        if present (set out-of-band on simple shards; on
-        ``ConflictingAuthoritiesShard`` it is a first-class field).
+      * ``reconciliation_strategy`` — the dependent's recorded sic-et-non
+        strategy (``ConflictingAuthoritiesShard`` only); its presence means a
+        human reconciliation the cascade must not override.
       * ``epistemic_status`` — the dependent's envelope status.
       * ``unresolved_contest_count`` — len(``contest_votes``) when the
         dependent is contested and the contest has not been resolved.
+      * ``successor_epistemic_status`` / ``successor_framework_id`` /
+        ``dependent_framework_id`` — what ``prefer_authority`` and
+        ``prefer_most_specific_jurisdiction`` weigh.
     """
     superseded_by = getattr(retracted_shard, "superseded_by", None)
     contested = bool(getattr(dep_shard, "contested", False))
@@ -217,6 +195,9 @@ def _extract_dep_attrs(dep_shard: Any, retracted_shard: Any) -> dict:
         ),
         "epistemic_status": getattr(dep_shard, "epistemic_status", None),
         "unresolved_contest_count": unresolved_votes,
+        "successor_epistemic_status": getattr(successor, "epistemic_status", None),
+        "successor_framework_id": getattr(successor, "framework_id", None),
+        "dependent_framework_id": getattr(dep_shard, "framework_id", None),
     }
 
 
@@ -254,6 +235,8 @@ async def _hash_underlying_state(
     *,
     op_id: str | None,
     state_position: int | None,
+    policy: CascadePolicy = DEFAULT_CASCADE_POLICY,
+    depths: dict[str, int] | None = None,
 ) -> str:
     """Deterministic SHA-256 over the cascade-relevant state (D-17, RESEARCH Q6).
 
@@ -300,6 +283,7 @@ async def _hash_underlying_state(
                 ),
                 "superseded_by": getattr(shard, "superseded_by", None),
                 "record_sha256": _record_sha256(shard),
+                "depth": (depths or {}).get(dep_iri),
             }
         )
 
@@ -308,6 +292,9 @@ async def _hash_underlying_state(
     retracted = await store.get(retracted_iri)
     retracted_superseded_by = (
         getattr(retracted, "superseded_by", None) if retracted is not None else None
+    )
+    successor = (
+        await store.get(retracted_superseded_by) if retracted_superseded_by else None
     )
 
     latest_pos = await log.latest_position(corpus)
@@ -319,6 +306,9 @@ async def _hash_underlying_state(
         "log_latest_position": latest_pos,
         "op_id": op_id,
         "state_position": state_position,
+        "policy": policy,
+        # The successor's record decides prefer_authority / jurisdiction.
+        "successor_record_sha256": _record_sha256(successor),
         "dependents": items,
     }
     canonical = jcs.canonicalize(payload)
@@ -333,14 +323,17 @@ async def build_cascade_preview(
     log: "GovernanceLog",
     op_id: str | None = None,
     state_position: int | None = None,
+    policy: CascadePolicy = DEFAULT_CASCADE_POLICY,
 ) -> CascadePreview:
     """Build the cascade preview for ``retracted_iri`` over the current state (D-17 / D-18).
 
-    Dependents come from the typed ``ShardStore.dependents_of`` seam (KTD4):
-    the persistent store answers it from the RDF projection at the committed
-    watermark, the in-memory double from its own records. For each
-    dependent, extracts the classifier-relevant attributes via
-    ``_extract_dep_attrs`` and classifies via ``classify_dependent``.
+    Dependents come from the dependency graph (Phase 9 U3): ONE bulk adjacency
+    read of the store (the persistent store answers it from the RDF projection
+    at the committed watermark, the in-memory double from its own records),
+    walked transitively. Direct dependents are classified under ``policy``
+    (``classify_dependent``); dependents two or more hops away are flagged
+    ``review_needed`` (Decision Sheet q4). The preview records the policy,
+    each dependent's depth and any dependency cycle the cascade touches.
 
     ``op_id`` (default: a fresh ``retract:<uuid>``) and ``state_position``
     (the persistent journal head read BEFORE this build, or ``None``) are
@@ -358,21 +351,32 @@ async def build_cascade_preview(
             f"cannot retract {retracted_iri!r}: no such shard in corpus {corpus!r}"
         )
 
+    policy = check_policy(policy)
     classified: dict[str, list[str]] = {
         "auto_rederive": [],
         "aporetic": [],
         "review_needed": [],
     }
 
-    for dep_shard in await store.dependents_of(retracted_iri):
-        dep_iri = dep_shard.shard_iri
+    graph = await DependencyGraph.from_store(store)
+    reach = graph.transitive_dependents(retracted_iri)
+    successor_iri = getattr(retracted_shard, "superseded_by", None)
+    successor = await store.get(successor_iri) if successor_iri else None
+    depths: dict[str, int] = {}
+    for dep_iri, depth in sorted(reach.items()):
         if dep_iri == retracted_iri:
             continue
-        if not _depends_on(dep_shard, retracted_iri):
+        dep_shard = await store.get(dep_iri)
+        if dep_shard is None:
             continue
-        attrs = _extract_dep_attrs(dep_shard, retracted_shard)
-        bucket = classify_dependent(attrs)
+        if depth == 1 and not _depends_on(dep_shard, retracted_iri):
+            continue
+        attrs = _extract_dep_attrs(dep_shard, retracted_shard, successor)
+        bucket = classify_at_depth(depth, attrs, policy=policy)
         classified[bucket].append(dep_iri)
+        depths[dep_iri] = depth
+    touched = {retracted_iri, *depths}
+    cycles = [list(c) for c in graph.cycles() if touched.intersection(c)]
 
     # Sort each bucket for determinism (JCS canonical hash + reproducible
     # rich.table.Table rendering at the CLI).
@@ -388,6 +392,8 @@ async def build_cascade_preview(
         corpus,
         op_id=op_id,
         state_position=state_position,
+        policy=policy,
+        depths=depths,
     )
 
     return CascadePreview(
@@ -400,6 +406,9 @@ async def build_cascade_preview(
         review_needed=classified["review_needed"],
         op_id=op_id,
         state_position=state_position,
+        policy=policy,
+        depths=depths,
+        cycles=cycles,
     )
 
 
@@ -464,6 +473,7 @@ async def commit_cascade(
         log=log,
         op_id=preview.op_id,
         state_position=preview.state_position,
+        policy=preview.policy,
     )
     # The whole rebuilt preview (buckets, target, corpus, state hash) must
     # equal the saved one; only the capture time and the two bound saved-
@@ -568,6 +578,7 @@ def validate_retraction(event: RetractionEvent) -> None:
 
 
 __all__ = [
+    "CascadePolicy",
     "CascadePreview",
     "PreviewStale",
     "RetractionEvent",

@@ -61,6 +61,7 @@ from folio_insights.governance.retract import (
     commit_cascade,
 )
 from folio_insights.identity.keys import KEY_PATH
+from folio_insights.revision.policies import CASCADE_POLICIES, DEFAULT_CASCADE_POLICY
 
 
 def _sanitize_iri_for_filename(iri: str) -> str:
@@ -124,6 +125,18 @@ def _sanitize_iri_for_filename(iri: str) -> str:
     default=False,
     help="Skip the interactive confirmation (scripted use).",
 )
+@click.option(
+    "--policy",
+    type=click.Choice(list(CASCADE_POLICIES)),
+    default=DEFAULT_CASCADE_POLICY,
+    show_default=True,
+    help=(
+        "Cascade policy for direct dependents (Phase 9 KTD6): re-derive against "
+        "the retracted shard's successor when the policy accepts it. Dependents "
+        "two or more hops away are always flagged review_needed. Ignored with "
+        "--apply (the saved preview records its policy)."
+    ),
+)
 @corpus_root_option
 def retract_cmd(
     shard_iri: str,
@@ -133,6 +146,7 @@ def retract_cmd(
     corpus: str,
     key_path: Path,
     yes: bool,
+    policy: str,
     corpus_root: Path | None,
 ) -> None:
     """Retract a shard with cascade preview (PRD §3.1.4 / GOV-06).
@@ -309,6 +323,7 @@ def retract_cmd(
                     store=store,
                     log=log,
                     state_position=state_position,
+                    policy=policy,  # type: ignore[arg-type]
                 )
             except RetractionTargetMissing as exc:
                 click.echo(f"retraction refused: {exc}", err=True)
@@ -332,7 +347,9 @@ def retract_cmd(
                     sys.exit(1)
                 click.echo(
                     f"cascade preview written to {out_path} "
-                    f"(auto_rederive: {len(preview.auto_rederive)}, "
+                    f"(policy: {preview.policy}, "
+                    f"max depth: {max(preview.depths.values(), default=0)}, "
+                    f"auto_rederive: {len(preview.auto_rederive)}, "
                     f"aporetic: {len(preview.aporetic)}, "
                     f"review_needed: {len(preview.review_needed)})"
                 )
@@ -341,9 +358,18 @@ def retract_cmd(
             # ── Default (interactive) mode ──
             console = Console()
             table = Table(
-                title=f"Cascade preview for {shard_iri} in {corpus}",
+                title=(
+                    f"Cascade preview for {shard_iri} in {corpus} "
+                    f"(policy {preview.policy}; depth in brackets)"
+                ),
                 show_lines=True,
             )
+
+            def _cell(bucket: list[str], i: int) -> str:
+                if i >= len(bucket):
+                    return ""
+                return f"{bucket[i]} [{preview.depths.get(bucket[i], 1)}]"
+
             table.add_column("auto_rederive", style="green")
             table.add_column("aporetic", style="yellow")
             table.add_column("review_needed", style="red")
@@ -356,12 +382,14 @@ def retract_cmd(
             )
             for i in range(max_rows):
                 row = [
-                    preview.auto_rederive[i] if i < len(preview.auto_rederive) else "",
-                    preview.aporetic[i] if i < len(preview.aporetic) else "",
-                    preview.review_needed[i] if i < len(preview.review_needed) else "",
+                    _cell(preview.auto_rederive, i),
+                    _cell(preview.aporetic, i),
+                    _cell(preview.review_needed, i),
                 ]
                 table.add_row(*row)
             console.print(table)
+            for cycle in preview.cycles:
+                console.print(f"dependency cycle: {' -> '.join(cycle)}")
 
             total = (
                 len(preview.auto_rederive)

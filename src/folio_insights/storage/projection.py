@@ -609,6 +609,27 @@ class ProjectionHandle:
         )
         return [sol["s"].value for sol in self._wrapper.store.query(sparql)]
 
+    def dependency_edges(self, corpus: str) -> tuple[list[str], list[tuple[str, str, str]]]:
+        """One bulk adjacency read (Phase 9 U3): every current shard IRI in
+        ``corpus`` and every ``(dependent, dependency, depends_on_* field)``
+        edge, from a single query over the corpus ABox."""
+        by_predicate = {str(fi(p)): field for field, p in DEPENDENCY_PREDICATES.items()}
+        values = " ".join(by_predicate)
+        sparql = (
+            f"SELECT ?s ?p ?t WHERE {{ GRAPH {corpus_graph(corpus)} {{ "
+            f"{{ ?s {_RDF_TYPE} {fi('Shard')} }} UNION "
+            f"{{ VALUES ?p {{ {values} }} ?s ?p ?t }} }} }}"
+        )
+        nodes: set[str] = set()
+        edges: list[tuple[str, str, str]] = []
+        for sol in self._wrapper.store.query(sparql):
+            subject = sol["s"].value
+            nodes.add(subject)
+            predicate = sol["p"]
+            if predicate is not None:
+                edges.append((subject, sol["t"].value, by_predicate[str(predicate)]))
+        return sorted(nodes), sorted(edges)
+
     def close(self) -> None:
         self._wrapper.store.flush()
         # Drop the only reference so RocksDB releases its process lock now.

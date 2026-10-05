@@ -577,3 +577,31 @@ def test_retry_by_other_signer_names_original_committer(corpus: Corpus, tmp_path
     assert json.loads(result.stdout) == first
     assert f"already committed by {corpus.admin_did}" in result.stderr
     assert len(_in_ctx(corpus.root, _snapshot)["retractions"]) == 1
+
+
+# ── Phase 9 U3: --policy and transitive reach ──────────────────────────────
+
+
+def test_preview_records_policy_and_depths(corpus: Corpus, tmp_path: Path) -> None:
+    default = _preview(corpus, tmp_path / "default.json")
+    assert default["policy"] == "prefer_latest"
+    assert default["depths"] == {iri: 1 for iri in corpus.dependents}
+    out = tmp_path / "authority.json"
+    ok(
+        run_cli(
+            corpus.root, "governance", "retract", corpus.target, "--preview",
+            "--policy", "prefer_authority", "--output", str(out),
+            "--corpus", CORPUS, "--key-path", str(corpus.admin_key),
+        )
+    )
+    saved = json.loads(out.read_text(encoding="utf-8"))
+    assert saved["policy"] == "prefer_authority"
+    bad = run_cli(
+        corpus.root, "governance", "retract", corpus.target, "--preview",
+        "--policy", "sense_distinction", "--output", str(tmp_path / "bad.json"),
+        "--corpus", CORPUS, "--key-path", str(corpus.admin_key),
+    )
+    assert bad.returncode == 2 and "sense_distinction" in bad.stderr
+    # --apply re-classifies under the saved policy and commits once
+    applied = json.loads(ok(_apply(corpus, out)).stdout)
+    assert applied["action"] == "retract"
