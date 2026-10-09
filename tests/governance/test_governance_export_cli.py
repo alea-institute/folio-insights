@@ -26,7 +26,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import pathlib
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from click.testing import CliRunner
@@ -100,7 +100,10 @@ async def _seed_admin_and_events(corpus: str, admin_sk: Ed25519PrivateKey) -> No
     async with _cli_state.corpus_storage(
         None, corpus, cache=InMemoryDidDocCache()
     ) as ctx:
-        genesis_sig = _sig(admin_did, "role_assertion", datetime(2026, 1, 1, tzinfo=UTC))
+        # Signed at the current time: a persistent append refuses a signed_at
+        # outside SIGNING_SKEW of the server commit time (R17 / KTD12).
+        base = datetime.now(UTC)
+        genesis_sig = _sig(admin_did, "role_assertion", base)
         await ctx.governance.append(
             _signed(
                 RoleAssertionEvent(
@@ -114,13 +117,13 @@ async def _seed_admin_and_events(corpus: str, admin_sk: Ed25519PrivateKey) -> No
             ),
             op_id=f"seed:{corpus}:genesis",
         )
-        for i, day in enumerate([2, 3, 4]):
+        for i, seconds in enumerate([1, 2, 3]):
             await ctx.governance.append(
                 _signed(
                     ExtractEvent(
                         corpus=corpus,
                         signature=_sig(
-                            admin_did, "extract", datetime(2026, 1, day, tzinfo=UTC)
+                            admin_did, "extract", base + timedelta(seconds=seconds)
                         ),
                         shard_iri=f"fi:shard:seed-{i}",
                     ),

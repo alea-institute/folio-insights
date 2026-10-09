@@ -37,6 +37,7 @@ from folio_insights.models.framework import (
 from folio_insights.storage import CorpusStorageContext
 
 from tests.storage.conftest import Identity, at, genesis, new_identity, role_assertion, shard
+from tests.storage.conftest import fresh_signing_clock  # noqa: F401  (autouse: sign at now, R17)
 
 DGCL = Framework(id="us.delaware.dgcl", label="Delaware General Corporation Law",
                  jurisdiction="us.delaware")
@@ -267,15 +268,19 @@ async def test_revoked_admin_cannot_register_with_a_backdated_time(tmp_path: Pat
     try:
         with pytest.raises(FrameworkRegistrationRefused):
             await register_framework(ctx, DGCL, signing_key=former.sk, did=former.did)
+        # ``at()`` is anchored at the real clock (R17 fixtures), so an hour
+        # back is what "backdated" means here.
         with pytest.raises(FrameworkRegistrationRefused, match="not within"):
-            await register_framework(ctx, DGCL, signing_key=former.sk, did=former.did, now=at(5))
+            await register_framework(
+                ctx, DGCL, signing_key=former.sk, did=former.did, now=at(-3600)
+            )
         with pytest.raises(TypeError):
             await register_framework(  # the old caller-chosen signing time is gone
                 ctx, DGCL, signing_key=former.sk, did=former.did, signed_at=at(5)  # type: ignore[call-arg]
             )
         # a backdated row appended straight to the ledger is refused on load
         forged = sign_registration("corpus-a", DGCL, signing_key=former.sk, did=former.did,
-                                   signed_at=at(5))
+                                   signed_at=at(-3600))
         await ctx.proposals.append(LEDGER_KIND, forged.model_dump(mode="json"), op_id="forged")
         with pytest.raises(FrameworkRegistrationRefused, match="commit time"):
             await load_registry(ctx)

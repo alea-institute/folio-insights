@@ -41,6 +41,7 @@ from folio_insights.temporal.as_of import FI
 
 from tests.shards.conftest import _sample_shard
 from tests.storage.conftest import _unsigned, at, genesis, new_identity, shard, sign_event
+from tests.storage.conftest import fresh_signing_clock  # noqa: F401  (autouse: sign at now, R17)
 
 
 def iri(n: int) -> str:

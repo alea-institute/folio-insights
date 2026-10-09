@@ -35,7 +35,27 @@ from folio_insights.storage import CorpusStorageContext, StorageConfig
 from tests.shards.conftest import _sample_shard
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-T0 = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+
+
+def _signing_anchor() -> datetime:
+    return datetime.now(UTC).replace(microsecond=0)
+
+
+# The signing-time anchor ``at()`` offsets from. Governance appends are
+# checked against the server clock (R17 / KTD12: ``signed_at`` must be within
+# ``SIGNING_SKEW`` of the commit time), so signers here sign "now + a few
+# seconds", like a real signer, instead of a fixed past date.
+# ``fresh_signing_clock`` re-anchors it at the start of every test; a
+# subprocess (``_proc.py``) anchors it at its own import.
+T0 = _signing_anchor()
+
+
+@pytest.fixture(autouse=True)
+def fresh_signing_clock() -> None:
+    """Re-anchor ``T0`` to the real clock for each test (autouse here;
+    modules outside ``tests/storage`` that sign with ``at()`` import it)."""
+    global T0
+    T0 = _signing_anchor()
 
 
 @dataclass(frozen=True)
@@ -124,8 +144,12 @@ def role_revocation(
     return sign_event(event, signer, signed_at)  # type: ignore[return-value]
 
 
-def genesis(corpus: str, admin: Identity, signed_at: datetime = T0) -> RoleAssertionEvent:
-    return role_assertion(corpus, admin, admin.did, "corpus_admin", signed_at)
+def genesis(
+    corpus: str, admin: Identity, signed_at: datetime | None = None
+) -> RoleAssertionEvent:
+    return role_assertion(
+        corpus, admin, admin.did, "corpus_admin", T0 if signed_at is None else signed_at
+    )
 
 
 def shard(n: int, **overrides: Any) -> ShardEnvelope:
