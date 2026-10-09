@@ -301,8 +301,10 @@ def test_http_iri_is_accepted_and_404_when_absent(client: TestClient) -> None:
     assert "https://folio.openlegalstandard.org/shards/x%20y/graph" in resp.json()["detail"]
 
 
-def test_malformed_corpus_id_is_400(client: TestClient) -> None:
-    assert client.get(_graph_url(S.shard_iri, ".hidden")).status_code == 400
+def test_malformed_corpus_id_is_422(client: TestClient) -> None:
+    """The app-wide corpus-ID dependency (``api/corpus_ids.py``) refuses it first."""
+    assert client.get(_graph_url(S.shard_iri, ".hidden")).status_code == 422
+    assert client.get(_derivation_url(S.shard_iri, ".hidden")).status_code == 422
 
 
 def test_absent_storage_root_is_404_and_never_created(
@@ -449,3 +451,222 @@ def test_labels_are_short_single_line_and_fall_back_to_the_triple() -> None:
 def test_iri_segment_that_is_not_utf8_is_422(client: TestClient) -> None:
     assert client.get(f"/api/v1/corpus/{CORPUS}/shards/https%3A%2F%2Fx.org%2F%FF/graph"
                       ).status_code == 422
+
+
+# ── review fixes: canonical (sticky) paths, snapshot cache, caps ────────────
+
+STICKY = "sticky-corpus"
+
+
+def _sticky_corpus(root: Path) -> dict[str, str | None]:
+    """A corpus whose canonical paths need the revision history: C is reparented
+    under A after D's root ordinal was taken, X waits on a dangling parent P that
+    arrives later. Returns ``TractarianIndex.from_context``'s path per shard."""
+    from folio_insights.revision.tractarian import TractarianIndex
+
+    from tests.storage.conftest import shard as plain
+
+    a, c, x, d, p = (_iri(0x51), _iri(0x52), _iri(0x53), _iri(0x54), _iri(0x55))
+
+    async def build() -> dict[str, str | None]:
+        ctx = await CorpusStorageContext.open(root, STICKY)
+        try:
+            await ctx.ingest_shards([plain(0x51)])
+            await ctx.ingest_shards([plain(0x52)])
+            await ctx.ingest_shards([plain(0x53, elaborates=[p])])
+            await ctx.shards.put(c, plain(0x52, elaborates=[a]), op_id="reparent-c")
+            await ctx.ingest_shards([plain(0x54)])
+            await ctx.ingest_shards([plain(0x55)])
+            index = await TractarianIndex.from_context(ctx)
+            return {iri: index.path_of(iri) for iri in (a, c, x, d, p)}
+        finally:
+            await ctx.close()
+
+    return asyncio.run(build())
+
+
+def test_graph_and_derivation_paths_equal_the_storage_context_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P1: the API replays the same revision history as ``from_context`` (sticky
+    ordinals), so a reparent or a late parent never renumbers paths in the viewer."""
+    from folio_insights.revision.tractarian import TractarianIndex
+
+    root = tmp_path / "storage"
+    canonical = _sticky_corpus(root)
+    snapshot = read_corpus_snapshot(root / JOURNAL_FILENAME, STICKY)
+    # The history matters on this corpus: a history-less index numbers differently.
+    naive = TractarianIndex(snapshot.entries)
+    assert {i: naive.path_of(i) for i in canonical} != canonical
+
+    monkeypatch.setattr(api_main, "_corpus_root", root)
+    client = TestClient(app)
+    for iri, path in canonical.items():
+        graph = client.get(_graph_url(iri, STICKY), params={"depth": 8}).json()
+        shown = {n["iri"]: n["tractarian_path"] for n in graph["nodes"]}
+        assert shown[iri] == path
+        assert all(shown[i] == canonical[i] for i in shown if i in canonical), shown
+        derivation = client.get(_derivation_url(iri, STICKY)).json()
+        assert derivation["tractarian_path"] == path
+
+
+def test_snapshot_history_matches_the_storage_context(tmp_path: Path) -> None:
+    """The snapshot's revision rows are ``shard_revision_history``'s rows."""
+    root = tmp_path / "storage"
+    _sticky_corpus(root)
+
+    async def via_context():
+        ctx = await CorpusStorageContext.open(root, STICKY)
+        try:
+            return await ctx.shard_revision_history()
+        finally:
+            await ctx.close()
+
+    entries, rows = asyncio.run(via_context())
+    snapshot = read_corpus_snapshot(root / JOURNAL_FILENAME, STICKY)
+    assert [(s.shard_iri, p) for s, p in snapshot.entries] == [
+        (s.shard_iri, p) for s, p in entries
+    ]
+    assert [(r.position, r.iri, r.batch) for r in snapshot.revisions] == [
+        (r.position, r.iri, r.batch) for r in rows
+    ]
+
+
+def test_snapshot_cache_serves_repeats_and_invalidates_on_a_new_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2: repeated reads reuse one parsed snapshot until the journal head moves."""
+    from tests.storage.conftest import shard as plain
+
+    root = tmp_path / "storage"
+    _sticky_corpus(root)
+    journal = root / JOURNAL_FILENAME
+    shard_routes.clear_snapshot_cache()
+    first = shard_routes.cached_corpus_snapshot(journal, STICKY)
+    assert shard_routes.cached_corpus_snapshot(journal, STICKY) is first
+
+    monkeypatch.setattr(api_main, "_corpus_root", root)
+    client = TestClient(app)
+    late = _iri(0x56)
+    assert client.get(_graph_url(late, STICKY)).status_code == 404
+
+    async def commit() -> None:
+        ctx = await CorpusStorageContext.open(root, STICKY)
+        try:
+            await ctx.ingest_shards([plain(0x56, elaborates=[_iri(0x51)])])
+        finally:
+            await ctx.close()
+
+    asyncio.run(commit())
+    fresh = shard_routes.cached_corpus_snapshot(journal, STICKY)
+    assert fresh is not first and fresh.head > first.head
+    assert late in fresh.shards()
+    resp = client.get(_graph_url(late, STICKY))
+    assert resp.status_code == 200 and _by_iri(resp.json())[late]["tractarian_path"] == "1.2"
+
+
+def test_snapshot_cache_is_bounded() -> None:
+    assert 1 <= shard_routes.SNAPSHOT_CACHE_SIZE <= 16
+
+
+def test_cpu_work_runs_off_the_event_loop(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2: snapshot parsing, the graph build and the derivation walk never run on
+    the event loop thread."""
+    seen: list[tuple[str, bool]] = []
+
+    def on_loop() -> bool:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return False
+        return True
+
+    def spy(name, fn):
+        def wrapper(*args, **kwargs):
+            seen.append((name, on_loop()))
+            return fn(*args, **kwargs)
+        return wrapper
+
+    shard_routes.clear_snapshot_cache()
+    for name in ("cached_corpus_snapshot", "build_graph", "derivation_payload"):
+        monkeypatch.setattr(shard_routes, name, spy(name, getattr(shard_routes, name)))
+    assert client.get(_graph_url(S.shard_iri)).status_code == 200
+    assert client.get(_derivation_url(S.shard_iri)).status_code == 200
+    assert {name for name, _ in seen} == {
+        "cached_corpus_snapshot", "build_graph", "derivation_payload"
+    }
+    assert not any(loop for _, loop in seen), seen
+
+
+def _dense_web(n: int) -> list[tuple[ShardEnvelope, int]]:
+    """``n`` shards, each depending on every earlier one: n(n-1)/2 edges."""
+    shards: list[ShardEnvelope] = []
+    for i in range(n):
+        shards.append(_shard(0x7000 + i, depends_on_shards=[s.shard_iri for s in shards]))
+    return [(s, i) for i, s in enumerate(shards)]
+
+
+def test_edges_are_capped_and_every_placed_node_keeps_its_reaching_edge() -> None:
+    """P2: the response carries at most ``GRAPH_EDGE_CAP`` edges, says so, and keeps
+    the edge that placed each node so the drawn graph stays connected."""
+    entries = _dense_web(80)  # 3,160 edges
+    root = entries[0][0].shard_iri
+    body = build_graph(entries, root, depth=1)
+    assert len(body["nodes"]) == 80
+    assert body["edge_cap"] == shard_routes.GRAPH_EDGE_CAP == 2000
+    assert len(body["edges"]) == 2000
+    assert body["truncated"] is True and body["truncated_reasons"] == ["edge_cap"]
+    touched = {e["from"] for e in body["edges"]} | {e["to"] for e in body["edges"]}
+    assert touched == {n["iri"] for n in body["nodes"]}
+    # Every non-root node was placed by an edge to the root; all of them survive.
+    assert {e["from"] for e in body["edges"] if e["to"] == root} == touched - {root}
+
+
+def test_truncation_reasons_name_each_bound() -> None:
+    root = _shard(1)
+    near = [_shard(100 + i, depends_on_shards=[root.shard_iri]) for i in range(3)]
+    far = [_shard(200 + i, depends_on_shards=[near[0].shard_iri]) for i in range(3)]
+    entries = [(s, i) for i, s in enumerate([root, *near, *far])]
+    assert build_graph(entries, root.shard_iri, depth=1)["truncated_reasons"] == ["depth"]
+    capped = build_graph(entries, root.shard_iri, depth=2, node_cap=5)
+    assert capped["truncated_reasons"] == ["node_cap"]
+    whole = build_graph(entries, root.shard_iri, depth=2)
+    assert whole["truncated"] is False and whole["truncated_reasons"] == []
+
+
+def test_edge_field_order_puts_the_tractarian_parent_first() -> None:
+    """A pair joined by two fields lists ``elaborates`` before ``depends_on_shards``."""
+    parent = _shard(0x91)
+    child = _shard(0x92, elaborates=[parent.shard_iri], depends_on_shards=[parent.shard_iri])
+    body = build_graph([(parent, 0), (child, 1)], child.shard_iri)
+    assert [e["field"] for e in body["edges"]] == ["elaborates", "depends_on_shards"]
+
+
+def test_derivation_walk_is_capped_and_reports_it() -> None:
+    """P3: /derivation bounds the nodes it walks, farthest first, and says so."""
+    from api.routes.shard import CorpusSnapshot, derivation_payload
+
+    fan = [_shard(0x8000 + i) for i in range(599)]
+    last = _shard(0x8000 + 599, depends_on_axioms=[K6])
+    root = _shard(0x9000, depends_on_shards=[s.shard_iri for s in [*fan, last]])
+    entries = tuple((s, i) for i, s in enumerate([root, *fan, last]))
+    snapshot = CorpusSnapshot("synthetic", entries)
+
+    capped = derivation_payload(snapshot, root.shard_iri)
+    assert capped["node_cap"] == shard_routes.GRAPH_NODE_CAP
+    assert capped["truncated"] is True and capped["truncated_reasons"] == ["node_cap"]
+    assert capped["derivedFromKernel"] == [] and capped["missing"] == []
+    assert len(capped["nodes"]) <= shard_routes.GRAPH_NODE_CAP
+
+    whole = derivation_payload(snapshot, root.shard_iri, node_cap=1000)
+    assert whole["truncated"] is False and whole["truncated_reasons"] == []
+    [chain] = whole["derivedFromKernel"]
+    assert chain["path"] == [root.shard_iri, last.shard_iri, K6]
+
+
+def test_derivation_depth_truncation_reason(client: TestClient) -> None:
+    cut = client.get(_derivation_url(D.shard_iri), params={"max_depth": 2}).json()
+    assert cut["truncated_reasons"] == ["depth"]
+    assert cut["node_cap"] == shard_routes.GRAPH_NODE_CAP
