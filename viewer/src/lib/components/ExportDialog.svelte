@@ -1,10 +1,5 @@
 <script lang="ts">
-	import {
-		triggerExport,
-		fetchExportValidation,
-		getExportDownloadUrl,
-		getExportBundleUrl,
-	} from '$lib/api/client';
+	import { triggerExport, fetchExportValidation, downloadExport } from '$lib/api/client';
 	import type { ExportValidationCheck } from '$lib/api/client';
 	import ValidationSummary from '$lib/components/ValidationSummary.svelte';
 
@@ -22,6 +17,7 @@
 
 	let dialogState = $state<'idle' | 'exporting' | 'complete' | 'error'>('idle');
 	let errorMessage = $state('');
+	let downloadError = $state('');
 	let validationChecks = $state<ExportValidationCheck[]>([]);
 	let dialogEl: HTMLElement | undefined = $state();
 
@@ -53,6 +49,7 @@
 		if (open) {
 			dialogState = 'idle';
 			errorMessage = '';
+			downloadError = '';
 			validationChecks = [];
 			fmtOwl = true;
 			fmtTtl = true;
@@ -99,12 +96,16 @@
 		dialogState = 'complete';
 	}
 
+	// Downloads go through apiFetch so they carry the operator token: the OWL, Turtle, JSON-LD
+	// and validation exports require one, and a plain link cannot send it.
+	async function download(formats: string[]) {
+		downloadError = '';
+		const result = await downloadExport(corpusId, formats);
+		if ('error' in result) downloadError = `Download failed: ${result.error}`;
+	}
+
 	function handleDownload() {
-		if (selectedFormats.length === 1) {
-			window.location.href = getExportDownloadUrl(corpusId, selectedFormats[0]);
-		} else {
-			window.location.href = getExportBundleUrl(corpusId, selectedFormats);
-		}
+		void download(selectedFormats);
 	}
 
 	function handlePrimaryAction() {
@@ -264,15 +265,18 @@
 				{#if dialogState === 'complete'}
 					<div class="download-links">
 						{#each selectedFormats as fmt}
-							<a
+							<button
+								type="button"
 								class="download-link"
-								href={getExportDownloadUrl(corpusId, fmt)}
-								download
+								onclick={() => download([fmt])}
 							>
 								{fmt.toUpperCase()}
-							</a>
+							</button>
 						{/each}
 					</div>
+					{#if downloadError}
+						<p class="error-message" role="alert">{downloadError}</p>
+					{/if}
 				{/if}
 
 				<!-- Validation Summary -->
@@ -456,7 +460,10 @@
 	}
 
 	.download-link {
+		font: inherit;
 		font-size: 11px;
+		background: transparent;
+		cursor: pointer;
 		font-weight: 600;
 		color: var(--accent);
 		text-decoration: none;
