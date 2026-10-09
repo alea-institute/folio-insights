@@ -12,6 +12,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match, Mount, get_route_path
+from starlette.types import Scope
 
 from api.auth import CORS_ALLOWED_ORIGINS
 from api.corpus_ids import check_corpus_id, require_valid_corpus_ids
@@ -225,9 +227,21 @@ class SPAStaticFiles(StaticFiles):
             raise
 
 
+class ViewerMount(Mount):
+    """Leave API paths to the API router, including method refusals (405)."""
+
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        path = get_route_path(scope)
+        if path == "/health" or path == "/api" or path.startswith("/api/"):
+            return Match.NONE, {}
+        return super().matches(scope)
+
+
 _viewer_build = Path(__file__).resolve().parent.parent / "viewer" / "build"
 if _viewer_build.is_dir():
-    app.mount("/", SPAStaticFiles(directory=str(_viewer_build), html=True), name="viewer")
+    app.router.routes.append(
+        ViewerMount("/", SPAStaticFiles(directory=str(_viewer_build), html=True), name="viewer")
+    )
 
 
 # ---------------------------------------------------------------------------
