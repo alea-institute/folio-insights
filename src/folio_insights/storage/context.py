@@ -80,6 +80,12 @@ from folio_insights.shards import (
     dump_shard_record,
     load_shard_record,
 )
+from folio_insights.revision.acyclicity import (
+    DependencyCycle,
+    arun_search,
+    record_out_edges,
+    shard_out_edges,
+)
 from folio_insights.shapes.corpus import run_constraints
 from folio_insights.shapes.suite import ShaclSuite, default_suite
 from folio_insights.shards.records import IDENTITY_FIELDS
@@ -212,6 +218,15 @@ class StorageConfig:
       signature verification and before the journal transaction (whose
       in-transaction authorization and SHACL check still run afterwards).
 
+    * ``refuse_dependency_cycles`` — the drain U4 cycle guard (R13, KTD9):
+      inside the write transaction, before anything is appended, a shard
+      put or batch whose new edges (the four ``depends_on_*`` lists plus
+      ``elaborates``) would close a cycle against the committed graph, or
+      within the batch, or as a self-edge, is refused as a whole with
+      ``revision.acyclicity.DependencyCycle``. Default on; ``False`` only to
+      load a legacy corpus that already holds cycles (``folio-insights graph
+      validate`` reports them).
+
     Neither hook replaces a built-in check, and installing one does not
     change ``full_shacl``, which only the SHACL suite's results set.
     """
@@ -229,6 +244,7 @@ class StorageConfig:
     # context handles (the storage CLI does; library callers get it only from
     # ``bulk_load_shards``). See ``bulk_load_shards`` for the __main__ caveat.
     process_pool: bool = False
+    refuse_dependency_cycles: bool = True
 
 
 @dataclass(frozen=True)
@@ -964,6 +980,9 @@ class CorpusStorageContext:
                     if existing is not None:
                         row = check_replay(existing, request_sha)
                     else:
+                        await self._refuse_cycles(
+                            tx, {shard_iri: shard_out_edges(loaded.shard)}
+                        )
                         row = await tx.append(
                             self._pending_shard(
                                 _prepared_record(loaded, payload),
@@ -1089,6 +1108,12 @@ class CorpusStorageContext:
                                 cached or load_shard_record(rec.payload).shard,
                             )
                         batch[rec.shard_iri] = rec.payload
+                    if self.config.refuse_dependency_cycles:
+                        await self._refuse_cycles(
+                            tx,
+                            _batch_out_edges(prepared),
+                            {iri: row.payload for iri, row in latest.items()},
+                        )
                     rows = await tx.append_many(
                         [
                             self._pending_shard(
@@ -1110,6 +1135,58 @@ class CorpusStorageContext:
             parallel=parallel,
         )
         return rows
+
+    async def _refuse_cycles(
+        self,
+        tx: JournalTransaction,
+        batch: Mapping[str, tuple[str, ...]],
+        known: Mapping[str, bytes] | None = None,
+    ) -> None:
+        """The drain U4 cycle guard, inside the write transaction (KTD9).
+
+        ``batch`` maps each written IRI to its post-write out-edges. Committed
+        out-edges come from the newest committed revision's payload JSON
+        (``elaborates`` is not projected, so the journal is the source), one
+        ``latest_shards_for`` query per breadth-first level of the incremental
+        search; ``known`` seeds payloads the caller already read. Raises
+        ``DependencyCycle``; the transaction then rolls back with nothing
+        appended."""
+        if not self.config.refuse_dependency_cycles:
+            return
+        payloads: dict[str, bytes] = dict(known or {})
+
+        async def load(iris: list[str]) -> dict[str, tuple[str, ...]]:
+            missing = [iri for iri in iris if iri not in payloads]
+            if missing:
+                for iri, row in (await tx.latest_shards_for(missing)).items():
+                    payloads[iri] = row.payload
+            return {
+                iri: record_out_edges(json.loads(payloads[iri]))
+                for iri in iris
+                if iri in payloads
+            }
+
+        cycle = await arun_search(batch, load)
+        if cycle is not None:
+            raise DependencyCycle(cycle)
+
+    async def shards_in_commit_order(self) -> list[tuple[ShardEnvelope, int]]:
+        """The current revision of every shard with the journal position of its
+        FIRST revision, ordered by that position (drain U4: Tractarian sibling
+        ordinals follow first commit, so a content edit never renumbers)."""
+        upto = await self._barrier()
+        firsts = await self._journal.read_conn.execute_fetchall(
+            "SELECT subject, MIN(position) FROM journal WHERE corpus = ? "
+            "AND kind = 'shard' AND position <= ? GROUP BY subject",
+            (self.corpus, upto),
+        )
+        first = {str(subject): int(position) for subject, position in firsts}
+        out = [
+            (load_shard_record(row.payload).shard, first[row.subject])
+            for row in await self._current_shard_rows(upto)
+        ]
+        out.sort(key=lambda item: (item[1], item[0].shard_iri))
+        return out
 
     # ── Phase 11 SHACL: status, incremental corpus tier, full validation ──
 
@@ -1407,6 +1484,23 @@ def _batch_sha(prepared: list[tuple[PreparedRecord, ShardEnvelope | None]]) -> s
             for rec, _ in prepared
         ).encode("utf-8")
     )
+
+
+def _batch_out_edges(
+    prepared: list[tuple[PreparedRecord, ShardEnvelope | None]],
+) -> dict[str, tuple[str, ...]]:
+    """Each batch IRI's post-write out-edges (its last revision in the batch
+    wins), from the validated envelope when the batch kept it, else from the
+    payload JSON (the process-pool path returns bytes only)."""
+    out: dict[str, tuple[str, ...]] = {}
+    for rec, cached in prepared:
+        out.pop(rec.shard_iri, None)
+        out[rec.shard_iri] = (
+            shard_out_edges(cached)
+            if cached is not None
+            else record_out_edges(json.loads(rec.payload))
+        )
+    return out
 
 
 def _prepared_record(loaded: LoadedShardRecord, payload: bytes) -> PreparedRecord:
