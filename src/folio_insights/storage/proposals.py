@@ -35,7 +35,7 @@ import json
 import re
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -52,6 +52,10 @@ if TYPE_CHECKING:
 #: committed governance history (windowed by stored commit times) and the
 #: server time the row will record; raises to refuse, appending nothing.
 LedgerAuthorization = Callable[["InMemoryGovernanceLog", datetime], Awaitable[None]]
+
+#: An in-transaction check of the server time a new row will record as its
+#: ``committed_at``; raises to refuse, appending nothing (``append(check_commit_time=)``).
+CommitTimeCheck = Callable[[datetime], None]
 
 _KIND = re.compile(r"[a-z][a-z0-9_]{0,63}")
 MAX_OP_ID_CHARS = 200
@@ -140,11 +144,22 @@ class PersistentProposalLedger:
         *,
         op_id: str,
         expected_head: int | None = None,
+        check_commit_time: CommitTimeCheck | None = None,
     ) -> tuple[ProposalLedgerEntry, bool]:
         """Commit one operation. Returns ``(entry, replayed)``: ``replayed``
-        is true when ``op_id`` was already committed for this same request."""
+        is true when ``op_id`` was already committed for this same request.
+
+        ``check_commit_time(committed_at)`` runs INSIDE the write transaction,
+        after the replay and head checks, with the server time
+        (``storage.context._server_now``) the new row then records as its
+        ``committed_at``; raising refuses the append. A check that a later
+        fold repeats against the stored ``committed_at`` (the freshness of a
+        signed decision) therefore sees exactly the instant the fold sees. A
+        replay of a committed ``op_id`` returns the committed row without
+        running it."""
         return await self._append(
-            kind, payload, op_id=op_id, expected_head=expected_head, authorize=None
+            kind, payload, op_id=op_id, expected_head=expected_head, authorize=None,
+            check_commit_time=check_commit_time,
         )
 
     async def _append_authorized(
@@ -177,6 +192,7 @@ class PersistentProposalLedger:
         op_id: str,
         expected_head: int | None,
         authorize: LedgerAuthorization | None,
+        check_commit_time: CommitTimeCheck | None = None,
     ) -> tuple[ProposalLedgerEntry, bool]:
         ctx = self._ctx
         ctx._ensure_open()
@@ -215,6 +231,17 @@ class PersistentProposalLedger:
                         tx, ctx.corpus
                     )
                     await authorize(snapshot, committed_at)
+                if check_commit_time is not None:
+                    if committed_at is None:
+                        from folio_insights.storage.context import _server_now
+
+                        committed_at = _server_now()
+                    # Round-trip through the stored text form, so the check compares the
+                    # exact instant a later fold parses back from ``committed_at``.
+                    committed_at = datetime.fromisoformat(
+                        committed_at.astimezone(UTC).isoformat()
+                    )
+                    check_commit_time(committed_at)
                 row = await tx.append_proposal(
                     op_id=op_id,
                     request_sha256=request_sha,

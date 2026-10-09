@@ -22,6 +22,18 @@ POST /api/v1/corpus/{corpus_id}/contradictions/{id}/resolve -- Resolve
 GET  /api/v1/corpus/{corpus_id}/source-authority        -- List source authority
 PUT  /api/v1/corpus/{corpus_id}/source-authority        -- Upsert source authority
 GET  /api/v1/corpus/{corpus_id}/discovery/stats         -- Discovery statistics
+
+Signed decisions (drain plan U9, R16). Every route that changes task or contradiction
+decision state accepts an optional signed decision (``signature``) and, with
+``FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1``, refuses a request without one: task review
+(``task_review``), bulk approve (``task_bulk_approve``), create (``task_create``),
+delete (``task_delete``), hierarchy edit (``hierarchy_edit``) and contradiction
+resolution (``contradiction_resolve``). Each route's docstring names the body it must
+sign; ``api/services/decision_signatures.py`` lists the state-changing routes that are
+out of scope and why. The affected row (the task, the ``hierarchy_edits`` record of a
+delete or edit, the contradiction) records the signer, ``signature_verified``,
+``signer_registered`` and the operator, and the signer's nonce is consumed in the same
+transaction.
 """
 
 from __future__ import annotations
@@ -34,10 +46,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Header, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Header, HTTPException, Query, Request, Response
 from sse_starlette.sse import EventSourceResponse
 
 from api.auth import WRITE_GUARD
+from api.services import decision_signatures as signing
+from folio_insights.persistence.review_db import present_signature_columns
+from folio_insights.proposals.signed_decisions import (
+    CORPUS_WIDE_TARGET,
+    KIND_CONTRADICTION_RESOLVE,
+    KIND_HIERARCHY_EDIT,
+    KIND_TASK_BULK_APPROVE,
+    KIND_TASK_CREATE,
+    KIND_TASK_DELETE,
+    KIND_TASK_REVIEW,
+    SELECTION_DIGEST_KEY,
+    ExpectedDecision,
+    selection_digest,
+)
 from api.models.discovery import (
     ContradictionResolveRequest,
     ContradictionResponse,
@@ -47,9 +73,9 @@ from api.models.discovery import (
     SourceAuthorityRequest,
     TaskBulkApproveRequest,
     TaskCreateRequest,
+    TaskDeleteRequest,
     TaskResponse,
     TaskReviewRequest,
-    TaskTreeNode,
 )
 from api.models.processing import STREAM_END_STATUSES
 from api.routes.processing import (
@@ -336,6 +362,7 @@ async def get_task_tree(
 
         # Build flat nodes
         nodes = {}
+        present = await present_signature_columns(db, "task_decisions")
         for row in rows:
             tid = row["task_id"]
             nodes[tid] = {
@@ -354,6 +381,7 @@ async def get_task_tree(
                 "is_task": True,
                 "depth": 0,
                 "children": [],
+                **signing.authorship_view(row, present),
             }
 
         # Compute depth
@@ -429,6 +457,9 @@ async def get_task(corpus_id: str, task_id: str) -> TaskResponse:
         )
         contra_row = await contra_cursor.fetchone()
         has_contradictions = (contra_row[0] or 0) > 0
+        authorship = signing.authorship_view(
+            row, await present_signature_columns(db, "task_decisions")
+        )
 
         return TaskResponse(
             id=row["task_id"],
@@ -441,6 +472,7 @@ async def get_task(corpus_id: str, task_id: str) -> TaskResponse:
             review_status=row["status"],
             unit_type_counts=dict(type_counts),
             has_contradictions=has_contradictions,
+            **authorship,
         )
 
     finally:
@@ -494,10 +526,27 @@ async def review_task(
     corpus_id: str,
     task_id: str,
     body: TaskReviewRequest,
+    request: Request,
 ) -> TaskResponse:
-    """Submit a review decision for a task."""
+    """Submit a review decision for a task.
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified before
+    anything is stored: kind ``task_review``, target the task ID, verdict the status,
+    rationale the note, detail ``{"edited_label": ...}``. The row records the signer DID,
+    ``signature_verified`` and the authenticated operator
+    (``api/services/decision_signatures.py``)."""
     if body.status not in ("approved", "rejected", "edited"):
         raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
+
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_TASK_REVIEW, corpus=corpus_id, target=task_id, verdict=body.status,
+            rationale=body.note or "", detail={"edited_label": body.edited_label},
+        ),
+        policy=signing.policy_or_503(),
+    )
+    cols = signing.signature_columns(verified, signing.operator_handle(request))
 
     db = await _get_db(corpus_id, writable=True)
     try:
@@ -511,6 +560,7 @@ async def review_task(
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
 
         now = _now_iso()
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
         await db.execute(
             """
             UPDATE task_decisions SET
@@ -518,7 +568,8 @@ async def review_task(
                 edited_label = ?,
                 reviewer_note = ?,
                 reviewed_at = ?,
-                updated_at = ?
+                updated_at = ?,
+            """ + signing.set_clause() + """
             WHERE task_id = ? AND corpus_name = ?
             """,
             (
@@ -527,6 +578,7 @@ async def review_task(
                 body.note or "",
                 now,
                 now,
+                *signing.write_args(cols),
                 task_id,
                 corpus_id,
             ),
@@ -544,47 +596,58 @@ async def review_task(
 async def bulk_approve_tasks(
     corpus_id: str,
     body: TaskBulkApproveRequest,
+    request: Request,
 ) -> dict:
-    """Approve all tasks matching criteria (specific IDs or confidence >= threshold)."""
+    """Approve all tasks matching criteria (specific IDs or confidence >= threshold).
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified first: kind
+    ``task_bulk_approve``, target ``"*"``, verdict ``approved``, detail
+    ``{"task_ids": [...]}`` or, for a threshold, ``{"confidence_min": x,
+    "selection_sha256": d}``. ``d`` is ``signed_decisions.selection_digest`` of the IDs
+    the threshold selects in ``task_tree.json``; the server computes the selection once,
+    at request time, binds the signature to its digest (a different selection answers
+    409) and approves exactly that selection."""
+    if body.task_ids:
+        target_ids = list(body.task_ids)
+        selector: dict = {"task_ids": list(body.task_ids)}
+    elif body.confidence_min is not None:
+        target_ids = []
+        tree_path = _corpus_dir(corpus_id) / "task_tree.json"
+        if tree_path.exists():
+            tree_data = json.loads(tree_path.read_text(encoding="utf-8"))
+            target_ids = [
+                t["id"] for t in tree_data
+                if t.get("confidence", 0) >= body.confidence_min
+            ]
+        selector = {"confidence_min": body.confidence_min,
+                    SELECTION_DIGEST_KEY: selection_digest(target_ids)}
+    else:
+        raise HTTPException(status_code=400, detail="Provide task_ids or confidence_min")
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_TASK_BULK_APPROVE, corpus=corpus_id, target=CORPUS_WIDE_TARGET,
+            verdict="approved", detail=selector,
+        ),
+        policy=signing.policy_or_503(),
+    )
+    operator = signing.operator_handle(request)
+    cols = signing.signature_columns(verified, operator)
+
     db = await _get_db(corpus_id, writable=True)
     try:
         now = _now_iso()
-        approved_ids: list[str] = []
-
-        if body.task_ids:
-            for tid in body.task_ids:
-                await db.execute(
-                    "UPDATE task_decisions SET status = 'approved', "
-                    "reviewed_at = ?, updated_at = ? "
-                    "WHERE task_id = ? AND corpus_name = ?",
-                    (now, now, tid, corpus_id),
-                )
-                approved_ids.append(tid)
-        elif body.confidence_min is not None:
-            # Load task_tree.json for confidence data
-            tree_path = _corpus_dir(corpus_id) / "task_tree.json"
-            if tree_path.exists():
-                tree_data = json.loads(tree_path.read_text(encoding="utf-8"))
-                high_conf_ids = [
-                    t["id"] for t in tree_data
-                    if t.get("confidence", 0) >= body.confidence_min
-                ]
-                for tid in high_conf_ids:
-                    await db.execute(
-                        "UPDATE task_decisions SET status = 'approved', "
-                        "reviewed_at = ?, updated_at = ? "
-                        "WHERE task_id = ? AND corpus_name = ?",
-                        (now, now, tid, corpus_id),
-                    )
-                    approved_ids.append(tid)
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Provide task_ids or confidence_min",
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
+        for tid in target_ids:
+            await db.execute(
+                "UPDATE task_decisions SET status = 'approved', "
+                "reviewed_at = ?, updated_at = ?, " + signing.set_clause()
+                + " WHERE task_id = ? AND corpus_name = ?",
+                (now, now, *signing.write_args(cols), tid, corpus_id),
             )
-
         await db.commit()
-        return {"approved_count": len(approved_ids), "task_ids": approved_ids}
+        return {"approved_count": len(target_ids), "task_ids": target_ids,
+                **signing.signer_view(verified, operator)}
 
     finally:
         await db.close()
@@ -596,19 +659,40 @@ async def bulk_approve_tasks(
 
 
 @router.post("/corpus/{corpus_id}/tasks", status_code=201)
-async def create_task(corpus_id: str, body: TaskCreateRequest) -> TaskResponse:
-    """Create a manually-created task (is_manual=1)."""
+async def create_task(
+    corpus_id: str, body: TaskCreateRequest, request: Request
+) -> TaskResponse:
+    """Create a manually-created task (is_manual=1).
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified first: kind
+    ``task_create``, target ``"*"`` (the task gets its ID here), verdict ``create``,
+    detail ``{"label", "folio_iri", "parent_task_id", "is_procedural"}`` exactly as sent.
+    The new row records the signer."""
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_TASK_CREATE, corpus=corpus_id, target=CORPUS_WIDE_TARGET,
+            verdict="create",
+            detail={"label": body.label, "folio_iri": body.folio_iri,
+                    "parent_task_id": body.parent_task_id,
+                    "is_procedural": body.is_procedural},
+        ),
+        policy=signing.policy_or_503(),
+    )
+    cols = signing.signature_columns(verified, signing.operator_handle(request))
+
     db = await _get_db(corpus_id, writable=True)
     try:
         task_id = str(uuid4())
         now = _now_iso()
-
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
         await db.execute(
             """
             INSERT INTO task_decisions
                 (task_id, corpus_name, folio_iri, label, parent_task_id,
-                 is_procedural, is_manual, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 1, 'unreviewed', ?, ?)
+                 is_procedural, is_manual, status, created_at, updated_at, """
+            + ", ".join(signing.WRITE_COLUMNS) + """)
+            VALUES (?, ?, ?, ?, ?, ?, 1, 'unreviewed', ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task_id,
@@ -619,6 +703,7 @@ async def create_task(corpus_id: str, body: TaskCreateRequest) -> TaskResponse:
                 int(body.is_procedural),
                 now,
                 now,
+                *signing.write_args(cols),
             ),
         )
         await db.commit()
@@ -630,8 +715,27 @@ async def create_task(corpus_id: str, body: TaskCreateRequest) -> TaskResponse:
 
 
 @router.delete("/corpus/{corpus_id}/tasks/{task_id}", status_code=204)
-async def delete_task(corpus_id: str, task_id: str) -> Response:
-    """Delete a task and reassign linked units to orphan status."""
+async def delete_task(
+    corpus_id: str,
+    task_id: str,
+    request: Request,
+    body: TaskDeleteRequest | None = Body(None),
+) -> Response:
+    """Delete a task and reassign linked units to orphan status.
+
+    An optional JSON body ``{"signature": ...}`` (signed decision, drain plan U9) is
+    verified first: kind ``task_delete``, target the task ID, verdict ``delete``. The
+    task row is deleted, so the ``hierarchy_edits`` record of the delete records the
+    signer."""
+    verified = await signing.verify_or_refuse(
+        None if body is None else body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_TASK_DELETE, corpus=corpus_id, target=task_id, verdict="delete",
+        ),
+        policy=signing.policy_or_503(),
+    )
+    cols = signing.signature_columns(verified, signing.operator_handle(request))
+
     db = await _get_db(corpus_id, writable=True)
     try:
         # Verify task exists
@@ -644,17 +748,20 @@ async def delete_task(corpus_id: str, task_id: str) -> Response:
         if row is None:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
 
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=_now_iso())
+
         # Remove unit links (orphan the units)
         await db.execute(
             "DELETE FROM task_unit_links WHERE task_id = ? AND corpus_name = ?",
             (task_id, corpus_id),
         )
 
-        # Record hierarchy edit
+        # Record hierarchy edit (with its author: the task row is about to go)
         await db.execute(
-            "INSERT INTO hierarchy_edits (corpus_name, edit_type, source_task_id, detail) "
-            "VALUES (?, 'delete', ?, ?)",
-            (corpus_id, task_id, f"Deleted task: {row['label']}"),
+            "INSERT INTO hierarchy_edits (corpus_name, edit_type, source_task_id, detail, "
+            + ", ".join(signing.WRITE_COLUMNS) + ") "
+            "VALUES (?, 'delete', ?, ?, ?, ?, ?, ?, ?, ?)",
+            (corpus_id, task_id, f"Deleted task: {row['label']}", *signing.write_args(cols)),
         )
 
         # Delete the task
@@ -677,23 +784,45 @@ async def delete_task(corpus_id: str, task_id: str) -> Response:
 
 
 @router.post("/corpus/{corpus_id}/tasks/hierarchy-edit")
-async def hierarchy_edit(corpus_id: str, body: HierarchyEditRequest) -> dict:
-    """Record a hierarchy edit and apply structural changes."""
+async def hierarchy_edit(
+    corpus_id: str, body: HierarchyEditRequest, request: Request
+) -> dict:
+    """Record a hierarchy edit and apply structural changes.
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified first: kind
+    ``hierarchy_edit``, target the source task ID (``"*"`` when none), verdict the edit
+    type, rationale the ``detail`` text, detail ``{"target_task_id": ...}``. The
+    ``hierarchy_edits`` record of the edit records the signer."""
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_HIERARCHY_EDIT, corpus=corpus_id,
+            target=body.source_task_id or CORPUS_WIDE_TARGET, verdict=body.edit_type,
+            rationale=body.detail or "", detail={"target_task_id": body.target_task_id},
+        ),
+        policy=signing.policy_or_503(),
+    )
+    operator = signing.operator_handle(request)
+    cols = signing.signature_columns(verified, operator)
+
     db = await _get_db(corpus_id, writable=True)
     try:
         now = _now_iso()
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
 
         # Record the edit
         await db.execute(
             "INSERT INTO hierarchy_edits "
-            "(corpus_name, edit_type, source_task_id, target_task_id, detail) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "(corpus_name, edit_type, source_task_id, target_task_id, detail, "
+            + ", ".join(signing.WRITE_COLUMNS) + ") "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 corpus_id,
                 body.edit_type,
                 body.source_task_id,
                 body.target_task_id,
                 body.detail,
+                *signing.write_args(cols),
             ),
         )
 
@@ -726,7 +855,8 @@ async def hierarchy_edit(corpus_id: str, body: HierarchyEditRequest) -> dict:
             )
 
         await db.commit()
-        return {"status": "ok", "edit_type": body.edit_type}
+        return {"status": "ok", "edit_type": body.edit_type,
+                **signing.signer_view(verified, operator)}
 
     finally:
         await db.close()
@@ -735,6 +865,22 @@ async def hierarchy_edit(corpus_id: str, body: HierarchyEditRequest) -> dict:
 # ---------------------------------------------------------------------------
 # Contradictions
 # ---------------------------------------------------------------------------
+
+
+def _contradiction_response(r, present: tuple[str, ...]) -> ContradictionResponse:
+    """A ``contradictions`` row as the API answer, with the resolution's authorship."""
+    return ContradictionResponse(
+        id=r["id"],
+        task_id=r["task_id"],
+        unit_id_a=r["unit_id_a"],
+        unit_id_b=r["unit_id_b"],
+        nli_score=r["nli_score"],
+        contradiction_type=r["contradiction_type"],
+        resolution=r["resolution"],
+        resolved_text=r["resolved_text"],
+        resolver_note=r["resolver_note"],
+        **signing.authorship_view(r, present),
+    )
 
 
 @router.get("/corpus/{corpus_id}/contradictions")
@@ -766,20 +912,8 @@ async def list_contradictions(
             )
 
         rows = await cursor.fetchall()
-        return [
-            ContradictionResponse(
-                id=r["id"],
-                task_id=r["task_id"],
-                unit_id_a=r["unit_id_a"],
-                unit_id_b=r["unit_id_b"],
-                nli_score=r["nli_score"],
-                contradiction_type=r["contradiction_type"],
-                resolution=r["resolution"],
-                resolved_text=r["resolved_text"],
-                resolver_note=r["resolver_note"],
-            )
-            for r in rows
-        ]
+        present = await present_signature_columns(db, "contradictions")
+        return [_contradiction_response(r, present) for r in rows]
 
     finally:
         await db.close()
@@ -803,16 +937,8 @@ async def get_contradiction(
                 detail=f"Contradiction {contradiction_id} not found",
             )
 
-        return ContradictionResponse(
-            id=r["id"],
-            task_id=r["task_id"],
-            unit_id_a=r["unit_id_a"],
-            unit_id_b=r["unit_id_b"],
-            nli_score=r["nli_score"],
-            contradiction_type=r["contradiction_type"],
-            resolution=r["resolution"],
-            resolved_text=r["resolved_text"],
-            resolver_note=r["resolver_note"],
+        return _contradiction_response(
+            r, await present_signature_columns(db, "contradictions")
         )
 
     finally:
@@ -824,25 +950,52 @@ async def resolve_contradiction(
     corpus_id: str,
     contradiction_id: int,
     body: ContradictionResolveRequest,
+    request: Request,
 ) -> ContradictionResponse:
-    """Resolve a contradiction."""
+    """Resolve a contradiction.
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified first: kind
+    ``contradiction_resolve``, target the contradiction ID as a string, verdict the
+    resolution, rationale the note, detail ``{"resolved_text": ...}``. The contradiction
+    row records the signer. An unknown contradiction answers 404 and consumes no nonce."""
     valid_resolutions = {"keep_both", "prefer_a", "prefer_b", "merge", "jurisdiction"}
     if body.resolution not in valid_resolutions:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid resolution. Must be one of: {valid_resolutions}",
         )
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_CONTRADICTION_RESOLVE, corpus=corpus_id, target=str(contradiction_id),
+            verdict=body.resolution, rationale=body.note or "",
+            detail={"resolved_text": body.resolved_text},
+        ),
+        policy=signing.policy_or_503(),
+    )
+    cols = signing.signature_columns(verified, signing.operator_handle(request))
 
     db = await _get_db(corpus_id, writable=True)
     try:
+        cursor = await db.execute(
+            "SELECT 1 FROM contradictions WHERE id = ? AND corpus_name = ?",
+            (contradiction_id, corpus_id),
+        )
+        if await cursor.fetchone() is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Contradiction {contradiction_id} not found",
+            )
         now = _now_iso()
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
         await db.execute(
             """
             UPDATE contradictions SET
                 resolution = ?,
                 resolved_text = ?,
                 resolver_note = ?,
-                resolved_at = ?
+                resolved_at = ?,
+            """ + signing.set_clause() + """
             WHERE id = ? AND corpus_name = ?
             """,
             (
@@ -850,6 +1003,7 @@ async def resolve_contradiction(
                 body.resolved_text,
                 body.note or "",
                 now,
+                *signing.write_args(cols),
                 contradiction_id,
                 corpus_id,
             ),
