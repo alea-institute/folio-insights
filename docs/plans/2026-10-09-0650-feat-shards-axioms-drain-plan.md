@@ -228,6 +228,7 @@ Each unit runs in its own worktree branched from the integration branch `feat/dr
 ### U11. Phase 9 U1 cluster validator (tranche 2)
 
 - **Goal, files, tests:** as Phase 9 plan U1 (`docs/plans/2026-10-05-0308-feat-phase9-design-principles-plan.md`), new `src/folio_insights/validation/**`, `tests/validation/**`, one `cli.add_command` line. HermiT-dependent checks are worker-tier and skip cleanly without a JRE; the NLI fallback labels its checker.
+- **As built:** the cluster-scoped HermiT entry the Phase 9 plan assigns to `reason/hermit_harness.py` landed there (`HermitHarness.reason_ntriples` plus `HermitResult.unsatisfiable_class_iris`, both additive). The CLI is a new top-level `validate` group (`validate clusters`); no top-level `validate` command existed (U4 uses `graph validate`). The warn-only CI job is not wired: the repository has no CI stage that runs the worker image's tests yet.
 
 ### U12. Phase 9 U5 closed-world islands (tranche 2)
 
