@@ -49,7 +49,14 @@ async def lifespan(application: FastAPI):
     The embedded worker consumes this process's extraction and discovery jobs from the durable
     queue. It is the only worker that can run a job submitted with a per-request API key: the key
     lives in this process's memory. Set ``FOLIO_INSIGHTS_EMBEDDED_WORKER=0`` to serve without it.
+
+    Operator authentication (``api/auth.py``) is validated first: an unknown
+    ``FOLIO_INSIGHTS_API_AUTH`` mode or a refused tokens file stops startup instead of serving
+    with authentication silently broken.
     """
+    from api.auth import check_configuration
+
+    check_configuration()
     load_extraction()
     runtime = None
     if _embedded_worker_enabled():
@@ -204,8 +211,9 @@ if _viewer_build.is_dir():
 # ---------------------------------------------------------------------------
 
 def serve(host: str = "127.0.0.1", port: int = 8700) -> None:
-    """Start the review viewer server, on loopback unless a host is given (the API has
-    no authentication; containers pass their host explicitly)."""
+    """Start the review viewer server, on loopback unless a host is given (containers pass
+    their host explicitly). State-changing routes need an operator token (``api/auth.py``);
+    reads are open, so bind beyond loopback only where open reads are acceptable."""
     import uvicorn
 
     uvicorn.run(app, host=host, port=port)

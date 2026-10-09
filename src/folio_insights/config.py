@@ -80,6 +80,15 @@ class Settings(BaseSettings):
 
         return parse_paused_ttl(value)
 
+    # API operator authentication (drain plan U5, R15, KTD10; api/auth.py). State-changing API
+    # routes need an operator bearer token whose SHA-256 is listed in ``api_tokens_file`` (one
+    # ``sha256:<64 hex> <handle> <role>`` line per token, mode 600, outside the repository).
+    # ``api_auth`` is ``required`` (the default, also with no tokens file: fail closed) or
+    # ``loopback-open`` (local development: a loopback client addressing a loopback host may
+    # write without a token). See "API authentication" in docs/storage-operations.md.
+    api_auth: str = "required"
+    api_tokens_file: Path | None = None
+
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 
 

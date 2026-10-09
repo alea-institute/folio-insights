@@ -7,7 +7,9 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
-router = APIRouter()
+from api.auth import WRITE_GUARD
+
+router = APIRouter(dependencies=WRITE_GUARD)
 
 
 def _build_tree(units: list[dict[str, Any]]) -> list[dict[str, Any]]:

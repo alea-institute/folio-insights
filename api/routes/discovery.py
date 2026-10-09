@@ -37,6 +37,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Header, HTTPException, Query, Response
 from sse_starlette.sse import EventSourceResponse
 
+from api.auth import WRITE_GUARD
 from api.models.discovery import (
     ContradictionResolveRequest,
     ContradictionResponse,
@@ -65,7 +66,7 @@ from api.services.job_manager import DISCOVER_KIND, QueueJobView, get_queue, res
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["discovery"])
+router = APIRouter(prefix="/api/v1", tags=["discovery"], dependencies=WRITE_GUARD)
 
 
 # ---------------------------------------------------------------------------

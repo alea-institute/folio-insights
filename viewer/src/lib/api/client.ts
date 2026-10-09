@@ -6,7 +6,28 @@
  * In production, FastAPI serves the SPA on the same origin.
  */
 
+import { heldOperatorToken } from '$lib/stores/llmKey';
+
 const API_BASE = '';
+
+// ---------------------------------------------------------------------------
+// Operator authentication
+// ---------------------------------------------------------------------------
+
+/**
+ * `fetch` for this app's own API. When an operator token is held in tab memory
+ * (`$lib/stores/llmKey`, `operatorToken`), it is sent as `Authorization: Bearer <token>`:
+ * the API refuses state-changing requests without one (401). Only same-origin relative URLs
+ * ('/...') ever get the header, so the token never leaves for another host. A caller's own
+ * Authorization header is left alone.
+ */
+export function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+	const token = heldOperatorToken();
+	if (!token || !url.startsWith('/') || url.startsWith('//')) return fetch(url, init);
+	const headers = new Headers(init.headers);
+	if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+	return fetch(url, { ...init, headers });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -14,7 +35,7 @@ const API_BASE = '';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T | { error: string }> {
 	try {
-		const res = await fetch(url, init);
+		const res = await apiFetch(url, init);
 		if (!res.ok) {
 			const body = await res.text();
 			return { error: `${res.status}: ${body}` };
@@ -200,7 +221,7 @@ export async function createCorpusApi(name: string): Promise<CorpusInfo | { erro
 }
 
 export async function deleteCorpusApi(corpusId: string): Promise<void | { error: string }> {
-	const res = await fetch(`${API_BASE}/api/v1/corpora/${corpusId}`, { method: 'DELETE' });
+	const res = await apiFetch(`${API_BASE}/api/v1/corpora/${corpusId}`, { method: 'DELETE' });
 	if (!res.ok) return { error: `${res.status}: ${await res.text()}` };
 }
 
@@ -223,7 +244,7 @@ export async function uploadFiles(
 		formData.append('files', file);
 	}
 	try {
-		const res = await fetch(`${API_BASE}/api/v1/corpus/${corpusId}/upload`, {
+		const res = await apiFetch(`${API_BASE}/api/v1/corpus/${corpusId}/upload`, {
 			method: 'POST',
 			body: formData,
 		});
@@ -402,7 +423,7 @@ export async function deleteTask(
 	corpusId: string,
 	taskId: string
 ): Promise<void | { error: string }> {
-	const res = await fetch(
+	const res = await apiFetch(
 		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/${taskId}`,
 		{ method: 'DELETE' }
 	);
@@ -505,7 +526,7 @@ export async function triggerExport(
 	formats: string[],
 ): Promise<{ success: boolean } | { error: string }> {
 	try {
-		const res = await fetch(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
+		const res = await apiFetch(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ formats }),

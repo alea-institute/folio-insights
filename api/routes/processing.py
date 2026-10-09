@@ -14,9 +14,10 @@ Security posture (Phase 10 review, 2026-10-05):
   stored in the queue, logs, checkpoints or outputs. The server never uses an ambient key. The
   key is bound to the provider the request named (else the settings default) and the job is
   pinned to it, so the key is never sent to another provider or host.
-* **Job control tokens.** The API has no user authentication (submit and read routes stay
-  open, as deployed). Controlling a job is different: cancel, resume and key re-supply act on a
-  job that may be spending someone's key, so they require the job's control token
+* **Job control tokens.** Submitting and controlling a job are writes, so they need an operator
+  token (``api/auth.py``, drain plan U5); read routes stay open, as deployed. Controlling a job
+  needs more: cancel, resume and key re-supply act on a job that may be spending someone's
+  key, so they also require the job's control token
   (``X-Job-Control-Token``). It is returned once, in the 202 response of the submission that
   created the job; only its SHA-256 is stored and it is compared in constant time. Without it
   the control routes answer 403.
@@ -40,6 +41,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field, model_validator
 from sse_starlette.sse import EventSourceResponse
 
+from api.auth import WRITE_GUARD
 from api.models.processing import STREAM_END_STATUSES
 from api.services.job_manager import (
     EXTRACT_KIND,
@@ -57,7 +59,7 @@ from folio_insights.jobs import JobStatus, QueueError
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["processing"])
+router = APIRouter(prefix="/api/v1", tags=["processing"], dependencies=WRITE_GUARD)
 
 
 def _finite_cap(data: Any) -> Any:

@@ -423,11 +423,13 @@ The review API records and reads proposed-class decisions in the same ledger
 (`api/services/proposals.py`), so a decision made through it reaches the
 approved-only backlog.
 
-**Access posture: off by default, local-only when on.** The API has no
-authentication. Whoever can reach these routes could record a permanent
-"human" decision under the configured reviewer's handle, or read reviewer
-notes, handles and provenance. So every proposed-class route (both GETs and
-the POST) answers 403 unless all of these hold:
+**Access posture: off by default, local-only when on.** The decision POST
+needs an operator token like every write (see "API authentication" below),
+but the token does not yet name the reviewer, and the reads are open like
+every read. Whoever can reach these routes could record a permanent "human"
+decision under the configured reviewer's handle, or read reviewer notes,
+handles and provenance. So every proposed-class route (both GETs and the
+POST) answers 403 unless all of these hold:
 
 - the operator has set `FOLIO_INSIGHTS_ALLOW_UNAUTHENTICATED_DECISIONS=1`
   (exactly `1`). This is a separate switch from the reviewer, and setting the
@@ -553,6 +555,79 @@ python scripts/apply_approvals.py import-legacy --corpus C \
   the seal.
 - **Seal.** `--seal` installs the read-only triggers after a successful
   import. It is idempotent and needs a writable review.db.
+
+## API authentication
+
+Every API route that changes state (POST, PUT, PATCH, DELETE: uploads,
+corpus create and delete, reviews, task edits, job submit and control,
+export bundles, proposed-class decisions) needs an **operator bearer token**.
+Reads (GET) stay open, as deployed, and so does `POST /validate`, which
+validates the candidate in its body and stores nothing. The code is
+`api/auth.py`; the design is KTD10 of the
+[drain plan](plans/2026-10-09-0650-feat-shards-axioms-drain-plan.md).
+
+**Mint a token.** On the host that runs the API:
+
+```bash
+umask 077
+folio-insights api token-new alice --append ~/.config/folio-insights/api-tokens
+```
+
+The token is printed once, on stdout, and stored nowhere; only its SHA-256
+goes in the file. Keep the token in a password manager and send it as
+`Authorization: Bearer <token>`. In the viewer, paste it under the Settings
+gear; it is held in that tab's memory only. Without `--append` the command
+prints the token and then the line to add yourself. `--role admin` records a
+different role (both roles may write today).
+
+**Tokens file.** `FOLIO_INSIGHTS_API_TOKENS_FILE` names it. Keep it outside
+the repository. One entry per line; `#` comments and blank lines are allowed:
+
+```text
+# handle alice, minted 2026-10-09
+sha256:<64 lowercase hex> alice operator
+```
+
+The server refuses the file, and does not start, when it is not a regular
+file, is owned by a user other than the server's (or root), is group- or
+world-readable or writable
+(anything but `chmod 600` or stricter), or has a line that is not exactly a
+digest, a handle and a role. A line that is not a digest is usually a raw
+token pasted where its hash belongs, so the error names the line number and
+never echoes it. Edits apply on the next request, without a restart: delete a
+line to revoke that token. If the file becomes unreadable or insecure while
+the server runs, writes answer 503 and the log names the problem.
+
+**Modes.** `FOLIO_INSIGHTS_API_AUTH`:
+
+| Mode | Behaviour |
+|---|---|
+| `required` (default) | A write needs a token listed in the file. With no file configured every write is refused: the server fails closed. |
+| `loopback-open` | Local development. A write needs no token when the client address is loopback (`127.0.0.0/8`, `::1`), the `Host` names `localhost`, `127.0.0.1` or `::1`, and no proxy forwarding header (`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Real-IP`) is present. Every other client still needs a token, and a token that is presented must be valid. |
+
+Never run `loopback-open` behind a reverse proxy on the same host: the proxy
+connects from loopback, so the forwarding-header check is the only thing
+telling its requests apart. Any other value of `FOLIO_INSIGHTS_API_AUTH`
+stops the server at startup.
+
+**Refusals.** Every authentication failure is the same `401` with
+`WWW-Authenticate: Bearer realm="folio-insights"` and one fixed message, so a
+caller cannot tell a missing token from a wrong or malformed one. Tokens are
+compared by hash in constant time against every entry. Neither tokens nor
+`Authorization` headers are logged; refusals are logged by method and path.
+
+**Job control.** Cancel, resume and key re-supply still require the job's
+`X-Job-Control-Token` as well. An operator token alone cannot control another
+caller's job, and a control token alone cannot either.
+
+**Known limit.** FastAPI reads a request body (a multipart upload goes to a
+temporary file) before it checks the token, so a refused upload still
+transfers its bytes; nothing reaches the corpus. Cap request body size at the
+reverse proxy where unauthenticated upload volume matters.
+
+**Containers.** The images bind `0.0.0.0`, so their clients are never
+loopback: mount a tokens file (mode 600, owned by the container user) and set
+`FOLIO_INSIGHTS_API_TOKENS_FILE`, or every write answers 401.
 
 ## Deploying extraction: the deterministic IRI path
 

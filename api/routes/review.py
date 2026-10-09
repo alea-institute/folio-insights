@@ -16,9 +16,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 
+from api.auth import WRITE_GUARD
 from api.services import proposals as proposal_svc
 
-router = APIRouter()
+router = APIRouter(dependencies=WRITE_GUARD)
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +284,8 @@ async def review_stats(
 
 
 # Every proposed-class route needs the operator's explicit opt-in and a local request
-# (api/services/proposals.py, require_local_opt_in): the API has no authentication.
+# (api/services/proposals.py, require_local_opt_in), in addition to the router's operator
+# token check on writes (api/auth.py): decisions are attributed to the configured reviewer.
 _LOCAL_ONLY = [Depends(proposal_svc.require_local_opt_in)]
 
 

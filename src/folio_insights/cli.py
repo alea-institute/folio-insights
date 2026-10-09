@@ -905,3 +905,8 @@ def main() -> None:
 from folio_insights.graph_cli import graph_group as _graph_group  # noqa: E402
 
 cli.add_command(_graph_group)
+
+# Drain plan U5: API operator tokens (``folio-insights api token-new``).
+from folio_insights.api_cli import api_group as _api_group  # noqa: E402
+
+cli.add_command(_api_group)

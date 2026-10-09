@@ -21,7 +21,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse, Response
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/v1", tags=["export"])
+from api.auth import WRITE_GUARD
+
+router = APIRouter(prefix="/api/v1", tags=["export"], dependencies=WRITE_GUARD)
 
 
 def _output_dir() -> Path:

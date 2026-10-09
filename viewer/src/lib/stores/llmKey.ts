@@ -1,5 +1,5 @@
 /**
- * Per-session LLM settings and job control tokens -- held in tab memory ONLY.
+ * Per-session LLM settings, job control tokens and the operator token -- held in tab memory ONLY.
  *
  * Decision (folio-insights-2026-10-05-1018-p10-p11-product-calls, q2-viewer-key-entry):
  * "Per-session key field, memory only." These are plain module-level Svelte stores. Nothing
@@ -118,8 +118,33 @@ export function clearControlToken(kind: JobKind, corpusId: string): void {
 	});
 }
 
+// ---------------------------------------------------------------------------
+// Operator token (API authentication, drain plan U5)
+// ---------------------------------------------------------------------------
+
+/**
+ * The operator bearer token the API requires on state-changing routes, minted by
+ * `folio-insights api token-new`. Memory only -- see the module comment. Empty when none is held.
+ * `$lib/api/client` sends it as `Authorization: Bearer <token>` on same-origin API calls.
+ */
+export const operatorToken = writable<string>('');
+
+export function setOperatorToken(token: string): void {
+	operatorToken.set(token.trim());
+}
+
+export function forgetOperatorToken(): void {
+	operatorToken.set('');
+}
+
+/** The held operator token ('' when none). */
+export function heldOperatorToken(): string {
+	return get(operatorToken).trim();
+}
+
 /** Reset everything (tests). */
 export function resetLLMSession(): void {
 	llmSession.set({ ...EMPTY });
 	controlTokens.set({});
+	operatorToken.set('');
 }

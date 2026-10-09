@@ -37,6 +37,10 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+# Deliberately without api.auth.WRITE_GUARD (drain plan U5): POST /validate is a read. It
+# validates the candidate in the request body and stores nothing, so it stays open like every
+# other read. tests/api/test_auth.py lists it as the one read-only POST; a route added here
+# that writes must declare Depends(require_operator) or that test fails.
 router = APIRouter(tags=["validation"])
 
 MAX_BODY_BYTES = 1 << 20

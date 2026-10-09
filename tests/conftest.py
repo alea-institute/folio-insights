@@ -38,6 +38,31 @@ def _isolated_corpus_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def _api_auth_loopback_open(monkeypatch: pytest.MonkeyPatch):
+    """Run the API in ``loopback-open`` mode with in-process test clients counted as local.
+
+    The API's state-changing routes need an operator token (drain plan U5, ``api/auth.py``).
+    In-process clients are not real loopback peers: Starlette's ``TestClient`` reports the
+    client host ``testclient`` and httpx's ``ASGITransport`` sends the base URL's host
+    (``test``, ``api``), so the suite treats every in-process request as local, exactly the
+    local-development posture ``loopback-open`` exists for. No operator token is configured.
+    ``tests/api/test_auth.py`` restores the real locality check (``real_locality`` fixture)
+    and switches modes to test authentication itself.
+    """
+    from api import auth
+    from folio_insights.config import get_settings
+
+    monkeypatch.setenv(auth.AUTH_MODE_ENV, auth.MODE_LOOPBACK_OPEN)
+    monkeypatch.delenv(auth.TOKENS_FILE_ENV, raising=False)
+    monkeypatch.setattr(auth, "is_local_request", lambda request: True)
+    get_settings.cache_clear()
+    auth.reset_cache()
+    yield
+    auth.reset_cache()
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def sample_text_elements() -> list[dict]:
     """Return a list of TextElement-like dicts with various element types."""

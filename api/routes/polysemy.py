@@ -9,7 +9,9 @@ from typing import Any
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/api/polysemy", tags=["polysemy-phase0"])
+from api.auth import WRITE_GUARD
+
+router = APIRouter(prefix="/api/polysemy", tags=["polysemy-phase0"], dependencies=WRITE_GUARD)
 
 
 @router.get("/{polysemy_id}/core")
