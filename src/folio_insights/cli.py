@@ -857,6 +857,11 @@ from folio_insights.bfo.cli import bfo_group as _bfo_group  # noqa: E402
 
 cli.add_command(_bfo_group)
 
+# Phase 9 U5: closed-world-aware counts.
+from folio_insights.query.cli import query_group as _query_group  # noqa: E402
+
+cli.add_command(_query_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
