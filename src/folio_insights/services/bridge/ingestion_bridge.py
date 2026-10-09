@@ -2,6 +2,16 @@
 
 Wraps format detection and multi-format ingestion to extract text +
 structural elements from source files.
+
+KEPT on the sys.path bridge (2026-10-09 retirement review,
+``docs/bridge-retirement-2026-10-09.md``) because it needs folio-enrich's whole
+multi-format ingestion registry (``app.services.ingestion.registry`` plus its
+per-format ingestors and ``app.models.document``) and their format libraries
+(pypdf, beautifulsoup4, striprtf, olefile, python-docx). Vendoring it is a
+separate, larger task; until then this is the one seam that still requires a
+folio-enrich checkout at ``settings.folio_enrich_path``. Construction fails
+fast with :class:`IngestionBridgeUnavailableError` (a ``FileNotFoundError``)
+naming the fix when the checkout is absent.
 """
 
 from __future__ import annotations
@@ -29,11 +39,25 @@ _EXT_MAP: dict[str, str] = {
 }
 
 
+class IngestionBridgeUnavailableError(FileNotFoundError):
+    """The folio-enrich checkout the ingestion bridge imports is missing."""
+
+
 class IngestionBridge:
     """Wraps folio-enrich's ingestion registry for multi-format file ingestion."""
 
     def __init__(self) -> None:
-        _ensure_folio_enrich_path()
+        try:
+            _ensure_folio_enrich_path()
+        except FileNotFoundError as exc:
+            raise IngestionBridgeUnavailableError(
+                "IngestionBridge cannot start: it imports folio-enrich's multi-format "
+                "ingestion registry from a sibling checkout, and none was found.\n"
+                f"{exc}\n\n"
+                "Fix: clone folio-enrich and point FOLIO_INSIGHTS_FOLIO_ENRICH_PATH at its "
+                "backend/ directory, or ingest only tabular (.csv/.tsv) and .xml sources, "
+                "which do not use this bridge."
+            ) from exc
 
     def detect_and_ingest(
         self, file_path: Path

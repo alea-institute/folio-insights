@@ -12,7 +12,10 @@ class Settings(BaseSettings):
     """Global configuration for folio-insights."""
 
     # Bridge paths -- folio-insights imports services from sibling repos via
-    # a sys.path bridge (see src/folio_insights/services/bridge/).
+    # a sys.path bridge (see src/folio_insights/services/bridge/). Since the
+    # 2026-10-09 retirement (docs/bridge-retirement-2026-10-09.md) only the
+    # multi-format IngestionBridge (enrich) and the tabular MapperBridge
+    # (folio-mapper, with a stdlib CSV fallback) still use these paths.
     # Defaults assume folio-enrich and folio-mapper are cloned as sibling
     # directories next to this repo. Override with environment variables
     # FOLIO_INSIGHTS_FOLIO_ENRICH_PATH / FOLIO_INSIGHTS_FOLIO_MAPPER_PATH
