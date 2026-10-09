@@ -1,0 +1,228 @@
+{
+  "document_id": "synthetic-riverside-v-acme",
+  "schema_version": 4,
+  "propositions": [
+    {
+      "id": "0c8da1a8-a400-5106-89aa-1c20cdda2613",
+      "schema_version": 4,
+      "start_char": 64,
+      "end_char": 135,
+      "text": "The parties stipulated that the shipment left the warehouse on March 3.",
+      "proposition_type": "stipulation",
+      "is_new_type": false,
+      "asserter": {
+        "role": "both_parties",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/8118e0d6081636ed824489103d11b814",
+      "axiom_history": []
+    },
+    {
+      "id": "15fd94e3-0c38-5f70-8839-83280ca2fb64",
+      "schema_version": 4,
+      "start_char": 136,
+      "end_char": 215,
+      "text": "Plaintiff argues that the carrier is strictly liable for cargo lost in transit.",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "plaintiff",
+        "individual_id": null,
+        "name": "Riverside Supply Co.",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "revised",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/c0e8904f763c0a56ab63a2b3ab3da936",
+      "axiom_history": []
+    },
+    {
+      "id": "2bbb1459-d275-5c7f-8ca5-5717868b6aa1",
+      "schema_version": 4,
+      "start_char": 216,
+      "end_char": 303,
+      "text": "Defendant contends that the bill of lading limited its liability to the declared value.",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "defendant",
+        "individual_id": "party:acme-freight",
+        "name": "Acme Freight, Inc.",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "rejected",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/4bb50fbc16199ef63b8e901884f649d8",
+      "axiom_history": []
+    },
+    {
+      "id": "79c137d7-a88d-555d-bc5c-bd0f16445522",
+      "schema_version": 4,
+      "start_char": 304,
+      "end_char": 370,
+      "text": "We find that the cargo was damaged while in the carrier's custody.",
+      "proposition_type": "Judicial Finding of Fact",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": "Synthetic Court of Appeals",
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/af4b827e960a889d563e40b6c1b31f0f",
+      "axiom_history": []
+    },
+    {
+      "id": "b762873a-4284-5c24-9cbe-9a60742a186a",
+      "schema_version": 4,
+      "start_char": 371,
+      "end_char": 516,
+      "text": "A carrier that issues a bill of lading may limit its liability only if the shipper had a fair opportunity to choose a higher level of protection.",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": "Synthetic Court of Appeals",
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "accepted",
+      "citation_edges": [
+        {
+          "edge_type": "follows",
+          "authority_individual_id": "authority:hughes-v-united-van-lines",
+          "authority_text": "Hughes v. United Van Lines"
+        }
+      ],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/cc58e15a0fa2ae6581f6af8654c8e26b",
+      "axiom_history": []
+    },
+    {
+      "id": "df3c65f5-7944-52c8-8470-df2367d114f1",
+      "schema_version": 4,
+      "start_char": 371,
+      "end_char": 516,
+      "text": "A carrier that issues a bill of lading may limit its liability only if the shipper had a fair opportunity to choose a higher level of protection.",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": "Synthetic Court of Appeals",
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "accepted",
+      "citation_edges": [
+        {
+          "edge_type": "cites",
+          "authority_individual_id": "authority:hughes-v-united-van-lines",
+          "authority_text": null
+        }
+      ],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/cc58e15a0fa2ae6581f6af8654c8e26b",
+      "axiom_history": []
+    },
+    {
+      "id": "f6d6a44a-a473-5f13-8192-eaabef952eda",
+      "schema_version": 4,
+      "start_char": 564,
+      "end_char": 641,
+      "text": "Because the shipper had no such opportunity, the limitation is unenforceable.",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": "Synthetic Court of Appeals",
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e5c7da6dddb6bf6d58154600013cbfbf",
+      "axiom_history": []
+    },
+    {
+      "id": "3af2ee0a-5d2a-5898-8946-e3afcf97c983",
+      "schema_version": 4,
+      "start_char": null,
+      "end_char": null,
+      "text": null,
+      "proposition_type": "policy proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": "court:synthetic-appeals",
+        "name": "Synthetic Court of Appeals",
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": null,
+      "axiom_history": []
+    }
+  ],
+  "document_metadata": {
+    "title": "Riverside Supply Co. v. Acme Freight, Inc. (synthetic)",
+    "proposition_lexicon_version": "synthetic-1",
+    "exported_at": "2026-10-09T12:00:00+00:00",
+    "synthetic": true
+  },
+  "generator": {
+    "tool": "folio-enrich",
+    "version": "0.0.0-synthetic"
+  },
+  "source_uri": "https://opinions.example.org/synthetic/riverside-supply-v-acme-freight"
+}

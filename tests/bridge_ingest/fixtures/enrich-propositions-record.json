@@ -1,0 +1,2970 @@
+{
+  "document_id": "palsgraf-248-ny-339",
+  "schema_version": 4,
+  "propositions": [
+    {
+      "id": "50cf684c-e951-5d89-babe-12cd26705c44",
+      "schema_version": 4,
+      "start_char": 1201,
+      "end_char": 1363,
+      "text": "The conduct of the defendant's guard, if a wrong in its relation to the holder of the package, was not a wrong in its relation to the plaintiff, standing far away",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/c9d00808fc905d600a2da3070b2f6036",
+      "axiom_history": []
+    },
+    {
+      "id": "9cbc977e-89ab-53f9-871e-6440d9478724",
+      "schema_version": 4,
+      "start_char": 1531,
+      "end_char": 1649,
+      "text": "Negligence is not actionable unless it involves the invasion of a legally protected interest, the violation of a right",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/9f048af157024e32532ff264149fd0f1",
+      "axiom_history": []
+    },
+    {
+      "id": "d22f7a74-3fa7-599b-8a90-6553ec0ffb95",
+      "schema_version": 4,
+      "start_char": 1652,
+      "end_char": 1708,
+      "text": "Proof of negligence in the air, so to speak, will not do",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/239b404403de8f5b84a826af957ffd31",
+      "axiom_history": []
+    },
+    {
+      "id": "2284b72e-6c48-5d27-81a1-a8fdb9792e06",
+      "schema_version": 4,
+      "start_char": 1823,
+      "end_char": 1888,
+      "text": "Negligence is the absence of care, according to the circumstances",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/7725537b0bdc485a081b5c9b37b05e80",
+      "axiom_history": []
+    },
+    {
+      "id": "91a25e5b-7416-52d9-a94e-b713a2c26099",
+      "schema_version": 4,
+      "start_char": 2201,
+      "end_char": 2268,
+      "text": "to be protected against intentional invasion of her bodily security",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "plaintiff",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/3f3be66f0e0554d25b1e520686568672",
+      "axiom_history": []
+    },
+    {
+      "id": "7a97ea06-5e13-558a-b98a-e7ef92e0a48c",
+      "schema_version": 4,
+      "start_char": 2316,
+      "end_char": 2470,
+      "text": "to be protected against unintentional invasion by conduct involving in the thought of reasonable men an unreasonable hazard that such invasion would ensue",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "party",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/966e2abcc06ec53d742c76f3f9818693",
+      "axiom_history": []
+    },
+    {
+      "id": "c090bce1-88b0-5e40-b36c-e465aab1012e",
+      "schema_version": 4,
+      "start_char": 2663,
+      "end_char": 2732,
+      "text": "to be at the peril of the actor ( Sullivan v. Dunham , 161 N.Y. 290 )",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/3bfad22f143c9c38396147e2e751af06",
+      "axiom_history": []
+    },
+    {
+      "id": "098f0605-4401-5a17-97c9-2931fc51a3b8",
+      "schema_version": 4,
+      "start_char": 3057,
+      "end_char": 3271,
+      "text": "In every instance, before negligence can be predicated of a given act, back of the act must be sought and found a duty to the individual complaining, the observance of which would have averted or avoided the injury",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/86d21cc65443e54c22fbc48794ddc2fd",
+      "axiom_history": []
+    },
+    {
+      "id": "ddfee8b7-73a2-5b20-9ebf-c4b25af384ca",
+      "schema_version": 4,
+      "start_char": 3872,
+      "end_char": 3929,
+      "text": "The ideas of negligence and duty are strictly correlative",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/bdf205f5a41a3aaf676be2b10a487df6",
+      "axiom_history": []
+    },
+    {
+      "id": "78a53f81-8c4d-5e35-ac53-05061e26db64",
+      "schema_version": 4,
+      "start_char": 4914,
+      "end_char": 4969,
+      "text": "to be protected against invasion of his bodily security",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "party",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/41f89412b260fa458072a455ad3d70ee",
+      "axiom_history": []
+    },
+    {
+      "id": "8113c050-d961-5ae7-b6c9-a8864e82cef9",
+      "schema_version": 4,
+      "start_char": 5272,
+      "end_char": 5346,
+      "text": "The purpose of the act, as well as its effect, was to make his person safe",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/d3c0bd80d919bcc30cc396b135ab9360",
+      "axiom_history": []
+    },
+    {
+      "id": "a3151766-62e2-5358-8b9c-bbd6d5bdd4b0",
+      "schema_version": 4,
+      "start_char": 5348,
+      "end_char": 5485,
+      "text": "If there was a wrong to him at all, which may very well be doubted, it was a wrong to a property interest only, the safety of his package",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/24828501e519905f0ed5f01d545744e8",
+      "axiom_history": []
+    },
+    {
+      "id": "632acc57-e5e4-5bed-a499-d493df2a62e7",
+      "schema_version": 4,
+      "start_char": 5873,
+      "end_char": 5963,
+      "text": "The gain is one of emphasis, for a like result would follow if the interests were the same",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/ef711eb5474f3cae99cd99d84e4798ed",
+      "axiom_history": []
+    },
+    {
+      "id": "4b65dc26-9038-5b8c-b27f-4a046d794f94",
+      "schema_version": 4,
+      "start_char": 5965,
+      "end_char": 6078,
+      "text": "Even then, the orbit of the danger as disclosed to the eye of reasonable vigilance would be the orbit of the duty",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/61826004502d1364c2a3fd2388fb1de5",
+      "axiom_history": []
+    },
+    {
+      "id": "78b6a2bd-9da0-5abd-b4d7-10cdea7d503b",
+      "schema_version": 4,
+      "start_char": 6080,
+      "end_char": 6244,
+      "text": "One who jostles one's neighbor in a crowd does not invade the rights of others standing at the outer fringe when the unintended contact casts a bomb upon the ground",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/b87372ab6c992c34f6e8cfe4cd095741",
+      "axiom_history": []
+    },
+    {
+      "id": "b3030fae-bfc5-50be-ab22-0044c1b08349",
+      "schema_version": 4,
+      "start_char": 6246,
+      "end_char": 6363,
+      "text": "The wrongdoer as to them is the man who carries the bomb, not the one who explodes it without suspicion of the danger",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/85dd05160e010b3b44d87350d325189f",
+      "axiom_history": []
+    },
+    {
+      "id": "ec041d46-c7dd-5f0e-aa2d-74b48c88d52e",
+      "schema_version": 4,
+      "start_char": 6365,
+      "end_char": 6552,
+      "text": "Life will have to be made over, and human nature transformed, before prevision so extravagant can be accepted as the norm of conduct, the customary standard to which behavior must conform",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/0f23f7761fd48d095324832f4025fe0e",
+      "axiom_history": []
+    },
+    {
+      "id": "0014cea3-a21d-58aa-a657-64e337d783ec",
+      "schema_version": 4,
+      "start_char": 6692,
+      "end_char": 6893,
+      "text": "What the plaintiff must show is \"a wrong\" to herself, i. e., a violation of her own right, and not merely a wrong to some one else, nor conduct \"wrongful\" because unsocial, but not \"a wrong\" to any one",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/de125fe11e36e804781b2f8b6ab4d310",
+      "axiom_history": []
+    },
+    {
+      "id": "54b304fa-e9f8-5bbe-bc13-c9fc8614aa7a",
+      "schema_version": 4,
+      "start_char": 7263,
+      "end_char": 7366,
+      "text": "If the same act were to be committed on a speedway or a race course, it would lose its wrongful quality",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/9cbb6e15a66152f6b9877b6fb9ebd481",
+      "axiom_history": []
+    },
+    {
+      "id": "c8ee63a1-c832-5515-b761-22b6cd3d4457",
+      "schema_version": 4,
+      "start_char": 7368,
+      "end_char": 7641,
+      "text": "The risk reasonably to be perceived defines the duty to be obeyed, and risk imports relation; it is risk to another or to others within the range of apprehension (Seavey, Negligence, Subjective or Objective, 41 H. L. Rv. 6; Boronkay v. Robinson & Carpenter , 247 N.Y. 365 )",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/ef00c1e096b24266de88fb5a7eb92ed7",
+      "axiom_history": []
+    },
+    {
+      "id": "00b81a9e-330a-510c-82db-9b11f630da0a",
+      "schema_version": 4,
+      "start_char": 7643,
+      "end_char": 7820,
+      "text": "This does not mean, of course, that one who launches a destructive force is always relieved of liability if the force, though known to be destructive, pursues an unexpected path",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/9e2b20036b6a412df3ef40025a5710ce",
+      "axiom_history": []
+    },
+    {
+      "id": "96f4b7c6-73a6-59a8-a276-04a485265807",
+      "schema_version": 4,
+      "start_char": 7823,
+      "end_char": 8018,
+      "text": "It was not necessary that the defendant should have had notice of the particular method in which an accident would occur, if the possibility of an accident was clear to the ordinarily prudent eye",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/700bc66690c70c000cc39c67555ba41e",
+      "axiom_history": []
+    },
+    {
+      "id": "5222f970-e169-5609-ba6e-700625919969",
+      "schema_version": 4,
+      "start_char": 8154,
+      "end_char": 8350,
+      "text": "Some acts, such as shooting, are so imminently dangerous to any one who may come within reach of the missile, however unexpectedly, as to impose a duty of prevision not far from that of an insurer",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e6d0559057c7d17aa212174d3a86b42b",
+      "axiom_history": []
+    },
+    {
+      "id": "9f2b981d-af4a-5559-b13a-e9c02596c291",
+      "schema_version": 4,
+      "start_char": 8770,
+      "end_char": 8897,
+      "text": "These cases aside, wrong is defined in terms of the natural or probable, at least when unintentional ( Parrot v. Wells-Fargo Co",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/9aa18213aec8bfd9a217490f667ce32f",
+      "axiom_history": []
+    },
+    {
+      "id": "4b143d8a-0170-5989-a44e-4689677a8c87",
+      "schema_version": 4,
+      "start_char": 8951,
+      "end_char": 9099,
+      "text": "The range of reasonable apprehension is at times a question for the court, and at times, if varying inferences are possible, a question for the jury",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/5eed4b1489094f91f484bb7590fa17fc",
+      "axiom_history": []
+    },
+    {
+      "id": "e5daeb12-2b7b-56fa-81b6-72b82602a3c3",
+      "schema_version": 4,
+      "start_char": 9274,
+      "end_char": 9420,
+      "text": "If the guard had thrown it down knowingly and willfully, he would not have threatened the plaintiff's safety, so far as appearances could warn him",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/f102d89c893c0eaa3e46bf22db93d29a",
+      "axiom_history": []
+    },
+    {
+      "id": "a06c01df-c450-5614-bb5f-e4937e748791",
+      "schema_version": 4,
+      "start_char": 9534,
+      "end_char": 9590,
+      "text": "Liability can be no greater where the act is inadvertent",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/bf3464c86474f4adab0004c1fdfc7bd3",
+      "axiom_history": []
+    },
+    {
+      "id": "1596503d-e2e6-5e87-af58-28177ca9390e",
+      "schema_version": 4,
+      "start_char": 9592,
+      "end_char": 9641,
+      "text": "Negligence, like risk, is thus a term of relation",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/4672152f7ed09c0c4e5de5ff2441a6ed",
+      "axiom_history": []
+    },
+    {
+      "id": "7a20924a-cfe1-5d44-90d4-34488d45777f",
+      "schema_version": 4,
+      "start_char": 9643,
+      "end_char": 9821,
+      "text": "Negligence in the abstract, apart from things related, is surely not a tort, if indeed it is understandable at all (Bowen, L. J., in Thomas v. Quartermaine, 18 Q. B. D. 685, 694)",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/65bfb566d5e3508500c98a59eae5756b",
+      "axiom_history": []
+    },
+    {
+      "id": "f0e7140a-506e-5b23-88b1-673ef1f7ac54",
+      "schema_version": 4,
+      "start_char": 10172,
+      "end_char": 10301,
+      "text": "One who seeks redress at law does not make out a cause of action by showing without more that there has been damage to his person",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/dfa10f3c358c0b97f2bca9511051ca2e",
+      "axiom_history": []
+    },
+    {
+      "id": "0e1a6f6c-1de5-5105-acaf-77eb20b46634",
+      "schema_version": 4,
+      "start_char": 10303,
+      "end_char": 10505,
+      "text": "If the harm was not willful, he must show that the act as to him had possibilities of danger so many and apparent as to entitle him to be protected against the doing of it though the harm was unintended",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/90017bf9794ba9fa413de5cce442e465",
+      "axiom_history": []
+    },
+    {
+      "id": "3e446cd0-382a-5199-9a67-f34efecf88fc",
+      "schema_version": 4,
+      "start_char": 10507,
+      "end_char": 10563,
+      "text": "Affront to personality is still the keynote of the wrong",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e75a21914f5f8358cbbd2600e9ad65a0",
+      "axiom_history": []
+    },
+    {
+      "id": "33a6f559-1e39-5d89-9dc3-2d21c95cb5d8",
+      "schema_version": 4,
+      "start_char": 10663,
+      "end_char": 10830,
+      "text": "Negligence as a basis of civil liability was unknown to mediaeval law (8 Holdsworth, History of English Law, p. 449; Street, Foundations of Legal Liability, vol. 1, pp",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/714f2a98185bd9495f52d0ee43ee7ee5",
+      "axiom_history": []
+    },
+    {
+      "id": "487752ad-2973-5ea0-b64b-3445822a1960",
+      "schema_version": 4,
+      "start_char": 10843,
+      "end_char": 10998,
+      "text": "For damage to the person, the sole remedy was trespass, and trespass did not lie in the absence of aggression, and that direct and personal (Holdsworth, op",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/fbf60f0edc918353c2ce201abc53eaae",
+      "axiom_history": []
+    },
+    {
+      "id": "9f07a8ab-3152-56d2-978c-10d4758801f9",
+      "schema_version": 4,
+      "start_char": 11073,
+      "end_char": 11243,
+      "text": "Liability for other damage, as where a servant without orders from the master does or omits something to the damage of another, is a plant of later growth (Holdsworth, op",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/684a70023609c98a165ecc7ac25f3098",
+      "axiom_history": []
+    },
+    {
+      "id": "971bfc3f-af88-5c51-80e9-883a66840484",
+      "schema_version": 4,
+      "start_char": 11804,
+      "end_char": 11923,
+      "text": "Thus to view his cause of action is to ignore the fundamental difference between tort and crime (Holland, Jurisprudence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/c9f92f53f32b41e3cb2b6c7ade7c79d9",
+      "axiom_history": []
+    },
+    {
+      "id": "00e511be-d625-554e-b8b2-22425b4ec80f",
+      "schema_version": 4,
+      "start_char": 11992,
+      "end_char": 12072,
+      "text": "The law of causation, remote or proximate, is thus foreign to the case before us",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e8a6987497eec0466b060027f0342d4e",
+      "axiom_history": []
+    },
+    {
+      "id": "20298025-e52d-5481-b82c-714369570355",
+      "schema_version": 4,
+      "start_char": 12074,
+      "end_char": 12192,
+      "text": "The question of liability is always anterior to the question of the measure of the consequences that go with liability",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/5b945bcb9500dc369fd620e352b11840",
+      "axiom_history": []
+    },
+    {
+      "id": "b4e7e76d-5444-58d7-8175-a085614ea8ed",
+      "schema_version": 4,
+      "start_char": 12194,
+      "end_char": 12328,
+      "text": "If there is no tort to be redressed, there is no occasion to consider what damage might be recovered if there were a finding of a tort",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/148ab86895f4b8b58878bb3782c4d302",
+      "axiom_history": []
+    },
+    {
+      "id": "411ce701-bc88-5365-9c3d-70e4a5701ed7",
+      "schema_version": 4,
+      "start_char": 12447,
+      "end_char": 12530,
+      "text": "would entail liability for any and all consequences, however novel or extraordinary",
+      "proposition_type": "arguendo assumption",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": true
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "declined"
+      },
+      "disposition": "assumed-arguendo",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/cc7011b3f243c23d1a4243b7cb797321",
+      "axiom_history": []
+    },
+    {
+      "id": "4f53c23b-7bcd-5956-aae9-349d001c2764",
+      "schema_version": 4,
+      "start_char": 13200,
+      "end_char": 13243,
+      "text": "Perhaps other distinctions may be necessary",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/1f3bc9d8e056b144f34a50286b0005b1",
+      "axiom_history": []
+    },
+    {
+      "id": "2e02e570-6e84-5469-aaca-926b1e99444f",
+      "schema_version": 4,
+      "start_char": 13281,
+      "end_char": 13344,
+      "text": "The consequences to be followed must first be rooted in a wrong",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/feb688c65e6fc3cc3ca5d58a0f098d06",
+      "axiom_history": []
+    },
+    {
+      "id": "ca7410fb-0bdd-5961-93e6-de43f1458170",
+      "schema_version": 4,
+      "start_char": 14891,
+      "end_char": 15095,
+      "text": "Negligence may be defined roughly as an act or omission which unreasonably does or may affect the rights of others, or which unreasonably fails to protect oneself from the dangers resulting from such acts",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/b0d2257055df1616870bd73425629879",
+      "axiom_history": []
+    },
+    {
+      "id": "81b1ab57-3bc3-59ba-8a97-9b3ace01c032",
+      "schema_version": 4,
+      "start_char": 15312,
+      "end_char": 15369,
+      "text": "There must be both the act or the omission, and the right",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/72adc050169654db7d58a44c9b703409",
+      "axiom_history": []
+    },
+    {
+      "id": "35dff42c-c8ae-5e59-8710-69227097f231",
+      "schema_version": 4,
+      "start_char": 15520,
+      "end_char": 15587,
+      "text": "In criminal law both the intent and the result are to be considered",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e6f94e6c7beebf46b64f9f72c2a3aefa",
+      "axiom_history": []
+    },
+    {
+      "id": "e2c6e7dc-b07d-581c-9c7a-c54b32368c3e",
+      "schema_version": 4,
+      "start_char": 15589,
+      "end_char": 15726,
+      "text": "Intent again is material in tort actions, where punitive damages are sought, dependent on actual malice -- not on merely reckless conduct",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/605cc0dcca7520e85966df3eeede5388",
+      "axiom_history": []
+    },
+    {
+      "id": "847a62ac-1a75-529c-896f-9c2b97f9c28d",
+      "schema_version": 4,
+      "start_char": 15827,
+      "end_char": 15938,
+      "text": "As has been said, except in cases of contributory negligence, there must be rights which are or may be affected",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/d30c05e9f9a49e1c43040c4d0829a06d",
+      "axiom_history": []
+    },
+    {
+      "id": "6f7ac324-14f4-56d8-abc7-0b0b51ebeb8b",
+      "schema_version": 4,
+      "start_char": 16022,
+      "end_char": 16130,
+      "text": "A licensee or trespasser upon my land has no claim to affirmative care on my part that the land be made safe",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "party",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/30b8648711e11b935c7e0521573eb065",
+      "axiom_history": []
+    },
+    {
+      "id": "37adab43-320a-5021-ac49-d3da9aa19382",
+      "schema_version": 4,
+      "start_char": 16374,
+      "end_char": 16432,
+      "text": "An unborn child may not demand immunity from personal harm",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/1112ea6953754d05eaa0c709150333a9",
+      "axiom_history": []
+    },
+    {
+      "id": "712e4f56-1813-566c-9e84-e6bd60057c06",
+      "schema_version": 4,
+      "start_char": 16472,
+      "end_char": 16674,
+      "text": "But we are told that \"there is no negligence unless there is in the particular case a legal duty to take care, and this duty must be one which is owed to the plaintiff himself and not merely to others.\"",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/99b07ad95c4d3988eafd372046a09619",
+      "axiom_history": []
+    },
+    {
+      "id": "838735d5-ed68-515e-ac54-8026e73d9444",
+      "schema_version": 4,
+      "start_char": 16494,
+      "end_char": 16672,
+      "text": "there is no negligence unless there is in the particular case a legal duty to take care, and this duty must be one which is owed to the plaintiff himself and not merely to others",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/da4f73217f8abab6a473ba4e2d937892",
+      "axiom_history": []
+    },
+    {
+      "id": "8fe5bd3b-3f9c-5626-a20f-2d4cd6c614d6",
+      "schema_version": 4,
+      "start_char": 17026,
+      "end_char": 17052,
+      "text": "The act itself is wrongful",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/dfa2bc5e26e94f2aa63ec1c21d5ef473",
+      "axiom_history": []
+    },
+    {
+      "id": "93bf7403-e7fc-5bbf-a40a-d9626b7c2716",
+      "schema_version": 4,
+      "start_char": 17595,
+      "end_char": 17762,
+      "text": "the measure of the defendant's duty in determining whether a wrong has been committed is one thing, the measure of liability when a wrong has been committed is another",
+      "proposition_type": "cited-authority proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "secondary_source",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/bc179aed8464bfea768e0440b5e35a0b",
+      "axiom_history": []
+    },
+    {
+      "id": "d1f281e0-8428-5036-96b6-e9de985bdad3",
+      "schema_version": 4,
+      "start_char": 17939,
+      "end_char": 18011,
+      "text": "It may well be that there is no such thing as negligence in the abstract",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/488c8296374834db6eb2394e8b8540c2",
+      "axiom_history": []
+    },
+    {
+      "id": "cd3348ff-0220-5866-aa72-6a5809185004",
+      "schema_version": 4,
+      "start_char": 18014,
+      "end_char": 18070,
+      "text": "Proof of negligence in the air, so to speak, will not do",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/239b404403de8f5b84a826af957ffd31",
+      "axiom_history": []
+    },
+    {
+      "id": "0f5ff6e4-a8fa-5d62-bfb9-3c54f4620ef1",
+      "schema_version": 4,
+      "start_char": 18359,
+      "end_char": 18467,
+      "text": "If his act has a tendency to harm some one, it harms him a mile away as surely as it does those on the scene",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/578d2a95f1d841a3505d210b3516d8c7",
+      "axiom_history": []
+    },
+    {
+      "id": "8f1e6cfd-7e9d-5076-b0c0-c8d57de241bb",
+      "schema_version": 4,
+      "start_char": 18613,
+      "end_char": 18677,
+      "text": "A husband may be compensated for the loss of his wife's services",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/954913006d16199d80c647eb970f3cfe",
+      "axiom_history": []
+    },
+    {
+      "id": "f1fd40f6-5125-5fe5-90bc-93b91f5f47e2",
+      "schema_version": 4,
+      "start_char": 18679,
+      "end_char": 18803,
+      "text": "To say that the wrongdoer was negligent as to the husband as well as to the wife is merely an attempt to fit facts to theory",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/507823d0a225c6b25c606e41ce3b592a",
+      "axiom_history": []
+    },
+    {
+      "id": "b24fa916-3cc3-52b9-8303-1e38302d6a7b",
+      "schema_version": 4,
+      "start_char": 19089,
+      "end_char": 19252,
+      "text": "it be true that the fault of father, wife or insured will prevent recovery, it is because we consider the original negligence not the proximate cause of the injury",
+      "proposition_type": "arguendo assumption",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": true
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "declined"
+      },
+      "disposition": "assumed-arguendo",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e3c4c83389fd948a9797abaec86e6446",
+      "axiom_history": []
+    },
+    {
+      "id": "e5bf7f14-3534-51ab-97d1-081ed5dfae96",
+      "schema_version": 4,
+      "start_char": 19453,
+      "end_char": 19539,
+      "text": "Because of either possibility the owner of the vessel was to be made good for his loss",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/96323061ef6004f18939a880c4af50d6",
+      "axiom_history": []
+    },
+    {
+      "id": "84c090fb-4b8a-524f-b689-055c88a1c2e0",
+      "schema_version": 4,
+      "start_char": 19541,
+      "end_char": 19609,
+      "text": "The act being wrongful the doer was liable for its proximate results",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/cad03790490123ec896cdb294e8b23d4",
+      "axiom_history": []
+    },
+    {
+      "id": "6e510e9c-8ad9-5a7b-8974-ceb804994493",
+      "schema_version": 4,
+      "start_char": 19912,
+      "end_char": 19935,
+      "text": "The proposition is this",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/d8324145d0bdd36443874b02863a6a3b",
+      "axiom_history": []
+    },
+    {
+      "id": "eb059784-2478-5249-95ec-51dd8e6a1664",
+      "schema_version": 4,
+      "start_char": 20206,
+      "end_char": 20267,
+      "text": "he be outside what would generally be thought the danger zone",
+      "proposition_type": "arguendo assumption",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": true
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "declined"
+      },
+      "disposition": "assumed-arguendo",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/efea12afeb3659077c0922ceca119264",
+      "axiom_history": []
+    },
+    {
+      "id": "b3570ec1-d4ec-540e-9f87-23473e1f5821",
+      "schema_version": 4,
+      "start_char": 20405,
+      "end_char": 20526,
+      "text": "Harm to some one being the natural result of the act, not only that one alone, but all those in fact injured may complain",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e38ef3a80359b126ea61ed97649c7905",
+      "axiom_history": []
+    },
+    {
+      "id": "63ecb12b-d3cc-52b8-a409-5ce35e1bbaf6",
+      "schema_version": 4,
+      "start_char": 20936,
+      "end_char": 21014,
+      "text": "If this be so, we do not have a plaintiff suing by \"derivation or succession.\"",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/58237c46f8fcb8ad3fa235db884c81f6",
+      "axiom_history": []
+    },
+    {
+      "id": "d8806a2c-62bb-5392-ba4f-b33ce32281e9",
+      "schema_version": 4,
+      "start_char": 21015,
+      "end_char": 21049,
+      "text": "Her action is original and primary",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/7b9ad4cb0546794609869df6c961dad8",
+      "axiom_history": []
+    },
+    {
+      "id": "4cccaa87-3a80-5649-8e3d-82dd5b2cd988",
+      "schema_version": 4,
+      "start_char": 21299,
+      "end_char": 21387,
+      "text": "The plaintiff's rights must be injured, and this injury must be caused by the negligence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/6c49e8b5dca9aaf8f8f7698a84e3fe23",
+      "axiom_history": []
+    },
+    {
+      "id": "47698e64-7bca-5ef7-a236-c6ac9368b361",
+      "schema_version": 4,
+      "start_char": 21489,
+      "end_char": 21585,
+      "text": "We are not liable if all this happened because of some reason other than the insecure foundation",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/6f9b6d04d54340f9899b6ba2b78ab706",
+      "axiom_history": []
+    },
+    {
+      "id": "5d8df24d-7958-5f23-8aca-9c4db3ad17bb",
+      "schema_version": 4,
+      "start_char": 21587,
+      "end_char": 21671,
+      "text": "But when injuries do result from our unlawful act we are liable for the consequences",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/ac803fcbb3c6ca42c7f0f02af63accba",
+      "axiom_history": []
+    },
+    {
+      "id": "2a450c11-9e09-5c4b-9764-2a04d2992201",
+      "schema_version": 4,
+      "start_char": 21785,
+      "end_char": 21905,
+      "text": "The damages must be so connected with the negligence that the latter may be said to be the proximate cause of the former",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/63fa47c2cd783e75a6cf5de3f33af652",
+      "axiom_history": []
+    },
+    {
+      "id": "4419bda7-dd98-583b-b128-d34a9395c4f7",
+      "schema_version": 4,
+      "start_char": 22455,
+      "end_char": 22489,
+      "text": "How great only omniscience can say",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/0efe1a6148befdc20957b139f6b288ea",
+      "axiom_history": []
+    },
+    {
+      "id": "7e598461-203d-5b24-9953-2f3700c03d09",
+      "schema_version": 4,
+      "start_char": 22491,
+      "end_char": 22540,
+      "text": "You may speak of a chain, or if you please, a net",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/15887d643c8b880525da1247cf5b566d",
+      "axiom_history": []
+    },
+    {
+      "id": "fbd4bf78-8103-57ca-adce-158fee7b5952",
+      "schema_version": 4,
+      "start_char": 23025,
+      "end_char": 23075,
+      "text": "No man may say whence any drop of water is derived",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/a83af8e022e46280d4fc2dab4d203d22",
+      "axiom_history": []
+    },
+    {
+      "id": "d45b9dd8-f63e-5674-8121-7b729d0eebb7",
+      "schema_version": 4,
+      "start_char": 23077,
+      "end_char": 23119,
+      "text": "Yet for a time distinction may be possible",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/4c32cd6265f6398b4b1ef3cce5bb10d4",
+      "axiom_history": []
+    },
+    {
+      "id": "c27244fc-bf8e-52dd-bad7-43d30187ea10",
+      "schema_version": 4,
+      "start_char": 23241,
+      "end_char": 23290,
+      "text": "The three may remain for a space, sharply divided",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/e91171b34d348785d2de799bf558d50b",
+      "axiom_history": []
+    },
+    {
+      "id": "399334ea-d87b-5b39-9646-6b588e98611c",
+      "schema_version": 4,
+      "start_char": 23484,
+      "end_char": 23531,
+      "text": "Again, however, we may trace it part of the way",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/36d3e0f27f176cda4161f1090952d764",
+      "axiom_history": []
+    },
+    {
+      "id": "ce146490-fbc8-59d1-82dd-a37c721418ee",
+      "schema_version": 4,
+      "start_char": 23533,
+      "end_char": 23634,
+      "text": "A murder at Serajevo may be the necessary antecedent to an assassination in London twenty years hence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/a8cf1e627f74eaddb687b0bc1762f240",
+      "axiom_history": []
+    },
+    {
+      "id": "2d9d16e7-0536-5ad2-a4f3-d4835e9e3fe1",
+      "schema_version": 4,
+      "start_char": 23636,
+      "end_char": 23678,
+      "text": "An overturned lantern may burn all Chicago",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/0da427f0c4b5a971146800bb863fb547",
+      "axiom_history": []
+    },
+    {
+      "id": "53c626cf-66fe-5bdc-bba4-0cf58c8d1e0b",
+      "schema_version": 4,
+      "start_char": 23680,
+      "end_char": 23737,
+      "text": "We may follow the fire from the shed to the last building",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/dcc47d23a4a7ab6ff97884bb578bbc3b",
+      "axiom_history": []
+    },
+    {
+      "id": "a9045ab1-170f-54b8-a2b8-6e9b7eb3916d",
+      "schema_version": 4,
+      "start_char": 24193,
+      "end_char": 24232,
+      "text": "I may recover from a negligent railroad",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/96f3194fdabce4636c387cc5d8f3777a",
+      "axiom_history": []
+    },
+    {
+      "id": "0a17c3d5-41f5-532b-bb64-1051d3c603fd",
+      "schema_version": 4,
+      "start_char": 24308,
+      "end_char": 24397,
+      "text": "We may regret that the line was drawn just where it was, but drawn somewhere it had to be",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/121b6d992936133a16caa4ce5a0c0aaf",
+      "axiom_history": []
+    },
+    {
+      "id": "e3c1677c-5e25-516d-bd48-b5c4b0078aab",
+      "schema_version": 4,
+      "start_char": 24504,
+      "end_char": 24576,
+      "text": "The words we used were simply indicative of our notions of public policy",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/26bb5975dfe82ab8f3cfb0ebf2e26552",
+      "axiom_history": []
+    },
+    {
+      "id": "b14df92b-92f3-5a61-b5ec-624ed122b5df",
+      "schema_version": 4,
+      "start_char": 25390,
+      "end_char": 25408,
+      "text": "the baby might not",
+      "proposition_type": "stipulation",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/0dd48884220a3acc82ad7257b9f6c5a0",
+      "axiom_history": []
+    },
+    {
+      "id": "cf8ff1d1-89fd-5e26-8153-170730327104",
+      "schema_version": 4,
+      "start_char": 25574,
+      "end_char": 25715,
+      "text": "But the chauffeur, being negligent in risking the collision, his belief that the scope of the harm he might do would be limited is immaterial",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/d94e031734796e63c3e9351be0c071df",
+      "axiom_history": []
+    },
+    {
+      "id": "bcd84517-c5eb-5e42-bf2a-da06cc58c88f",
+      "schema_version": 4,
+      "start_char": 25801,
+      "end_char": 25873,
+      "text": "C's injury and that of the baby were directly traceable to the collision",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/585de4b38986db32d82f40376e7b7b28",
+      "axiom_history": []
+    },
+    {
+      "id": "84ccc545-abf9-5c47-bfc6-adfc9289ee73",
+      "schema_version": 4,
+      "start_char": 26055,
+      "end_char": 26259,
+      "text": "The true theory is, it seems to me, that the injury to C, if in truth he is to be denied recovery, and the injury to the baby is that their several injuries were not the proximate result of the negligence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/83ed8b3b29841544275e9e4a8ee91a92",
+      "axiom_history": []
+    },
+    {
+      "id": "baf93290-3972-5e04-965e-de96cfcdcdce",
+      "schema_version": 4,
+      "start_char": 26261,
+      "end_char": 26405,
+      "text": "And here not what the chauffeur had reason to believe would be the result of his conduct, but what the prudent would foresee, may have a bearing",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/2b9f63d103edfa9fc80acc03e3051fe7",
+      "axiom_history": []
+    },
+    {
+      "id": "efe45916-2db8-50d3-8e67-fed093d8c7bc",
+      "schema_version": 4,
+      "start_char": 26407,
+      "end_char": 26509,
+      "text": "May have some bearing, for the problem of proximate cause is not to be solved by any one consideration",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/2b5dc7a0e1a3c430164d1ba63cee420a",
+      "axiom_history": []
+    },
+    {
+      "id": "5deb7b84-2e69-534d-aab1-c44095df8e2d",
+      "schema_version": 4,
+      "start_char": 27025,
+      "end_char": 27165,
+      "text": "The proximate cause, involved as it may be with many other causes, must be, at the least, something without which the event would not happen",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/04375129d86f0ed9ee77deb969a5ceb6",
+      "axiom_history": []
+    },
+    {
+      "id": "753599c2-d8ae-5cad-87cf-292d81ff04c6",
+      "schema_version": 4,
+      "start_char": 27167,
+      "end_char": 27269,
+      "text": "The court must ask itself whether there was a natural and continuous sequence between cause and effect",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/940d990c119ff46c937762c954b385e5",
+      "axiom_history": []
+    },
+    {
+      "id": "c7e06494-1d54-58ac-8fb5-94e8b9fd5b40",
+      "schema_version": 4,
+      "start_char": 27611,
+      "end_char": 27701,
+      "text": "Is the result too remote from the cause, and here we consider remoteness in time and space",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/0a96d3746407f8aa5dfbc394a12c8e66",
+      "axiom_history": []
+    },
+    {
+      "id": "a83b5ae2-36aa-5872-a736-260260961c7b",
+      "schema_version": 4,
+      "start_char": 27855,
+      "end_char": 28000,
+      "text": "Clearly we must so consider, for the greater the distance either in time or space, the more surely do other causes intervene to affect the result",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/a5ecb99bd4abf2caa739bb18e2b2152a",
+      "axiom_history": []
+    },
+    {
+      "id": "9ccf600b-9583-5306-806f-5d0f697de5ff",
+      "schema_version": 4,
+      "start_char": 28002,
+      "end_char": 28082,
+      "text": "When a lantern is overturned the firing of a shed is a fairly direct consequence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/2be6dd70485871ba1280e09554e2058a",
+      "axiom_history": []
+    },
+    {
+      "id": "dca7a684-bc93-570a-a256-17391453a415",
+      "schema_version": 4,
+      "start_char": 28545,
+      "end_char": 28583,
+      "text": "Here another question must be answered",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/fa6dc56f18fd6265d06e41a240db7800",
+      "axiom_history": []
+    },
+    {
+      "id": "c476f253-bf56-5922-95cd-128ac75ea7b8",
+      "schema_version": 4,
+      "start_char": 28773,
+      "end_char": 28955,
+      "text": "The fact that the injury occurred in a different manner than that which might have been expected does not prevent the chauffeur's negligence from being in law the cause of the injury",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/5734fc0d430016c7daec4175ffdcf467",
+      "axiom_history": []
+    },
+    {
+      "id": "eeca2b46-e4fb-5800-a884-1b64bfd29330",
+      "schema_version": 4,
+      "start_char": 29175,
+      "end_char": 29261,
+      "text": "No human foresight would suggest that a collision itself might injure one a block away",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "party",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/95066151055a31ddbb799221f72357c5",
+      "axiom_history": []
+    },
+    {
+      "id": "462b9850-41e1-5049-8634-ac020b602358",
+      "schema_version": 4,
+      "start_char": 29533,
+      "end_char": 29562,
+      "text": "It may be said this is unjust",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/b24fbb5fc9635b68c9bdcdf8007f98a0",
+      "axiom_history": []
+    },
+    {
+      "id": "b65df53d-7457-5802-a932-4bffe244c752",
+      "schema_version": 4,
+      "start_char": 29569,
+      "end_char": 29641,
+      "text": "In fairness he should make good every injury flowing from his negligence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/6bf010aaf44c984beb9dee64d60e9a20",
+      "axiom_history": []
+    },
+    {
+      "id": "44ab3d96-9bf9-5f00-912f-b2881ad737c9",
+      "schema_version": 4,
+      "start_char": 30004,
+      "end_char": 30078,
+      "text": "This last suggestion is the factor which must determine the case before us",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/03ebd6c5f942869247b530b94c7c7a2c",
+      "axiom_history": []
+    },
+    {
+      "id": "754a744f-5895-5aed-a310-0f37a895fa57",
+      "schema_version": 4,
+      "start_char": 30189,
+      "end_char": 30210,
+      "text": "The act was negligent",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/51d3246a0d78b31cf4e10cd1a3e89ca8",
+      "axiom_history": []
+    },
+    {
+      "id": "b0ba744a-7fee-5888-8daf-1b9fbc6a3c9d",
+      "schema_version": 4,
+      "start_char": 30212,
+      "end_char": 30266,
+      "text": "For its proximate consequences the defendant is liable",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/eba0f9bf5e3585aaadd1894fdba72e07",
+      "axiom_history": []
+    },
+    {
+      "id": "8b7b6fa8-49bb-5b83-9457-ddfd1a9d5089",
+      "schema_version": 4,
+      "start_char": 30268,
+      "end_char": 30370,
+      "text": "If its contents were broken, to the owner; if it fell upon and crushed a passenger's foot, then to him",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/b9e2b7f927bec038a69665d91ca4e513",
+      "axiom_history": []
+    },
+    {
+      "id": "d45ee493-5394-5088-a6ce-7b15ff69684b",
+      "schema_version": 4,
+      "start_char": 30518,
+      "end_char": 30597,
+      "text": "How far cannot be told from the record -- apparently twenty-five or thirty feet",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/ba0ac2ba47456d2b73c95656de3ba453",
+      "axiom_history": []
+    },
+    {
+      "id": "49d0c074-6d31-5689-b549-ddb65e69eede",
+      "schema_version": 4,
+      "start_char": 30715,
+      "end_char": 30802,
+      "text": "it cannot be denied that the explosion was the direct cause of the plaintiff's injuries",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/ca019c86c73603cf8ac7c5e703703f55",
+      "axiom_history": []
+    },
+    {
+      "id": "96d17c92-35da-5220-8575-b2688eb35397",
+      "schema_version": 4,
+      "start_char": 31339,
+      "end_char": 31379,
+      "text": "Just how no one might be able to predict",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/c45645bfbf5dd5104cb83edb8c15a46b",
+      "axiom_history": []
+    },
+    {
+      "id": "c0890168-2332-5aa7-b932-e7abca0af6b1",
+      "schema_version": 4,
+      "start_char": 31483,
+      "end_char": 31524,
+      "text": "But injury in some form was most probable",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/beda11a701984849324b8528575eb71a",
+      "axiom_history": []
+    },
+    {
+      "id": "7ecfc6e8-53d9-54db-8a91-defeee7300ee",
+      "schema_version": 4,
+      "start_char": 31526,
+      "end_char": 31661,
+      "text": "Under these circumstances I cannot say as a matter of law that the plaintiff's injuries were not the proximate result of the negligence",
+      "proposition_type": "Judicial Legal Conclusion",
+      "is_new_type": false,
+      "asserter": {
+        "role": "court",
+        "individual_id": null,
+        "name": "ANDREWS (dissenting)",
+        "assumed": false
+      },
+      "validator": {
+        "role": "court",
+        "individual_id": null,
+        "name": null,
+        "mode": "ruled"
+      },
+      "disposition": "accepted",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/6049554885a426640672244c5512f9b8",
+      "axiom_history": []
+    },
+    {
+      "id": "74896e21-66eb-5829-bccf-c43c3ad45637",
+      "schema_version": 4,
+      "start_char": 31889,
+      "end_char": 31919,
+      "text": "should be affirmed, with costs",
+      "proposition_type": "Legal Proposition",
+      "is_new_type": false,
+      "asserter": {
+        "role": "party",
+        "individual_id": null,
+        "name": null,
+        "assumed": false
+      },
+      "validator": null,
+      "disposition": "unresolved",
+      "citation_edges": [],
+      "triple_ids": [],
+      "shape": "litigation",
+      "axiom_status": "proposition",
+      "content_iri": "urn:folio:shard/1abfd637fb3d51e418cd1c93eb88702a",
+      "axiom_history": []
+    }
+  ],
+  "document_metadata": {
+    "job_id": "5102f0ec-147d-5020-a979-987c434206c5",
+    "proposition_lexicon_version": "phase-b-v1",
+    "filename": "palsgraf-248-ny-339.txt"
+  },
+  "generator": {
+    "tool": "folio-enrich",
+    "version": "0.4.17"
+  },
+  "source_uri": "urn:sha256:b270316b42572d5c5acb0c1ab9dea22b0e0ba8584e65d65afffb211c310334db"
+}

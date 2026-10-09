@@ -792,6 +792,14 @@ from folio_insights.corpus.cli import corpus_group as _corpus_group
 
 cli.add_command(_corpus_group)
 
+# folio-enrich bridge (plan U4): bridge-ingest + bridge-status. Module-bottom
+# pattern, like the groups above.
+from folio_insights.bridge_ingest.cli import bridge_ingest_cmd as _bridge_ingest_cmd  # noqa: E402
+from folio_insights.bridge_ingest.cli import bridge_status_cmd as _bridge_status_cmd  # noqa: E402
+
+cli.add_command(_bridge_ingest_cmd)
+cli.add_command(_bridge_status_cmd)
+
 # Phase 10 U2: durable job queue inspection and the one-time legacy import.
 @cli.group("jobs")
 def jobs_group() -> None:
