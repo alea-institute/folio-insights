@@ -176,6 +176,7 @@ Each unit runs in its own worktree branched from the integration branch `feat/dr
 - **Goal:** extraction quality measurable in CI. **Requirements:** R7, R8. **Decisions:** KTD4, KTD5.
 - **Files (owned):** new `src/folio_insights/rubric/{__init__,adapters,criteria,harness,oracle,gold,cli}.py`, one `cli.add_command` line, new `tests/rubric/**` including `tests/rubric/fixtures/books_gold/**` and `tests/rubric/fixtures/folio_oracle.json`.
 - **Test scenarios:** a planted wrong-branch IRI fails -03 and caps mapping at 1; an empty-IRI tag without `proposed_class` fails -03; a paraphrase with no verifying anchor fails -05 (gate) while a 0.85-0.92 snippet scores 2; duplicate `content_hash` and heading-as-unit fail -09; SHACL criteria are `computed: false` on a unit run and computed on a shard corpus; `publishable` is false without judged scores and true only with all gates green plus a weighted ≥ 0.80; the harness never reports a criterion it did not compute; every books_gold case matches its `expected.json`; the mapping-gold check reproduces the recorded baseline for `mapping-corrections.gold.json`.
+- **Implementation notes (as built):** RUB-EXTRACT-09 follows the rubric's bands, so a single duplicate or heading scores 2 (a pass); the gold cases fail -09 with two of four units flagged. A -05 match above 0.92 scores 3; a WARN-only -11 passes its gate at 2. Gold fixture units stay under eight words and carry no `source_snippet` values, so the committed files pass `scripts/check_exclusions.py`; snippet scoring is tested on units built in code. The mapping-gold baseline is 0 of 1 agreement (`tests/rubric/fixtures/mapping_gold_expected.json`).
 
 ### U3. Axiom kernel seed, traversal and chain export
 
@@ -230,6 +231,7 @@ Each unit runs in its own worktree branched from the integration branch `feat/dr
 ### U11. Phase 9 U1 cluster validator (tranche 2)
 
 - **Goal, files, tests:** as Phase 9 plan U1 (`docs/plans/2026-10-05-0308-feat-phase9-design-principles-plan.md`), new `src/folio_insights/validation/**`, `tests/validation/**`, one `cli.add_command` line. HermiT-dependent checks are worker-tier and skip cleanly without a JRE; the NLI fallback labels its checker.
+- **As built:** the cluster-scoped HermiT entry the Phase 9 plan assigns to `reason/hermit_harness.py` landed there (`HermitHarness.reason_ntriples` plus `HermitResult.unsatisfiable_class_iris`, both additive). The CLI is a new top-level `validate` group (`validate clusters`); no top-level `validate` command existed (U4 uses `graph validate`). The warn-only CI job is not wired: the repository has no CI stage that runs the worker image's tests yet.
 
 ### U12. Phase 9 U5 closed-world islands (tranche 2)
 

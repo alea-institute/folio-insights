@@ -1,0 +1,95 @@
+{
+  "corpus": "books-gold-ep008_place_agency_mismap",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 2,
+  "by_confidence": {
+    "high": 2,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 2
+  },
+  "units": [
+    {
+      "id": "pl-01",
+      "text": "Exchange exhibit lists before the pretrial conference.",
+      "original_span": {
+        "start": 15,
+        "end": 69,
+        "source_file": "exhibits.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "exhibits.txt",
+      "source_section": [
+        "Exhibit Lists"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R00D1fcF039adD7Dd1aFAd45",
+          "label": "exhibit lists",
+          "confidence": 0.8,
+          "extraction_path": "llm",
+          "branch": "Forums and Venues",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "6435704474d70d75042e0704c4b00f74e5bec01feb9342cd707a5063971b5d22",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "pl-02",
+      "text": "Mark every exhibit with a fixed number.",
+      "original_span": {
+        "start": 70,
+        "end": 109,
+        "source_file": "exhibits.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "exhibits.txt",
+      "source_section": [
+        "Exhibit Lists"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R53E5e3A8871d86E4f7D1166",
+          "label": "exhibit number",
+          "confidence": 0.8,
+          "extraction_path": "llm",
+          "branch": "Location",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "2031142b61eb6087412b1d7fdd59b3b19d093d702257d67d68fed506ee1d8525",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

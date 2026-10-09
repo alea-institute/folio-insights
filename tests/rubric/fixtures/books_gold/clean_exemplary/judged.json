@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "rubric_version": "v1.0",
+  "judge": "synthetic gold judgment (all judged criteria exemplary)",
+  "scores": {
+    "RUB-EXTRACT-01": 3,
+    "RUB-EXTRACT-02": 3,
+    "RUB-EXTRACT-04": 3,
+    "RUB-EXTRACT-06": {
+      "per_unit": {
+        "cl-01": 3,
+        "cl-02": 3,
+        "cl-03": 3
+      }
+    },
+    "RUB-EXTRACT-07": 3,
+    "RUB-EXTRACT-08": 3,
+    "RUB-EXTRACT-12": 3,
+    "RUB-EXTRACT-13": 3,
+    "RUB-EXTRACT-14": 3
+  }
+}

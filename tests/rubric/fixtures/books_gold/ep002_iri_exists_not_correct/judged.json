@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "rubric_version": "v1.0",
+  "judge": "synthetic gold judgment (illustrates the RUB-EXTRACT-03 gate-soft cap)",
+  "scores": {
+    "RUB-EXTRACT-01": {
+      "per_unit": {
+        "map-01": 0,
+        "map-02": 2,
+        "map-03": 3
+      }
+    },
+    "RUB-EXTRACT-02": 2,
+    "RUB-EXTRACT-04": 2
+  }
+}

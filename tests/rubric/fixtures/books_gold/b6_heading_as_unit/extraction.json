@@ -1,0 +1,135 @@
+{
+  "corpus": "books-gold-b6_heading_as_unit",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 4,
+  "by_confidence": {
+    "high": 4,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "principle": 2,
+    "advice": 1,
+    "pitfall": 1
+  },
+  "units": [
+    {
+      "id": "head-01",
+      "text": "Chapter 4 Opening Statements",
+      "original_span": {
+        "start": 0,
+        "end": 28,
+        "source_file": "opening.txt"
+      },
+      "unit_type": "principle",
+      "source_file": "opening.txt",
+      "source_section": [
+        "Chapter 4 Opening Statements"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "fe0050d12a12b76105448585e8224995d2f44533a2bf19d84caf3c9e0afd2f31",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "head-02",
+      "text": "B. Preparing the Witness",
+      "original_span": {
+        "start": 30,
+        "end": 54,
+        "source_file": "opening.txt"
+      },
+      "unit_type": "principle",
+      "source_file": "opening.txt",
+      "source_section": [
+        "Chapter 4 Opening Statements"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "2bafd1efacbf3f801de2fb960b8aca50063fa39a17cd54354066b4be09cc2c92",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "body-03",
+      "text": "Tell jurors what the evidence will show.",
+      "original_span": {
+        "start": 56,
+        "end": 96,
+        "source_file": "opening.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "opening.txt",
+      "source_section": [
+        "Chapter 4 Opening Statements"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "4baa72b9a0d763f2010ef415c72297c85c0c131f2292bbedd5105f61f6e51f43",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "body-04",
+      "text": "Promise only what you can prove.",
+      "original_span": {
+        "start": 97,
+        "end": 129,
+        "source_file": "opening.txt"
+      },
+      "unit_type": "pitfall",
+      "source_file": "opening.txt",
+      "source_section": [
+        "Chapter 4 Opening Statements"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "4af7bccd6fc1781e020cb0c135fad30e7136ad9fe63d3db0fd8154fe0be28aa6",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}
