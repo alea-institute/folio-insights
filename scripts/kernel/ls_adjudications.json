@@ -1,0 +1,23 @@
+{
+ "41": {
+  "source": "T2",
+  "reason": "T1 OCR ends 'faciendum:' and T3 reads 'euin' for 'eum'; page image (col. 1123) shows 'quod per eum fuerat faciendum.' = T2 reading. Each word is attested by T1 or T3."
+ },
+ "73": {
+  "source": "T1",
+  "reason": "T3 OCR renders footnote call-out 12 as 'i-' and T2 drops the comma after 'debet'; page image (col. 1124) shows 'non debet, licet ... potuit[12] inchoari.' = T1 reading."
+ },
+ "79": {
+  "source": "T2",
+  "reason": "T1 OCR reads 'poe' for 'potest', T3 reads 'aliuin' for 'alium'; page image (col. 1124) shows 'Nemo potest plus iuris transferre in alium, quam sibi competere dinoscatur.' = T2 reading."
+ },
+ "83": {
+  "source": "T1",
+  "latin_whitespace_override": "Bona fides non patitur, ut semel exactum iterum exigatur.",
+  "reason": "All three OCRs read 'Bonafides' and 'patitur,ut'; the page image (col. 1124) shows a narrow but visible space in 'Bona fides' and a tight comma before 'ut'. Only whitespace was changed (canonA identical)."
+ },
+ "67": {
+  "source": "T1",
+  "reason": "T2 OCR reads 'nee' for 'nec', T3 reads 'Ouod' for 'Quod'; page image (col. 1124) shows 'Quod alicui suo non licet nomine, nec alieno licebit.' = T1 reading."
+ }
+}
