@@ -13,7 +13,11 @@ they read a ``RubricArtifact``, which an adapter builds once:
   that is the file itself).
 * ``ShardCorpus`` (v2): a corpus in persistent storage, opened read-mostly through
   ``CorpusStorageContext``. Each current shard becomes one unit whose claimed anchor is
-  its ``source_span`` (the verbatim source slice, plan KTD1). Its source text is
+  its ``source_span`` (the verbatim source slice, plan KTD1) and whose CLAIM is what
+  the shard asserts about that slice: its ``triple.object`` when that is a string
+  literal (the minter's distilled text), else its ``sense``. RUB-EXTRACT-05 then
+  checks both that the span anchors and that it supports the claim (the span is
+  never its own quote's only evidence). Its source text is
   resolved from ``source_uri``: a ``file:`` URI is read directly (inside
   ``sources_dir`` when one is given), any URI is also tried as a file name inside
   ``sources_dir``. Loading also runs the corpus's full SHACL validation
@@ -65,7 +69,10 @@ class AnchorClaim:
     unit's own text, used as a fallback quote for extractive v1 units that predate the
     snippet field. ``stored_score`` / ``stored_verified`` are the pipeline's recorded
     anchor result (``None`` when the artifact has none). ``source_text`` is ``None``
-    when the source could not be resolved; ``source_error`` then says why.
+    when the source could not be resolved; ``source_error`` then says why. ``claim``
+    is the text the anchored passage must SUPPORT (``minting.support``); "" means the
+    artifact states no claim separate from its quote (v1 units, whose unit text the
+    [LLM] half judges).
     """
 
     source_key: str
@@ -76,6 +83,7 @@ class AnchorClaim:
     text_as_quote: str = ""
     stored_score: float | None = None
     stored_verified: bool | None = None
+    claim: str = ""
 
 
 @dataclass(frozen=True)
@@ -296,12 +304,28 @@ class UnitRun:
 # ── v2: ShardCorpus ───────────────────────────────────────────────────────
 
 
+#: The folio-insights OWL module namespace (``services.owl_serializer.FOLIO_INSIGHTS``;
+#: ``minting.mapper.MODULE_NS``). Its annotation properties live under the FOLIO host
+#: but are relations the minter uses as triple predicates, not FOLIO concepts.
+MODULE_NS = "https://folio.openlegalstandard.org/modules/folio-insights/"
+XSD_STRING = "http://www.w3.org/2001/XMLSchema#string"
+
+
 def _folio_iris(values: Iterable[str]) -> tuple[TagRef, ...]:
     seen: list[str] = []
     for value in values:
         if isinstance(value, str) and value.startswith(FOLIO_IRI_PREFIX) and value not in seen:
             seen.append(value)
     return tuple(TagRef(iri=iri, extraction_path="shard") for iri in seen)
+
+
+def shard_claim(shard: Any) -> str:
+    """What a shard asserts about its source slice: the triple's object when it is a
+    string literal (the minter's distilled text), else the shard's ``sense``."""
+    triple = shard.triple
+    if triple.object_datatype == XSD_STRING and triple.object.strip():
+        return triple.object
+    return shard.sense
 
 
 def shard_unit(shard: Any, resolver: SourceResolver) -> RubricUnit:
@@ -314,15 +338,20 @@ def shard_unit(shard: Any, resolver: SourceResolver) -> RubricUnit:
         text=shard.sense,
         chapter=shard.source_uri,
         content_hash=canonical_content_hash(shard),
-        # RUB-EXTRACT-03 checks concept tags. The triple's predicate names a relation (the
-        # minter's folio-insights module annotation properties live under the FOLIO host
-        # but are not FOLIO concepts), so only the reference and the triple's terms count.
-        tags=_folio_iris([shard.reference, shard.triple.subject, shard.triple.object]),
+        # RUB-EXTRACT-03 checks every FOLIO-host IRI the shard carries, the triple's
+        # predicate included, except the folio-insights module's own annotation
+        # properties (relations under MODULE_NS, not FOLIO concepts).
+        tags=_folio_iris([
+            shard.reference, shard.triple.subject,
+            *(() if shard.triple.predicate.startswith(MODULE_NS) else (shard.triple.predicate,)),
+            shard.triple.object,
+        ]),
         anchor=AnchorClaim(
             source_key=shard.source_uri,
             source_text=text,
             source_error=error,
             snippet=shard.source_span,
+            claim=shard_claim(shard),
         ),
     )
 

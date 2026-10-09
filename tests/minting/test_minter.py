@@ -178,7 +178,8 @@ async def test_eligible_unit_mints_a_valid_hypothesis_shard_from_the_verified_sl
     criteria = {c["id"]: c for c in data["rubric"]["criteria"]}
     # The anchor re-verifies exactly; the subject IRI is a real FOLIO concept (the triple's
     # module-namespace predicate is a relation, not a concept tag, and is not checked).
-    assert criteria["RUB-EXTRACT-05"]["score"] == 3 and criteria["RUB-EXTRACT-05"]["gate"] == "pass"
+    assert criteria["RUB-EXTRACT-05"]["score"] == 3
+    assert criteria["RUB-EXTRACT-05"]["gate"] == "pending_llm"
     assert criteria["RUB-EXTRACT-03"]["score"] == 3
     assert criteria["RUB-EXTRACT-10"]["gate"] == "pass"
     assert "RUB-EXTRACT-01" in data["rubric"]["not_scored"]
@@ -272,14 +273,14 @@ async def test_unsigned_run_writes_unsigned_shards_and_skips_extract_events(
 
 
 async def test_signer_without_the_extractor_role_is_refused_before_any_call(
-    tmp_path: Path, provider: FakeProvider
+    tmp_path: Path, provider: FakeProvider, oracle
 ) -> None:
     from tests.storage.conftest import new_identity
 
     run, src = write_run(tmp_path, [unit("u1", SENTENCES[0])])
     gov = await governed_corpus(tmp_path / "storage")
     with pytest.raises(MintRefused) as info:
-        await _mint(tmp_path, run, src, provider, signing_key=new_identity().sk)
+        await _mint(tmp_path, run, src, provider, signing_key=new_identity().sk, oracle=oracle)
     assert info.value.code == "extractor_unauthorized"
     assert provider.requests == [] and await _shards(gov.root) == []
 
@@ -364,7 +365,7 @@ async def test_bfo_unclassifiable_without_a_typing_source(tmp_path: Path,
     gov = await governed_corpus(tmp_path / "storage")
     # No oracle (no FOLIO ancestry) and no LLM fallback: strict BFO refuses.
     report = await _mint(tmp_path, run, src, provider, signing_key=gov.extractor.sk,
-                         llm_fallbacks=False)
+                         llm_fallbacks=False, require_iri_oracle=False)
     assert report.units[0].code == "bfo_unclassifiable"
 
 
@@ -481,3 +482,122 @@ async def test_unsupported_unit_type_and_pre_b9_runs_are_refused(
     assert by["cite"].code == "unit_type_unsupported"
     assert by["b9"].code == "iri_unverified"
     assert by["ruler"].status == "eligible"  # a ruler IRI needs no B9 evidence
+
+
+async def test_oracle_required_before_any_storage_or_provider_call(tmp_path, provider):
+    run, src = write_run(tmp_path, [unit('u', SENTENCES[0])])
+    with pytest.raises(MintRefused) as info:
+        await _mint(tmp_path, run, src, provider, extractor_did='did:key:synthetic')
+    assert info.value.code == 'iri_oracle_required'
+    assert not (tmp_path / 'storage').exists() and provider.requests == []
+
+
+async def test_unchecked_unsigned_run_reports_risks(tmp_path, provider):
+    run, src = write_run(tmp_path, [unit('u', SENTENCES[0])])
+    report = await _mint(tmp_path, run, src, provider, extractor_did='did:key:synthetic',
+                         require_iri_oracle=False, dry_run=True)
+    assert report.flags == ['iri_unchecked']
+    # An actual unsigned write records both risks (BFO needs a typing oracle here).
+    from tests.minting.conftest import ORACLE_PATH
+    from folio_insights.rubric.oracle import FixtureOracle
+    report = await _mint(tmp_path, run, src, provider, extractor_did='did:key:synthetic',
+                         oracle=FixtureOracle.from_file(ORACLE_PATH))
+    data = report.as_dict()
+    assert data['flags'] == ['unattested']
+    assert data['run']['extractor_did_attested'] is False
+    assert data['units'][0]['support']['supported'] is True
+
+
+async def test_inferred_fields_cannot_introduce_specifics(tmp_path, oracle):
+    provider = FakeProvider(fields=lambda _b: default_fields(
+        sense={'value': 'Rule 26 requires leading questions.', 'confidence': 0.9}))
+    run, src = write_run(tmp_path, [unit('u', SENTENCES[0])])
+    gov = await governed_corpus(tmp_path / 'storage')
+    report = await _mint(tmp_path, run, src, provider, signing_key=gov.extractor.sk,
+                         oracle=oracle)
+    assert report.units[0].code == 'unsupported_specifics'
+    assert await _shards(gov.root) == []
+
+
+async def test_rerun_cannot_sign_another_extractors_event(tmp_path, provider, oracle):
+    run, src = write_run(tmp_path, [unit('u', SENTENCES[0])])
+    gov = await governed_corpus(tmp_path / 'storage')
+    await _mint(tmp_path, run, src, provider, signing_key=gov.extractor.sk, oracle=oracle)
+    # The genesis admin is also authorized to extract, but is not this shard's extractor.
+    report = await _mint(tmp_path, run, src, provider, signing_key=gov.admin.sk, oracle=oracle)
+    assert report.units[0].status == 'already_present'
+    assert report.units[0].extract_event == 'not_extractor'
+    assert len(await _extract_events(gov.root)) == 1 and len(provider.requests) == 1
+
+
+async def test_failed_event_append_is_reported_and_repaired_on_rerun(
+    tmp_path, provider, oracle, monkeypatch,
+):
+    import folio_insights.minting.minter as minter
+
+    original = minter._append_extract_event
+
+    async def fail(*args, **kwargs):
+        raise RuntimeError('synthetic event append failure')
+
+    run, src = write_run(tmp_path, [unit('u', SENTENCES[0])])
+    gov = await governed_corpus(tmp_path / 'storage')
+    monkeypatch.setattr(minter, '_append_extract_event', fail)
+    report = await _mint(tmp_path, run, src, provider, signing_key=gov.extractor.sk,
+                         oracle=oracle)
+    assert report.units[0].status == 'minted'
+    assert report.units[0].extract_event == 'failed:RuntimeError'
+    assert len(await _shards(gov.root)) == 1 and await _extract_events(gov.root) == []
+    monkeypatch.setattr(minter, '_append_extract_event', original)
+    repaired = await _mint(tmp_path, run, src, provider, signing_key=gov.extractor.sk,
+                           oracle=oracle)
+    assert repaired.units[0].status == 'already_present'
+    assert repaired.units[0].extract_event == 'appended'
+    assert len(await _extract_events(gov.root)) == 1 and len(provider.requests) == 1
+
+
+async def test_cached_framework_calls_contribute_to_every_units_prompt_identity(tmp_path, oracle):
+    from folio_insights.llm.templates import FRAMEWORK_DETECT
+    from tests.minting.conftest import tool_response
+
+    class FrameworkProvider(FakeProvider):
+        def _answer(self, request):
+            body = json.loads(request.content)
+            name = body['tools'][0]['function']['name']
+            if name == 'FrameworkChoice':
+                return tool_response(name, {'framework_id': 'us.federal.fre',
+                                            'confidence': 0.95, 'rationale': 'synthetic'})
+            return super()._answer(request)
+
+    hashes = []
+    for n, texts in enumerate((SENTENCES[:2], tuple(reversed(SENTENCES[:2])))):
+        path = tmp_path / str(n)
+        path.mkdir()
+        provider = FrameworkProvider()
+        run, src = write_run(path, [unit(f'u{i}', text) for i, text in enumerate(texts)])
+        gov = await governed_corpus(path / 'storage')
+        report = await _mint(path, run, src, provider, signing_key=gov.extractor.sk,
+                             oracle=oracle, framework_id=None)
+        assert [u.status for u in report.units] == ['minted', 'minted']
+        assert len(provider.requests) == 3  # one detector call, two field calls
+        hashes.append({s.source_span: s.extraction_prompt_hash for s in await _shards(gov.root)})
+    expected = combined_prompt_hash([DISTILL.hash, MINT_FIELDS.hash, FRAMEWORK_DETECT.hash])
+    assert hashes[0] == hashes[1] == {text: expected for text in SENTENCES[:2]}
+
+
+async def test_runtime_nli_failure_is_a_reported_run_refusal(tmp_path, provider, oracle):
+    from folio_insights.minting.support import SupportPolicy
+
+    class BrokenScorer:
+        name = 'synthetic-broken'
+
+        def entailment_probabilities(self, pairs):
+            raise RuntimeError('synthetic prediction failure')
+
+    run, src = write_run(tmp_path, [unit('u', SENTENCES[0])])
+    gov = await governed_corpus(tmp_path / 'storage')
+    with pytest.raises(MintRefused) as info:
+        await _mint(tmp_path, run, src, provider, signing_key=gov.extractor.sk, oracle=oracle,
+                    support=SupportPolicy(nli=True, scorer=BrokenScorer()))
+    assert info.value.code == 'nli_unavailable'
+    assert provider.requests == [] and await _shards(gov.root) == []

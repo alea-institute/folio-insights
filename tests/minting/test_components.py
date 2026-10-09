@@ -10,6 +10,7 @@ from click.testing import CliRunner
 
 from folio_insights.llm.schemas import MintFieldsOutput
 from folio_insights.llm.templates import (
+    BRANCH_JUDGE,
     CONCEPT,
     DISTILL,
     MINT_FIELDS,
@@ -54,7 +55,8 @@ B9 = RunEvidence(b9_verified=True, judge_enabled=True)
 def _evaluate(tmp: Path, data: dict, *, run: RunEvidence = B9, seen: set | None = None):
     _, src = write_run(tmp, [data])
     return evaluate(KnowledgeUnit.model_validate(data), SourceResolver(src).resolve_path,
-                    run=run, seen=seen)
+                    run=run, seen=seen,
+                    stored_anchor="anchor_score" in data or "anchor_verified" in data)
 
 
 # ── the template ─────────────────────────────────────────────────────────
@@ -164,7 +166,8 @@ def test_source_uri_is_stable_and_percent_encoded() -> None:
 
 def test_prompt_hash_is_the_flat_combined_hash_of_lineage_and_minter_templates() -> None:
     ku = KnowledgeUnit.model_validate(unit("u", SENTENCES[0], events=lineage(concept=True)))
-    expected = combined_prompt_hash([DISTILL.hash, CONCEPT.hash, MINT_FIELDS.hash])
+    expected = combined_prompt_hash([
+        DISTILL.hash, CONCEPT.hash, BRANCH_JUDGE.hash, MINT_FIELDS.hash])
     assert prompt_hash(ku, [MINT_FIELDS.hash]) == expected
     assert prompt_hash(ku, [MINT_FIELDS.hash, MINT_FIELDS.hash]) == expected
     reordered = ku.model_copy(update={"lineage": list(reversed(ku.lineage))})
@@ -253,3 +256,45 @@ async def test_cli_mints_signs_and_writes_the_report(
 
     usage = await asyncio.to_thread(CliRunner().invoke, cli, ["mint", CORPUS])
     assert usage.exit_code == 2
+
+
+@pytest.mark.parametrize(('iri', 'branch', 'code'), [
+    ('https://folio.openlegalstandard.org/UNKNOWN', 'Service', 'iri_nonexistent'),
+    (DAUBERT, 'Location', 'iri_wrong_branch'),
+    (DAUBERT, '', 'iri_wrong_branch'),
+    (DAUBERT, 'Service', None),
+])
+def test_carried_iris_must_exist_in_the_claimed_branch(tmp_path, oracle, iri, branch, code):
+    from tests.minting.conftest import ruler_tag
+
+    data = unit('u', SENTENCES[0], tags=[ruler_tag(iri, branch=branch)])
+    _, src = write_run(tmp_path, [data])
+    outcome = evaluate(KnowledgeUnit.model_validate(data), SourceResolver(src).resolve_path,
+                       oracle=oracle)
+    if code:
+        assert isinstance(outcome, Refused) and outcome.code == code
+    else:
+        assert isinstance(outcome, Eligible)
+
+
+@pytest.mark.parametrize('kind', ['judge', 'boundary'])
+def test_llm_lineage_must_name_the_template_that_shaped_the_unit(tmp_path, kind):
+    from tests.minting.conftest import llm_tag
+
+    if kind == 'judge':
+        data = unit('u', SENTENCES[0], tags=[llm_tag()],
+                    events=lineage(concept=True, judge=False))
+    else:
+        events = lineage(split='llm_refined')
+        events[0].pop('template_id')
+        events[0].pop('template_hash')
+        data = unit('u', SENTENCES[0], events=events)
+    outcome = _evaluate(tmp_path, data)
+    assert isinstance(outcome, Refused) and outcome.code == 'no_prompt_identity'
+
+
+def test_anchored_passage_must_support_the_distilled_claim(tmp_path):
+    data = unit('u', SENTENCES[0], text='Rule 26 requires leading questions on cross.')
+    outcome = _evaluate(tmp_path, data)
+    assert isinstance(outcome, Refused) and outcome.code == 'unsupported_specifics'
+    assert outcome.support is not None and not outcome.support.supported

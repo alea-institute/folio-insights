@@ -3,24 +3,40 @@
 ``mint_run`` reads a ``folio-insights extract`` run (``extraction.json``) and,
 for each KnowledgeUnit, in order:
 
-1. **Eligibility** (``minting.eligibility``): anchor re-verified against the
-   source file, substance guard, ruler-derived or B9-verified judged IRIs, prompt
-   identity, no duplicate in the run. No LLM, no writes.
+1. **Eligibility** (``minting.eligibility``): anchor recomputed against the
+   source file (stored scores never vouch), the unit text supported by the verified
+   slice (``minting.support``: specifics, lexical recall, optional NLI), substance
+   guard, ruler-derived or B9-verified judged IRIs that the IRI oracle confirms exist
+   in their claimed branch, prompt identity, no duplicate in the run. No LLM, no
+   writes.
 2. **Identity**: ``source_uri`` (``minting.mapper.source_uri_for``) and the
    verified slice give the shard IRI (``shards.minting``). An IRI the corpus
    already holds is reported ``already_present`` and costs no LLM call, which is
    what makes a re-run write nothing (AE2). A shard-IRI cross reference must
    resolve to a shard in the corpus (``dependency_unresolved`` otherwise).
-3. **Framework** (Phase 9 detector) -> **fields** (one ``mint.fields.v1`` call)
-   -> **BFO** (strict classifier), each refusing instead of defaulting
-   (``minting.fields``).
+3. **Framework** (Phase 9 detector, once per source; the template hashes and
+   routes of any LLM call it made are part of EVERY unit of that source, so
+   ``extraction_prompt_hash`` and ``extractor_model`` never depend on unit order) ->
+   **fields** (one ``mint.fields.v1`` call; the inferred ``sense`` and ``reference``
+   may state no specific the verified slice lacks) -> **BFO** (strict classifier),
+   each refusing instead of defaulting (``minting.fields``).
 4. **Write**: the shard (signed ``extract`` by the signing key, when given) is
    ingested through ``frameworks.registry.open_framework_checked_context`` (PII
    gate, envelope model, SHACL local tier, ``FrameworkGuard``, cycle guard)
    under op ID ``mint:<run>:<unit-hash>``; its IRI is also registered in the
    collision-checking ``ShardIRIRegistry``.
 5. **ExtractEvent**: one per shard, op ID ``mint-extract:<shard IRI>``, naming
-   ``extractor_model`` (``ExtractEvent.extractor_model``).
+   ``extractor_model`` (``ExtractEvent.extractor_model``). An append that fails after
+   the shard was written is reported ``failed:<ExceptionType>`` and the run goes on;
+   a re-run appends the missing event (the already-present path). For a shard
+   already in the corpus the event is signed only by its own
+   ``first_extractor_did``; another signer gets ``not_extractor`` and nothing is
+   appended.
+
+IRI oracle. A non-dry mint needs an IRI oracle (``--oracle folio|FILE``) so every
+carried IRI is checked to exist in its claimed branch before anything is written;
+``require_iri_oracle=False`` (``--no-iri-oracle``) runs without, and the report
+records ``iri_unchecked`` as an unchecked risk.
 
 Signing and the governance log. The corpus journal accepts a governance event
 only when its signature verifies and its signer is authorized at commit time
@@ -30,7 +46,9 @@ the ``extractor`` role (or a role that includes it) BEFORE anything is called or
 written (``MintRefused("extractor_unauthorized")`` otherwise), every shard
 carries an ``extract`` signature and every ExtractEvent is signed, verified and
 appended. Without a signing key the shards are written unsigned (the SHACL suite
-warns) and every unit's ExtractEvent is reported ``unsigned: skipped``.
+warns), every unit's ExtractEvent is reported ``unsigned: skipped``, and the
+``first_extractor_did`` the shards record is the caller's unproven claim: the report
+flags the run ``unattested``.
 
 Source visibility (R5, Chief p10 q3). Every run declares its sources
 ``public`` or ``non-public``. Private corpora (Phase 13.5) do not exist yet, so a
@@ -61,6 +79,7 @@ from folio_insights.minting.eligibility import (
     DEPENDENCY_UNRESOLVED,
     FIELD_INFERENCE_UNAVAILABLE,
     STORAGE_REFUSED,
+    UNSUPPORTED_SPECIFICS,
     Eligible,
     Refused,
     RunEvidence,
@@ -89,12 +108,21 @@ from folio_insights.minting.report import (
     ELIGIBLE,
     EVENT_APPENDED,
     EVENT_EXISTING,
+    EVENT_FAILED_PREFIX,
+    EVENT_NOT_EXTRACTOR,
     EVENT_UNSIGNED_SKIPPED,
+    FLAG_IRI_UNCHECKED,
+    FLAG_UNATTESTED,
     MINTED,
     REFUSED,
     MintReport,
     UnitOutcome,
     rubric_section,
+)
+from folio_insights.minting.support import (
+    SupportPolicy,
+    SupportUnavailable,
+    unsupported_specifics_only,
 )
 from folio_insights.models.knowledge_unit import KnowledgeUnit
 
@@ -241,9 +269,34 @@ async def _ensure_extract_event(
     *,
     signing_key: Ed25519PrivateKey | None,
     did: str,
+    first_extractor_did: str | None = None,
 ) -> str:
+    """Append the shard's one ExtractEvent (idempotent by op ID); returns the outcome.
+
+    ``first_extractor_did`` is the stored shard's extractor on the already-present
+    path: only that DID may sign the shard's ExtractEvent (``not_extractor``
+    otherwise). Any failure of the append is reported ``failed:<Type>``, never raised:
+    the shard is already written, and a re-run appends the missing event.
+    """
     if signing_key is None:
         return EVENT_UNSIGNED_SKIPPED
+    if first_extractor_did is not None and first_extractor_did != did:
+        return EVENT_NOT_EXTRACTOR
+    try:
+        return await _append_extract_event(ctx, shard_iri, model, signing_key=signing_key,
+                                           did=did)
+    except Exception as exc:  # noqa: BLE001 - reported per unit; the run continues
+        return f"{EVENT_FAILED_PREFIX}{type(exc).__name__}"
+
+
+async def _append_extract_event(
+    ctx: CorpusStorageContext,
+    shard_iri: str,
+    model: str,
+    *,
+    signing_key: Ed25519PrivateKey,
+    did: str,
+) -> str:
     from folio_insights.governance.cli._signing import sign_and_verify_event
     from folio_insights.governance.events import ExtractEvent
     from folio_insights.identity.cache import InMemoryDidDocCache
@@ -311,6 +364,8 @@ async def mint_run(
     iri_registry: Path | str | None = None,
     config: StorageConfig | None = None,
     score_rubric: bool = True,
+    support: SupportPolicy | None = None,
+    require_iri_oracle: bool = True,
 ) -> MintReport:
     """Mint ``extraction_json``'s eligible units into ``corpus`` (module docstring).
 
@@ -321,14 +376,27 @@ async def mint_run(
     the key's did:key, or omitted). ``framework_id`` is the sources' explicit
     framework (v1-style IDs are migrated with warnings; default: the run's own
     ``framework_id`` field, if any); ``framework_default`` the corpus default.
-    ``oracle`` types tag ancestry for BFO and scores RUB-EXTRACT-03. ``dry_run``
-    evaluates eligibility and identity only: no LLM call, no write.
+    ``oracle`` checks every carried IRI's existence and branch before the write,
+    types tag ancestry for BFO and scores RUB-EXTRACT-03; a non-dry run without one
+    is refused (``MintRefused("iri_oracle_required")``) unless ``require_iri_oracle``
+    is false, which the report flags ``iri_unchecked``. ``support`` is the
+    claim-support policy (``minting.support``; default lexical floor 0.6, NLI off);
+    an NLI check that cannot run refuses the run (``MintRefused("nli_unavailable")``).
+    ``dry_run`` evaluates eligibility and identity only: no LLM call, no write.
     """
     from contextlib import nullcontext
 
     from folio_insights.llm.context import current_context, use_context
 
     check_visibility(root, corpus, source_visibility)  # R5: before anything else
+    if oracle is None and require_iri_oracle and not dry_run:
+        raise MintRefused(
+            "iri_oracle_required",
+            "a mint needs an IRI oracle (--oracle folio or --oracle FILE) to check that every "
+            "carried IRI exists in its claimed branch; pass --no-iri-oracle to mint without "
+            "the check (recorded in the report as an unchecked risk). Nothing was called or "
+            "written.",
+        )
     run = load_run(extraction_json)
     if not Path(sources_dir).is_dir():
         raise MintError(f"sources directory not found: {sources_dir}")
@@ -336,20 +404,35 @@ async def mint_run(
     namespace = source_namespace or str(run.data.get("corpus") or "")
     if not namespace:
         raise MintError("the extraction run names no corpus; pass a source namespace")
+    try:
+        policy = (support or SupportPolicy()).resolve_scorer()
+    except SupportUnavailable as exc:
+        raise MintRefused(
+            "nli_unavailable",
+            f"the NLI support check was requested but cannot run ({exc}); it is never "
+            "skipped silently. Nothing was called or written.",
+        ) from None
 
     with use_context(llm_context) if llm_context is not None else nullcontext():
-        return await _mint(
-            Path(root), corpus, run,
-            sources_dir=Path(sources_dir), llm=llm, llm_ctx=llm_context or current_context(),
-            source_visibility=source_visibility, signing_key=signing_key, did=did,
-            run_id=run_id or default_run_id(run), namespace=namespace,
-            framework_id=framework_id or _run_framework_id(run),
-            framework_default=framework_default, oracle=oracle,
-            floors=field_floors or FieldFloors(), llm_fallbacks=llm_fallbacks,
-            dry_run=dry_run,
-            registry_path=Path(iri_registry) if iri_registry else Path(root) / REGISTRY_FILENAME,
-            config=config, score_rubric=score_rubric,
-        )
+        try:
+            return await _mint(
+                Path(root), corpus, run,
+                sources_dir=Path(sources_dir), llm=llm, llm_ctx=llm_context or current_context(),
+                source_visibility=source_visibility, signing_key=signing_key, did=did,
+                run_id=run_id or default_run_id(run), namespace=namespace,
+                framework_id=framework_id or _run_framework_id(run),
+                framework_default=framework_default, oracle=oracle,
+                floors=field_floors or FieldFloors(), llm_fallbacks=llm_fallbacks,
+                dry_run=dry_run,
+                registry_path=Path(iri_registry) if iri_registry else Path(root) / REGISTRY_FILENAME,
+                config=config, score_rubric=score_rubric, support=policy,
+            )
+        except SupportUnavailable as exc:
+            raise MintRefused(
+                "nli_unavailable",
+                f"the NLI support check failed during minting ({exc}); completed writes "
+                "remain, and no further units will be minted. Re-run after restoring the scorer.",
+            ) from None
 
 
 def _extractor_identity(signing_key: Ed25519PrivateKey | None, extractor_did: str | None) -> str:
@@ -398,6 +481,7 @@ async def _mint(
     registry_path: Path,
     config: StorageConfig | None,
     score_rubric: bool,
+    support: SupportPolicy,
 ) -> MintReport:
     from folio_insights.frameworks.detector import (
         FrameworkDetector,
@@ -419,10 +503,21 @@ async def _mint(
         run_id=run_id, corpus=corpus, extraction=run.path.name,
         source_visibility=source_visibility, extractor_did=did,
         signed=signing_key is not None, dry_run=dry_run,
+        iri_oracle="none" if oracle is None else type(oracle).__name__,
+        support_policy={"method": support.method, "min_recall": support.min_recall,
+                        **({"nli_threshold": support.nli_threshold,
+                            "scorer": getattr(support.scorer, "name", None)}
+                           if support.nli else {})},
     )
     if signing_key is None and not dry_run:
+        report.flags.append(FLAG_UNATTESTED)
         report.notes.append("no signing key: shards are unsigned and ExtractEvents were "
-                            "skipped (the governance log accepts only signed, authorized events)")
+                            "skipped (the governance log accepts only signed, authorized "
+                            "events); first_extractor_did is unattested")
+    if oracle is None:
+        report.flags.append(FLAG_IRI_UNCHECKED)
+        report.notes.append("no IRI oracle: carried IRIs were not checked to exist in their "
+                            "claimed FOLIO branch (unchecked risk)")
     evidence = RunEvidence.from_extraction(run.data)
     resolver = SourceResolver(sources_dir)
     registry = ShardIRIRegistry(registry_path)
@@ -459,21 +554,26 @@ async def _mint(
         )
 
         seen: set[str] = set()
-        detections: dict[str, Any] = {}
+        detections: dict[str, _Detection] = {}
         halted: RunHalted | None = None
 
-        def refuse(unit_id: str, refusal: Refused) -> None:
-            report.units.append(UnitOutcome(unit_id, REFUSED, code=refusal.code,
-                                            detail=refusal.detail, reasons=refusal.reasons))
+        def refuse(unit_id: str, refusal: Refused, support_metrics: Any = None) -> None:
+            measured = refusal.support or support_metrics
+            report.units.append(UnitOutcome(
+                unit_id, REFUSED, code=refusal.code, detail=refusal.detail,
+                reasons=refusal.reasons,
+                support=measured.as_dict() if measured is not None else None,
+            ))
 
         for raw, unit in run.units:
             stored = "anchor_score" in raw or "anchor_verified" in raw
             outcome = evaluate(unit, resolver.resolve_path, run=evidence, seen=seen,
-                               stored_anchor=stored)
+                               stored_anchor=stored, oracle=oracle, support=support)
             if isinstance(outcome, Refused):
                 refuse(unit.id, outcome)
                 continue
             eligible: Eligible = outcome
+            metrics = eligible.support.as_dict() if eligible.support is not None else None
             source_uri = source_uri_for(namespace, eligible.source_key)
             shard_iri, provenance = mint_shard_iri(source_uri, eligible.verified_span)
 
@@ -483,47 +583,53 @@ async def _mint(
                 refuse(unit.id, Refused.single(
                     DEPENDENCY_UNRESOLVED,
                     f"{len(missing)} cross-referenced shard IRI(s) are not in the corpus",
-                ))
+                ), eligible.support)
                 continue
 
             existing = await ctx.shards.get(shard_iri) if ctx is not None else None
             if existing is not None:
                 event = (EVENT_UNSIGNED_SKIPPED if dry_run else await _ensure_extract_event(
-                    ctx, shard_iri, existing.extractor_model, signing_key=signing_key, did=did))
+                    ctx, shard_iri, existing.extractor_model, signing_key=signing_key, did=did,
+                    first_extractor_did=existing.first_extractor_did))
                 report.units.append(UnitOutcome(
                     unit.id, ALREADY_PRESENT, shard_iri=shard_iri,
                     extract_event=None if dry_run else event,
                     extraction_prompt_hash=existing.extraction_prompt_hash,
-                    anchor_method=eligible.method,
+                    anchor_method=eligible.method, support=metrics,
                 ))
                 continue
             if dry_run:
                 report.units.append(UnitOutcome(unit.id, ELIGIBLE, shard_iri=shard_iri,
-                                                anchor_method=eligible.method))
+                                                anchor_method=eligible.method, support=metrics))
                 continue
             if halted is not None:
                 refuse(unit.id, Refused.single(
                     FIELD_INFERENCE_UNAVAILABLE,
                     f"the LLM run halted earlier ({getattr(halted, 'kind', type(halted).__name__)})",
-                ))
+                ), eligible.support)
                 continue
 
-            n_before = len(llm_ctx.records)
             try:
                 if eligible.source_key not in detections:
-                    detections[eligible.source_key] = await detect_framework(
-                        detector, SourceMetadata(framework_id=framework_id,
-                                                 title=eligible.source_key))
-                detection, framework_refusal = detections[eligible.source_key]
+                    detections[eligible.source_key] = await _detect(
+                        detector, llm_ctx, SourceMetadata(framework_id=framework_id,
+                                                          title=eligible.source_key))
+                detected = detections[eligible.source_key]
+                detection, framework_refusal = detected.detection, detected.refusal
                 if detection is not None:
                     report.framework_migration_warnings.extend(detection.migration_warnings)
                 if framework_refusal is not None:
-                    refuse(unit.id, framework_refusal)
+                    refuse(unit.id, framework_refusal, eligible.support)
                     continue
+                n_before = len(llm_ctx.records)
                 fields = await infer_fields(unit, eligible, port=llm, context=llm_ctx,
                                             floors=floors)
                 if isinstance(fields, Refused):
-                    refuse(unit.id, fields)
+                    refuse(unit.id, fields, eligible.support)
+                    continue
+                invented = _fields_specifics_refusal(fields.values, eligible.verified_span)
+                if invented is not None:
+                    refuse(unit.id, invented, eligible.support)
                     continue
                 bfo = await classify_bfo(classifier, eligible, fields.values["speech_act"],
                                          subject=unit.text)
@@ -532,15 +638,18 @@ async def _mint(
                 refuse(unit.id, Refused.single(
                     FIELD_INFERENCE_UNAVAILABLE,
                     f"the LLM run halted ({getattr(exc, 'kind', type(exc).__name__)})",
-                ))
+                ), eligible.support)
                 continue
             if isinstance(bfo, Refused):
-                refuse(unit.id, bfo)
+                refuse(unit.id, bfo, eligible.support)
                 continue
 
+            # The unit's own calls (fields, BFO fallback) plus every call the per-source
+            # framework detection made, whichever unit happened to trigger it (R4).
             calls = [r for r in llm_ctx.records[n_before:] if r.status == "ok"]
-            minter_hashes = {MINT_FIELDS.hash, *(r.template_hash for r in calls)}
-            routes = {f"{fields.provider}:{fields.model}",
+            minter_hashes = {MINT_FIELDS.hash, *detected.template_hashes,
+                             *(r.template_hash for r in calls)}
+            routes = {f"{fields.provider}:{fields.model}", *detected.routes,
                       *(f"{r.usage.provider}:{r.usage.model}" for r in calls)}
             model = extractor_model(unit, routes, run.summary)
             p_hash = prompt_hash(unit, minter_hashes)
@@ -568,13 +677,15 @@ async def _mint(
             except storage_refusals as exc:
                 refuse(unit.id, Refused.single(f"{STORAGE_REFUSED}:{type(exc).__name__}",
                                                "the framework-checked storage context refused "
-                                               "the shard; nothing was written for this unit"))
+                                               "the shard; nothing was written for this unit"),
+                       eligible.support)
                 continue
             event = await _ensure_extract_event(ctx, shard_iri, model,
                                                 signing_key=signing_key, did=did)
             report.units.append(UnitOutcome(
                 unit.id, MINTED, shard_iri=shard_iri, extract_event=event,
                 extraction_prompt_hash=p_hash, anchor_method=eligible.method,
+                support=metrics,
             ))
     finally:
         if ctx is not None:
@@ -586,6 +697,53 @@ async def _mint(
         report.rubric = await rubric_section(root, corpus, report.shard_iris(),
                                              sources_dir=sources_dir, oracle=oracle)
     return report
+
+
+@dataclass(frozen=True)
+class _Detection:
+    """One source's framework detection and the LLM calls it made (R4: part of every
+    unit's prompt identity and route set, not only the unit that triggered it)."""
+
+    detection: Any
+    refusal: Refused | None
+    template_hashes: frozenset[str]
+    routes: frozenset[str]
+
+
+async def _detect(detector: Any, llm_ctx: LLMRunContext, metadata: Any) -> _Detection:
+    n_before = len(llm_ctx.records)
+    detection, refusal = await detect_framework(detector, metadata)
+    calls = [r for r in llm_ctx.records[n_before:] if r.status == "ok"]
+    return _Detection(
+        detection, refusal,
+        frozenset(r.template_hash for r in calls if r.template_hash),
+        frozenset(f"{r.usage.provider}:{r.usage.model}" for r in calls),
+    )
+
+
+#: The inferred fields whose specifics must occur in the verified slice. ``sense`` and
+#: ``reference`` restate the claim; an LLM that adds a citation, number or name there
+#: invents exactly as a distiller would. (``logical_form_imputed`` is a formula and the
+#: remaining fields are enums.)
+SPECIFICS_CHECKED_FIELDS: tuple[str, ...] = ("sense", "reference")
+
+
+def _fields_specifics_refusal(values: Mapping[str, str], span: str) -> Refused | None:
+    reasons = []
+    for name in SPECIFICS_CHECKED_FIELDS:
+        missing = unsupported_specifics_only(values.get(name, ""), span)
+        if missing:
+            reasons.append((name, missing))
+    if not reasons:
+        return None
+    from folio_insights.minting.eligibility import Reason
+
+    return Refused.of(
+        Reason(UNSUPPORTED_SPECIFICS,
+               f"the inferred {name} states specifics the verified passage lacks: "
+               + ", ".join(missing))
+        for name, missing in reasons
+    )
 
 
 def _bfo_llm(port: LLMPort) -> Any:

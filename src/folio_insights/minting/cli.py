@@ -5,7 +5,8 @@
     folio-insights mint CORPUS --run extraction.json --sources DIR \\
         --source-visibility public|non-public [--signing-key PATH | --extractor-did DID] \\
         [--llm-provider P] [--llm-model M] [--framework ID] [--framework-default ID] \\
-        [--oracle folio|PATH] [--field-floor F] [--report out.json] [--dry-run]
+        (--oracle folio|PATH | --no-iri-oracle) [--field-floor F] \\
+        [--support-floor F] [--nli-support [--nli-threshold F]] [--report out.json] [--dry-run]
     folio-insights mint CORPUS --mark-local-only
 
 Mints the run's eligible units into CORPUS (``minting.minter.mint_run``) and
@@ -19,6 +20,14 @@ marked local-only with ``--mark-local-only`` (R5; Phase 13.5 private corpora do
 not exist yet). The LLM route and keys follow ``extract``: the invoking user's
 environment, ``--llm-provider`` / ``--llm-model``, per-task
 ``LLM_MINT_FIELDS_PROVIDER/MODEL`` overrides, and the cumulative spend cap.
+
+``--oracle`` is required for a real mint: every carried FOLIO IRI must exist in the
+branch its tag claims before anything is written. ``--no-iri-oracle`` mints without
+that check and the report flags ``iri_unchecked``. Every unit's text must be supported
+by its verified source slice (``minting.support``): its specifics must occur there and
+its content-token recall must reach ``--support-floor`` (default 0.6);
+``--nli-support`` adds an entailment check with the local NLI cross-encoder (the run is
+refused, never silently downgraded, when that model cannot load).
 
 ``extract --mint`` is not wired: minting is a separate, gated post-pipeline step
 that needs its own visibility declaration and signing identity, so it runs as
@@ -80,8 +89,19 @@ def _llm_options(func):  # noqa: ANN001, ANN202
 @click.option("--oracle", default=None,
               help="FOLIO IRI oracle for BFO typing and RUB-EXTRACT-03: 'folio' (live "
                    "ontology) or a frozen oracle JSON file.")
+@click.option("--no-iri-oracle", is_flag=True, default=False,
+              help="Mint without an IRI oracle (carried IRIs are not checked to exist in "
+                   "their claimed branch; the report flags iri_unchecked).")
 @click.option("--field-floor", type=click.FloatRange(0.0, 1.0), default=None,
               help="Confidence floor for every inferred field (default 0.6).")
+@click.option("--support-floor", type=click.FloatRange(0.0, 1.0), default=None,
+              help="Content-token recall the unit text must reach against its verified "
+                   "source slice (default 0.6).")
+@click.option("--nli-support", is_flag=True, default=False,
+              help="Also require NLI entailment of the unit text by its verified slice "
+                   "(local cross-encoder; the run is refused if it cannot load).")
+@click.option("--nli-threshold", type=click.FloatRange(0.0, 1.0), default=None,
+              help="Entailment probability floor for --nli-support (default 0.5).")
 @click.option("--run-id", default=None,
               help="Run ID in each op ID (default: derived from the extraction file's hash).")
 @click.option("--source-namespace", default=None,
@@ -106,7 +126,11 @@ def mint_cmd(
     framework_id: str | None,
     framework_default: str | None,
     oracle: str | None,
+    no_iri_oracle: bool,
     field_floor: float | None,
+    support_floor: float | None,
+    nli_support: bool,
+    nli_threshold: float | None,
     run_id: str | None,
     source_namespace: str | None,
     report_path: Path | None,
@@ -123,6 +147,11 @@ def mint_cmd(
     from folio_insights.minting.fields import FieldFloors
     from folio_insights.minting.minter import MintError, MintRefused, mint_run
     from folio_insights.minting.minter import mark_local_only as mark
+    from folio_insights.minting.support import (
+        DEFAULT_MIN_RECALL,
+        DEFAULT_NLI_THRESHOLD,
+        SupportPolicy,
+    )
 
     root = resolve_corpus_root(corpus_root)
     if mark_local_only:
@@ -132,6 +161,15 @@ def mint_cmd(
         return
     if run_path is None or sources_dir is None or source_visibility is None:
         raise click.UsageError("--run, --sources and --source-visibility are required")
+    if oracle and no_iri_oracle:
+        raise click.UsageError("--oracle and --no-iri-oracle contradict each other")
+    if nli_threshold is not None and not nli_support:
+        raise click.UsageError("--nli-threshold needs --nli-support")
+    policy = SupportPolicy(
+        min_recall=DEFAULT_MIN_RECALL if support_floor is None else support_floor,
+        nli=nli_support,
+        nli_threshold=DEFAULT_NLI_THRESHOLD if nli_threshold is None else nli_threshold,
+    )
 
     sk = None
     if signing_key is not None:
@@ -173,7 +211,8 @@ def mint_cmd(
         source_namespace=source_namespace, framework_id=framework_id,
         framework_default=framework_default, oracle=rubric_oracle,
         field_floors=FieldFloors(default=field_floor) if field_floor is not None else None,
-        dry_run=dry_run, score_rubric=not no_rubric,
+        dry_run=dry_run, score_rubric=not no_rubric, support=policy,
+        require_iri_oracle=not no_iri_oracle,
     )
     if llm_ctx is not None:
         from folio_insights.cli import _closing

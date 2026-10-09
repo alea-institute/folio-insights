@@ -24,7 +24,7 @@ from typing import Any
 import httpx
 import pytest
 
-from folio_insights.llm.templates import CONCEPT, DISTILL
+from folio_insights.llm.templates import BRANCH_JUDGE, CONCEPT, DISTILL
 from folio_insights.rubric.oracle import FixtureOracle
 from folio_insights.storage import CorpusStorageContext
 
@@ -56,25 +56,41 @@ FABRICATED = "Use leading questions on redirect so the jury hears the witness ag
 HEADING = "Cross-Examination Practice"
 
 
-def ruler_tag(iri: str = DAUBERT, confidence: float = 0.9) -> dict[str, Any]:
+def ruler_tag(iri: str = DAUBERT, confidence: float = 0.9, *,
+              branch: str = "Service") -> dict[str, Any]:
+    """An entity-ruler tag; ``branch`` is the FOLIO branch the tagger claims (both
+    DAUBERT and ARB sit in Service in the frozen oracle)."""
     return {"iri": iri, "label": "synthetic concept", "confidence": confidence,
-            "extraction_path": "entity_ruler", "branch": ""}
+            "extraction_path": "entity_ruler", "branch": branch}
 
 
 def llm_tag(iri: str = ARB, judge_status: str | None = "judged",
-            confidence: float = 0.8) -> dict[str, Any]:
+            confidence: float = 0.8, *, branch: str = "Service") -> dict[str, Any]:
     return {"iri": iri, "label": "synthetic concept", "confidence": confidence,
-            "extraction_path": "llm", "branch": "", "judge_status": judge_status}
+            "extraction_path": "llm", "branch": branch, "judge_status": judge_status}
 
 
-def lineage(*, concept: bool = False) -> list[dict[str, Any]]:
+def lineage(*, concept: bool = False, judge: bool | None = None,
+            split: str = "structural") -> list[dict[str, Any]]:
+    """A unit's lineage. ``concept`` names the concept template on the tag event;
+    ``judge`` (default: same as ``concept``) adds the judge event an LLM-path tag's
+    ruling leaves; ``split`` is the boundary method."""
+    from folio_insights.llm.templates import BOUNDARY
+
+    judge = concept if judge is None else judge
     events = [
-        {"stage": "boundary_detection", "action": "split", "detail": "method=structural"},
+        {"stage": "boundary_detection", "action": "split", "detail": f"method={split}",
+         **({"template_id": BOUNDARY.id, "template_hash": BOUNDARY.hash}
+            if split.startswith("llm_refined") else {})},
         {"stage": "distiller", "action": "distill", "detail": "distilled",
          "template_id": DISTILL.id, "template_hash": DISTILL.hash},
         {"stage": "folio_tagger", "action": "tag", "detail": "1 concepts",
          **({"template_id": CONCEPT.id, "template_hash": CONCEPT.hash} if concept else {})},
     ]
+    if judge:
+        events.append({"stage": "folio_tagger", "action": "judge",
+                       "detail": "judge rejected 0/1 non-ruler candidate(s)",
+                       "template_id": BRANCH_JUDGE.id, "template_hash": BRANCH_JUDGE.hash})
     return events
 
 

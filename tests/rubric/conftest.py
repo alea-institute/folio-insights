@@ -151,6 +151,11 @@ async def build_corpus(
         fields = {"source_uri": f"urn:synthetic:source/{SOURCE_FILE}", "source_span": span,
                   "sense": sense, "reference": reference, **(extra or {}).get(n, {})}
         s = shard(n, **fields)
+        # The storage fixture's generic triple states an unrelated example claim.
+        # This corpus exercises grounded assertions about these synthetic passages.
+        s = s.model_copy(update={"triple": s.triple.model_copy(update={
+            "object": span, "object_datatype": "http://www.w3.org/2001/XMLSchema#string",
+        })})
         shards.append(signed(s, signer) if sign else s)
     ctx = await CorpusStorageContext.open(root, corpus)
     try:

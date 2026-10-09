@@ -3,12 +3,21 @@
 ``MintReport.as_dict()`` is the JSON ``folio-insights mint --report`` writes:
 
 * ``run`` — run ID, target corpus, extraction file, declared source visibility,
-  extractor DID, whether shards and ExtractEvents were signed, dry-run flag.
+  extractor DID (and whether it is attested by a signature), whether shards and
+  ExtractEvents were signed, dry-run flag, the IRI oracle used and the claim-support
+  policy (``minting.support``).
+* ``flags`` — run-level unchecked risks: ``unattested`` (no signing key, so
+  ``first_extractor_did`` is the caller's unproven claim) and ``iri_unchecked`` (no IRI
+  oracle, so carried IRIs were not checked to exist in their claimed branch).
 * ``units`` — one entry per unit in run order: ``minted`` (new shard IRI),
   ``already_present`` (its IRI was already in the corpus; nothing written),
   ``eligible`` (dry run: would be minted) or ``refused`` (primary ``code`` and
   ``detail`` plus every recorded reason). Each minted or present unit also says
-  what happened to its ExtractEvent.
+  what happened to its ExtractEvent (``appended``, ``existing``, ``unsigned:
+  skipped``, ``not_extractor`` or ``failed:<ExceptionType>``). Every unit whose
+  claim support was measured carries ``support``: method, content-token recall and
+  its floor, the number and classes of specifics checked, the classes missing, and
+  the entailment score when NLI ran.
 * ``counts`` — per status and per refusal code (primary codes only).
 * ``framework_migration_warnings`` — the Phase 9 v1 framework-ID migration
   warnings the detector raised, de-duplicated.
@@ -42,6 +51,15 @@ REPORT_FORMAT = 1
 EVENT_APPENDED = "appended"
 EVENT_EXISTING = "existing"
 EVENT_UNSIGNED_SKIPPED = "unsigned: skipped"
+#: The shard is already present and was extracted by another DID: its ExtractEvent is
+#: never signed by whoever re-runs the mint.
+EVENT_NOT_EXTRACTOR = "not_extractor"
+#: Prefix of an append that failed after the shard was written (``failed:<Type>``).
+EVENT_FAILED_PREFIX = "failed:"
+
+# Run-level flags (unchecked risks).
+FLAG_UNATTESTED = "unattested"
+FLAG_IRI_UNCHECKED = "iri_unchecked"
 
 
 @dataclass
@@ -55,6 +73,7 @@ class UnitOutcome:
     extract_event: str | None = None
     extraction_prompt_hash: str | None = None
     anchor_method: str | None = None
+    support: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {"unit_id": self.unit_id, "status": self.status}
@@ -70,6 +89,8 @@ class UnitOutcome:
             out["extraction_prompt_hash"] = self.extraction_prompt_hash
         if self.anchor_method is not None:
             out["anchor_method"] = self.anchor_method
+        if self.support is not None:
+            out["support"] = dict(self.support)
         return out
 
 
@@ -82,6 +103,9 @@ class MintReport:
     extractor_did: str
     signed: bool
     dry_run: bool = False
+    iri_oracle: str = "none"
+    support_policy: dict[str, Any] = field(default_factory=dict)
+    flags: list[str] = field(default_factory=list)
     units: list[UnitOutcome] = field(default_factory=list)
     framework_migration_warnings: list[str] = field(default_factory=list)
     cost: dict[str, Any] | None = None
@@ -132,9 +156,13 @@ class MintReport:
                 "extraction": self.extraction,
                 "source_visibility": self.source_visibility,
                 "extractor_did": self.extractor_did,
+                "extractor_did_attested": self.signed,
                 "signed": self.signed,
                 "dry_run": self.dry_run,
+                "iri_oracle": self.iri_oracle,
+                "support_policy": dict(self.support_policy),
             },
+            "flags": sorted(set(self.flags)),
             "counts": self.counts(),
             "units": [u.as_dict() for u in self.units],
             "framework_migration_warnings": sorted(set(self.framework_migration_warnings)),
@@ -184,7 +212,11 @@ __all__ = [
     "ELIGIBLE",
     "EVENT_APPENDED",
     "EVENT_EXISTING",
+    "EVENT_FAILED_PREFIX",
+    "EVENT_NOT_EXTRACTOR",
     "EVENT_UNSIGNED_SKIPPED",
+    "FLAG_IRI_UNCHECKED",
+    "FLAG_UNATTESTED",
     "MINTED",
     "REFUSED",
     "REPORT_FORMAT",
