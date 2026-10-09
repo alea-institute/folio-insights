@@ -113,3 +113,64 @@ class BfoCategoryChoice(BaseModel):
     ] | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     rationale: str = ""
+
+
+# ---- Minting field inference (drain U8, KTD3) --------------------------------------------------
+#
+# The value enums are read from the shard envelope itself, so the schema the model answers can
+# never drift from what ``SimpleAssertionShard`` accepts: any other value is a validation error
+# (re-asked once by the port), never a coerced default.
+
+
+def _envelope_literal(name: str) -> object:
+    from folio_insights.shards.envelope import ShardEnvelope
+
+    return ShardEnvelope.model_fields[name].annotation
+
+
+LayerValue = _envelope_literal("layer")
+PredicationModeValue = _envelope_literal("predication_mode")
+ForkValue = _envelope_literal("fork")
+SpeechActValue = _envelope_literal("speech_act")
+
+
+class ScoredText(BaseModel):
+    """A free-text field and the model's confidence (0-1) that the passage supports it."""
+
+    value: str = Field(min_length=1)
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class ScoredLayer(BaseModel):
+    value: LayerValue  # type: ignore[valid-type]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class ScoredPredicationMode(BaseModel):
+    value: PredicationModeValue  # type: ignore[valid-type]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class ScoredFork(BaseModel):
+    value: ForkValue  # type: ignore[valid-type]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class ScoredSpeechAct(BaseModel):
+    value: SpeechActValue  # type: ignore[valid-type]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class MintFieldsOutput(BaseModel):
+    """The seven analysed envelope fields of one minted shard, each with a confidence.
+
+    Every field is required: a reply that omits one fails validation instead of defaulting.
+    """
+
+    sense: ScoredText
+    reference: ScoredText
+    logical_form_imputed: ScoredText
+    layer: ScoredLayer
+    predication_mode: ScoredPredicationMode
+    fork: ScoredFork
+    speech_act: ScoredSpeechAct
