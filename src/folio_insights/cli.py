@@ -811,8 +811,10 @@ def jobs_list(db: str | None, limit: int) -> None:
     """List recent jobs (newest first)."""
     queue = _open_queue(db)
     for job in queue.list_jobs(limit=limit):
+        reason = f"  reason={' '.join(job.error.split())[:120]}" if job.error else ""
         click.echo(f"{job.id}  {job.kind:<9} {job.status.value:<18} {job.corpus_id}  "
-                   f"attempts={job.attempts}/{job.max_attempts}  stage={job.current_stage or '-'}")
+                   f"attempts={job.attempts}/{job.max_attempts}  stage={job.current_stage or '-'}"
+                   f"{reason}")
 
 
 @jobs_group.command("cancel")
@@ -823,6 +825,32 @@ def jobs_cancel(job_id: str, db: str | None) -> None:
     job = _open_queue(db).request_cancel(job_id)
     click.echo(f"{job.id}: {job.status.value}"
                + (" (cancellation requested)" if job.cancel_requested and not job.is_terminal else ""))
+
+
+@jobs_group.command("expire")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+@click.option("--ttl", "ttl", default=None, type=float,
+              help="Expire paused jobs idle longer than this many seconds "
+                   "(default: $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS, else 86400).")
+def jobs_expire(db: str | None, ttl: float | None) -> None:
+    """Cancel abandoned paused jobs (needs_credentials / budget_exhausted) past the TTL.
+
+    Frees a corpus whose paused job can no longer be resumed (lost control token). Running and
+    queued jobs are never touched.
+    """
+    from folio_insights.jobs.worker import parse_paused_ttl, paused_ttl_from_env
+
+    try:
+        seconds = paused_ttl_from_env() if ttl is None else parse_paused_ttl(ttl)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
+    if seconds <= 0:
+        click.echo("expiry disabled (ttl <= 0); nothing expired")
+        return
+    expired = _open_queue(db).expire_paused(ttl_seconds=seconds)
+    for job_id in expired:
+        click.echo(f"{job_id}: expired")
+    click.echo(f"{len(expired)} job(s) expired (ttl={seconds:g}s)")
 
 
 @jobs_group.command("import-legacy")

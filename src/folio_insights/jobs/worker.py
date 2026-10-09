@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
+import os
 import threading
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -39,6 +41,33 @@ from folio_insights.llm import (
 from folio_insights.llm.credentials import scrub
 
 logger = logging.getLogger(__name__)
+
+
+PAUSED_TTL_ENV = "FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS"
+DEFAULT_PAUSED_TTL_SECONDS = 86400.0
+
+
+def parse_paused_ttl(value: object) -> float:
+    """Validate a paused-job TTL (seconds). Zero or negative means "never expire".
+
+    Raises ``ValueError`` for anything unparsable or non-finite (``nan``, ``inf``): a typo must
+    not silently turn the sweep off or make it expire everything.
+    """
+    if isinstance(value, bool):
+        raise ValueError("paused-job TTL must be a number of seconds")
+    try:
+        ttl = float(str(value).strip()) if isinstance(value, str) else float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        raise ValueError(f"paused-job TTL must be a number of seconds, got {value!r}") from None
+    if not math.isfinite(ttl):
+        raise ValueError(f"paused-job TTL must be finite, got {value!r}")
+    return ttl
+
+
+def paused_ttl_from_env() -> float:
+    """``$FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS`` (default one day); stdlib-only for the lean image."""
+    raw = (os.environ.get(PAUSED_TTL_ENV) or "").strip()
+    return parse_paused_ttl(raw) if raw else DEFAULT_PAUSED_TTL_SECONDS
 
 
 class JobCancelled(Exception):
@@ -142,6 +171,7 @@ class JobWorker:
         lease_seconds: float = 60.0,
         poll_interval: float = 1.0,
         meter_factory: MeterFactory | None = None,
+        paused_ttl_seconds: float | None = None,
     ) -> None:
         self.queue = queue
         self.handlers = dict(handlers)
@@ -150,6 +180,12 @@ class JobWorker:
         self.lease_seconds = lease_seconds
         self.poll_interval = poll_interval
         self.meter_factory = meter_factory
+        # ``None`` reads the environment (the lean standalone worker has no Settings); the
+        # embedded runtime passes the validated Settings value. <= 0 disables the sweep.
+        self.paused_ttl_seconds = (
+            paused_ttl_from_env() if paused_ttl_seconds is None
+            else parse_paused_ttl(paused_ttl_seconds)
+        )
 
     def __repr__(self) -> str:
         return f"JobWorker(owner={self.owner!r}, kinds={sorted(self.handlers)!r})"
@@ -164,6 +200,7 @@ class JobWorker:
         """Recover expired leases, then lease and run at most one job. ``True`` if one ran."""
         await asyncio.to_thread(self.queue.worker_heartbeat, self.owner)
         await asyncio.to_thread(self.queue.reclaim_expired)
+        await self.expire_paused()
         if not self.handlers:
             return False
         lease = await asyncio.to_thread(
@@ -173,6 +210,25 @@ class JobWorker:
             return False
         await self.run_lease(lease)
         return True
+
+    async def expire_paused(self) -> list[str]:
+        """Cancel abandoned paused jobs (R18) and drop their in-memory key handles.
+
+        Idempotent across workers; a failure here is logged and never stops the poll loop.
+        """
+        if self.paused_ttl_seconds <= 0:
+            return []
+        try:
+            expired = await asyncio.to_thread(
+                self.queue.expire_paused, ttl_seconds=self.paused_ttl_seconds
+            )
+        except Exception:  # noqa: BLE001 - housekeeping must not block leasing
+            logger.warning("paused-job expiry sweep failed", exc_info=True)
+            return []
+        for job_id in expired:
+            self.secret_store.discard(job_id)
+            logger.info("job %s expired: paused longer than %gs", job_id, self.paused_ttl_seconds)
+        return expired
 
     async def run(self, stop: asyncio.Event | None = None, *, until_idle: bool = False) -> None:
         stop = stop or asyncio.Event()
