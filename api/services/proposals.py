@@ -267,6 +267,14 @@ def decision_view(decision: dict[str, Any]) -> dict[str, Any]:
         "op_id": decision.get("op_id"),
         "ledger_position": decision.get("ledger_position"),
         "provenance": decision.get("provenance"),
+        # Signed decisions (drain plan U9): the verified signer, if any, and the operator
+        # who submitted the decision.
+        "signer_did": decision.get("signer_did"),
+        "signature_verified": decision.get("signature_verified", False) is True,
+        # A valid signature is not a registered reviewer: true only when the signers file
+        # listed the signer DID when the decision was recorded.
+        "signer_registered": decision.get("signer_registered", False) is True,
+        "operator": decision.get("operator"),
     }
 
 
