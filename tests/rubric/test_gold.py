@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from folio_insights.rubric.adapters import ShardCorpus
 from folio_insights.rubric.gold import (
     GoldSetError,
     case_dirs,
@@ -16,8 +17,16 @@ from folio_insights.rubric.gold import (
     run_gold,
     score_case,
 )
+from folio_insights.rubric.harness import score
 
-from tests.rubric.conftest import GOLD_DIR, ORACLE_PATH
+from tests.rubric.conftest import (
+    GOLD_DIR,
+    ORACLE_PATH,
+    SOURCE,
+    SOURCE_FILE,
+    build_corpus,
+    judged_all,
+)
 
 CORRECTIONS = repo_root() / "docs/evidence/books/mapping-corrections.gold.json"
 # One case per books-UAT failure mode (DE-RISK-FINDINGS.md, pack.json) plus an exemplar.
@@ -54,7 +63,8 @@ def test_gold_case_matches_expected(case: str, oracle) -> None:  # noqa: ANN001
     expected = json.loads((case_dir / "expected.json").read_text(encoding="utf-8"))
     report = score_case(case_dir, oracle)
     assert compare_case(report, expected, case=case) == []
-    # No gold case is publishable: a unit run never computes the SHACL gates.
+    # No file gold case is publishable: a unit run never computes the SHACL gates
+    # (the shard-corpus case below covers the publishable path).
     assert report.publishable is False and expected["publishable"] is False
     for c in report.criteria:
         if c.status == "not_scored":
@@ -66,6 +76,10 @@ def test_gold_cases_reproduce_their_failure_modes(oracle) -> None:  # noqa: ANN0
         return score_case(GOLD_DIR / case, oracle).criterion(cid)
 
     assert crit("ep001_generative_unanchored", "RUB-EXTRACT-05").gate == "fail"
+    # EP-INSIGHTS-BOOKS-001: the fabricated units are judged 0 -> story fail on -06.
+    ep001 = score_case(GOLD_DIR / "ep001_generative_unanchored", oracle)
+    assert ep001.gates["RUB-EXTRACT-06"] == "fail"
+    assert "gate RUB-EXTRACT-06 failed" in ep001.reasons
     assert crit("q1_paraphrase_offsets", "RUB-EXTRACT-05").gate == "fail"
     assert crit("ep002_iri_exists_not_correct", "RUB-EXTRACT-03").gate == "soft_fail"
     assert crit("empty_and_unresolvable_iris", "RUB-EXTRACT-03").gate == "soft_fail"
@@ -152,3 +166,49 @@ def test_gold_fixtures_pass_the_exclusion_scan() -> None:
             findings.extend(ce.scan_text(rel, path.read_text(encoding="utf-8")))
     assert [f.render() for f in findings] == []
     assert ORACLE_PATH.is_file()
+
+
+# The shard-corpus gold case. Committed fixtures cannot hold minted shards (their spans
+# are long text the exclusion scan treats as possible book material), so the corpus is
+# built in a temp directory here and pinned like a file case with ``compare_case``.
+SHARD_CORPUS_EXPECTED = {
+    "format": 1,
+    "case": "shard_corpus_publishable",
+    "covers": ["exemplar", "pass-rule"],
+    "failure_mode": "None: signed, anchored shards with exemplary judged scores (both "
+                    "halves of RUB-EXTRACT-05 included). The SHACL gates -10/-11 are "
+                    "computed on the corpus and the story is publishable.",
+    "publishable": True,
+    "criteria": {
+        **{cid: {"status": "judged", "score": 3.0, "gate": None}
+           for cid in ("RUB-EXTRACT-01", "RUB-EXTRACT-02", "RUB-EXTRACT-04", "RUB-EXTRACT-07",
+                       "RUB-EXTRACT-08", "RUB-EXTRACT-12", "RUB-EXTRACT-13", "RUB-EXTRACT-14")},
+        "RUB-EXTRACT-03": {"status": "computed", "score": 3.0, "gate": "pass"},
+        "RUB-EXTRACT-05": {"status": "computed+judged", "score": 3.0, "gate": "pass"},
+        "RUB-EXTRACT-06": {"status": "judged", "score": 3.0, "gate": "pass"},
+        "RUB-EXTRACT-09": {"status": "computed", "score": 3.0, "gate": None},
+        "RUB-EXTRACT-10": {"status": "computed", "score": 3.0, "gate": "pass"},
+        "RUB-EXTRACT-11": {"status": "computed", "score": 3.0, "gate": "pass"},
+    },
+}
+
+
+@pytest.mark.storage
+async def test_shard_corpus_gold_case_is_publishable(tmp_path: Path, oracle) -> None:  # noqa: ANN001
+    """The gold set's publishable path: -10/-11 computed on a corpus, every gate green."""
+    sources = tmp_path / "sources"
+    sources.mkdir()
+    (sources / SOURCE_FILE).write_text(SOURCE, encoding="utf-8")
+    root = tmp_path / "storage"
+    await build_corpus(root)
+    art = await ShardCorpus.load(root, "rubric-corpus", sources)
+    report = score(art, oracle, judged_all(3, unit_ids=[u.id for u in art.units]))
+    assert compare_case(report, SHARD_CORPUS_EXPECTED, case="shard_corpus_publishable") == []
+    assert report.publishable is True and report.reasons == ()
+    assert report.normalized == 1.0
+    # Without the judged [LLM] half of -05 the same corpus is not publishable.
+    judged = judged_all(3, unit_ids=[u.id for u in art.units])
+    del judged["scores"]["RUB-EXTRACT-05"]
+    mechanical = score(art, oracle, judged)
+    assert mechanical.publishable is False
+    assert mechanical.gates["RUB-EXTRACT-05"] == "pending_llm"

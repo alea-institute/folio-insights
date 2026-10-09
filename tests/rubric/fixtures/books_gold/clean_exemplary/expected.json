@@ -4,7 +4,7 @@
   "covers": [
     "exemplar"
   ],
-  "failure_mode": "A clean extractive run with correct tags and exemplary judged scores: every computed criterion scores 3, yet the run is not publishable because a unit run has no RDF, so the SHACL gates RUB-EXTRACT-10/-11 are not scored.",
+  "failure_mode": "A clean extractive run with correct tags and exemplary judged scores (including the [LLM] half of RUB-EXTRACT-05): every computed criterion scores 3 and every gate it can see is green, yet the run is not publishable because a unit run has no RDF, so the SHACL gates RUB-EXTRACT-10/-11 are not scored. The shard-corpus gold case (tests/rubric/test_gold.py) proves the publishable path.",
   "publishable": false,
   "criteria": {
     "RUB-EXTRACT-01": {
@@ -33,7 +33,7 @@
       "gate": null
     },
     "RUB-EXTRACT-05": {
-      "status": "computed",
+      "status": "computed+judged",
       "score": 3.0,
       "gate": "pass",
       "per_unit": {

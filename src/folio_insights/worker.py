@@ -13,7 +13,8 @@ Options::
     --lease-seconds N      lease length; heartbeats renew it every N/3 seconds (default 60)
     --poll-interval N      idle poll interval in seconds (default 2)
     --paused-ttl N         cancel paused jobs idle longer than N seconds as "expired" (R18;
-                           default $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS else 86400; <= 0 off)
+                           default $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS, else the .env
+                           value when pydantic-settings is installed, else 86400; <= 0 off)
     --until-idle           exit when no runnable job is left (tests, one-shot drains)
 
 The standalone worker never holds an LLM key, and never reads one from its environment.
@@ -70,7 +71,7 @@ async def _serve(args: argparse.Namespace) -> None:
         lease_seconds=args.lease_seconds,
         poll_interval=args.poll_interval,
         meter_factory=job_meter_factory,
-        paused_ttl_seconds=args.paused_ttl,  # None -> $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS
+        paused_ttl_seconds=args.paused_ttl,  # None -> paused_ttl_from_env() (env, .env, 86400)
     )
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

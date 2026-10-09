@@ -19,13 +19,22 @@ dataset: its IRI is ``mint_shard_iri(citation_uri, latin)`` and its
 script cut the text out of its source). A maxim whose IRI the corpus already
 holds is skipped, whoever seeded it. The missing maxims of a collection are
 ingested as ONE atomic batch under the deterministic operation ID
-``kernel-seed:<collection>:<numbers>`` (``<numbers>`` is the compact range list
-of the maxims written, e.g. ``1-88``; row ``i`` of the batch commits as
-``<op>#i``), so a crash leaves a collection either fully seeded or untouched,
-a second seed writes nothing, and two seeds racing on one corpus cannot both
-commit a maxim (the loser's differently-signed batch is refused as an
-operation-ID replay mismatch, never appended twice). One batch per collection
-also keeps a full seed to one projection catch-up per collection.
+``kernel-seed:<collection>:<dataset>:<numbers>`` (``<dataset>`` is the first 16
+hex digits of the packaged dataset file's SHA-256, ``<numbers>`` the compact
+range list of the maxims written, e.g. ``1-88``; row ``i`` of the batch commits
+as ``<op>#i``), so a crash leaves a collection either fully seeded or
+untouched, and a second seed writes nothing. The dataset digest is part of the
+ID because a maxim's IRI is minted from its citation and Latin: a dataset
+revision that corrects a transcription mints new IRIs under the same numbers,
+and must seed as a new batch rather than collide with the earlier one.
+
+Races. Two seeds racing on one corpus cannot both commit a maxim: the loser's
+differently-signed batch is refused as an operation-ID replay mismatch
+(``OperationIdConflict``), never appended twice. ``seed_kernel`` then re-reads
+which maxims are present: when the winner stored all of them the loser reports
+them ``already_present`` (the same outcome as seeding after the winner);
+otherwise it raises ``KernelSeedError``. One batch per collection also keeps a
+full seed to one projection catch-up per collection.
 
 Signature. Each new kernel shard carries one ``extract`` ``AttestedSignature``
 by the seeding admin over its canonical content hash (the SHACL suite warns on
@@ -132,13 +141,23 @@ def _ranges(numbers: Iterable[int]) -> str:
     return ",".join(parts)
 
 
-def seed_op_id(collection: str, maxims: Iterable[KernelMaxim]) -> str:
+DATASET_DIGEST_CHARS = 16
+
+
+def seed_op_id(
+    collection: str,
+    maxims: Iterable[KernelMaxim],
+    *,
+    dataset_sha256: str | None = None,
+) -> str:
     """The deterministic operation ID a collection's seed batch commits under:
-    ``kernel-seed:<collection>:<compact range list of maxim numbers>``."""
+    ``kernel-seed:<collection>:<dataset sha256[:16]>:<compact range list of maxim
+    numbers>``. ``dataset_sha256`` defaults to the packaged dataset's digest."""
     numbers = [m.number for m in maxims]
     if not numbers:
         raise ValueError("a seed batch needs at least one maxim")
-    return f"kernel-seed:{collection}:{_ranges(numbers)}"
+    digest = dataset_sha256 or load_catalog().dataset_sha256[collection_spec(collection).key]
+    return f"kernel-seed:{collection}:{digest[:DATASET_DIGEST_CHARS]}:{_ranges(numbers)}"
 
 
 def _utc(text: str) -> datetime:
@@ -298,12 +317,16 @@ async def seed_kernel(
     ``first_extractor_did`` and signs its ``extract`` attestation.
     Refuses (``FrameworkRegistrationRefused``) when a registration is needed
     and the signer is not a corpus admin, and (``KernelSeedError``) when the
-    corpus registers a collection's framework ID with a different definition.
+    corpus registers a collection's framework ID with a different definition,
+    or when a collection's batch is refused as an operation-ID conflict while
+    some of its maxims are still missing. A race loser whose maxims the winner
+    stored reports them ``already_present``.
     """
     from folio_insights.frameworks.registry import (
         open_framework_checked_context,
         register_framework,
     )
+    from folio_insights.storage.errors import OperationIdConflict
 
     derived = did_for_signing_key(signing_key)
     if did is None:
@@ -350,7 +373,23 @@ async def seed_kernel(
                              signed_at=signed_at, catalog=catalog)
                 for m in missing
             ]
-            await ctx.ingest_shards(shards, op_id=seed_op_id(entry.collection, missing))
+            op_id = seed_op_id(entry.collection, missing,
+                               dataset_sha256=catalog.dataset_sha256[entry.collection])
+            try:
+                await ctx.ingest_shards(shards, op_id=op_id)
+            except OperationIdConflict as exc:
+                # Another seed committed this batch first (a race): its maxims
+                # are what this run would have written.
+                still_missing = [m for m in missing
+                                 if await ctx.shards.get(m.shard_iri) is None]
+                if still_missing:
+                    raise KernelSeedError(
+                        f"seed batch {op_id!r} conflicts with an earlier operation, and "
+                        f"{len(still_missing)} of {len(missing)} {entry.collection} maxims "
+                        f"are still missing from corpus {corpus!r}: {exc}"
+                    ) from exc
+                entry.already_present.extend(m.shard_iri for m in missing)
+                continue
             entry.written.extend(m.shard_iri for m in missing)
     finally:
         await ctx.close()
@@ -363,6 +402,7 @@ __all__ = [
     "KERNEL_LOGICAL_FORM",
     "KERNEL_PREDICATE",
     "KERNEL_SEED_VERSION",
+    "DATASET_DIGEST_CHARS",
     "CollectionSeed",
     "KernelSeedError",
     "SeedReport",

@@ -203,6 +203,23 @@ async def test_max_depth_bounds_the_walk_and_reports_truncation() -> None:
         await derivation_tree(store, a.shard_iri, max_depth=-1)
 
 
+async def test_depth_limit_on_an_already_visited_node_is_not_truncation() -> None:
+    """R -> {B, C}, B -> C: at max_depth=1 the walk reached every node, so nothing was
+    cut off; only a genuinely unvisited node beyond the limit makes it truncated."""
+    c = _shard(3)
+    b = _shard(2, elaborates=[c.shard_iri])
+    r = _shard(1, elaborates=[b.shard_iri, c.shard_iri])
+    exhaustive = await derivation_tree(_store(r, b, c), r.shard_iri, max_depth=1)
+    assert sorted(exhaustive.visited) == sorted([r.shard_iri, b.shard_iri, c.shard_iri])
+    assert exhaustive.truncated is False
+    assert json.loads(chain_to_json(exhaustive))["truncated"] is False
+    # Give C an unvisited dependency: now max_depth=1 really cuts it off.
+    d = _shard(4)
+    b2 = _shard(2, elaborates=[c.shard_iri, d.shard_iri])
+    cut = await derivation_tree(_store(r, b2, c, d), r.shard_iri, max_depth=1)
+    assert cut.truncated is True and d.shard_iri not in cut.visited
+
+
 async def test_dangling_references_are_listed_not_fatal() -> None:
     gone = _iri(0xDEAD)
     s = _shard(1, depends_on_shards=[gone], depends_on_axioms=[K6])

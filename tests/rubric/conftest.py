@@ -100,9 +100,12 @@ def write_run(tmp: Path, units: list[dict], sources: dict[str, str] | None = Non
 
 
 def judged_all(score: float = 3, *, unit_ids: list[str], **overrides: Any) -> dict[str, Any]:
-    """A judged-scores object covering all nine judged criteria."""
+    """A judged-scores object covering all nine judged criteria and the [LLM] half of the
+    RUB-EXTRACT-05 gate (every anchored passage supports its claim, graded 3 per unit),
+    without which no story is publishable."""
     scores: dict[str, Any] = {
         "RUB-EXTRACT-01": score, "RUB-EXTRACT-02": score, "RUB-EXTRACT-04": score,
+        "RUB-EXTRACT-05": {"per_unit": {uid: 3 for uid in unit_ids}},
         "RUB-EXTRACT-06": {"per_unit": {uid: 3 for uid in unit_ids}},
         "RUB-EXTRACT-07": score, "RUB-EXTRACT-08": score, "RUB-EXTRACT-12": score,
         "RUB-EXTRACT-13": score, "RUB-EXTRACT-14": score,

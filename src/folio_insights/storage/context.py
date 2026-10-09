@@ -292,6 +292,20 @@ class StoredShardRecord:
     payload: bytes
 
 
+@dataclass(frozen=True)
+class ShardRevisionRow:
+    """One committed shard revision in commit order (drain U4: the Tractarian
+    replay). ``batch`` names the write operation the row belongs to (its op ID
+    without the ``#<row>`` suffix plus its request digest), so the rows of one
+    batch can be replayed as one event; ``payload`` is the current-version
+    record JSON."""
+
+    position: int
+    iri: str
+    batch: str
+    payload: bytes
+
+
 def _event_from_row(row: JournalRow) -> GovernanceEvent:
     return _EVENT_ADAPTER.validate_json(row.payload)
 
@@ -1226,7 +1240,9 @@ class CorpusStorageContext:
         """The current revision of every shard with the journal position of its
         FIRST revision, ordered by that position (drain U4: Tractarian sibling
         ordinals follow first commit, so a content edit never renumbers)."""
-        upto = await self._barrier()
+        return await self._shards_in_commit_order(await self._barrier())
+
+    async def _shards_in_commit_order(self, upto: int) -> list[tuple[ShardEnvelope, int]]:
         firsts = await self._journal.read_conn.execute_fetchall(
             "SELECT subject, MIN(position) FROM journal WHERE corpus = ? "
             "AND kind = 'shard' AND position <= ? GROUP BY subject",
@@ -1239,6 +1255,28 @@ class CorpusStorageContext:
         ]
         out.sort(key=lambda item: (item[1], item[0].shard_iri))
         return out
+
+    async def shard_revision_history(
+        self,
+    ) -> tuple[list[tuple[ShardEnvelope, int]], list[ShardRevisionRow]]:
+        """``shards_in_commit_order()`` plus EVERY committed shard revision in
+        commit order, both read at one watermark (drain U4: Tractarian sibling
+        ordinals are sticky across reparenting, which needs the history)."""
+        upto = await self._barrier()
+        current = await self._shards_in_commit_order(upto)
+        rows = await self._journal.read_conn.execute_fetchall(
+            "SELECT position, subject, op_id, request_sha256, payload FROM journal "
+            "WHERE corpus = ? AND kind = 'shard' AND position <= ? ORDER BY position",
+            (self.corpus, upto),
+        )
+        history = [
+            ShardRevisionRow(
+                int(position), str(subject),
+                f"{str(op_id).rsplit('#', 1)[0]}@{request_sha}", bytes(payload),
+            )
+            for position, subject, op_id, request_sha, payload in rows
+        ]
+        return current, history
 
     # ── Phase 11 SHACL: status, incremental corpus tier, full validation ──
 
@@ -1614,6 +1652,7 @@ __all__ = [
     "INCREMENTAL_FOCUS_LIMIT",
     "BulkLoadResult",
     "CorpusStorageContext",
+    "ShardRevisionRow",
     "StorageConfig",
     "StorageStatus",
     "StoredShardRecord",

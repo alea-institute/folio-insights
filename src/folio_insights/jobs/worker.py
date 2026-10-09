@@ -65,9 +65,25 @@ def parse_paused_ttl(value: object) -> float:
 
 
 def paused_ttl_from_env() -> float:
-    """``$FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS`` (default one day); stdlib-only for the lean image."""
-    raw = (os.environ.get(PAUSED_TTL_ENV) or "").strip()
-    return parse_paused_ttl(raw) if raw else DEFAULT_PAUSED_TTL_SECONDS
+    """The configured paused-job TTL, read the same way the API reads it.
+
+    When pydantic-settings is importable this is ``Settings().job_paused_ttl_seconds``: the
+    process environment (``$FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS``), else the ``.env`` file,
+    else one day, with the same validation. So a TTL configured only in ``.env`` applies to a
+    standalone worker exactly as to the API's embedded one; two sweepers with different TTLs
+    would otherwise let the shorter one win. The lean worker image has no pydantic, so there
+    only the process environment is read (stdlib only), defaulting to one day.
+
+    Raises ``ValueError`` for an invalid value from either source.
+    """
+    try:
+        from folio_insights.config import Settings
+    except ImportError:  # the lean worker image
+        raw = (os.environ.get(PAUSED_TTL_ENV) or "").strip()
+        return parse_paused_ttl(raw) if raw else DEFAULT_PAUSED_TTL_SECONDS
+    # A fresh Settings (not the cached get_settings()) so a worker constructed later in a
+    # long-lived process sees the configuration as it is now.
+    return Settings().job_paused_ttl_seconds
 
 
 class JobCancelled(Exception):

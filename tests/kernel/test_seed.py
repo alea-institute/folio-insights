@@ -6,6 +6,8 @@ seed a corpus that still needs the kernel frameworks.
 """
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -21,7 +23,8 @@ from folio_insights.frameworks.registry import (
 )
 from folio_insights.identity.cache import InMemoryDidDocCache
 from folio_insights.identity.verifier import verify_attestation
-from folio_insights.kernel.catalog import COLLECTIONS, dataset_sha256, load_catalog
+from folio_insights.kernel import seed as seed_module
+from folio_insights.kernel.catalog import COLLECTIONS, KernelCatalog, dataset_sha256, load_catalog
 from folio_insights.kernel.seed import (
     KERNEL_EPISTEMIC_STATUS,
     KERNEL_EXTRACTOR_MODEL,
@@ -35,10 +38,11 @@ from folio_insights.kernel.seed import (
 from folio_insights.models.framework import Framework, UnregisteredFramework
 from folio_insights.shapes.suite import default_suite
 from folio_insights.shards import SimpleAssertionShard, dump_shard_record, load_shard_record
-from folio_insights.storage import CorpusStorageContext
+from folio_insights.shards.minting import mint_shard_iri
+from folio_insights.storage import CorpusStorageContext, OperationIdConflict
 
 from tests.kernel.conftest import SeededCorpus, bootstrap_corpus
-from tests.storage.conftest import T0, new_identity, role_assertion
+from tests.storage.conftest import new_identity, role_assertion
 
 
 async def _all_shards(ctx: CorpusStorageContext) -> list:
@@ -182,8 +186,14 @@ def test_seed_op_ids_are_compact_and_deterministic() -> None:
     assert _ranges([1, 2, 3, 5, 7, 8]) == "1-3,5,7-8"
     assert _ranges([3, 1, 2, 2]) == "1-3"
     ls = load_catalog().collection("liber_sextus")
-    assert seed_op_id("liber_sextus", ls) == "kernel-seed:liber_sextus:1-88"
-    assert seed_op_id("liber_sextus", [ls[5], ls[0]]) == "kernel-seed:liber_sextus:1,6"
+    sha = dataset_sha256("liber_sextus")[:16]
+    assert seed_op_id("liber_sextus", ls) == f"kernel-seed:liber_sextus:{sha}:1-88"
+    assert seed_op_id("liber_sextus", [ls[5], ls[0]]) == f"kernel-seed:liber_sextus:{sha}:1,6"
+    # The dataset revision is part of the identity of the batch.
+    other = "ab" * 32
+    assert seed_op_id("liber_sextus", ls, dataset_sha256=other) == (
+        "kernel-seed:liber_sextus:abababababababab:1-88"
+    )
     with pytest.raises(ValueError):
         seed_op_id("digest", [])
 
@@ -194,8 +204,10 @@ async def test_partial_then_full_seed_by_another_admin(tmp_path: Path) -> None:
     await bootstrap_corpus(root, "c", admin)
     ctx = await CorpusStorageContext.open(root, "c")
     try:
+        # Signed at the real clock, after the genesis event (R17 server-time check).
+        when = datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=1)
         await ctx.governance.append(
-            role_assertion("c", admin, second_admin.did, "corpus_admin", T0 + timedelta(seconds=1))
+            role_assertion("c", admin, second_admin.did, "corpus_admin", when)
         )
     finally:
         await ctx.close()
@@ -297,3 +309,108 @@ async def test_unknown_collection_is_refused(tmp_path: Path) -> None:
     await bootstrap_corpus(root, "c", admin)
     with pytest.raises(KeyError, match="gratian"):
         await seed_kernel(root, "c", signing_key=admin.sk, collections=["gratian"])
+
+
+# ── dataset revisions and the race loser (review fix B) ─────────────────────
+
+
+def _revised_catalog(changes: dict[int, str], tag: str) -> KernelCatalog:
+    """The packaged catalog with some Liber Sextus maxims' Latin corrected.
+
+    A corrected transcription mints a new IRI under the same maxim number, and the
+    dataset file's bytes (so its SHA-256) change; both are simulated here.
+    """
+    base = load_catalog()
+    maxims = []
+    for m in base.maxims:
+        if m.collection == "liber_sextus" and m.number in changes:
+            latin = changes[m.number]
+            iri, provenance_hash = mint_shard_iri(m.citation_uri, latin)
+            m = dataclasses.replace(m, latin=latin, shard_iri=iri,
+                                    provenance_hash=provenance_hash)
+        maxims.append(m)
+    digests = dict(base.dataset_sha256)
+    digests["liber_sextus"] = hashlib.sha256(
+        (digests["liber_sextus"] + tag).encode()).hexdigest()
+    return KernelCatalog(tuple(maxims), base.excluded, digests)
+
+
+async def test_a_dataset_revision_seeds_under_a_new_operation_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Corrected Latin for already-seeded numbers lands; it never collides with the
+    earlier batch's operation ID (which encoded only the maxim numbers)."""
+    root = tmp_path / "storage"
+    admin = new_identity()
+    await bootstrap_corpus(root, "c", admin)
+    first = await seed_kernel(root, "c", signing_key=admin.sk, collections=["liber_sextus"])
+    assert first.written == 88
+
+    ls = load_catalog().collection("liber_sextus")
+    every = _revised_catalog({m.number: m.latin + " (lectio emendata)" for m in ls}, "all")
+    monkeypatch.setattr(seed_module, "load_catalog", lambda: every)
+    revised = await seed_kernel(root, "c", signing_key=admin.sk, collections=["liber_sextus"])
+    assert revised.written == 88 and revised.already_present == 0
+
+    # Two successive corrections of one maxim: each is its own batch.
+    for n, tag in ((1, "rev-a"), (2, "rev-b")):
+        one = _revised_catalog({5: f"{ls[4].latin} (emendatio {n})"}, tag)
+        monkeypatch.setattr(seed_module, "load_catalog", lambda one=one: one)
+        again = await seed_kernel(root, "c", signing_key=admin.sk, collections=["liber_sextus"])
+        assert again.written == 1, tag
+        assert again.already_present == 87, tag
+
+
+async def test_race_loser_reports_already_present(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two admins seeding one corpus at once: the loser's batch is refused as an
+    operation-ID replay mismatch, and it reports the winner's maxims as present."""
+    root = tmp_path / "storage"
+    admin, rival = new_identity(), new_identity()
+    await bootstrap_corpus(root, "c", admin)
+    ctx = await CorpusStorageContext.open(root, "c")
+    try:
+        when = datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=1)
+        await ctx.governance.append(role_assertion("c", admin, rival.did, "corpus_admin", when))
+    finally:
+        await ctx.close()
+
+    real_ingest = CorpusStorageContext.ingest_shards
+    raced = []
+
+    async def ingest_after_rival(self, records, *, op_id=None):  # noqa: ANN001, ANN202
+        if not raced:  # the loser: the rival commits the same batch first
+            raced.append(op_id)
+            monkeypatch.setattr(CorpusStorageContext, "ingest_shards", real_ingest)
+            winner = await seed_kernel(root, "c", signing_key=rival.sk,
+                                       collections=["liber_sextus"])
+            assert winner.written == 88
+        return await real_ingest(self, records, op_id=op_id)
+
+    monkeypatch.setattr(CorpusStorageContext, "ingest_shards", ingest_after_rival)
+    loser = await seed_kernel(root, "c", signing_key=admin.sk, collections=["liber_sextus"])
+    assert raced and raced[0].startswith("kernel-seed:liber_sextus:")
+    assert loser.written == 0 and loser.already_present == 88
+    ctx = await CorpusStorageContext.open(root, "c")
+    try:
+        ls6 = await ctx.shards.get(load_catalog().by_citation("VI 5.12.6").shard_iri)
+        assert ls6.first_extractor_did == rival.did  # the winner's batch, once
+        assert len([s async for s in ctx.shards.iter_shards()]) == 88
+    finally:
+        await ctx.close()
+
+
+async def test_operation_id_conflict_with_maxims_still_missing_is_a_seed_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "storage"
+    admin = new_identity()
+    await bootstrap_corpus(root, "c", admin)
+
+    async def conflicting(self, records, *, op_id=None):  # noqa: ANN001, ANN202
+        raise OperationIdConflict(f"operation ID {op_id!r} was already committed")
+
+    monkeypatch.setattr(CorpusStorageContext, "ingest_shards", conflicting)
+    with pytest.raises(KernelSeedError, match="88 of 88 liber_sextus maxims are still missing"):
+        await seed_kernel(root, "c", signing_key=admin.sk, collections=["liber_sextus"])

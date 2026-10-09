@@ -14,7 +14,11 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from folio_insights.revision.tractarian import TractarianFinding, TractarianIndex
+from folio_insights.revision.tractarian import (
+    TractarianFinding,
+    TractarianIndex,
+    TractarianRevision,
+)
 from folio_insights.storage import CorpusStorageContext, StorageConfig
 
 from tests.storage.conftest import shard
@@ -236,3 +240,127 @@ def test_cli_path_and_tree(tmp_path: Path) -> None:
 
     nope = runner.invoke(cli, ["graph", "tree", "nope", *base])
     assert nope.exit_code == 1 and "no corpus" in nope.output
+
+
+# ── sticky ordinals: never renumbered, never reused (review fix B, KTD8) ──
+
+
+def test_dangling_parent_arrival_keeps_unrelated_siblings_paths() -> None:
+    """Roots A, X (elaborates a dangling P), C; then P arrives. X moves under P, its
+    root ordinal stays a gap, C keeps ``3`` and P appends as ``4``."""
+    a, x, c, p = (shard(1), shard(2, elaborates=[iri(4)]), shard(3), shard(4))
+    before = TractarianIndex([(a, 0), (x, 1), (c, 2)])
+    assert paths(before) == {iri(1): "1", iri(2): "2", iri(3): "3"}
+    after = TractarianIndex([(a, 0), (x, 1), (c, 2), (p, 3)])
+    assert paths(after) == {iri(1): "1", iri(3): "3", iri(4): "4", iri(2): "4.1"}
+    assert after.iri_of("2") is None  # vacated, never handed to another shard
+    assert after.children() == ["1", "3", "4"]
+
+
+async def test_reparent_keeps_unrelated_siblings_and_never_reuses_a_path(tmp_path: Path) -> None:
+    ctx = await CorpusStorageContext.open(tmp_path / "s", "corpus-a")
+    try:
+        await ctx.ingest_shards([shard(1)])
+        await ctx.ingest_shards([shard(2, elaborates=[iri(1)])])
+        await ctx.ingest_shards([shard(3, elaborates=[iri(1)])])
+        await ctx.ingest_shards([shard(6, elaborates=[iri(3)])])
+        await ctx.ingest_shards([shard(4)])
+        before = paths(await TractarianIndex.from_context(ctx))
+        assert before == {iri(1): "1", iri(2): "1.1", iri(3): "1.2", iri(6): "1.2.1",
+                          iri(4): "2"}
+        # Move 2 under 4: the unrelated sibling 3 (and its subtree) keep their paths.
+        await ctx.shards.put(iri(2), shard(2, elaborates=[iri(4)]), op_id="move-2")
+        moved = await TractarianIndex.from_context(ctx)
+        assert paths(moved) == {iri(1): "1", iri(3): "1.2", iri(6): "1.2.1", iri(4): "2",
+                                iri(2): "2.1"}
+        assert moved.iri_of("1.1") is None and moved.children("1") == ["1.2"]
+        # A new child of 1 appends; it never takes the vacated 1.1.
+        await ctx.ingest_shards([shard(5, elaborates=[iri(1)])])
+        grown = paths(await TractarianIndex.from_context(ctx))
+        assert grown[iri(5)] == "1.3" and grown[iri(3)] == "1.2"
+        # Returning to a former parent restores the old ordinal; 2.1 becomes the gap.
+        await ctx.shards.put(iri(2), shard(2, elaborates=[iri(1)]), op_id="return-2")
+        await ctx.ingest_shards([shard(7, elaborates=[iri(4)])])
+        back = await TractarianIndex.from_context(ctx)
+        assert paths(back)[iri(2)] == "1.1" and paths(back)[iri(7)] == "2.2"
+        assert back.iri_of("2.1") is None
+        assert back.children("1") == ["1.1", "1.2", "1.3"]
+    finally:
+        await ctx.close()
+
+
+async def test_a_batch_commits_as_one_event(tmp_path: Path) -> None:
+    """A child written before its parent in one batch is never a root, so it leaves no
+    root gap behind."""
+    ctx = await CorpusStorageContext.open(tmp_path / "s", "corpus-a")
+    try:
+        await ctx.ingest_shards([shard(2, elaborates=[iri(1)]), shard(1)])
+        await ctx.ingest_shards([shard(3)])
+        ix = await TractarianIndex.from_context(ctx)
+        assert paths(ix) == {iri(1): "1", iri(2): "1.1", iri(3): "2"}
+    finally:
+        await ctx.close()
+
+
+def test_revision_history_must_match_the_entries() -> None:
+    with pytest.raises(ValueError, match="revision history"):
+        TractarianIndex([(shard(1), 0)], revisions=[])
+    with pytest.raises(ValueError, match="revision history"):
+        TractarianIndex([(shard(1), 0)], revisions=[TractarianRevision(4, iri(1), (), ())])
+    with pytest.raises(ValueError, match="latest revision"):
+        TractarianIndex([(shard(2, elaborates=[iri(1)]), 1), (shard(1), 0)],
+                        revisions=[TractarianRevision(0, iri(1), (), ()),
+                                   TractarianRevision(1, iri(2), (), ())])
+
+
+def test_random_histories_never_reuse_a_path() -> None:
+    """Across many random write histories (new shards, reparenting edits, returns,
+    dangling parents that arrive later), a path, once shown for a shard, never names
+    another shard at any later watermark, and a shard's path changes only when its own
+    or an ancestor's primary parent changed (its parent chain differs)."""
+    import random
+
+    rng = random.Random(20261009)
+    for _trial in range(40):
+        revisions: list[TractarianRevision] = []
+        current: dict[str, TractarianRevision] = {}
+        first: dict[str, int] = {}
+        ever: dict[str, str] = {}  # path -> the one IRI it ever named
+        last_paths: dict[str, str] = {}
+        last_chain: dict[str, tuple[str | None, ...]] = {}
+        pool = [iri(n) for n in range(1, 13)]
+        for position in range(30):
+            target = rng.choice(pool)
+            parent = rng.choice([None, *pool])
+            heads = () if parent is None or parent == target else (parent,)
+            field = rng.choice(["elaborates", "depends_on_axioms"])
+            rev = TractarianRevision(
+                position, target,
+                heads if field == "elaborates" else (),
+                heads if field == "depends_on_axioms" else (),
+            )
+            revisions.append(rev)
+            current[target] = rev
+            first.setdefault(target, position)
+            entries = [
+                (shard(int(i.rsplit("/", 1)[1], 16),
+                       elaborates=list(r.elaborates), depends_on_axioms=list(r.depends_on_axioms)),
+                 first[i])
+                for i, r in current.items()
+            ]
+            ix = TractarianIndex(entries, revisions=list(revisions))
+            for node in ix.nodes():
+                assert ever.setdefault(node.path, node.iri) == node.iri, (node.path, position)
+            chains = {}
+            for node in ix.nodes():
+                chain, walk = [], node
+                while walk is not None:
+                    chain.append(walk.parent_iri)
+                    walk = ix.node(walk.parent_iri) if walk.parent_iri else None
+                chains[node.iri] = (node.iri, *chain)
+            for node in ix.nodes():
+                # Same primary-parent chain as at the previous watermark: same path.
+                if last_chain.get(node.iri) == chains[node.iri]:
+                    assert node.path == last_paths[node.iri], (node.iri, position)
+            last_paths = {n.iri: n.path for n in ix.nodes()}
+            last_chain = chains

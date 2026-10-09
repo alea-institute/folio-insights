@@ -18,7 +18,9 @@ recomputed from current shards on every call (KTD8).
   to a kernel shard is a shortest one; ties break by the field order above and
   then list order, so the same corpus always yields the same path.
 * **Cycle-safe and bounded.** A visited set stops cycles; ``max_depth`` bounds
-  the number of hops, and ``truncated`` reports a frontier cut off by it.
+  the number of hops, and ``truncated`` is true only when it cut off a node the
+  walk had not already visited (an edge back into the visited set at the limit
+  leaves the walk exhaustive).
 * **Dangling references** (a cited IRI that is neither stored nor kernel) are
   listed in ``missing`` instead of failing the walk.
 
@@ -184,7 +186,9 @@ async def derivation_tree(
                 for target in getattr(shard, field_name):
                     edge = DerivationEdge(node, target, field_name)
                     if depth >= max_depth:
-                        truncated = True
+                        # Only a genuinely unvisited node cut off by the limit makes
+                        # the walk incomplete; an edge back into the visited set does not.
+                        truncated = truncated or target not in parent
                         continue
                     walked.append(edge)
                     if target in parent:

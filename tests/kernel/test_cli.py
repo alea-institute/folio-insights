@@ -8,13 +8,14 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 from pyoxigraph import RdfFormat, parse
 
 from folio_insights.cli import cli
 from folio_insights.identity.keys import generate_keypair, load_signing_key
 from folio_insights.kernel.catalog import load_catalog
-from folio_insights.storage import CorpusStorageContext
+from folio_insights.storage import CorpusStorageContext, OperationIdConflict
 
 from tests.kernel.conftest import bootstrap_corpus
 from tests.kernel.test_traversal import _ae4_shards
@@ -142,3 +143,23 @@ def test_seed_one_collection(tmp_path: Path) -> None:
     report = json.loads(result.stdout)
     assert report["written"] == 211
     assert [c["collection"] for c in report["collections"]] == ["digest"]
+
+
+def test_seed_operation_id_conflict_is_a_clean_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A conflicting seed batch prints one 'seed refused' line and exits 1 (no traceback)."""
+    root = tmp_path / "storage"
+    key, admin = _admin(tmp_path)
+    asyncio.run(bootstrap_corpus(root, "c", admin))
+
+    async def conflicting(self, records, *, op_id=None):  # noqa: ANN001, ANN202
+        raise OperationIdConflict(f"operation ID {op_id!r} was already committed")
+
+    monkeypatch.setattr(CorpusStorageContext, "ingest_shards", conflicting)
+    result = CliRunner().invoke(cli, ["kernel", "seed", "c", "--signing-key", str(key),
+                                      "--collection", "liber_sextus", "--root", str(root)])
+    assert result.exit_code == 1, result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "seed refused:" in result.output and "still missing" in result.output
+    assert "Traceback" not in result.output

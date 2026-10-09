@@ -37,7 +37,7 @@
     "RUB-EXTRACT-05": {
       "status": "computed",
       "score": 3.0,
-      "gate": "pass",
+      "gate": "pending_llm",
       "per_unit": {
         "map-01": 3,
         "map-02": 3,

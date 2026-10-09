@@ -112,6 +112,7 @@ async def test_declared_scope_iris_read_from_the_projection() -> None:
 
 @pytest.mark.parametrize("bad", [
     "x> } DROP ALL #", "has space", "<a>", 'a:b"c', "a:b}{", "", "nocolon", "a:b\nc",
+    "http://a/b\n",  # a trailing newline: "$" alone would accept it (fullmatch does not)
 ])
 async def test_injection_shaped_values_are_refused(bad: str) -> None:
     q = ClosedWorldQuery(StoreRunner([]), [])

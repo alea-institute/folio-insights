@@ -6,7 +6,9 @@
   ``--run FILE`` scores that extraction file as a unit run whatever TARGET is (TARGET is
   then only a label). The five [DET] criteria are computed; the nine judged criteria
   are ``not_scored`` unless ``--judged FILE`` supplies them, and the run is
-  ``publishable`` only when the rubric's whole pass rule holds.
+  ``publishable`` only when the rubric's whole pass rule holds (including the judged
+  [LLM] half of the RUB-EXTRACT-05 gate and the -08 completeness floor in every
+  chapter: judge -08 with ``per_chapter`` grades keyed by ``artifact.chapters``).
 * ``rubric gold`` - score the committed books gold set and the mapping-gold check;
   exits 1 on any drift from the recorded expectations.
 
@@ -40,7 +42,12 @@ def rubric_group() -> None:
 @click.option("--oracle", "oracle_spec", default=None,
               help="IRI oracle: a fixture JSON file, or 'folio' for the live ontology.")
 @click.option("--judged", "judged_file", type=click.Path(dir_okay=False, path_type=Path),
-              default=None, help="Judged scores for the LLM / MCP / taste criteria.")
+              default=None,
+              help="Judged scores (JSON, format 1) for the LLM / MCP / taste criteria and "
+                   "the [LLM] halves of -05/-09. Aggregates are 0-3 means; 'per_unit' "
+                   "(unit criteria) and 'per_chapter' (-08, -09; keys are the report's "
+                   "artifact.chapters) are integer grades 0-3. An explicit "
+                   "\"gate\": \"fail\" always wins. Format: rubric/harness.py docstring.")
 @click.option("--json", "as_json", is_flag=True, help="Print the full report as JSON.")
 @click.option("--strict", is_flag=True, help="Exit 3 when the result is not publishable.")
 @corpus_root_option
