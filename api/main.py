@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.db.session import get_db
 from api.routes import (
+    bridge,
     corpus,
     discovery,
     export,
@@ -97,6 +98,8 @@ app.include_router(validate.router)
 app.include_router(shard.router)
 app.include_router(polysemy.router)
 app.include_router(timeline.router)
+# folio-enrich bridge (plan U4): /api/bridge/v1 status read contract + optional ingest.
+app.include_router(bridge.router)
 
 # ---------------------------------------------------------------------------
 # In-memory extraction data store
