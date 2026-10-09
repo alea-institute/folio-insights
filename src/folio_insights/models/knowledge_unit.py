@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class KnowledgeType(str, Enum):
@@ -43,7 +43,15 @@ class ConceptTag(BaseModel):
 
 
 class StageEvent(BaseModel):
-    """A lineage event recorded by a pipeline stage."""
+    """A lineage event recorded by a pipeline stage.
+
+    An event written as the direct result of an LLM call also names the registered prompt
+    template that call used (KTD2): ``template_id`` is the
+    :class:`~folio_insights.llm.templates.PromptTemplate` id and ``template_hash`` its identity
+    hash. Deterministic events leave both ``None``. The fields are optional so lineage written
+    before they existed (old ``extraction.json`` files and checkpoints) still loads; a unit's
+    prompt hash is derived from them by ``folio_insights.llm.templates.unit_prompt_hash``.
+    """
 
     stage: str
     action: str
@@ -52,6 +60,18 @@ class StageEvent(BaseModel):
     timestamp: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    template_id: str | None = None
+    template_hash: str | None = None
+
+    @model_validator(mode="after")
+    def _template_identity_is_whole(self) -> StageEvent:
+        """A template id without its hash (or the reverse) cannot identify a prompt."""
+        if (self.template_id is None) != (self.template_hash is None):
+            raise ValueError(
+                "StageEvent template_id and template_hash must be given together "
+                f"(got template_id={self.template_id!r}, template_hash={self.template_hash!r})"
+            )
+        return self
 
 
 class KnowledgeUnit(BaseModel):

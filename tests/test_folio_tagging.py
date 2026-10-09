@@ -386,7 +386,7 @@ class _FakeJudgeProvider:
         self._payload = payload
         self.calls: list[str] = []
 
-    async def structured(self, prompt: str, *, schema=None, temperature=0) -> dict:  # noqa: ARG002
+    async def structured(self, prompt: str, *, schema=None, temperature=0, **_kw) -> dict:  # noqa: ARG002
         self.calls.append(prompt)
         return self._payload
 

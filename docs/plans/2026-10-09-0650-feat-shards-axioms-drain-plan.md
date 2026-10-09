@@ -168,7 +168,7 @@ Each unit runs in its own worktree branched from the integration branch `feat/dr
 ### U1. Per-unit template hashes in lineage (Phase 10 U4 remainder)
 
 - **Goal:** a unit's prompt hash is derivable from its own lineage. **Requirements:** R6. **Decisions:** KTD2.
-- **Files (owned):** `src/folio_insights/models/knowledge_unit.py` (StageEvent only), `src/folio_insights/pipeline/stages/base.py` (`record_lineage`), the LLM-backed stage call sites that record lineage (`pipeline/stages/distiller.py`, `knowledge_classifier.py`, `folio_tagger.py`, `services/boundary/llm_refiner.py` if it records lineage), `src/folio_insights/llm/templates.py` (`unit_prompt_hash`), new `tests/pipeline/test_unit_template_lineage.py`.
+- **Files (owned):** `src/folio_insights/models/knowledge_unit.py` (StageEvent only), `src/folio_insights/pipeline/stages/base.py` (`record_lineage`), the LLM-backed stage call sites that record lineage (`pipeline/stages/distiller.py`, `knowledge_classifier.py`, `folio_tagger.py`, `pipeline/stages/boundary_detection.py`, which records the split events for `llm_refined` boundaries; `services/boundary/llm_refiner.py` records no lineage but now passes its template to the port explicitly), `src/folio_insights/llm/templates.py` (`unit_prompt_hash`), new `tests/pipeline/test_unit_template_lineage.py`.
 - **Test scenarios:** stage events from LLM stages carry the template ID and hash; `unit_prompt_hash` is stable across runs and changes when a template's text changes; an old `extraction.json` without the fields still loads; deterministic-only stages record no hash.
 
 ### U2. Deterministic rubric harness and gold set (Phase 10 U6)
