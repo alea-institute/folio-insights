@@ -6,7 +6,55 @@
  * In production, FastAPI serves the SPA on the same origin.
  */
 
+import { heldOperatorToken } from '$lib/stores/llmKey';
+
 const API_BASE = '';
+
+// ---------------------------------------------------------------------------
+// Operator authentication
+// ---------------------------------------------------------------------------
+
+/** Control characters (C0, DEL) and backslashes: URL parsing strips or rewrites them. */
+// eslint-disable-next-line no-control-regex
+const UNSAFE_URL_CHARS = /[\u0000-\u001f\u007f\\]/;
+
+/**
+ * True when `url` resolves to `origin` (default: this page's origin).
+ *
+ * The URL is resolved the way `fetch` will resolve it (`new URL(url, origin)`) and the origins
+ * are compared, so '//host', '/\\host' (browsers read a backslash as a slash) and other
+ * spellings of another host are all refused. A URL holding a control character or a backslash
+ * is refused outright: URL parsing silently strips tabs and newlines, so what was checked
+ * would not be what is fetched.
+ */
+export function isSameOriginUrl(url: string, origin?: string): boolean {
+	if (typeof url !== 'string' || url === '' || UNSAFE_URL_CHARS.test(url)) return false;
+	const base = origin ?? globalThis.location?.origin;
+	if (!base) {
+		// No page origin (tests, SSR): only a plain absolute path can be same-origin.
+		return url.startsWith('/') && !url.startsWith('//');
+	}
+	try {
+		return new URL(url, base).origin === new URL(base).origin;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * `fetch` for this app's own API. When an operator token is held in tab memory
+ * (`$lib/stores/llmKey`, `operatorToken`), it is sent as `Authorization: Bearer <token>`:
+ * the API refuses state-changing requests without one (401). Only URLs that resolve to this
+ * page's origin (`isSameOriginUrl`) ever get the header, so the token never leaves for another
+ * host. A caller's own Authorization header is left alone.
+ */
+export function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+	const token = heldOperatorToken();
+	if (!token || !isSameOriginUrl(url)) return fetch(url, init);
+	const headers = new Headers(init.headers);
+	if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+	return fetch(url, { ...init, headers });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -14,7 +62,7 @@ const API_BASE = '';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T | { error: string }> {
 	try {
-		const res = await fetch(url, init);
+		const res = await apiFetch(url, init);
 		if (!res.ok) {
 			const body = await res.text();
 			return { error: `${res.status}: ${body}` };
@@ -200,7 +248,7 @@ export async function createCorpusApi(name: string): Promise<CorpusInfo | { erro
 }
 
 export async function deleteCorpusApi(corpusId: string): Promise<void | { error: string }> {
-	const res = await fetch(`${API_BASE}/api/v1/corpora/${corpusId}`, { method: 'DELETE' });
+	const res = await apiFetch(`${API_BASE}/api/v1/corpora/${corpusId}`, { method: 'DELETE' });
 	if (!res.ok) return { error: `${res.status}: ${await res.text()}` };
 }
 
@@ -223,7 +271,7 @@ export async function uploadFiles(
 		formData.append('files', file);
 	}
 	try {
-		const res = await fetch(`${API_BASE}/api/v1/corpus/${corpusId}/upload`, {
+		const res = await apiFetch(`${API_BASE}/api/v1/corpus/${corpusId}/upload`, {
 			method: 'POST',
 			body: formData,
 		});
@@ -402,7 +450,7 @@ export async function deleteTask(
 	corpusId: string,
 	taskId: string
 ): Promise<void | { error: string }> {
-	const res = await fetch(
+	const res = await apiFetch(
 		`${API_BASE}/api/v1/corpus/${corpusId}/tasks/${taskId}`,
 		{ method: 'DELETE' }
 	);
@@ -505,7 +553,7 @@ export async function triggerExport(
 	formats: string[],
 ): Promise<{ success: boolean } | { error: string }> {
 	try {
-		const res = await fetch(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
+		const res = await apiFetch(`${API_BASE}/api/v1/corpus/${corpusId}/export/bundle`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ formats }),
@@ -516,7 +564,7 @@ export async function triggerExport(
 		}
 		// Bundle endpoint returns ZIP binary on success.
 		// We don't parse it -- just confirm success. The actual download
-		// happens via getExportBundleUrl which triggers a browser download.
+		// happens via downloadExport, which carries the operator token.
 		return { success: true };
 	} catch (err) {
 		return { error: String(err) };
@@ -531,10 +579,69 @@ export async function fetchExportValidation(
 	);
 }
 
-export function getExportDownloadUrl(corpusId: string, format: string): string {
-	return `${API_BASE}/api/v1/corpus/${corpusId}/export/${format}`;
+/** Export format (as the dialog names it) -> GET route segment. */
+const EXPORT_ROUTE: Record<string, string> = { md: 'markdown', markdown: 'markdown' };
+
+/** File extension of a single-format download. */
+const EXPORT_EXTENSION: Record<string, string> = { markdown: 'md' };
+
+/** Save `blob` as a browser download named `filename`. */
+export function saveBlob(blob: Blob, filename: string): void {
+	const href = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = href;
+	link.download = filename;
+	link.rel = 'noopener';
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	// Revoke after the click has been dispatched, so the download keeps its source.
+	setTimeout(() => URL.revokeObjectURL(href), 0);
 }
 
-export function getExportBundleUrl(corpusId: string, formats: string[]): string {
-	return `${API_BASE}/api/v1/corpus/${corpusId}/export/bundle?formats=${formats.join(',')}`;
+/**
+ * Download an export with the operator token. A plain link or `location.href` cannot carry
+ * `Authorization`, and the OWL, Turtle, JSON-LD and validation exports require an operator
+ * (they mint IRIs and write export files), so the file is fetched through `apiFetch` and then
+ * saved. One format uses its GET route; several are zipped by the bundle route.
+ */
+export async function downloadExport(
+	corpusId: string,
+	formats: string[],
+	save: (blob: Blob, filename: string) => void = saveBlob,
+): Promise<{ success: true } | { error: string }> {
+	if (formats.length === 0) return { error: 'No export format selected' };
+	const corpus = encodeURIComponent(corpusId);
+	let url: string;
+	let init: RequestInit = {};
+	let filename: string;
+	if (formats.length === 1) {
+		const route = EXPORT_ROUTE[formats[0]] ?? formats[0];
+		url = `${API_BASE}/api/v1/corpus/${corpus}/export/${encodeURIComponent(route)}`;
+		filename = `folio-insights-${corpusId}.${EXPORT_EXTENSION[route] ?? route}`;
+	} else {
+		url = `${API_BASE}/api/v1/corpus/${corpus}/export/bundle`;
+		init = {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ formats }),
+		};
+		filename = `folio-insights-${corpusId}-export.zip`;
+	}
+	try {
+		const res = await apiFetch(url, init);
+		if (!res.ok) return { error: `${res.status}: ${await res.text()}` };
+		save(await res.blob(), filename);
+		return { success: true };
+	} catch (err) {
+		return { error: String(err) };
+	}
+}
+
+/**
+ * The GET URL of one export format. Only the markdown, json and html exports are open reads;
+ * use `downloadExport` for the others, which need the operator token.
+ */
+export function getExportDownloadUrl(corpusId: string, format: string): string {
+	return `${API_BASE}/api/v1/corpus/${corpusId}/export/${format}`;
 }

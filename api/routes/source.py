@@ -6,7 +6,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, Query
 
-router = APIRouter()
+from api.auth import WRITE_GUARD
+
+router = APIRouter(dependencies=WRITE_GUARD)
 
 # Context window: chars before/after the span
 _CONTEXT_CHARS = 500

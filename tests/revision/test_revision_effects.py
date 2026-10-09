@@ -41,6 +41,7 @@ from folio_insights.temporal.as_of import FI
 
 from tests.shards.conftest import _sample_shard
 from tests.storage.conftest import _unsigned, at, genesis, new_identity, shard, sign_event
+from tests.storage.conftest import fresh_signing_clock  # noqa: F401  (autouse: sign at now, R17)
 
 
 def iri(n: int) -> str:
@@ -227,6 +228,48 @@ def test_supersession_without_successor_start_uses_the_event_time() -> None:
     )
     states = derive_effective_states([old, new], [event])
     assert states[iri(21)].valid_time_end == at(5) and states[iri(21)].events == (3,)
+
+
+def test_supersession_end_prefers_the_supplied_commit_time() -> None:
+    admin = new_identity()
+    old, new = shard(23), shard(24, supersedes=iri(23))
+    event = SupersessionEvent(
+        corpus="corpus-a", position=3, signature=_unsigned(admin.did, "supersede", at(5)),
+        old_shard_iri=iri(23), new_shard_iri=iri(24),
+    )
+    states = derive_effective_states([old, new], [event], event_times={3: at(-60)})
+    assert states[iri(23)].valid_time_end == at(-60)
+
+
+async def test_persistent_supersession_without_successor_start_ends_at_commit_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The signer chooses signed_at (within SIGNING_SKEW); the effective end
+    of a superseded shard is the server commit time of the event (R17)."""
+    from datetime import timedelta
+
+    from folio_insights.storage import context as storage_context
+
+    admin = new_identity()
+    server = at(0).replace(microsecond=0)
+    monkeypatch.setattr(storage_context, "_server_now", lambda: server)
+    ctx = await CorpusStorageContext.open(tmp_path / "storage", "corpus-a")
+    try:
+        await ctx.governance.append(genesis("corpus-a", admin, server))
+        await ctx.ingest_shards([shard(25), shard(26, supersedes=iri(25))])
+        forward = server + timedelta(minutes=4)  # forward-dated, within the skew
+        event = SupersessionEvent(
+            corpus="corpus-a",
+            signature=_unsigned(admin.did, "supersede", forward),
+            old_shard_iri=iri(25),
+            new_shard_iri=iri(26),
+        )
+        await ctx.governance.append(sign_event(event, admin, forward))
+        states = await effective_states(ctx.shards, ctx.governance)
+        assert states[iri(25)].status == "superseded"
+        assert states[iri(25)].valid_time_end == server
+    finally:
+        await ctx.close()
 
 
 # ── contest ───────────────────────────────────────────────────────────────

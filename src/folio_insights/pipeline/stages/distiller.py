@@ -2,7 +2,8 @@
 
 Preserves tactical nuance while stripping filler, hedging, repetition,
 and attribution phrases. Calls the LLM port (``folio_insights.llm``) for validated
-structured output under the ``distiller.distill`` prompt template.
+structured output under the ``distiller.distill`` prompt template, and records that template's
+id and hash on the unit's ``distill`` lineage event (KTD2).
 """
 
 from __future__ import annotations
@@ -97,7 +98,7 @@ class DistillerStage(InsightsPipelineStage):
         try:
             llm_provider = llm_bridge.get_llm_for_task("distiller")  # type: ignore[union-attr]
             result = await llm_provider.structured(
-                prompt, schema=DistilledOutput, temperature=0
+                prompt, schema=DistilledOutput, template=DISTILL, temperature=0
             )
 
             distilled_text = result.get("distilled_text", "").strip()
@@ -112,6 +113,7 @@ class DistillerStage(InsightsPipelineStage):
                 stage="distiller",
                 action="distill",
                 detail=f"compressed from {len(unit.original_span.source_file)} chars",
+                template=DISTILL,
             )
 
         except Exception as exc:
@@ -122,6 +124,8 @@ class DistillerStage(InsightsPipelineStage):
                 unit.id,
                 exc_info=True,
             )
+            # The failed call shaped nothing, so this event names no template: a unit's prompt
+            # hash covers only the templates whose output it carries (KTD2).
             record_lineage(
                 unit,
                 stage="distiller",

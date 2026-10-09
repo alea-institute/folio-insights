@@ -9,7 +9,9 @@ from typing import Any
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/api/timeline", tags=["timeline-phase0"])
+from api.auth import WRITE_GUARD
+
+router = APIRouter(prefix="/api/timeline", tags=["timeline-phase0"], dependencies=WRITE_GUARD)
 
 
 @router.get("/{timeline_id}/core")

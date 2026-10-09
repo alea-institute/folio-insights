@@ -1,0 +1,133 @@
+{
+  "corpus": "books-gold-ep002_iri_exists_not_correct",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 3,
+  "by_confidence": {
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 2,
+    "procedural_rule": 1
+  },
+  "units": [
+    {
+      "id": "map-01",
+      "text": "Ask what data the expert reviewed",
+      "original_span": {
+        "start": 107,
+        "end": 140,
+        "source_file": "expert-motions.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "expert-motions.txt",
+      "source_section": [
+        "Expert Challenges"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R88vPQZIpfowihFD3P0RSJU",
+          "label": "Daubert/Frye Standard",
+          "confidence": 0.8,
+          "extraction_path": "llm",
+          "branch": "Asset Type",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "cdc664b41f550674e07c8401e2f6e0c7a04aea8faa63607163e0ee312b186a22",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "map-02",
+      "text": "A motion built on the deposition record",
+      "original_span": {
+        "start": 175,
+        "end": 214,
+        "source_file": "expert-motions.txt"
+      },
+      "unit_type": "procedural_rule",
+      "source_file": "expert-motions.txt",
+      "source_section": [
+        "Expert Challenges"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R53E5e3A8871d86E4f7D1166",
+          "label": "Rule 26(a)(1)",
+          "confidence": 0.8,
+          "extraction_path": "llm",
+          "branch": "Service",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "c860ad71e0a06c5cb411e07726e167e2f2a6c003b57a5cd69f24c85728ad460e",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "map-03",
+      "text": "what data the expert ignored.",
+      "original_span": {
+        "start": 145,
+        "end": 174,
+        "source_file": "expert-motions.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "expert-motions.txt",
+      "source_section": [
+        "Expert Challenges"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RT7xQmfA7w5HT02clIpAe",
+          "label": "Daubert Motion Practice",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Service",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "675d74bf66f9feb9ebc6dd50dd1daf0c4b17735341ec99c7ddd31a9e9f75b777",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

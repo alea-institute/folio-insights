@@ -3,8 +3,9 @@
 Every LLM call goes through a registered :class:`PromptTemplate`. A template's hash covers its
 id, version, system and user prompt templates and the output schema's JSON, and never the unit
 text that fills it, so identical templates always give identical hashes and any edit to a
-prompt or schema changes the hash. The shard minter (a later unit) combines the per-stage hashes
-into ``extraction_prompt_hash`` with :func:`combined_prompt_hash`.
+prompt or schema changes the hash. Every lineage event an LLM call produces records the template
+id and hash it used, and :func:`unit_prompt_hash` combines the hashes in one unit's lineage with
+:func:`combined_prompt_hash` into the shard's ``extraction_prompt_hash``.
 
 The registry maps each LLM task name (the ``LLM_{TASK}_PROVIDER/MODEL`` routing key) to its
 default template. A task may own more than one template (``polysemy_fallback`` serves both the
@@ -17,8 +18,9 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from functools import cached_property
+from collections.abc import Iterable, Mapping
 from importlib import metadata
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -32,6 +34,9 @@ from folio_insights.services.prompts.task_discovery import (
     TASK_DISCOVERY_PROMPT,
     TASK_ORDERING_PROMPT,
 )
+
+if TYPE_CHECKING:
+    from folio_insights.models.knowledge_unit import StageEvent
 
 
 def _canonical(obj: Any) -> str:
@@ -91,6 +96,47 @@ def combined_prompt_hash(stage_hashes: list[str] | tuple[str, ...] | set[str]) -
     """The ``extraction_prompt_hash`` of a shard: sha256 over its sorted per-stage hashes."""
     joined = "\n".join(sorted(set(stage_hashes)))
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+
+
+def _event_template_identity(event: StageEvent | Mapping[str, Any]) -> tuple[str | None, str | None]:
+    if isinstance(event, Mapping):
+        return event.get("template_id"), event.get("template_hash")
+    return getattr(event, "template_id", None), getattr(event, "template_hash", None)
+
+
+def unit_template_hashes(
+    lineage: Iterable[StageEvent | Mapping[str, Any]],
+) -> dict[str, str]:
+    """Template id -> template hash for every LLM-backed event in one unit's lineage (KTD2).
+
+    ``lineage`` is a unit's :class:`~folio_insights.models.knowledge_unit.StageEvent` list, or
+    the same events as plain dicts read from an ``extraction.json``. Deterministic events (no
+    template) are skipped. Lineage is chronological, so when one id appears with more than one
+    hash (a unit re-processed across a template version bump) the latest event's hash is kept;
+    :func:`unit_prompt_hash` covers every distinct hash regardless.
+    """
+    out: dict[str, str] = {}
+    for event in lineage:
+        template_id, template_hash = _event_template_identity(event)
+        if template_id and template_hash:
+            out[template_id] = template_hash
+    return dict(sorted(out.items()))
+
+
+def unit_prompt_hash(lineage: Iterable[StageEvent | Mapping[str, Any]]) -> str | None:
+    """A unit's prompt hash, derived from its own lineage alone (KTD2, R6).
+
+    :func:`combined_prompt_hash` over the distinct template hashes the unit's LLM-backed events
+    recorded, so the value is independent of event order, repetition and timestamps, is stable
+    across runs with unchanged templates, and changes when any template the unit passed through
+    changes. ``None`` when no event recorded a template (a unit that never reached an LLM).
+    """
+    hashes = {
+        template_hash
+        for template_id, template_hash in map(_event_template_identity, lineage)
+        if template_id and template_hash
+    }
+    return combined_prompt_hash(hashes) if hashes else None
 
 
 _REGISTRY: dict[str, PromptTemplate] = {}

@@ -21,6 +21,13 @@ projection failure after COMMIT is *pending recovery*, not an abort: the call
 raises ``ProjectionRecoveryPending`` and closes the context; reopening replays
 the journal, and retrying the operation ID returns the committed result.
 
+Governance time (R17 / KTD12): a governance append takes its server time
+inside that transaction (the server clock, never earlier than the newest
+committed governance row), refuses the event with ``GovernanceClockSkew``
+unless its ``signed_at`` is within ``SIGNING_SKEW`` of it, runs every role and
+authorization check at it over history windowed by each row's stored
+``committed_at``, and records it as the new row's ``committed_at``.
+
 Read path: every read first passes the barrier, which brings the projection's
 watermark up to the journal head, then reads at ``position <= watermark``. A
 barrier failure closes the context rather than serve a mixed revision.
@@ -66,12 +73,14 @@ import re
 import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import jcs
 from pydantic import TypeAdapter, ValidationError
 
+from folio_insights.governance.clock import check_signing_skew, parse_committed_at
 from folio_insights.governance.events import GovernanceEvent
 from folio_insights.governance.log import InMemoryGovernanceLog, InvalidSignature
 from folio_insights.shards import (
@@ -79,6 +88,12 @@ from folio_insights.shards import (
     ShardEnvelope,
     dump_shard_record,
     load_shard_record,
+)
+from folio_insights.revision.acyclicity import (
+    DependencyCycle,
+    arun_search,
+    record_out_edges,
+    shard_out_edges,
 )
 from folio_insights.shapes.corpus import run_constraints
 from folio_insights.shapes.suite import ShaclSuite, default_suite
@@ -212,6 +227,15 @@ class StorageConfig:
       signature verification and before the journal transaction (whose
       in-transaction authorization and SHACL check still run afterwards).
 
+    * ``refuse_dependency_cycles`` — the drain U4 cycle guard (R13, KTD9):
+      inside the write transaction, before anything is appended, a shard
+      put or batch whose new edges (the four ``depends_on_*`` lists plus
+      ``elaborates``) would close a cycle against the committed graph, or
+      within the batch, or as a self-edge, is refused as a whole with
+      ``revision.acyclicity.DependencyCycle``. Default on; ``False`` only to
+      load a legacy corpus that already holds cycles (``folio-insights graph
+      validate`` reports them).
+
     Neither hook replaces a built-in check, and installing one does not
     change ``full_shacl``, which only the SHACL suite's results set.
     """
@@ -229,6 +253,7 @@ class StorageConfig:
     # context handles (the storage CLI does; library callers get it only from
     # ``bulk_load_shards``). See ``bulk_load_shards`` for the __main__ caveat.
     process_pool: bool = False
+    refuse_dependency_cycles: bool = True
 
 
 @dataclass(frozen=True)
@@ -264,6 +289,20 @@ class StoredShardRecord:
     position: int
     original_bytes: bytes
     source_schema_version: int
+    payload: bytes
+
+
+@dataclass(frozen=True)
+class ShardRevisionRow:
+    """One committed shard revision in commit order (drain U4: the Tractarian
+    replay). ``batch`` names the write operation the row belongs to (its op ID
+    without the ``#<row>`` suffix plus its request digest), so the rows of one
+    batch can be replayed as one event; ``payload`` is the current-version
+    record JSON."""
+
+    position: int
+    iri: str
+    batch: str
     payload: bytes
 
 
@@ -305,8 +344,51 @@ def _refuse_replayed_event(event: GovernanceEvent, history: list[GovernanceEvent
             )
 
 
+def _server_now() -> datetime:
+    """The server clock for governance commit times (R17 / KTD12).
+
+    A module-level seam so tests can pin or move the server clock; nothing
+    a signer sends reaches it."""
+    return datetime.now(UTC)
+
+
+def _governance_server_time(history_committed: list[datetime]) -> datetime:
+    """The server time a new governance row is committed at.
+
+    The current server clock, but never earlier than the newest committed
+    governance row: if the wall clock steps backwards, a new event must still
+    see every committed revocation, so commit times never decrease with
+    position (role windows compare them with ``<=``)."""
+    now = _server_now().astimezone(UTC)
+    if history_committed:
+        return max(now, max(history_committed))
+    return now
+
+
+async def _governance_snapshot_in_transaction(
+    tx: JournalTransaction, corpus: str
+) -> tuple[InMemoryGovernanceLog, datetime]:
+    """The committed governance history of ``corpus`` read inside the write
+    transaction ``tx``, windowed by each row's stored ``committed_at``, and
+    the server time a row committed by ``tx`` records (R17 / KTD12).
+
+    Used by writes outside the governance log that must be authorized
+    against governance roles at their own commit time (framework
+    registrations in the proposal ledger): inside the transaction no
+    revocation can land between the check and the append."""
+    history_rows = await tx.governance_rows()
+    committed = [parse_committed_at(r.committed_at) for r in history_rows]
+    snapshot = InMemoryGovernanceLog._from_history(
+        corpus, [_event_from_row(r) for r in history_rows], committed_at=committed
+    )
+    return snapshot, _governance_server_time(committed)
+
+
 async def _authorize_in_transaction(
-    event: GovernanceEvent, snapshot: InMemoryGovernanceLog, corpus: str
+    event: GovernanceEvent,
+    snapshot: InMemoryGovernanceLog,
+    corpus: str,
+    server_time: datetime,
 ) -> None:
     """Re-run the central ``authorize()`` decision against the committed
     history read inside the write transaction (KTD3).
@@ -315,7 +397,10 @@ async def _authorize_in_transaction(
     committed in between would otherwise still let the revoked signer
     append. Every event goes through the same policy the CLI uses: the
     first event of a corpus as the genesis carve-out (``corpus_init``), any
-    other as its own action, with roles resolved at commit time.
+    other as its own action, with roles resolved at ``server_time`` — the
+    commit time this row will record — over history windowed by each row's
+    stored ``committed_at`` (R17 / KTD12), never at the signer's
+    ``signed_at``.
     """
     from folio_insights.governance.authorize import GENESIS_ACTION, Allow, authorize
     from folio_insights.governance.log import NotAuthorized
@@ -330,7 +415,9 @@ async def _authorize_in_transaction(
             admin_did=getattr(event, "subject_did", None),
         )
     else:
-        decision = await authorize(signer, event.action, corpus, log=snapshot)
+        decision = await authorize(
+            signer, event.action, corpus, log=snapshot, asof=server_time
+        )
     if not isinstance(decision, Allow):
         raise NotAuthorized(
             f"governance {event.action} event refused: signer {signer!r} is not "
@@ -783,11 +870,24 @@ class CorpusStorageContext:
                             raise JournalStateChanged(
                                 expected=expected_head, actual=actual
                             )
-                    history = [_event_from_row(r) for r in await tx.governance_rows()]
+                    history_rows = await tx.governance_rows()
+                    history = [_event_from_row(r) for r in history_rows]
+                    # R17 / KTD12: server time decides. History is windowed by
+                    # each row's stored commit time; this event is checked,
+                    # and recorded, at the time this transaction commits it.
+                    history_committed = [
+                        parse_committed_at(r.committed_at) for r in history_rows
+                    ]
+                    server_time = _governance_server_time(history_committed)
                     _refuse_replayed_event(event, history)
-                    snapshot = InMemoryGovernanceLog._from_history(self.corpus, history)
-                    await _authorize_in_transaction(event, snapshot, self.corpus)
-                    persisted = await snapshot.append(event)
+                    check_signing_skew(event, server_time)
+                    snapshot = InMemoryGovernanceLog._from_history(
+                        self.corpus, history, committed_at=history_committed
+                    )
+                    await _authorize_in_transaction(
+                        event, snapshot, self.corpus, server_time
+                    )
+                    persisted = await snapshot._append(event, server_time=server_time)
                     if self.config.shacl is not None:
                         # Phase 11: the event as the projection will store
                         # it, with its log position now assigned.
@@ -804,7 +904,8 @@ class CorpusStorageContext:
                             record_schema_version=GOVERNANCE_RECORD_SCHEMA_VERSION,
                             payload=persisted.model_dump_json().encode("utf-8"),
                             governance_position=persisted.position,
-                        )
+                        ),
+                        committed_at=server_time,
                     )
             if appended:
                 self._unmarked.add(row.position)
@@ -964,6 +1065,9 @@ class CorpusStorageContext:
                     if existing is not None:
                         row = check_replay(existing, request_sha)
                     else:
+                        await self._refuse_cycles(
+                            tx, {shard_iri: shard_out_edges(loaded.shard)}
+                        )
                         row = await tx.append(
                             self._pending_shard(
                                 _prepared_record(loaded, payload),
@@ -1089,6 +1193,12 @@ class CorpusStorageContext:
                                 cached or load_shard_record(rec.payload).shard,
                             )
                         batch[rec.shard_iri] = rec.payload
+                    if self.config.refuse_dependency_cycles:
+                        await self._refuse_cycles(
+                            tx,
+                            _batch_out_edges(prepared),
+                            {iri: row.payload for iri, row in latest.items()},
+                        )
                     rows = await tx.append_many(
                         [
                             self._pending_shard(
@@ -1110,6 +1220,82 @@ class CorpusStorageContext:
             parallel=parallel,
         )
         return rows
+
+    async def _refuse_cycles(
+        self,
+        tx: JournalTransaction,
+        batch: Mapping[str, tuple[str, ...]],
+        known: Mapping[str, bytes] | None = None,
+    ) -> None:
+        """The drain U4 cycle guard, inside the write transaction (KTD9).
+
+        ``batch`` maps each written IRI to its post-write out-edges. Committed
+        out-edges come from the newest committed revision's payload JSON
+        (``elaborates`` is not projected, so the journal is the source), one
+        ``latest_shards_for`` query per breadth-first level of the incremental
+        search; ``known`` seeds payloads the caller already read. Raises
+        ``DependencyCycle``; the transaction then rolls back with nothing
+        appended."""
+        if not self.config.refuse_dependency_cycles:
+            return
+        payloads: dict[str, bytes] = dict(known or {})
+
+        async def load(iris: list[str]) -> dict[str, tuple[str, ...]]:
+            missing = [iri for iri in iris if iri not in payloads]
+            if missing:
+                for iri, row in (await tx.latest_shards_for(missing)).items():
+                    payloads[iri] = row.payload
+            return {
+                iri: record_out_edges(json.loads(payloads[iri]))
+                for iri in iris
+                if iri in payloads
+            }
+
+        cycle = await arun_search(batch, load)
+        if cycle is not None:
+            raise DependencyCycle(cycle)
+
+    async def shards_in_commit_order(self) -> list[tuple[ShardEnvelope, int]]:
+        """The current revision of every shard with the journal position of its
+        FIRST revision, ordered by that position (drain U4: Tractarian sibling
+        ordinals follow first commit, so a content edit never renumbers)."""
+        return await self._shards_in_commit_order(await self._barrier())
+
+    async def _shards_in_commit_order(self, upto: int) -> list[tuple[ShardEnvelope, int]]:
+        firsts = await self._journal.read_conn.execute_fetchall(
+            "SELECT subject, MIN(position) FROM journal WHERE corpus = ? "
+            "AND kind = 'shard' AND position <= ? GROUP BY subject",
+            (self.corpus, upto),
+        )
+        first = {str(subject): int(position) for subject, position in firsts}
+        out = [
+            (load_shard_record(row.payload).shard, first[row.subject])
+            for row in await self._current_shard_rows(upto)
+        ]
+        out.sort(key=lambda item: (item[1], item[0].shard_iri))
+        return out
+
+    async def shard_revision_history(
+        self,
+    ) -> tuple[list[tuple[ShardEnvelope, int]], list[ShardRevisionRow]]:
+        """``shards_in_commit_order()`` plus EVERY committed shard revision in
+        commit order, both read at one watermark (drain U4: Tractarian sibling
+        ordinals are sticky across reparenting, which needs the history)."""
+        upto = await self._barrier()
+        current = await self._shards_in_commit_order(upto)
+        rows = await self._journal.read_conn.execute_fetchall(
+            "SELECT position, subject, op_id, request_sha256, payload FROM journal "
+            "WHERE corpus = ? AND kind = 'shard' AND position <= ? ORDER BY position",
+            (self.corpus, upto),
+        )
+        history = [
+            ShardRevisionRow(
+                int(position), str(subject),
+                f"{str(op_id).rsplit('#', 1)[0]}@{request_sha}", bytes(payload),
+            )
+            for position, subject, op_id, request_sha, payload in rows
+        ]
+        return current, history
 
     # ── Phase 11 SHACL: status, incremental corpus tier, full validation ──
 
@@ -1409,6 +1595,23 @@ def _batch_sha(prepared: list[tuple[PreparedRecord, ShardEnvelope | None]]) -> s
     )
 
 
+def _batch_out_edges(
+    prepared: list[tuple[PreparedRecord, ShardEnvelope | None]],
+) -> dict[str, tuple[str, ...]]:
+    """Each batch IRI's post-write out-edges (its last revision in the batch
+    wins), from the validated envelope when the batch kept it, else from the
+    payload JSON (the process-pool path returns bytes only)."""
+    out: dict[str, tuple[str, ...]] = {}
+    for rec, cached in prepared:
+        out.pop(rec.shard_iri, None)
+        out[rec.shard_iri] = (
+            shard_out_edges(cached)
+            if cached is not None
+            else record_out_edges(json.loads(rec.payload))
+        )
+    return out
+
+
 def _prepared_record(loaded: LoadedShardRecord, payload: bytes) -> PreparedRecord:
     return PreparedRecord(
         original_bytes=None if payload == loaded.original_bytes else loaded.original_bytes,
@@ -1468,6 +1671,7 @@ __all__ = [
     "INCREMENTAL_FOCUS_LIMIT",
     "BulkLoadResult",
     "CorpusStorageContext",
+    "ShardRevisionRow",
     "StorageConfig",
     "StorageStatus",
     "StoredShardRecord",

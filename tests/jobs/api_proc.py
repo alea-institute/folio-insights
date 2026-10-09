@@ -36,8 +36,11 @@ async def _main(args: argparse.Namespace) -> None:
     if token:
         headers["X-Job-Control-Token"] = token
     async with app.router.lifespan_context(app):  # starts the embedded worker
+        # A loopback peer (ASGITransport's default client is 127.0.0.1) addressing a loopback
+        # host: the inherited FOLIO_INSIGHTS_API_AUTH=loopback-open lets it write without an
+        # operator token through the real locality check (api/auth.py, drain plan U5).
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://api") as client:
+        async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
             if args.mode == "submit":
                 created = await client.post("/api/v1/corpora", json={"name": args.corpus})
                 resp = await client.post(f"/api/v1/corpus/{args.corpus}/process",

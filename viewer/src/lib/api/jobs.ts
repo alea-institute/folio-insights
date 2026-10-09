@@ -12,6 +12,8 @@
  * All URLs are relative: the Vite proxy (dev) or FastAPI (prod) serves /api.
  */
 
+import { apiFetch } from './client';
+
 export const LLM_KEY_HEADER = 'X-LLM-API-Key';
 export const CONTROL_TOKEN_HEADER = 'X-Job-Control-Token';
 
@@ -124,7 +126,7 @@ export function describeJobError(status: number, detail: string): string {
 		case 0:
 			return `Could not reach the server.${suffix}`;
 		case 401:
-			return `The request was not authorized. Check the API key and try again.${suffix}`;
+			return `The request was not authorized. Set a valid operator token in Settings (the gear icon) and try again.${suffix}`;
 		case 403:
 			return `The server refused this request.${suffix}`;
 		case 404:
@@ -146,7 +148,7 @@ async function jobRequest<T>(
 	secrets: Array<string | undefined | null>
 ): Promise<T | JobError> {
 	try {
-		const res = await fetch(url, init);
+		const res = await apiFetch(url, init);
 		if (!res.ok) {
 			const body = await res.text();
 			const message = describeJobError(res.status, detailText(body));

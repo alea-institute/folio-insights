@@ -9,9 +9,10 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
+from api.auth import WRITE_GUARD
 from api.models.processing import CorpusCreateRequest, CorpusInfo, slugify
 
-router = APIRouter(prefix="/api/v1", tags=["corpus"])
+router = APIRouter(prefix="/api/v1", tags=["corpus"], dependencies=WRITE_GUARD)
 
 
 # ---------------------------------------------------------------------------

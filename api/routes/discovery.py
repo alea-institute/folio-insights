@@ -37,6 +37,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Header, HTTPException, Query, Response
 from sse_starlette.sse import EventSourceResponse
 
+from api.auth import WRITE_GUARD
 from api.models.discovery import (
     ContradictionResolveRequest,
     ContradictionResponse,
@@ -65,7 +66,7 @@ from api.services.job_manager import DISCOVER_KIND, QueueJobView, get_queue, res
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["discovery"])
+router = APIRouter(prefix="/api/v1", tags=["discovery"], dependencies=WRITE_GUARD)
 
 
 # ---------------------------------------------------------------------------
@@ -104,11 +105,12 @@ def reset_discovery_job_manager() -> None:
     reset_runtime()
 
 
-async def _get_db(corpus_id: str):
-    """Get an aiosqlite connection for the corpus."""
+async def _get_db(corpus_id: str, *, writable: bool = False):
+    """An aiosqlite connection to the corpus's review.db: read-only (creating nothing) unless
+    *writable*, which a state-changing route passes (``api.main.get_db_for_corpus``)."""
     from api.main import get_db_for_corpus
 
-    return await get_db_for_corpus(corpus_id)
+    return await get_db_for_corpus(corpus_id, writable=writable)
 
 
 def _corpus_dir(corpus_id: str) -> Path:
@@ -497,7 +499,7 @@ async def review_task(
     if body.status not in ("approved", "rejected", "edited"):
         raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
 
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         # Verify task exists
         cursor = await db.execute(
@@ -544,7 +546,7 @@ async def bulk_approve_tasks(
     body: TaskBulkApproveRequest,
 ) -> dict:
     """Approve all tasks matching criteria (specific IDs or confidence >= threshold)."""
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         now = _now_iso()
         approved_ids: list[str] = []
@@ -596,7 +598,7 @@ async def bulk_approve_tasks(
 @router.post("/corpus/{corpus_id}/tasks", status_code=201)
 async def create_task(corpus_id: str, body: TaskCreateRequest) -> TaskResponse:
     """Create a manually-created task (is_manual=1)."""
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         task_id = str(uuid4())
         now = _now_iso()
@@ -630,7 +632,7 @@ async def create_task(corpus_id: str, body: TaskCreateRequest) -> TaskResponse:
 @router.delete("/corpus/{corpus_id}/tasks/{task_id}", status_code=204)
 async def delete_task(corpus_id: str, task_id: str) -> Response:
     """Delete a task and reassign linked units to orphan status."""
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         # Verify task exists
         cursor = await db.execute(
@@ -677,7 +679,7 @@ async def delete_task(corpus_id: str, task_id: str) -> Response:
 @router.post("/corpus/{corpus_id}/tasks/hierarchy-edit")
 async def hierarchy_edit(corpus_id: str, body: HierarchyEditRequest) -> dict:
     """Record a hierarchy edit and apply structural changes."""
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         now = _now_iso()
 
@@ -831,7 +833,7 @@ async def resolve_contradiction(
             detail=f"Invalid resolution. Must be one of: {valid_resolutions}",
         )
 
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         now = _now_iso()
         await db.execute(
@@ -894,7 +896,7 @@ async def upsert_source_authority(
     corpus_id: str, body: SourceAuthorityRequest
 ) -> dict:
     """Upsert source authority for a file."""
-    db = await _get_db(corpus_id)
+    db = await _get_db(corpus_id, writable=True)
     try:
         await db.execute(
             """

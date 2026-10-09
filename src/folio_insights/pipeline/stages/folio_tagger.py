@@ -257,6 +257,9 @@ class FolioTaggerStage(InsightsPipelineStage):
 
         # Path 2: LLM Concept Identification
         self._current_unit_id = unit.id  # units are tagged sequentially
+        # Set by _run_llm_concept only when its LLM call returned, so the tag event names the
+        # concept template exactly when an LLM call shaped this unit's candidates (KTD2).
+        self._concept_template = None
         llm_concepts = await self._run_llm_concept(unit.text, unit.source_section)
 
         # Path 3: Semantic (embedding similarity)
@@ -301,6 +304,7 @@ class FolioTaggerStage(InsightsPipelineStage):
             stage="folio_tagger",
             action="tag",
             detail=f"{len(tags)} concepts, paths={sorted(paths_used)}",
+            template=getattr(self, "_concept_template", None),
         )
 
     def _run_entity_ruler(
@@ -346,7 +350,10 @@ class FolioTaggerStage(InsightsPipelineStage):
             context = " > ".join(section_path) if section_path else ""
             prompt = CONCEPT.render(text=text, context=context)
 
-            result = await llm_provider.structured(prompt, schema=ConceptOutput, temperature=0)
+            result = await llm_provider.structured(
+                prompt, schema=ConceptOutput, template=CONCEPT, temperature=0
+            )
+            self._concept_template = CONCEPT
 
             return [
                 {
@@ -524,6 +531,7 @@ class FolioTaggerStage(InsightsPipelineStage):
             result = await provider.structured(
                 BRANCH_JUDGE.render(judge_system=system, judge_user=user),
                 schema=JudgeOutput,
+                template=BRANCH_JUDGE,
                 temperature=0,
             )
             self._judge_call_count += 1
@@ -577,13 +585,15 @@ class FolioTaggerStage(InsightsPipelineStage):
             tag.confidence = max(0.0, min(1.0, verdict.adjusted_score / 100.0))
             kept.append(tag)
 
-        if rejected:
-            record_lineage(
-                unit,
-                stage="folio_tagger",
-                action="judge",
-                detail=f"judge rejected {rejected}/{len(candidates)} non-ruler candidate(s)",
-            )
+        # Recorded for every judge call that returned (not only when it rejected something), so
+        # the judge template is in the unit's lineage whenever the judge shaped its tags (KTD2).
+        record_lineage(
+            unit,
+            stage="folio_tagger",
+            action="judge",
+            detail=f"judge rejected {rejected}/{len(candidates)} non-ruler candidate(s)",
+            template=BRANCH_JUDGE,
+        )
         return kept
 
     def _get_judge_provider(self) -> Any:

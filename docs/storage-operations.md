@@ -423,11 +423,13 @@ The review API records and reads proposed-class decisions in the same ledger
 (`api/services/proposals.py`), so a decision made through it reaches the
 approved-only backlog.
 
-**Access posture: off by default, local-only when on.** The API has no
-authentication. Whoever can reach these routes could record a permanent
-"human" decision under the configured reviewer's handle, or read reviewer
-notes, handles and provenance. So every proposed-class route (both GETs and
-the POST) answers 403 unless all of these hold:
+**Access posture: off by default, local-only when on.** The decision POST
+needs an operator token like every write (see "API authentication" below),
+but the token does not yet name the reviewer, and the reads are open like
+every read. Whoever can reach these routes could record a permanent "human"
+decision under the configured reviewer's handle, or read reviewer notes,
+handles and provenance. So every proposed-class route (both GETs and the
+POST) answers 403 unless all of these hold:
 
 - the operator has set `FOLIO_INSIGHTS_ALLOW_UNAUTHENTICATED_DECISIONS=1`
   (exactly `1`). This is a separate switch from the reviewer, and setting the
@@ -553,6 +555,157 @@ python scripts/apply_approvals.py import-legacy --corpus C \
   the seal.
 - **Seal.** `--seal` installs the read-only triggers after a successful
   import. It is idempotent and needs a writable review.db.
+
+## API authentication
+
+Every API route that changes state (POST, PUT, PATCH, DELETE: uploads,
+corpus create and delete, reviews, task edits, job submit and control,
+export bundles, proposed-class decisions) needs an **operator bearer token**.
+So do four GETs that persist state: `GET /api/v1/corpus/{id}/export/owl`,
+`/ttl`, `/jsonld` and `/validation` mint permanent IRIs into the corpus's
+`iri_registry` and rewrite its export files, the same work as the bundle POST.
+Every other read (GET) stays open, as deployed, and writes nothing: `review.db`
+is opened read-only, and a corpus without one reads as empty rather than
+being created. `POST /validate` stays open too; it validates the candidate in
+its body and stores nothing. The viewer downloads exports through its API
+client, so the operator token goes with them.
+
+**Corpus names.** Every route that takes a corpus name (the `{corpus_id}`
+path segment or the `?corpus=` query parameter) refuses one that is not a
+corpus ID with `422` before anything else runs: 1-128 letters, digits, `.`,
+`_` or `-`, starting with a letter or digit. A name like `../elsewhere` can
+therefore never become a path under the output directory.
+
+The code is
+`api/auth.py`; the design is KTD10 of the
+[drain plan](plans/2026-10-09-0650-feat-shards-axioms-drain-plan.md).
+
+**Mint a token.** On the host that runs the API:
+
+```bash
+umask 077
+folio-insights api token-new alice --append ~/.config/folio-insights/api-tokens
+```
+
+The token is printed once, on stdout, and stored nowhere; only its SHA-256
+goes in the file. Keep the token in a password manager and send it as
+`Authorization: Bearer <token>`. In the viewer, paste it under the Settings
+gear; it is held in that tab's memory only. Without `--append` the command
+prints the token and then the line to add yourself. `--role admin` records a
+different role (both roles may write today).
+
+**Tokens file.** `FOLIO_INSIGHTS_API_TOKENS_FILE` names it. Keep it outside
+the repository. One entry per line; `#` comments and blank lines are allowed:
+
+```text
+# handle alice, minted 2026-10-09
+sha256:<64 lowercase hex> alice operator
+```
+
+The server refuses the file, and does not start, when it is not a regular
+file, is owned by a user other than the server's (or root), is group- or
+world-readable or writable
+(anything but `chmod 600` or stricter), or has a line that is not exactly a
+digest, a handle and a role. A line that is not a digest is usually a raw
+token pasted where its hash belongs, so the error names the line number and
+never echoes it. Edits apply on the next request, without a restart: delete a
+line to revoke that token. If the file becomes unreadable or insecure while
+the server runs, writes answer 503 and the log names the problem.
+
+**Modes.** `FOLIO_INSIGHTS_API_AUTH`:
+
+| Mode | Behaviour |
+|---|---|
+| `required` (default) | A write needs a token listed in the file. With no file configured every write is refused: the server fails closed. |
+| `loopback-open` | Local development. A write needs no token when the client address is loopback (`127.0.0.0/8`, `::1`), the `Host` names `localhost`, `127.0.0.1` or `::1`, no proxy forwarding header (`Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Real-IP`, `CF-Connecting-IP`, `True-Client-IP`) is present, and the request is not a cross-site browser request (below). Every other client still needs a token, and a token that is presented must be valid. |
+
+Never run `loopback-open` behind a reverse proxy on the same host: the proxy
+connects from loopback, so the forwarding-header check is the only thing
+telling its requests apart. That check only sees the headers listed above. A
+proxy or tunnel that identifies the client some other way (a custom header, or
+none at all) makes every request it forwards look local, so behind any proxy
+use `required`. Any other value of `FOLIO_INSIGHTS_API_AUTH` stops the server
+at startup.
+
+**Cross-site requests in `loopback-open`.** A web page on any site, open in
+the developer's browser, also connects from loopback with
+`Host: 127.0.0.1`. CORS stops it reading the answer, but not sending a form
+POST or a `no-cors` fetch. So a tokenless loopback write is refused (the usual
+`401`) when it carries:
+
+- an `Origin` that is neither the server's own origin (scheme plus the `Host`
+  it was addressed by) nor in the CORS allow-list (`api.auth.CORS_ALLOWED_ORIGINS`:
+  `http://localhost:5173`, the Vite dev server, and `http://localhost:8700`).
+  `Origin: null` (sandboxed frames, `file://` pages) is refused;
+- a `Sec-Fetch-Site` other than `same-origin` or `none` (so `cross-site` and
+  `same-site` are refused: another port on localhost is same-site);
+- either header more than once.
+
+Browsers set these headers themselves and a page cannot remove or forge them.
+curl, scripts and other non-browser clients send neither, so they are not
+affected. A request that presents a bearer token is not affected either: a
+browser never attaches one on its own, so a token is never an ambient
+credential.
+
+**Refusals.** Every authentication failure is the same `401` with
+`WWW-Authenticate: Bearer realm="folio-insights"` and one fixed message, so a
+caller cannot tell a missing token from a wrong or malformed one. Tokens are
+compared by hash in constant time against every entry. Neither tokens nor
+`Authorization` headers are logged; refusals are logged by method and path.
+
+**Job control.** Cancel, resume and key re-supply still require the job's
+`X-Job-Control-Token` as well. An operator token alone cannot control another
+caller's job, and a control token alone cannot either.
+
+**Known limit.** FastAPI reads a request body (a multipart upload goes to a
+temporary file) before it checks the token, so a refused upload still
+transfers its bytes; nothing reaches the corpus. Cap request body size at the
+reverse proxy where unauthenticated upload volume matters.
+
+**Containers.** The images bind `0.0.0.0`, so their clients are never
+loopback: mount a tokens file (mode 600, owned by the container user) and set
+`FOLIO_INSIGHTS_API_TOKENS_FILE`, or every write answers 401.
+
+## Governance signing clocks
+
+Governance events (role grants and revocations, admin assertions) are
+authorized at **server commit time** (R17, KTD12): the journal records each
+row's `committed_at`, and role windows, the signer-must-be-admin and
+last-admin checks and `authorize()` are all evaluated at that time. The
+signer's own `signature.signed_at` is still signed, but it decides nothing
+except that it must sit within `SIGNING_SKEW` (5 minutes,
+`folio_insights.governance.clock`) of the server clock when the event is
+appended, or the append is refused with `GovernanceClockSkew` and nothing is
+written. Framework registrations apply the same window.
+
+Operationally: keep every governance signer's clock, and the server's, on NTP.
+A signer more than five minutes off cannot record governance events at all, and
+an event signed now but appended later (a queued or replayed request) is
+refused once five minutes have passed: sign again rather than adjusting
+`signed_at`.
+
+## Paused jobs expire
+
+A job paused for credentials (`needs_credentials`) or for its spend cap
+(`budget_exhausted`) still counts as active, so it blocks a new job for its
+corpus. Workers therefore cancel a paused job nobody resumed within
+`FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS` (default `86400`, one day; `0` or less
+turns expiry off), with the error `expired: ...`, and drop its credential
+holder. The clock starts when the job entered the paused state (`updated_at`);
+an operator action on it restarts the clock.
+
+- **First deploy.** The sweep runs on every worker poll, so the first worker
+  started on this version cancels every job that was already paused for longer
+  than the TTL, including ones paused before the upgrade. Resume or
+  re-supply credentials for any paused job you want to keep before deploying,
+  or start the worker with a longer TTL for the first run.
+- **Where the TTL comes from.** The API's embedded worker reads it through the
+  application settings, so `.env` applies. The standalone worker
+  (`python -m folio_insights.worker`, `Dockerfile.worker`) does **not** read
+  `.env`: set `FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS` in the process
+  environment or pass `--paused-ttl N`, or it uses the one-day default.
+- `folio-insights jobs expire [--ttl N]` runs one sweep by hand; it reads the
+  TTL from the process environment as the standalone worker does.
 
 ## Deploying extraction: the deterministic IRI path
 

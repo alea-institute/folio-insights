@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "rubric_version": "v1.0",
+  "judge": "synthetic gold judgment (the two generative units fabricate rules the source never states)",
+  "scores": {
+    "RUB-EXTRACT-06": {
+      "per_unit": {
+        "gen-01": 0,
+        "gen-02": 0,
+        "ext-03": 3
+      }
+    }
+  }
+}

@@ -108,7 +108,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("classifier")
 
             result = await llm_provider.structured(
-                prompt, schema=ClassificationOutput, temperature=0
+                prompt, schema=ClassificationOutput, template=CLASSIFY, temperature=0
             )
 
             unit_type_str = result.get("unit_type", "advice").lower().strip()
@@ -123,6 +123,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
                 action="classify",
                 detail=f"type={unit.unit_type.value}, confidence={unit.confidence:.2f}",
                 confidence=unit.confidence,
+                template=CLASSIFY,
             )
 
         except Exception as exc:
@@ -151,7 +152,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             llm_provider = llm_bridge.get_llm_for_task("novelty")
 
             result = await llm_provider.structured(
-                prompt, schema=NoveltyOutput, temperature=0
+                prompt, schema=NoveltyOutput, template=NOVELTY, temperature=0
             )
 
             score = result.get("score", 0.5)
@@ -163,6 +164,7 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
                 action="novelty_score",
                 detail=f"novelty={unit.surprise_score:.2f}",
                 confidence=unit.surprise_score,
+                template=NOVELTY,
             )
 
         except Exception as exc:

@@ -236,7 +236,8 @@ async def test_stored_corpus_and_export_use_only_declared_terms(tmp_path: Path) 
     ctx = await CorpusStorageContext.open(tmp_path / "storage", "corpus-a")
     try:
         await ctx.ingest_shards(_shards())
-        await ctx.governance.append(genesis("corpus-a", new_identity()))
+        # Signed now: governance appends check signed_at against server time (R17).
+        await ctx.governance.append(genesis("corpus-a", new_identity(), datetime.now(UTC)))
         rows = await ctx.query(
             "SELECT DISTINCT ?p ?o WHERE { { ?s ?p ?o } UNION { GRAPH ?g { ?s ?p ?o } } }"
         )

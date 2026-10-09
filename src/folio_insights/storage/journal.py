@@ -370,8 +370,10 @@ class JournalTransaction:
                 out[row.subject] = row
         return out
 
-    async def append(self, pending: PendingRow) -> JournalRow:
-        return (await self.append_many([pending]))[0]
+    async def append(
+        self, pending: PendingRow, *, committed_at: datetime | None = None
+    ) -> JournalRow:
+        return (await self.append_many([pending], committed_at=committed_at))[0]
 
     async def proposal_head(self) -> int:
         return await _proposal_head(self._conn, self.corpus)
@@ -380,9 +382,19 @@ class JournalTransaction:
         return await _find_proposal_op(self._conn, self.corpus, op_id)
 
     async def append_proposal(
-        self, *, op_id: str, request_sha256: str, kind: str, payload: bytes
+        self,
+        *,
+        op_id: str,
+        request_sha256: str,
+        kind: str,
+        payload: bytes,
+        committed_at: datetime | None = None,
     ) -> ProposalLedgerRow:
-        """Append one proposal-ledger row at the next contiguous position."""
+        """Append one proposal-ledger row at the next contiguous position.
+
+        ``committed_at`` is the server time recorded on the row (default:
+        now). An authorized ledger write passes the time its in-transaction
+        authorization ran at, so the row records exactly that time."""
         values = (
             self.corpus,
             await self.proposal_head() + 1,
@@ -392,7 +404,7 @@ class JournalTransaction:
             PROPOSAL_LEDGER_SCHEMA_VERSION,
             payload,
             sha256_hex(payload),
-            datetime.now(UTC).isoformat(),
+            (committed_at or datetime.now(UTC)).astimezone(UTC).isoformat(),
         )
         await self._conn.execute(
             f"INSERT INTO proposal_ledger ({_PROPOSAL_COLUMNS}) "
@@ -401,11 +413,18 @@ class JournalTransaction:
         )
         return _proposal_row(values)
 
-    async def append_many(self, pendings: list[PendingRow]) -> list[JournalRow]:
+    async def append_many(
+        self, pendings: list[PendingRow], *, committed_at: datetime | None = None
+    ) -> list[JournalRow]:
         """Append ``pendings`` at the next contiguous positions in one
-        ``executemany`` (the insert triggers still check every row)."""
+        ``executemany`` (the insert triggers still check every row).
+
+        ``committed_at`` is the server time recorded on the rows (default:
+        now). The governance append path passes the time it already checked
+        roles and the signing skew at, so the row records exactly that time
+        (R17 / KTD12)."""
         position = await self.head() + 1
-        now = datetime.now(UTC).isoformat()
+        now = (committed_at or datetime.now(UTC)).astimezone(UTC).isoformat()
         rows = [
             (
                 self.corpus,

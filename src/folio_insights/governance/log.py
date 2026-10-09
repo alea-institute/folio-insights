@@ -21,8 +21,9 @@ pyshacl (mirrors revision/shape_validation.py).
 
 D-05 amended in-phase append-only gate (TWO halves):
 
-  (a) ``fi:GovernanceLogShape`` SHACL refuses duplicate positions / signed_at
-      moving backward with position / position gaps. Wired here:
+  (a) ``fi:GovernanceLogShape`` SHACL refuses duplicate positions / event
+      time (server commit time, else signed_at) moving backward with
+      position / position gaps. Wired here:
       ``append()`` calls ``validate_governance_log_shape(history, pending)``
       and raises ``ValueError`` if ``conforms=False``.
   (b) THIS MODULE EXPOSES NO PUBLIC MUTATOR BEYOND ``append``. The Protocol
@@ -54,11 +55,24 @@ D-07 on-disk layout (forward-travel, NOT in this plan): Phase 13 will land
 ``<corpus>/governance.ttl`` + ``<corpus>/.governance.sqlite`` behind this
 Protocol. The on-disk layout is documented here so future readers find the
 trail.
+
+Server time (R17 / KTD12, ``governance/clock.py``): role windows and the
+signer-must-be-admin / last-admin checks are evaluated at the time each event
+took effect. The persistent adapter supplies it: it loads every committed
+row's ``committed_at`` into the snapshot (``_from_history(..., committed_at=)``)
+and appends the new event at its own server commit time
+(``_append(event, server_time=)``), so the signer-chosen ``signed_at`` never
+decides when a role was held. ``InMemoryGovernanceLog.append(event)`` with no
+server clock — a test / offline structure only — keeps the Phase 7 behaviour
+and windows by ``signature.signed_at``.
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import AsyncIterator, Protocol, runtime_checkable
+
+from folio_insights.governance.clock import GovernanceClockSkew, as_utc
 
 from folio_insights.governance.events import (
     GovernanceEvent,
@@ -79,7 +93,9 @@ class NotAuthorized(ValueError):
 
     Specifically: a non-genesis self-signed RoleAssertion, or a
     RoleAssertion / RoleRevocation whose signer is not an active
-    corpus_admin at signature.signed_at.
+    corpus_admin at the event's time (the server commit time in persistent
+    storage; ``signature.signed_at`` only in an in-memory log with no server
+    clock).
     """
 
 
@@ -97,6 +113,10 @@ class InvalidSignature(ValueError):
     """Raised when Phase 6 verify_attestation refuses a role-event signature."""
 
 
+# ``GovernanceClockSkew`` (R17) lives in ``governance/clock.py`` with the skew
+# constant; it is re-exported here beside the other append refusals.
+
+
 @runtime_checkable
 class GovernanceLog(Protocol):
     """Append-only governance log seam (D-04). Phase 13 swaps aiosqlite behind it.
@@ -112,8 +132,9 @@ class GovernanceLog(Protocol):
         ``fi:GovernanceLogShape`` invariant over the post-append snapshot;
         assigns monotonic position; returns the persisted event.
       * ``query_active_roles_at(corpus, asof)`` — active roles per DID at
-        ``asof`` (assertions minus revocations, windowed by
-        ``signature.signed_at <= asof``). D-13 / Pitfall F2.
+        ``asof`` (assertions minus revocations, windowed by each event's
+        time ``<= asof``: server commit time where a server clock exists,
+        ``signature.signed_at`` otherwise). D-13 / Pitfall F2 / R17.
       * ``get_by_position(corpus, position)`` — random-access read by
         log position.
       * ``iter_events(corpus)`` — async iterator over all events for a
@@ -162,21 +183,38 @@ class InMemoryGovernanceLog:
     ELSE. The Protocol contract test in
     ``tests/governance/test_governance_log_protocol_contract.py`` enforces.
     Internal helpers are ``_``-prefixed.
+
+    Time: this log has no clock of its own. Events it holds may carry a
+    server time (loaded by ``_from_history(..., committed_at=)`` or appended
+    by ``_append(..., server_time=)`` — the persistent adapter's path);
+    events without one are windowed by ``signature.signed_at``, which is the
+    documented offline / test behaviour and must not back a real corpus.
     """
 
     def __init__(self) -> None:
         self._by_corpus: dict[str, list[GovernanceEvent]] = {}
+        # Server time per (corpus, position) where a server clock assigned
+        # one. Absent → the event is windowed by its signed_at.
+        self._times: dict[str, dict[int, datetime]] = {}
 
     @classmethod
     def _from_history(
-        cls, corpus: str, history: list[GovernanceEvent]
+        cls,
+        corpus: str,
+        history: list[GovernanceEvent],
+        *,
+        committed_at: Sequence[datetime] | None = None,
     ) -> "InMemoryGovernanceLog":
         """Internal: a log pre-loaded with ``history`` (position order).
 
         Phase 13's persistent adapter (``folio_insights.storage.governance``)
         loads the committed history inside its write transaction and runs
-        ``append`` on this snapshot, so the genesis carve-out, authorization,
+        ``_append`` on this snapshot, so the genesis carve-out, authorization,
         last-admin lockout and SHACL gates are the SAME code for both backends.
+
+        ``committed_at`` (R17) is the server commit time of each history
+        event, aligned with ``history``; role windows over the snapshot then
+        use those times instead of the signer-claimed ``signed_at``.
         """
         for index, event in enumerate(history):
             if event.position != index:
@@ -186,6 +224,15 @@ class InMemoryGovernanceLog:
                 )
         log = cls()
         log._by_corpus[corpus] = list(history)
+        if committed_at is not None:
+            if len(committed_at) != len(history):
+                raise ValueError(
+                    f"governance history for {corpus!r} has {len(history)} events "
+                    f"but {len(committed_at)} commit times"
+                )
+            log._times[corpus] = {
+                index: as_utc(at) for index, at in enumerate(committed_at)
+            }
         return log
 
     async def append(self, event: GovernanceEvent) -> GovernanceEvent:
@@ -222,7 +269,24 @@ class InMemoryGovernanceLog:
 
         Returns:
             The persisted event with ``position`` set.
+
+        Time: this public entry has no server clock, so the event's role
+        checks run at its ``signature.signed_at`` (offline / test behaviour).
+        The persistent adapter calls ``_append(event, server_time=...)``.
         """
+        return await self._append(event, server_time=None)
+
+    async def _append(
+        self, event: GovernanceEvent, *, server_time: datetime | None
+    ) -> GovernanceEvent:
+        """``append`` with an optional server time (R17 / KTD12).
+
+        With ``server_time`` the signer-must-be-admin and last-admin checks
+        run at it, history is windowed by its stored server times, and the
+        event is recorded with it so later checks on this snapshot see it at
+        that time. Without it, ``signature.signed_at`` is the event's time.
+        """
+        asof = as_utc(server_time) if server_time is not None else event.signature.signed_at
         # Lazy import to preserve the D-04 boundary on log.py itself: the
         # rdflib + pyshacl substrate lives behind shape_validation.py (the
         # lone exempt module).
@@ -248,17 +312,28 @@ class InMemoryGovernanceLog:
                 event,
                 history,
                 validate_role_assertion_shape,
+                asof,
             )
         elif isinstance(event, RoleRevocationEvent):
             await self._handle_role_revocation_append(
                 event,
                 history,
                 validate_role_revocation_shape,
+                asof,
             )
 
         # Run the structural fi:GovernanceLogShape guard over the post-append
-        # snapshot (catches duplicate position, signed_at backward, gap).
-        result = validate_governance_log_shape(history, event)
+        # snapshot (catches duplicate position, event time backward, gap).
+        # Event time is each event's server time where one was assigned, else
+        # its signed_at (R17): with a server clock the order is the commit
+        # order, so a signer forward-dating inside SIGNING_SKEW cannot block
+        # later appends; without one (offline) signed_at must not go back.
+        result = validate_governance_log_shape(
+            history,
+            event,
+            event_time=self._event_time(event.corpus),
+            pending_time=asof,
+        )
         if not result.conforms:
             raise ValueError(
                 f"GovernanceLogShape violation refused append: "
@@ -267,6 +342,8 @@ class InMemoryGovernanceLog:
 
         # Persist.
         self._by_corpus.setdefault(event.corpus, []).append(event)
+        if server_time is not None:
+            self._times.setdefault(event.corpus, {})[event.position] = as_utc(server_time)
         return event
 
     # ── Role-event guards (07-04a — D-10 / D-11 / D-19 belt-and-suspenders) ──
@@ -276,6 +353,7 @@ class InMemoryGovernanceLog:
         event: "RoleAssertionEvent",
         history: list[GovernanceEvent],
         validate_role_assertion_shape,
+        asof: datetime | None,
     ) -> None:
         """Validate a RoleAssertion append at the log layer (07-04a).
 
@@ -288,7 +366,8 @@ class InMemoryGovernanceLog:
              the synchronous DidDocCache isn't wired through this method
              signature; the CLI in 07-04b passes it in. For 07-04a the
              belt-and-suspenders signer-must-be-admin check is the gate).
-          4. Non-genesis: signer DID must hold corpus_admin at signed_at.
+          4. Non-genesis: signer DID must hold corpus_admin at ``asof`` (the
+             server commit time in persistent storage, else signed_at).
 
         The "skip signature verification at the log layer" caveat is
         documented: the CLI in 07-04b is responsible for calling
@@ -324,20 +403,16 @@ class InMemoryGovernanceLog:
         # Signer-must-be-admin code suspenders (runs BEFORE SHACL belt so
         # the more-specific NotAuthorized exception type is raised when
         # both gates would refuse).
-        signer_roles = await self._roles_for_did_at(
-            event.corpus,
-            event.signature.did,
-            event.signature.signed_at,
-        )
-        if "corpus_admin" not in signer_roles:
-            raise NotAuthorized(
-                f"signer {event.signature.did} is not a corpus_admin "
-                f"at {event.signature.signed_at}"
-            )
+        await self._require_admin_at(event, asof)
 
         # Per-event SHACL belt (defense-in-depth — catches structural
         # violations the code didn't already enumerate).
-        shape_result = validate_role_assertion_shape(event, history=history)
+        shape_result = validate_role_assertion_shape(
+            event,
+            history=history,
+            event_time=self._event_time(event.corpus),
+            asof=asof,
+        )
         if not shape_result.conforms:
             raise ValueError(
                 f"RoleAssertionShape violation refused append: "
@@ -349,6 +424,7 @@ class InMemoryGovernanceLog:
         event: "RoleRevocationEvent",
         history: list[GovernanceEvent],
         validate_role_revocation_shape,
+        asof: datetime | None,
     ) -> None:
         """Validate a RoleRevocation append at the log layer (D-11 + D-19).
 
@@ -361,26 +437,14 @@ class InMemoryGovernanceLog:
              violations the code didn't already enumerate).
         """
         # Signer-must-be-admin code suspenders.
-        signer_roles = await self._roles_for_did_at(
-            event.corpus,
-            event.signature.did,
-            event.signature.signed_at,
-        )
-        if "corpus_admin" not in signer_roles:
-            raise NotAuthorized(
-                f"signer {event.signature.did} is not a corpus_admin "
-                f"at {event.signature.signed_at}"
-            )
+        await self._require_admin_at(event, asof)
 
         # D-11 last-admin lockout — verbatim error string locked. Runs BEFORE
         # the SHACL belt because the verbatim WouldLockoutCorpusAdmin
         # exception type carries the D-11 contract the test asserts; the
         # SHACL belt would otherwise fire first and raise a ValueError.
         if event.revoked_role == "corpus_admin":
-            active = await self._active_roles_at(
-                event.corpus,
-                event.signature.signed_at,
-            )
+            active = await self._active_roles_at(event.corpus, asof)
             current_admins = {
                 did for did, roles in active.items() if "corpus_admin" in roles
             }
@@ -390,12 +454,59 @@ class InMemoryGovernanceLog:
 
         # Per-event SHACL belt (defense-in-depth — runs AFTER the code gates
         # so the more-specific exception types take precedence).
-        shape_result = validate_role_revocation_shape(event, history=history)
+        shape_result = validate_role_revocation_shape(
+            event,
+            history=history,
+            event_time=self._event_time(event.corpus),
+            asof=asof,
+        )
         if not shape_result.conforms:
             raise ValueError(
                 f"RoleRevocationShape violation refused append: "
                 f"{shape_result.violations}"
             )
+
+    async def _require_admin_at(
+        self, event: GovernanceEvent, asof: datetime | None
+    ) -> None:
+        """Refuse unless the signer holds ``corpus_admin`` at ``asof``.
+
+        ``asof`` is ``None`` only for an untimed event (no server time and no
+        ``signed_at``); such an event cannot be placed in any role window and
+        is refused rather than evaluated against an unbounded history.
+        """
+        if asof is None:
+            raise NotAuthorized(
+                f"{event.action} by {event.signature.did} has no time to check "
+                "the signer's corpus_admin role at (no server time, no signed_at)"
+            )
+        signer_roles = await self._roles_for_did_at(
+            event.corpus, event.signature.did, asof
+        )
+        if "corpus_admin" not in signer_roles:
+            raise NotAuthorized(
+                f"signer {event.signature.did} is not a corpus_admin at {asof}"
+            )
+
+    def _event_time(self, corpus: str) -> Callable[[GovernanceEvent], datetime | None]:
+        """The time each event of ``corpus`` took effect: its server time
+        when one was assigned, else its ``signature.signed_at``."""
+        times = self._times.get(corpus, {})
+
+        def time_of(event: GovernanceEvent) -> datetime | None:
+            at = times.get(event.position)
+            return at if at is not None else event.signature.signed_at
+
+        return time_of
+
+    async def _iter_timed_events(
+        self, corpus: str
+    ) -> AsyncIterator[tuple[GovernanceEvent, datetime | None]]:
+        """``(event, time)`` pairs in position order — the hook
+        ``roles.active_roles_at`` windows by (R17)."""
+        time_of = self._event_time(corpus)
+        for event in self._by_corpus.get(corpus, []):
+            yield event, time_of(event)
 
     async def _roles_for_did_at(
         self,
@@ -480,4 +591,4 @@ class InMemoryGovernanceLog:
         return len(self._by_corpus.get(corpus, []))
 
 
-__all__ = ["GovernanceLog", "InMemoryGovernanceLog"]
+__all__ = ["GovernanceClockSkew", "GovernanceLog", "InMemoryGovernanceLog"]

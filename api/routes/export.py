@@ -8,6 +8,12 @@ GET /api/v1/corpus/{corpus_id}/export/ttl        -- Turtle
 GET /api/v1/corpus/{corpus_id}/export/jsonld     -- JSON-LD (JSONL)
 GET /api/v1/corpus/{corpus_id}/export/validation -- SHACL validation report
 POST /api/v1/corpus/{corpus_id}/export/bundle    -- ZIP bundle of selected formats
+
+The owl, ttl, jsonld and validation GETs change state: they mint permanent IRIs into the
+corpus's ``iri_registry`` and (re)write its export files, the same work as the bundle POST. They
+therefore require an operator token (:data:`_OPERATOR`) although they are GETs, and
+``tests/api/test_auth.py`` lists them in its asserted ``GET_ROUTES_THAT_WRITE`` allowlist. The
+markdown, json and html GETs only read (``review.db`` opened read-only) and stay open.
 """
 
 from __future__ import annotations
@@ -17,11 +23,16 @@ import json
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse, Response
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/v1", tags=["export"])
+from api.auth import WRITE_GUARD, require_operator
+
+router = APIRouter(prefix="/api/v1", tags=["export"], dependencies=WRITE_GUARD)
+
+#: Route-level operator requirement for the GETs that persist state (see the module docstring).
+_OPERATOR = [Depends(require_operator)]
 
 
 def _output_dir() -> Path:
@@ -157,7 +168,7 @@ def _get_approved_tasks(tasks: list[dict]) -> list[dict]:
     return [t for t in tasks if t.get("status") == "approved"]
 
 
-@router.get("/corpus/{corpus_id}/export/owl")
+@router.get("/corpus/{corpus_id}/export/owl", dependencies=_OPERATOR)
 async def export_owl(corpus_id: str) -> Response:
     """Return OWL ontology as RDF/XML."""
     from src.folio_insights.services.task_exporter import TaskExporter
@@ -183,7 +194,7 @@ async def export_owl(corpus_id: str) -> Response:
     )
 
 
-@router.get("/corpus/{corpus_id}/export/ttl")
+@router.get("/corpus/{corpus_id}/export/ttl", dependencies=_OPERATOR)
 async def export_ttl(corpus_id: str) -> Response:
     """Return OWL ontology as Turtle."""
     from src.folio_insights.services.task_exporter import TaskExporter
@@ -209,7 +220,7 @@ async def export_ttl(corpus_id: str) -> Response:
     )
 
 
-@router.get("/corpus/{corpus_id}/export/jsonld")
+@router.get("/corpus/{corpus_id}/export/jsonld", dependencies=_OPERATOR)
 async def export_jsonld(corpus_id: str) -> Response:
     """Return per-task JSON-LD chunks as JSONL."""
     from src.folio_insights.services.task_exporter import TaskExporter
@@ -235,7 +246,7 @@ async def export_jsonld(corpus_id: str) -> Response:
     )
 
 
-@router.get("/corpus/{corpus_id}/export/validation")
+@router.get("/corpus/{corpus_id}/export/validation", dependencies=_OPERATOR)
 async def export_validation(corpus_id: str) -> JSONResponse:
     """Return SHACL validation results as JSON."""
     from src.folio_insights.services.owl_serializer import OWLSerializer

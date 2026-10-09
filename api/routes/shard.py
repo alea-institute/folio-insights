@@ -17,7 +17,9 @@ from typing import Any
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/api/shard", tags=["shard-phase0"])
+from api.auth import WRITE_GUARD
+
+router = APIRouter(prefix="/api/shard", tags=["shard-phase0"], dependencies=WRITE_GUARD)
 
 
 @router.get("/{shard_id}/core")

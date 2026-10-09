@@ -9,7 +9,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-router = APIRouter(prefix="/api/v1", tags=["upload"])
+from api.auth import WRITE_GUARD
+
+router = APIRouter(prefix="/api/v1", tags=["upload"], dependencies=WRITE_GUARD)
 
 # Supported individual file extensions (matches ingestion stage)
 SUPPORTED_EXTENSIONS: set[str] = {

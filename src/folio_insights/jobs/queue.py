@@ -33,6 +33,7 @@ import enum
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import socket
@@ -172,6 +173,8 @@ class JobQueue(Protocol):
     def resume(self, job_id: str) -> Job: ...
 
     def reclaim_expired(self) -> list[str]: ...
+
+    def expire_paused(self, *, ttl_seconds: float, now: float | None = None) -> list[str]: ...
 
     def get(self, job_id: str) -> Job | None: ...
 
@@ -773,6 +776,53 @@ class SQLiteJobQueue:
                             "credential holder gone; waiting for the API key")
                 reclaimed.append(row["id"])
         return reclaimed
+
+    def expire_paused(self, *, ttl_seconds: float, now: float | None = None) -> list[str]:
+        """Cancel paused jobs nobody resumed within ``ttl_seconds`` (R18, KTD13).
+
+        A ``needs_credentials`` / ``budget_exhausted`` job counts as active, so an exclusive
+        enqueue for its corpus is refused for as long as it exists. If the control token was lost
+        nothing can ever resume or cancel it, and the corpus would be blocked forever. This sweep
+        moves such a job to ``cancelled`` (error ``expired: ...``), drops its credential holder
+        and stamps ``finished_at``, so a new job can be enqueued.
+
+        ``updated_at`` is the entry time: every path into a paused state (``pause``,
+        ``reclaim_expired``, ``enqueue(status=NEEDS_CREDENTIALS)``, ``resume`` that lands back in
+        ``needs_credentials``) writes it, and nothing touches a paused job afterwards except an
+        operator action (``update_payload``), which fairly restarts the clock.
+
+        Only paused jobs are considered; queued and running jobs are never expired here. One
+        ``BEGIN IMMEDIATE`` transaction re-selects under the write lock, so two workers sweeping
+        at once expire each job exactly once (the loser sees no row and returns ``[]``).
+        A non-positive or non-finite ``ttl_seconds`` disables the sweep. Returns the expired ids.
+        """
+        if not isinstance(ttl_seconds, (int, float)) or not math.isfinite(ttl_seconds) \
+                or ttl_seconds <= 0:
+            return []
+        stamp = self.now() if now is None else float(now)
+        cutoff = stamp - float(ttl_seconds)
+        paused = tuple(s.value for s in PAUSED)
+        expired: list[str] = []
+        with self._write() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM jobs WHERE status IN ({', '.join('?' for _ in paused)})"
+                " AND updated_at < ? ORDER BY updated_at",
+                (*paused, cutoff),
+            ).fetchall()
+            for row in rows:
+                job = self._row_to_job(row)
+                reason = (f"expired: paused ({job.status.value}) for more than "
+                          f"{ttl_seconds:g}s without being resumed")
+                conn.execute(
+                    """UPDATE jobs SET status = ?, cancel_requested = 1, error = ?,
+                           credential_holder = NULL, lease_owner = NULL, lease_token = NULL,
+                           lease_expires_at = NULL, updated_at = ?, finished_at = ?
+                       WHERE id = ?""",
+                    (JobStatus.CANCELLED.value, reason, stamp, stamp, job.id),
+                )
+                self._event(conn, job.id, job.current_stage or "queue", reason)
+                expired.append(job.id)
+        return expired
 
     def worker_heartbeat(self, owner: str) -> None:
         with self._write() as conn:

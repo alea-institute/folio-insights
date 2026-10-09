@@ -811,8 +811,10 @@ def jobs_list(db: str | None, limit: int) -> None:
     """List recent jobs (newest first)."""
     queue = _open_queue(db)
     for job in queue.list_jobs(limit=limit):
+        reason = f"  reason={' '.join(job.error.split())[:120]}" if job.error else ""
         click.echo(f"{job.id}  {job.kind:<9} {job.status.value:<18} {job.corpus_id}  "
-                   f"attempts={job.attempts}/{job.max_attempts}  stage={job.current_stage or '-'}")
+                   f"attempts={job.attempts}/{job.max_attempts}  stage={job.current_stage or '-'}"
+                   f"{reason}")
 
 
 @jobs_group.command("cancel")
@@ -823,6 +825,32 @@ def jobs_cancel(job_id: str, db: str | None) -> None:
     job = _open_queue(db).request_cancel(job_id)
     click.echo(f"{job.id}: {job.status.value}"
                + (" (cancellation requested)" if job.cancel_requested and not job.is_terminal else ""))
+
+
+@jobs_group.command("expire")
+@click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
+@click.option("--ttl", "ttl", default=None, type=float,
+              help="Expire paused jobs idle longer than this many seconds "
+                   "(default: $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS, else .env, else 86400).")
+def jobs_expire(db: str | None, ttl: float | None) -> None:
+    """Cancel abandoned paused jobs (needs_credentials / budget_exhausted) past the TTL.
+
+    Frees a corpus whose paused job can no longer be resumed (lost control token). Running and
+    queued jobs are never touched.
+    """
+    from folio_insights.jobs.worker import parse_paused_ttl, paused_ttl_from_env
+
+    try:
+        seconds = paused_ttl_from_env() if ttl is None else parse_paused_ttl(ttl)
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
+    if seconds <= 0:
+        click.echo("expiry disabled (ttl <= 0); nothing expired")
+        return
+    expired = _open_queue(db).expire_paused(ttl_seconds=seconds)
+    for job_id in expired:
+        click.echo(f"{job_id}: expired")
+    click.echo(f"{len(expired)} job(s) expired (ttl={seconds:g}s)")
 
 
 @jobs_group.command("import-legacy")
@@ -857,7 +885,38 @@ from folio_insights.bfo.cli import bfo_group as _bfo_group  # noqa: E402
 
 cli.add_command(_bfo_group)
 
+# Phase 9 U5: closed-world-aware counts.
+from folio_insights.query.cli import query_group as _query_group  # noqa: E402
+
+cli.add_command(_query_group)
+
+# Drain U3: axiom kernel (list / seed / chain).
+from folio_insights.kernel.cli import kernel_group as _kernel_group  # noqa: E402
+
+cli.add_command(_kernel_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
     cli()
+
+
+# Drain U4: dependency-cycle validation and Tractarian paths.
+from folio_insights.graph_cli import graph_group as _graph_group  # noqa: E402
+
+cli.add_command(_graph_group)
+
+# Drain plan U5: API operator tokens (``folio-insights api token-new``).
+from folio_insights.api_cli import api_group as _api_group  # noqa: E402
+
+cli.add_command(_api_group)
+
+# Phase 10 U6: deterministic extraction-quality rubric (rubric score / rubric gold).
+from folio_insights.rubric.cli import rubric_group as _rubric_group  # noqa: E402
+
+cli.add_command(_rubric_group)
+
+# Phase 9 U1: cluster validator (`folio-insights validate clusters`; worker tier).
+from folio_insights.validation.cli import validate_group as _validate_group  # noqa: E402
+
+cli.add_command(_validate_group)

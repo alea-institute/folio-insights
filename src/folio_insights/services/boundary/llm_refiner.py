@@ -53,7 +53,7 @@ async def refine_boundaries_with_llm(
     try:
         llm_provider = llm_bridge.get_llm_for_task("boundary")
         result = await llm_provider.structured(
-            prompt, schema=BoundaryRefinementResponse, temperature=0
+            prompt, schema=BoundaryRefinementResponse, template=BOUNDARY, temperature=0
         )
 
         refinements = result.get("boundaries", [])

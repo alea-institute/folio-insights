@@ -16,9 +16,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 
+from api.auth import WRITE_GUARD
 from api.services import proposals as proposal_svc
 
-router = APIRouter()
+router = APIRouter(dependencies=WRITE_GUARD)
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +164,7 @@ async def review_unit(
     if body.status not in ("approved", "rejected", "edited"):
         raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
 
-    db = await get_db_for_corpus(corpus)
+    db = await get_db_for_corpus(corpus, writable=True)
     try:
         now = _now_iso()
         await db.execute(
@@ -215,7 +216,7 @@ async def bulk_approve(
     else:
         raise HTTPException(status_code=400, detail="Provide unit_ids or confidence_min")
 
-    db = await get_db_for_corpus(corpus)
+    db = await get_db_for_corpus(corpus, writable=True)
     try:
         now = _now_iso()
         for uid in target_ids:
@@ -283,7 +284,8 @@ async def review_stats(
 
 
 # Every proposed-class route needs the operator's explicit opt-in and a local request
-# (api/services/proposals.py, require_local_opt_in): the API has no authentication.
+# (api/services/proposals.py, require_local_opt_in), in addition to the router's operator
+# token check on writes (api/auth.py): decisions are attributed to the configured reviewer.
 _LOCAL_ONLY = [Depends(proposal_svc.require_local_opt_in)]
 
 
@@ -426,7 +428,7 @@ async def reset_reviews(
     ledger, and the legacy ``proposed_class_decisions`` table is read-only."""
     from api.main import get_db_for_corpus
 
-    db = await get_db_for_corpus(corpus)
+    db = await get_db_for_corpus(corpus, writable=True)
     try:
         cursor = await db.execute(
             "DELETE FROM review_decisions WHERE corpus_name = ?",

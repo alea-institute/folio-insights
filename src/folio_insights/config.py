@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -75,6 +76,28 @@ class Settings(BaseSettings):
     # Substantive-input guard (B6). Boundary detection drops boundaries by SHAPE only (heading,
     # contents entry, attribution); the distiller additionally skips text shorter than this.
     min_substantive_chars: int = 20
+
+    # Abandoned paused jobs (R18, KTD13): a needs_credentials / budget_exhausted job nobody
+    # resumed within this many seconds is cancelled as "expired", so it stops blocking its
+    # corpus. 0 or negative disables the sweep; non-finite values are rejected.
+    # Env: FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS.
+    job_paused_ttl_seconds: float = 86400.0
+
+    @field_validator("job_paused_ttl_seconds", mode="before")
+    @classmethod
+    def _check_paused_ttl(cls, value: object) -> float:
+        from folio_insights.jobs.worker import parse_paused_ttl
+
+        return parse_paused_ttl(value)
+
+    # API operator authentication (drain plan U5, R15, KTD10; api/auth.py). State-changing API
+    # routes need an operator bearer token whose SHA-256 is listed in ``api_tokens_file`` (one
+    # ``sha256:<64 hex> <handle> <role>`` line per token, mode 600, outside the repository).
+    # ``api_auth`` is ``required`` (the default, also with no tokens file: fail closed) or
+    # ``loopback-open`` (local development: a loopback client addressing a loopback host may
+    # write without a token). See "API authentication" in docs/storage-operations.md.
+    api_auth: str = "required"
+    api_tokens_file: Path | None = None
 
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 
