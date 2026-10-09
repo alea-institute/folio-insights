@@ -831,7 +831,7 @@ def jobs_cancel(job_id: str, db: str | None) -> None:
 @click.option("--db", default=None, help="Queue database (default: $FOLIO_INSIGHTS_QUEUE_DB).")
 @click.option("--ttl", "ttl", default=None, type=float,
               help="Expire paused jobs idle longer than this many seconds "
-                   "(default: $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS, else 86400).")
+                   "(default: $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS, else .env, else 86400).")
 def jobs_expire(db: str | None, ttl: float | None) -> None:
     """Cancel abandoned paused jobs (needs_credentials / budget_exhausted) past the TTL.
 

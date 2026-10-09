@@ -219,3 +219,37 @@ def test_cli_expire_and_list_show_reason(tmp_path, clock, monkeypatch) -> None:
     assert res.exit_code == 0 and f"{job_id}: expired" in res.output and "1 job(s)" in res.output
     res = runner.invoke(cli, ["jobs", "list", "--db", str(db)])
     assert "cancelled" in res.output and "reason=expired" in res.output
+
+
+def test_standalone_worker_reads_a_dotenv_ttl_like_the_api(queue, tmp_path, monkeypatch) -> None:
+    """A TTL set only in ``.env`` applies to the standalone worker exactly as to the API's
+    Settings (both sweepers must agree, or the shortest TTL wins)."""
+    from folio_insights.config import Settings
+
+    monkeypatch.delenv("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS=0\n", encoding="utf-8")
+    assert Settings().job_paused_ttl_seconds == 0.0  # what the API's get_settings() reads
+    assert paused_ttl_from_env() == 0.0
+    assert JobWorker(queue, {}, secret_store=SecretStore()).paused_ttl_seconds == 0.0
+    # The process environment still wins over .env, as in Settings.
+    monkeypatch.setenv("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS", "300")
+    assert paused_ttl_from_env() == 300.0 == Settings().job_paused_ttl_seconds
+    # An invalid .env value is refused, never silently defaulted.
+    monkeypatch.delenv("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS")
+    (tmp_path / ".env").write_text("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS=nan\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        paused_ttl_from_env()
+
+
+def test_lean_image_without_pydantic_settings_reads_the_environment(tmp_path, monkeypatch) -> None:
+    """With no pydantic-settings (the lean worker image) only the process environment counts."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "folio_insights.config", None)  # import -> ImportError
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS=0\n", encoding="utf-8")
+    monkeypatch.delenv("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS", raising=False)
+    assert paused_ttl_from_env() == 86400.0
+    monkeypatch.setenv("FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS", "7")
+    assert paused_ttl_from_env() == 7.0
