@@ -25,13 +25,24 @@ pytestmark = pytest.mark.storage
 FAR = datetime(2100, 1, 1, tzinfo=UTC)
 
 
-async def test_reopen_in_process_restores_everything(storage_root: Path, admin) -> None:
+async def test_reopen_in_process_restores_everything(
+    storage_root: Path, admin, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from folio_insights.storage import context as storage_context
+
     reviewer = new_identity()
     base = shard(1)
     ctx = await CorpusStorageContext.open(storage_root, "corpus-a")
-    await ctx.governance.append(genesis("corpus-a", admin))
-    await ctx.governance.append(role_assertion("corpus-a", admin, reviewer.did, "reviewer", at(1)))
-    await ctx.governance.append(role_revocation("corpus-a", admin, reviewer.did, "reviewer", at(2)))
+    # Role windows are server commit times (R17), so pin the server clock to
+    # the signing times to make the reviewer's window [at(1), at(2)) exact.
+    for seconds, event in (
+        (0, genesis("corpus-a", admin)),
+        (1, role_assertion("corpus-a", admin, reviewer.did, "reviewer", at(1))),
+        (2, role_revocation("corpus-a", admin, reviewer.did, "reviewer", at(2))),
+    ):
+        monkeypatch.setattr(storage_context, "_server_now", lambda s=seconds: at(s))
+        await ctx.governance.append(event)
+    monkeypatch.undo()
     await ctx.shards.put(base.shard_iri, base)
     await edit_shard_content(
         base.shard_iri, "sense", "synthetic revised", admin.did, "why", admin.sk, ctx.shards

@@ -32,6 +32,7 @@ behind the GovernanceLog Protocol without touching this file.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,6 +41,7 @@ from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import XSD
 
 if TYPE_CHECKING:
+    from folio_insights.governance.clock import EventTime
     from folio_insights.governance.events import (
         ContestEvent,
         ContestResolutionEvent,
@@ -235,6 +237,8 @@ def validate_role_assertion_shape(
     event: "RoleAssertionEvent",
     *,
     history: "list[GovernanceEvent] | None" = None,
+    event_time: "EventTime | None" = None,
+    asof: datetime | None = None,
 ) -> ValidationResult:
     """Validate a RoleAssertionEvent against its SHACL shape (07-04a Task 2).
 
@@ -245,13 +249,20 @@ def validate_role_assertion_shape(
     the validator returns ``conforms=True`` so the log.py code-layer gate
     (signer-must-be-admin) remains the active enforcement; the SHACL belt
     arrives in Task 2 of THIS plan.
+
+    Time (R17): ``event_time`` maps each history event to the time it took
+    effect and ``asof`` is the pending event's time; the log passes server
+    commit times when it has them. Both default to ``signature.signed_at``
+    (the in-memory, no-server-clock behaviour).
     """
     shapes_path = _SHAPES_DIR / "role_assertion_shape.ttl"
     if not shapes_path.exists():
         # Task 2 of 07-04a hasn't shipped yet; defer to the code-layer gate.
         return ValidationResult(conforms=True, violations=[], results_text="")
     shapes = _load_shape_graph("role_assertion_shape.ttl")
-    data_graph = _build_role_assertion_graph(event, history or [])
+    data_graph = _build_role_assertion_graph(
+        event, history or [], event_time=event_time, asof=asof
+    )
     conforms, _g, results_text = pyshacl.validate(
         data_graph,
         shacl_graph=shapes,
@@ -268,18 +279,24 @@ def validate_role_revocation_shape(
     event: "RoleRevocationEvent",
     *,
     history: "list[GovernanceEvent] | None" = None,
+    event_time: "EventTime | None" = None,
+    asof: datetime | None = None,
 ) -> ValidationResult:
     """Validate a RoleRevocationEvent against its SHACL shape (07-04a Task 2).
 
     Until the TTL ships in Task 2, returns ``conforms=True`` (the code-layer
     D-11 last-admin lockout check is the active gate). When the TTL is
     present, the SHACL belt mirrors the suspenders.
+
+    ``event_time`` / ``asof``: as for ``validate_role_assertion_shape``.
     """
     shapes_path = _SHAPES_DIR / "role_revocation_shape.ttl"
     if not shapes_path.exists():
         return ValidationResult(conforms=True, violations=[], results_text="")
     shapes = _load_shape_graph("role_revocation_shape.ttl")
-    data_graph = _build_role_revocation_graph(event, history or [])
+    data_graph = _build_role_revocation_graph(
+        event, history or [], event_time=event_time, asof=asof
+    )
     conforms, _g, results_text = pyshacl.validate(
         data_graph,
         shacl_graph=shapes,
@@ -309,45 +326,38 @@ def _parse_violations(results_text: str) -> list[str]:
 def _build_role_context_graph(
     history: "list[GovernanceEvent]",
     event,
+    *,
+    event_time: "EventTime | None" = None,
+    asof: datetime | None = None,
 ) -> Graph:
     """Materialize active-roles context as RDF for the SPARQL constraints.
 
-    Walks ``history`` up to ``event.signature.signed_at`` (or, for events
-    with no signed_at, all of history) and emits, for each currently-active
-    role assertion, a ``<signer_did> fi:hasActiveRoleAt (<role> <asof>)``
-    triple. The role assertion shape's SPARQL constraint queries against
-    these triples to check whether the signer holds corpus_admin at
-    signature.signed_at.
+    Walks ``history`` up to ``asof`` (or, when there is no time, all of
+    history) and emits, for each currently-active role assertion, a
+    ``<signer_did> fi:hasActiveRoleAt (<role> <asof>)`` triple. The role
+    assertion shape's SPARQL constraint queries against these triples to
+    check whether the signer holds corpus_admin at ``asof``.
+
+    Time (R17): each history event is placed at ``event_time(ev)`` and
+    ``asof`` is the pending event's time — the server commit times when the
+    caller has them. Both default to ``signature.signed_at``, the in-memory
+    (no server clock) behaviour.
 
     Implementation detail: the (role, asof) pair is encoded as two
     properties on a single bnode for now —
     ``fi:hasActiveRoleAt [ fi:role "<role>" ; fi:asof "<asof>" ]`` — so the
     SPARQL can match them with a single triple-pattern join.
     """
-    from folio_insights.governance.events import (
-        RoleAssertionEvent as _RA,
-    )
-    from folio_insights.governance.events import (
-        RoleRevocationEvent as _RR,
-    )
+    from folio_insights.governance.clock import signed_at_time
+    from folio_insights.governance.roles import roles_from_timed_events
 
     g = Graph()
-    asof = event.signature.signed_at
-    # Walk history applying assertions minus revocations to get the active map
-    # at asof. Mirrors roles.active_roles_at but produced as RDF triples here.
-    active: dict[str, set[str]] = {}
-    for ev in history:
-        ev_at = ev.signature.signed_at
-        if ev_at is None:
-            continue
-        if asof is not None and ev_at > asof:
-            continue
-        if isinstance(ev, _RA):
-            active.setdefault(ev.subject_did, set()).add(ev.role)
-        elif isinstance(ev, _RR):
-            roles = active.get(ev.subject_did)
-            if roles is not None:
-                roles.discard(ev.revoked_role)
+    time_of = event_time if event_time is not None else signed_at_time
+    if asof is None:
+        asof = event.signature.signed_at
+    # The active map at asof: the same fold roles.active_roles_at uses,
+    # produced as RDF triples here.
+    active = roles_from_timed_events(((ev, time_of(ev)) for ev in history), asof)
 
     for did, roles in active.items():
         did_node = URIRef(f"urn:fi:did:{did}")
@@ -369,9 +379,12 @@ def _build_role_context_graph(
 def _build_role_assertion_graph(
     event: "RoleAssertionEvent",
     history: "list[GovernanceEvent]",
+    *,
+    event_time: "EventTime | None" = None,
+    asof: datetime | None = None,
 ) -> Graph:
     """Materialize a RoleAssertion + its active-role context as RDF."""
-    g = _build_role_context_graph(history, event)
+    g = _build_role_context_graph(history, event, event_time=event_time, asof=asof)
     event_node = URIRef("urn:fi:pending:roleassertion")
     g.add((event_node, RDF.type, FI.RoleAssertion))
     g.add(
@@ -397,9 +410,12 @@ def _build_role_assertion_graph(
 def _build_role_revocation_graph(
     event: "RoleRevocationEvent",
     history: "list[GovernanceEvent]",
+    *,
+    event_time: "EventTime | None" = None,
+    asof: datetime | None = None,
 ) -> Graph:
     """Materialize a RoleRevocation + the active-admin count as RDF for D-11."""
-    g = _build_role_context_graph(history, event)
+    g = _build_role_context_graph(history, event, event_time=event_time, asof=asof)
     event_node = URIRef("urn:fi:pending:rolerevocation")
     g.add((event_node, RDF.type, FI.RoleRevocation))
     g.add(

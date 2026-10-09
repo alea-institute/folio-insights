@@ -15,6 +15,13 @@ UPDATE/DELETE triggers are the third defense-in-depth layer.
 
 Reads pass the projection barrier and stay at or below the watermark. A log
 bound to corpus A refuses questions about corpus B (``CorpusIsolationError``).
+
+Server time (R17 / KTD12): every governance row's journal ``committed_at`` is
+the time the event took effect. ``query_active_roles_at`` and every
+``authorize()`` call made with this log window roles by it (through the
+private ``_iter_timed_events`` hook ``roles.active_roles_at`` consults), and
+the append path checks roles at the new row's own commit time. The
+signer-claimed ``signed_at`` never decides when a role was held.
 """
 from __future__ import annotations
 
@@ -22,6 +29,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from folio_insights.governance.clock import parse_committed_at
 from folio_insights.governance.events import GovernanceEvent
 from folio_insights.governance.roles import active_roles_at
 
@@ -81,6 +89,19 @@ class PersistentGovernanceLog:
 
         for row in await self._ctx._journal.governance_rows(corpus, upto=upto):
             yield _event_from_row(row)
+
+    async def _iter_timed_events(
+        self, corpus: str
+    ) -> AsyncIterator[tuple[GovernanceEvent, datetime | None]]:
+        """``(event, committed_at)`` for every committed governance event, in
+        position order, from one read at the barrier (R17). Private: the hook
+        ``roles.active_roles_at`` windows by; not part of the Protocol."""
+        self._ctx._check_corpus(corpus)
+        upto = await self._ctx._barrier()
+        from folio_insights.storage.context import _event_from_row
+
+        for row in await self._ctx._journal.governance_rows(corpus, upto=upto):
+            yield _event_from_row(row), parse_committed_at(row.committed_at)
 
     async def latest_position(self, corpus: str) -> int:
         self._ctx._check_corpus(corpus)

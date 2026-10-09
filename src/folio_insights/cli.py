@@ -911,6 +911,16 @@ from folio_insights.api_cli import api_group as _api_group  # noqa: E402
 
 cli.add_command(_api_group)
 
+# Phase 10 U6: deterministic extraction-quality rubric (rubric score / rubric gold).
+from folio_insights.rubric.cli import rubric_group as _rubric_group  # noqa: E402
+
+cli.add_command(_rubric_group)
+
+# Phase 9 U1: cluster validator (`folio-insights validate clusters`; worker tier).
+from folio_insights.validation.cli import validate_group as _validate_group  # noqa: E402
+
+cli.add_command(_validate_group)
+
 # Drain plan U9: signed review decisions (``folio-insights proposals sign-decision``).
 from folio_insights.proposals.cli import proposals_group as _proposals_group  # noqa: E402
 

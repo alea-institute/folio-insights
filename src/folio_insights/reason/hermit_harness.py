@@ -19,10 +19,17 @@ Contract:
     >>> harness = HermitHarness(xmx_mb=4096)
     >>> result = harness.reason(Path("fixtures/bench-abox-1m.owl"))
     >>> # result.elapsed_s, result.xmx_mb, result.consistent, result.inconsistent_classes
+
+Phase 9 U1 adds the cluster-scoped entry ``HermitHarness.reason_ntriples``: the
+cluster validator (``validation.hermit``) hands it one cluster's formal content
+as an N-Triples document and gets the same ``HermitResult`` back, with the
+IRIs of the unsatisfiable classes in ``unsatisfiable_class_iris`` so a finding
+can name them (``inconsistent_classes`` keeps its display strings).
 """
 from __future__ import annotations
 
 import logging
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,6 +49,9 @@ class HermitResult:
     elapsed_s: float
     consistent: bool
     inconsistent_classes: list[str] = field(default_factory=list)
+    # Phase 9 U1: full IRIs of the named unsatisfiable classes (empty when the
+    # whole ontology is inconsistent: HermiT then names no class).
+    unsatisfiable_class_iris: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize for MEASUREMENTS.md / DECISION.md ingestion."""
@@ -51,6 +61,7 @@ class HermitResult:
             "elapsed_s": self.elapsed_s,
             "consistent": self.consistent,
             "inconsistent_classes": self.inconsistent_classes,
+            "unsatisfiable_class_iris": self.unsatisfiable_class_iris,
         }
 
 
@@ -96,6 +107,7 @@ class HermitHarness:
 
         t0 = time.perf_counter()
         inconsistent_classes: list[str] = []
+        unsatisfiable_iris: list[str] = []
         consistent = True
         try:
             with onto:
@@ -125,10 +137,15 @@ class HermitHarness:
             raise
         else:
             elapsed = time.perf_counter() - t0
-            named_inconsistent = list(onto.inconsistent_classes())
+            named_inconsistent = [
+                c for c in onto.inconsistent_classes() if c is not owlready2.Nothing
+            ]
             if named_inconsistent:
                 consistent = False
                 inconsistent_classes = [str(c) for c in named_inconsistent]
+                unsatisfiable_iris = sorted(
+                    {str(getattr(c, "iri", c)) for c in named_inconsistent}
+                )
 
         result = HermitResult(
             ontology=str(ontology_path),
@@ -136,6 +153,7 @@ class HermitHarness:
             elapsed_s=elapsed,
             consistent=consistent,
             inconsistent_classes=inconsistent_classes,
+            unsatisfiable_class_iris=unsatisfiable_iris,
         )
         logger.info(
             "HermiT reasoned %s in %.2fs (Xmx=%dMB, consistent=%s)",
@@ -145,3 +163,17 @@ class HermitHarness:
             result.consistent,
         )
         return result
+
+    def reason_ntriples(self, document: str) -> HermitResult:
+        """Reason over an in-memory N-Triples document (Phase 9 U1 cluster entry).
+
+        The cluster validator builds one small ontology per cluster (its formal
+        triples, TBox slice and disjointness seeds) and calls this once per
+        consistency question. The document is written to a private temporary
+        directory that is removed afterwards; ``HermitResult.ontology`` names
+        that (deleted) file only for logging.
+        """
+        with tempfile.TemporaryDirectory(prefix="fi-hermit-") as tmp:
+            path = Path(tmp) / "cluster.nt"
+            path.write_text(document, encoding="utf-8")
+            return self.reason(path)
