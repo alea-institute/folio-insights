@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # is recorded in output metadata (``metadata.folio_tagger``).
     require_deterministic_iri: bool = True
 
+    # In-repo FOLIO ontology service (services/folio_ontology.py). The label-lemma cache is
+    # insights-owned (never folio-enrich's directory). A failed FOLIO load (e.g. an offline box
+    # with no ~/.folio cache) is not retried for ``folio_load_retry_seconds``; lookups in that
+    # window raise immediately instead of re-attempting the GitHub fetch every call.
+    folio_lemma_cache_dir: Path = Path("~/.folio-insights/cache/lemmas")
+    folio_load_retry_seconds: float = 300.0
+
     # Boundary detection performance (B7). Ambiguous (long) paragraphs are refined
     # concurrently, at most ``boundary_tier_concurrency`` at a time. The Tier-3 LLM refiner is
     # off by default: a deterministic sentence-group split handles long paragraphs with no

@@ -306,7 +306,16 @@ class IngestionStage(InsightsPipelineStage):
             len(new_files), len(all_files), source_dir,
         )
 
-        ingestion_bridge = IngestionBridge()
+        # The multi-format IngestionBridge still needs a folio-enrich checkout
+        # (docs/bridge-retirement-2026-10-09.md). Build it only when a new file needs it,
+        # so tabular (.csv/.tsv/.xlsx) and .xml corpora ingest without that checkout.
+        # When it IS needed and unavailable, construction raises before any file is
+        # processed, exactly as before.
+        ingestion_bridge = (
+            IngestionBridge()
+            if any(f.suffix.lower() in _BRIDGE_EXTENSIONS for f in new_files)
+            else None
+        )
         mapper_bridge = MapperBridge()
         ingested: dict[str, dict[str, Any]] = job.metadata.get("ingested", {})
 

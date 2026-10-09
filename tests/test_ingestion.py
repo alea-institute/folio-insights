@@ -162,7 +162,6 @@ async def test_skip_processed(tmp_path: Path):
     assert registry.needs_processing(file_path) is False
 
 
-@pytest.mark.integration
 async def test_xml_ingestion(tmp_path: Path):
     """Create a simple XML file and verify text content is extracted."""
     xml_content = (
@@ -189,6 +188,51 @@ async def test_xml_ingestion(tmp_path: Path):
     text = ingested[file_key]["text"]
     assert "Legal Analysis" in text
     assert "introductory text" in text
+
+
+@pytest.fixture
+def no_enrich_checkout(monkeypatch, tmp_path: Path):
+    """Point the enrich path at a missing directory and reset the cached path flag."""
+    from folio_insights.config import get_settings
+    from folio_insights.services.bridge import folio_bridge
+
+    monkeypatch.setattr(get_settings(), "folio_enrich_path", tmp_path / "no-enrich")
+    monkeypatch.setattr(folio_bridge, "_path_ensured", False)
+
+
+async def test_tabular_and_xml_corpus_never_builds_ingestion_bridge(
+    tmp_path: Path, monkeypatch, no_enrich_checkout
+):
+    """CSV/TSV/XML corpora ingest without a folio-enrich checkout (bridge built lazily)."""
+    from folio_insights.services.bridge import mapper_bridge
+
+    monkeypatch.setattr(mapper_bridge, "_mapper_checked", True)
+    monkeypatch.setattr(mapper_bridge, "_mapper_path", None)
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "rules.csv").write_text("Rule,Source\nHearsay,FRE 802\n", encoding="utf-8")
+    (src / "rules.tsv").write_text("Rule\tSource\nRelevance\tFRE 401\n", encoding="utf-8")
+    (src / "doc.xml").write_text("<doc><p>Hello XML.</p></doc>", encoding="utf-8")
+
+    result = await IngestionStage().execute(InsightsJob(corpus_name="test", source_dir=src))
+
+    assert sorted(d.format for d in result.documents) == ["csv", "tsv", "xml"]
+    texts = "\n".join(v["text"] for v in result.metadata["ingested"].values())
+    assert "Hearsay | FRE 802" in texts and "Relevance | FRE 401" in texts
+    assert "Hello XML." in texts
+
+
+async def test_bridge_format_without_checkout_fails_fast(tmp_path: Path, no_enrich_checkout):
+    """A corpus that needs the bridge still aborts up front, with the actionable error."""
+    from folio_insights.services.bridge.ingestion_bridge import IngestionBridgeUnavailableError
+
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "chapter.md").write_text("# Title\n\nBody.\n", encoding="utf-8")
+    (src / "rules.csv").write_text("a,b\n", encoding="utf-8")
+
+    with pytest.raises(IngestionBridgeUnavailableError, match="FOLIO_INSIGHTS_FOLIO_ENRICH_PATH"):
+        await IngestionStage().execute(InsightsJob(corpus_name="test", source_dir=src))
 
 
 async def test_unknown_format_skipped(tmp_path: Path):

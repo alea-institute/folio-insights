@@ -55,8 +55,9 @@ class IngestionBridge:
                 "ingestion registry from a sibling checkout, and none was found.\n"
                 f"{exc}\n\n"
                 "Fix: clone folio-enrich and point FOLIO_INSIGHTS_FOLIO_ENRICH_PATH at its "
-                "backend/ directory, or ingest only tabular (.csv/.tsv) and .xml sources, "
-                "which do not use this bridge."
+                "backend/ directory. A corpus whose new files are only .csv/.tsv/.xlsx/.xml "
+                "never constructs this bridge; .md/.txt/.docx/.doc/.pdf/.html/.htm/.rtf/"
+                ".eml/.msg (and .wpd, converted to HTML) need it."
             ) from exc
 
     def detect_and_ingest(

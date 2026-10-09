@@ -24,12 +24,15 @@ What was narrowed, and why the result is equivalent for FOLIO:
   path, byte-identical); the canonical non-FOLIO branch derivation is dropped.
 * ``translation_matching_enabled`` (enrich default ``False``) is a constructor
   argument defaulting to ``False``.
-* Lemma keys: identical logic and the identical on-disk cache
-  (``~/.folio-enrich/cache/lemmas/labels_<owl-hash>_v1.pkl``), so a box that
-  already holds enrich's lemma cache indexes the same lemma keys. Computing new
-  lemmas needs spaCy + ``en_core_web_sm``; neither is a folio-insights
-  dependency, so without the cache the lemma tier is empty (enrich degrades the
-  same way when spaCy is missing).
+* Lemma keys: identical computation, cached in an insights-owned directory
+  (``settings.folio_lemma_cache_dir``, default
+  ``~/.folio-insights/cache/lemmas/labels_<owl-hash>_v1.pkl``; folio-enrich's
+  cache directory is never read or written). Computing lemmas needs spaCy +
+  ``en_core_web_sm``; neither is a folio-insights dependency, so here the lemma
+  tier is empty, exactly as enrich's is when spaCy is missing and it has no cache.
+* Not in enrich: a failed FOLIO load is remembered for
+  ``settings.folio_load_retry_seconds`` (default 300 s). Calls in that window raise
+  :class:`FolioLoadUnavailableError` at once instead of re-attempting the fetch.
 
 Parity with the enrich implementation (label index, search results, concept
 lookups) is pinned by ``tests/test_bridge_retirement_parity.py``.
@@ -40,6 +43,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -51,7 +55,8 @@ logger = logging.getLogger(__name__)
 # Bump when the lemma rules or denylist change (kept equal to enrich's LEMMA_VERSION so the
 # shared disk cache key matches).
 LEMMA_VERSION = "1"
-_LEMMA_CACHE_DIR = Path.home() / ".folio-enrich" / "cache" / "lemmas"
+_LEMMA_CACHE_DIR = Path.home() / ".folio-insights" / "cache" / "lemmas"  # default only
+_DEFAULT_LOAD_RETRY_SECONDS = 300.0
 
 _GITHUB_REPO_BRANCH = "main"
 
@@ -184,14 +189,43 @@ class LabelInfo:
     matched_label: str  # The actual label text that matched
 
 
+class FolioLoadUnavailableError(RuntimeError):
+    """The FOLIO ontology failed to load recently; retry is suppressed until the cooldown ends."""
+
+
+def _settings_defaults() -> tuple[Path, float]:
+    try:
+        from folio_insights.config import get_settings
+
+        s = get_settings()
+        return Path(s.folio_lemma_cache_dir).expanduser(), float(s.folio_load_retry_seconds)
+    except Exception:  # pragma: no cover - settings unavailable; use built-in defaults
+        return _LEMMA_CACHE_DIR, _DEFAULT_LOAD_RETRY_SECONDS
+
+
 class FolioOntologyService:
     """FOLIO read service over folio-python (label index, search, concept lookup)."""
 
     _instance: FolioOntologyService | None = None
     _instance_lock = threading.Lock()
 
-    def __init__(self, *, translation_matching_enabled: bool = False, folio: Any = None) -> None:
+    def __init__(
+        self,
+        *,
+        translation_matching_enabled: bool = False,
+        folio: Any = None,
+        lemma_cache_dir: Path | None = None,
+        load_retry_seconds: float | None = None,
+    ) -> None:
+        default_dir, default_retry = _settings_defaults()
         self._translation_matching_enabled = translation_matching_enabled
+        self._lemma_cache_dir = Path(lemma_cache_dir) if lemma_cache_dir else default_dir
+        self._load_retry_seconds = (
+            default_retry if load_retry_seconds is None else float(load_retry_seconds)
+        )
+        self._load_failed_at: float | None = None
+        self._load_error: BaseException | None = None
+        self._load_lock = threading.Lock()
         self._folio = folio
         self._labels_cache: dict[str, LabelInfo] | None = None
         self._branch_map: dict[str, str] | None = None
@@ -222,10 +256,33 @@ class FolioOntologyService:
         return FOLIO(github_repo_branch=_GITHUB_REPO_BRANCH)
 
     def _get_folio(self) -> Any:
-        if self._folio is None:
-            self._folio = self._load_folio()
+        if self._folio is not None:
+            return self._folio
+        with self._load_lock:
+            if self._folio is not None:
+                return self._folio
+            failed_at = self._load_failed_at
+            if failed_at is not None and time.monotonic() - failed_at < self._load_retry_seconds:
+                raise FolioLoadUnavailableError(
+                    f"FOLIO ontology load failed {time.monotonic() - failed_at:.0f}s ago "
+                    f"({self._load_error!r}); not retrying for "
+                    f"{self._load_retry_seconds:.0f}s (FOLIO_INSIGHTS_FOLIO_LOAD_RETRY_SECONDS)"
+                ) from self._load_error
+            try:
+                folio = self._load_folio()
+            except Exception as exc:
+                self._load_failed_at = time.monotonic()
+                self._load_error = exc
+                logger.error(
+                    "FOLIO ontology load failed; suppressing retries for %.0fs",
+                    self._load_retry_seconds, exc_info=True,
+                )
+                raise
+            self._load_failed_at = None
+            self._load_error = None
+            self._folio = folio
             self._build_branch_map()
-            logger.info("Ontology 'folio' loaded with %d concepts", len(self._folio.classes))
+            logger.info("Ontology 'folio' loaded with %d concepts", len(folio.classes))
         return self._folio
 
     def _build_branch_map(self) -> None:
@@ -329,7 +386,7 @@ class FolioOntologyService:
 
     def _lemma_cache_path(self) -> Path:
         h = get_owl_content_hash() or "nohash"
-        return _LEMMA_CACHE_DIR / f"labels_{h}_v{LEMMA_VERSION}.pkl"
+        return self._lemma_cache_dir / f"labels_{h}_v{LEMMA_VERSION}.pkl"
 
     def _load_lemma_cache(self) -> dict[str, str] | None:
         try:

@@ -312,6 +312,49 @@ def test_citation_extractor_golden_with_stub_eyecite(monkeypatch):
             for c in got0] == [("347 U.S. 483", "347 U.S. 483 [normalized]", "Caselaw")]
 
 
+def test_citation_detection_skipped_and_logged_once_without_backends(monkeypatch, caplog):
+    """No eyecite/citeurl: the classifier never builds the extractor and logs the reason once."""
+    import logging
+
+    from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit, Span
+    from folio_insights.pipeline.stages.knowledge_classifier import KnowledgeClassifierStage
+    from folio_insights.services import citation_extraction
+    from folio_insights.services.bridge import folio_bridge
+
+    real_find_spec = citation_extraction.importlib.util.find_spec
+    monkeypatch.setattr(
+        citation_extraction.importlib.util,
+        "find_spec",
+        lambda name, *a, **k: None if name in ("eyecite", "citeurl") else real_find_spec(name),
+    )
+    citation_extraction.citation_backends_available.cache_clear()
+
+    def _must_not_build():
+        raise AssertionError("extractor built although no citation backend is installed")
+
+    monkeypatch.setattr(folio_bridge, "get_citation_extractor", _must_not_build)
+    units = [
+        KnowledgeUnit(
+            text="See 347 U.S. 483.",
+            original_span=Span(start=0, end=17, source_file="x"),
+            unit_type=KnowledgeType.ADVICE,
+            source_file="x",
+        )
+        for _ in range(5)
+    ]
+    stage = KnowledgeClassifierStage()
+    try:
+        with caplog.at_level(logging.INFO, logger="folio_insights"):
+            _run(stage._detect_citations(units))
+            _run(stage._detect_citations(units))
+        assert citation_extraction.citation_backends_available() == (False, False)
+        assert sum("citation detection is disabled" in r.message for r in caplog.records) == 1
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert all(u.unit_type == KnowledgeType.ADVICE for u in units)
+    finally:
+        citation_extraction.citation_backends_available.cache_clear()
+
+
 def test_get_citation_extractor_returns_in_repo_class(monkeypatch, tmp_path):
     from folio_insights.config import get_settings
     from folio_insights.services.bridge.folio_bridge import get_citation_extractor
@@ -366,13 +409,16 @@ FOLIO_PROBE_LABELS = [
 
 
 @pytest.fixture(scope="module")
-def folio_pair(enrich):
-    """(vendored, enrich) services, both loaded from folio-python's local OWL cache."""
+def folio_pair(enrich, tmp_path_factory):
+    """(vendored, enrich) services, both loaded from folio-python's local OWL cache.
+
+    The vendored service gets an empty, insights-owned lemma cache dir; enrich's registry
+    singleton uses enrich's own lemma cache (whatever this box holds)."""
     from app.services.folio.folio_service import FolioService
 
     from folio_insights.services.folio_ontology import FolioOntologyService
 
-    vendored = FolioOntologyService()
+    vendored = FolioOntologyService(lemma_cache_dir=tmp_path_factory.mktemp("lemmas"))
     original = FolioService.get_instance()
     try:
         vendored.get_all_labels()
@@ -386,21 +432,68 @@ def _concept_dict(concept) -> dict:
     return dataclasses.asdict(concept) if concept is not None else None
 
 
-@pytest.mark.integration
-def test_folio_label_index_parity(folio_pair):
+def _index_view(labels) -> dict:
+    return {k: (v.concept.iri, v.label_type, v.matched_label) for k, v in labels.items()}
+
+
+def _fresh_pair(folio_pair, tmp_path, lemma_map):
+    """Fresh vendored + enrich services over the SAME folio-python graph and lemma map."""
+    from app.services.folio.folio_service import FolioService
+    from app.services.ontology.spec import FOLIO_SPEC
+
+    from folio_insights.services.folio_ontology import FolioOntologyService
+
     vendored, original = folio_pair
-    v, e = vendored.get_all_labels(), original.get_all_labels()
-    assert len(v) == len(e)
-    assert len(v) > 15000
-    assert v.keys() == e.keys()
-    mismatched = [
-        k for k in e
-        if (v[k].concept.iri, v[k].label_type, v[k].matched_label)
-        != (e[k].concept.iri, e[k].label_type, e[k].matched_label)
-    ]
-    assert mismatched == []
-    assert vendored.get_concept_count() == original.get_concept_count()
-    assert vendored.get_label_count() == original.get_label_count()
+    v = FolioOntologyService(folio=vendored._get_folio(), lemma_cache_dir=tmp_path)
+    v._lemma_map = dict(lemma_map)
+    e = FolioService(FOLIO_SPEC)
+    e._folio = vendored._get_folio()
+    e._build_branch_map()
+    e._lemma_map = dict(lemma_map)
+    return v, e
+
+
+@pytest.mark.integration
+def test_folio_label_index_parity_without_lemmas(folio_pair, tmp_path):
+    """Index-building parity with the lemma tier empty on both sides."""
+    v, e = _fresh_pair(folio_pair, tmp_path, {})
+    vi, ei = _index_view(v.get_all_labels()), _index_view(e.get_all_labels())
+    assert len(vi) == len(ei) > 15000
+    assert vi == ei
+    assert v.get_concept_count() == e.get_concept_count()
+
+
+@pytest.mark.integration
+def test_folio_label_index_parity_with_same_lemma_map(folio_pair, tmp_path):
+    """Lemma-tier indexing parity: feed both sides enrich's own lemma map."""
+    _, original = folio_pair
+    lemma_map = original._compute_label_lemmas()
+    if not lemma_map:
+        pytest.skip("enrich has no lemma map on this box (no spaCy, no enrich lemma cache)")
+    v, _ = _fresh_pair(folio_pair, tmp_path, lemma_map)
+    vi, ei = _index_view(v.get_all_labels()), _index_view(original.get_all_labels())
+    assert vi == ei
+    assert any(t.startswith("lemma_") for _, t, _ in vi.values())
+
+
+@pytest.mark.integration
+def test_folio_lemma_computation_parity(folio_pair, tmp_path, monkeypatch):
+    """Lemma COMPUTATION from scratch (no caches) on both sides.
+
+    Without spaCy (not a folio-insights dependency) both compute an empty map, so the
+    lemma tier is empty, as in enrich. With spaCy installed both compute the same map."""
+    from app.services.folio import folio_service as enrich_fs
+
+    monkeypatch.setattr(enrich_fs, "_LEMMA_CACHE_DIR", tmp_path / "enrich")
+    v, e = _fresh_pair(folio_pair, tmp_path / "insights", {})
+    v._lemma_map = e._lemma_map = None
+    v_map, e_map = v._compute_label_lemmas(), e._compute_label_lemmas()
+    assert v_map == e_map
+    try:
+        import spacy  # noqa: F401
+    except ImportError:
+        assert v_map == {}
+        assert not any(t.startswith("lemma_") for _, t, _ in _index_view(v.get_all_labels()).values())
 
 
 @pytest.mark.integration
@@ -469,10 +562,8 @@ class _FakeFolio:
 
 def test_folio_ontology_label_index_rules(monkeypatch, tmp_path):
     """Exclusion and priority rules of the vendored index, without the live ontology."""
-    from folio_insights.services import folio_ontology
     from folio_insights.services.folio_ontology import FolioOntologyService
 
-    monkeypatch.setattr(folio_ontology, "_LEMMA_CACHE_DIR", tmp_path)  # no shared cache
     keep = _FakeOwl("https://f/A", "Deposition", alts=["Depo", "Witness"])
     other = _FakeOwl("https://f/B", "Witness", alts=["Depo"])
     sandbox = _FakeOwl("https://f/C", "Area Thing")
@@ -484,7 +575,7 @@ def test_folio_ontology_label_index_rules(monkeypatch, tmp_path):
         [keep, other, sandbox, dupe, zzz, old, pref],
         {_FakeBranch("AREA_OF_LAW"): [sandbox], _FakeBranch("EVENT"): [keep]},
     )
-    svc = FolioOntologyService(folio=folio)
+    svc = FolioOntologyService(folio=folio, lemma_cache_dir=tmp_path)
     labels = svc.get_all_labels()
     assert {k: (v.concept.iri, v.label_type) for k, v in labels.items()} == {
         "deposition": ("https://f/A", "preferred"),
@@ -501,19 +592,57 @@ def test_folio_ontology_label_index_rules(monkeypatch, tmp_path):
     assert (hit.iri, score) == ("https://f/B", 100.0)
 
 
-def test_folio_ontology_uses_shared_lemma_cache(monkeypatch, tmp_path):
+def test_folio_ontology_uses_own_lemma_cache(monkeypatch, tmp_path):
     import pickle
 
     from folio_insights.services import folio_ontology
     from folio_insights.services.folio_ontology import FolioOntologyService
 
-    monkeypatch.setattr(folio_ontology, "_LEMMA_CACHE_DIR", tmp_path)
     monkeypatch.setattr(folio_ontology, "get_owl_content_hash", lambda: "abc123")
     (tmp_path / "labels_abc123_v1.pkl").write_bytes(pickle.dumps({"agreements": "agreement"}))
     folio = _FakeFolio([_FakeOwl("https://f/A", "Agreements")], {})
-    labels = FolioOntologyService(folio=folio).get_all_labels()
+    labels = FolioOntologyService(folio=folio, lemma_cache_dir=tmp_path).get_all_labels()
     assert labels["agreement"].label_type == "lemma_preferred"
     assert labels["agreement"].matched_label == "Agreements"
+
+
+def test_folio_ontology_default_lemma_cache_is_insights_owned():
+    from folio_insights.services.folio_ontology import FolioOntologyService
+
+    path = FolioOntologyService(folio=_FakeFolio([], {}))._lemma_cache_path()
+    assert ".folio-insights" in path.parts and ".folio-enrich" not in path.parts
+
+
+def test_folio_ontology_failed_load_is_memoized_with_cooldown(monkeypatch):
+    from folio_insights.services import folio_ontology
+    from folio_insights.services.folio_ontology import (
+        FolioLoadUnavailableError,
+        FolioOntologyService,
+    )
+
+    clock = [1000.0]
+    monkeypatch.setattr(folio_ontology.time, "monotonic", lambda: clock[0])
+    attempts = []
+    svc = FolioOntologyService(load_retry_seconds=300)
+
+    def failing_load():
+        attempts.append(clock[0])
+        raise OSError("offline: cannot fetch FOLIO.owl")
+
+    monkeypatch.setattr(svc, "_load_folio", failing_load)
+    with pytest.raises(OSError):
+        svc.search_by_label("deposition")
+    for _ in range(5):  # within the cooldown: no new fetch attempt, immediate error
+        clock[0] += 10
+        with pytest.raises(FolioLoadUnavailableError, match="not retrying"):
+            svc.get_concept("https://f/A")
+    assert attempts == [1000.0]
+
+    clock[0] = 1000.0 + 301  # cooldown over: one retry, which now succeeds
+    good = _FakeFolio([_FakeOwl("https://f/A", "Deposition")], {})
+    monkeypatch.setattr(svc, "_load_folio", lambda: attempts.append(clock[0]) or good)
+    assert svc.get_concept("https://f/A").preferred_label == "Deposition"
+    assert len(attempts) == 2
 
 
 def test_get_folio_service_is_in_repo_singleton_without_sys_path(monkeypatch, tmp_path):

@@ -20,8 +20,9 @@ implementation is pinned by ``tests/test_bridge_retirement_parity.py``.
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import logging
-from functools import partial
+from functools import lru_cache, partial
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -66,6 +67,25 @@ class Individual(BaseModel):
     normalized_form: str | None = None
     url: str | None = None
     lineage: list[StageEvent] = Field(default_factory=list)
+
+
+@lru_cache(maxsize=1)
+def citation_backends_available() -> tuple[bool, bool]:
+    """``(eyecite_installed, citeurl_installed)``, probed once per process.
+
+    Not part of the vendored enrich code: callers that run the extractor once per unit
+    use it to skip detection entirely (and log once) when neither library is installed,
+    instead of paying two executor hops and two WARNING lines per unit for a result that
+    is always empty. The extraction functions below are unchanged.
+    """
+    eyecite = importlib.util.find_spec("eyecite") is not None
+    citeurl = importlib.util.find_spec("citeurl") is not None
+    if not (eyecite or citeurl):
+        logger.info(
+            "eyecite/citeurl not installed: legal citation detection is disabled "
+            "(this message is logged once per process)"
+        )
+    return eyecite, citeurl
 
 
 # Citation type → FOLIO class label mapping
