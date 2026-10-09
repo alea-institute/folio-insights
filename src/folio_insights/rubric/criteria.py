@@ -39,8 +39,14 @@ A pipeline snippet is always ``source[start:end]`` of the best-aligned window, e
 that window did not verify, so a snippet that equals its slice is trusted only up to the
 anchor score the pipeline recorded for it (a fluent paraphrase anchored at 0.62 fails).
 Any unit at 0 fails the gate. Shards claim their ``source_span`` as the quote and have
-no char offsets, so they are scored on (b) alone. The [LLM] half (the passage supports
-the claim) is not computed here; ``details["llm_component"]`` says so.
+no char offsets, so they are scored on (b) alone; because a verbatim span always
+anchors, a shard's anchor counts only when the passage also SUPPORTS the shard's claim
+(``AnchorClaim.claim``: its literal ``triple.object``, else its ``sense``) by
+``minting.support.check_support``'s deterministic test (every specific of the claim
+occurs in the passage, content-token recall >= 0.6); an unsupported claim scores 0
+(``unsupported_specifics:<classes>`` / ``claim_unsupported:<ratio>``). The [LLM] half
+(a judge's reading of that support) is not computed here; ``details["llm_component"]``
+says so.
 
 **RUB-EXTRACT-09, precision / no padding / no dup** ([DET] part, per chapter, 6%). A unit
 is flagged when its ``content_hash`` repeats an earlier unit's (dedup did not hold) or
@@ -311,6 +317,18 @@ def assess_anchor(unit: RubricUnit) -> AnchorAssessment:
     best = max(candidates, key=lambda a: (a.score, a.match), default=None)
     if best is None:
         return AnchorAssessment(0, "none", 0.0, "", tuple(issues))
+    if best.score and claim.claim.strip():
+        from folio_insights.minting.support import check_support
+
+        support = check_support(claim.claim, best.passage)
+        if not support.supported:
+            failed = []
+            if support.missing_classes:
+                failed.append("unsupported_specifics:" + ",".join(support.missing_classes))
+            if not support.lexical_ok:
+                failed.append(f"claim_unsupported:{support.ratio:.4f}")
+            return AnchorAssessment(0, best.route, best.match, best.passage,
+                                    (*issues, *failed))
     return AnchorAssessment(best.score, best.route, best.match, best.passage,
                             tuple(issues) if best.score < 3 else ())
 

@@ -214,6 +214,17 @@ Each unit runs in its own worktree branched from the integration branch `feat/dr
 - **Goal:** grounded units become complete, idempotent hypothesis shards. **Requirements:** R1-R5. **Decisions:** KTD1, KTD3; uses U1's `unit_prompt_hash` and U2's harness for the run report.
 - **Files (owned):** new `src/folio_insights/minting/{__init__,eligibility,fields,mapper,minter,report,cli}.py`, `src/folio_insights/llm/templates.py` (register `mint.fields.v1` only), one `cli.add_command` line, new `tests/minting/**`.
 - **Test scenarios:** AE1 refusal codes; AE2 idempotency; an eligible unit mints a shard passing envelope validation, SHACL and the framework guard; `source_span` equals the verified slice; identical inputs give identical IRIs and prompt hashes; every shard has an `ExtractEvent` with `extractor_model`, signed when a generated key is given; a non-public source into a public corpus is refused before any LLM call; no synthetic key value appears in shards, events or the report; a fake provider drives all tests.
+- **As built (2026-10-09):**
+  - The `mint.fields.v1` output schema (`MintFieldsOutput`) lives in `llm/schemas.py` beside the other task schemas; its value enums are read from the envelope's own Literals.
+  - Source URI: `urn:folio:source:<run corpus>:<ingested file path>`, percent-encoded. The ingestion code had no URI scheme to reuse, so this one is new.
+  - Triple: subject is the top usable FOLIO tag. The predicate is the v1 folio-insights module property for the unit type (`bestPractice`, `principle`, `pitfall`). The object is the distilled text.
+  - Citation and procedural-rule units are refused `unit_type_unsupported`; they wait on subtype routing.
+  - A non-ruler IRI also needs the run's B9 marker (`summary.folio_tagger.carried_iris_rejected`).
+  - Visibility: `--source-visibility` is a required per-run declaration. `mint CORPUS --mark-local-only` writes a marker under `<root>/local-only/`. Dumps and exports do not yet honour that marker (Phase 13.5).
+  - The governance log accepts only signed, authorized events. With `--signing-key`, the signer must hold the extractor role before any call is made. Without a key, ExtractEvents are reported `unsigned: skipped`.
+  - The IRI registry defaults to `<root>/shard-iri-registry.db`.
+  - `extract --mint` is not wired; the minter runs as its own command.
+  - The rubric shard adapter no longer counts the triple's predicate as a concept tag for RUB-EXTRACT-03.
 
 ### U9. Signed decisions
 

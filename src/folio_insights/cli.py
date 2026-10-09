@@ -929,6 +929,10 @@ from folio_insights.validation.cli import validate_group as _validate_group  # n
 
 cli.add_command(_validate_group)
 
+# Drain U8: the gated shard minter (`folio-insights mint CORPUS --run extraction.json`).
+from folio_insights.minting.cli import mint_cmd as _mint_cmd  # noqa: E402
+
+cli.add_command(_mint_cmd)
 # Drain plan U9: signed review decisions (``folio-insights proposals sign-decision``).
 from folio_insights.proposals.cli import proposals_group as _proposals_group  # noqa: E402
 

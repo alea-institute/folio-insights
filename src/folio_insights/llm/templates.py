@@ -318,3 +318,41 @@ BFO_CLASSIFY = register(PromptTemplate(
     output_schema=schemas.BfoCategoryChoice,
     max_tokens=512,
 ))
+
+# Drain U8 (KTD3): the minter's one structured field-inference call per unit. The prompt gives
+# the VERIFIED source passage (the shard's source_span) and the unit's distilled text, and asks
+# for each analysed envelope field with a confidence; the minter refuses a unit whose field falls
+# below its floor rather than guessing. Bump ``version`` with any edit to this prompt or schema.
+MINT_FIELDS = register(PromptTemplate(
+    id="mint.fields.v1", version="1", task="mint_fields",
+    system=(
+        "You analyse one legal proposition for a source-grounded knowledge graph. Use ONLY the "
+        "verified source passage. The distilled text is a paraphrase offered for orientation; "
+        "where it says more than the passage, ignore the extra. Never add facts, authorities or "
+        "qualifications the passage does not state. For every field give a confidence between 0 "
+        "and 1 that the passage itself supports your answer; when it does not, give a low "
+        "confidence instead of guessing."
+    ),
+    user=(
+        "Verified source passage (verbatim):\n<<<\n{span}\n>>>\n\n"
+        "Distilled text: {unit_text}\n"
+        "Knowledge type: {unit_type}\n"
+        "Section: {section}\n\n"
+        "Return these fields, each as {{\"value\": ..., \"confidence\": 0-1}}:\n"
+        "- sense: the proposition the passage states, in one plain sentence.\n"
+        "- reference: what the proposition is about (the legal concept, rule or practice).\n"
+        "- logical_form_imputed: a compact logical form, e.g. OBLIGATION(actor, act, condition).\n"
+        "- layer: L0_primitive (an underived first principle), L1_definitional (defines a term), "
+        "L2_composed (combines rules or definitions), L3_jurisdictional (holds in a particular "
+        "jurisdiction or forum).\n"
+        "- predication_mode: per_se (holds of the subject as such) or per_accidens (holds of it "
+        "only in some circumstances).\n"
+        "- fork: analytic (true by the meaning of its terms), synthetic_a_posteriori (known from "
+        "practice, experience or the record), synthetic_a_priori (neither).\n"
+        "- speech_act: holding, dictum, statutory_text, statutory_definition, regulatory_text, "
+        "pleading_argument, contract_term, treatise_statement, restatement_black_letter, "
+        "practitioner_advice or administrative_interpretation: the kind of text the passage is."
+    ),
+    output_schema=schemas.MintFieldsOutput,
+    max_tokens=1024,
+))
