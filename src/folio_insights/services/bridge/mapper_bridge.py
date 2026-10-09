@@ -2,6 +2,18 @@
 
 Uses importlib to load folio-mapper modules directly from disk, avoiding
 namespace conflicts with folio-enrich's ``app`` package.
+
+KEPT (2026-10-09 retirement review, ``docs/bridge-retirement-2026-10-09.md``).
+folio-mapper's ``parse_file`` cannot be vendored on its own: it imports
+``openpyxl`` (not a folio-insights dependency) at module top, plus folio-mapper's
+``app.models.parse_models`` and ``app.services.hierarchy_detector`` (its
+hierarchy/header detection), none of which this module can load. In this
+environment the importlib load therefore fails and every tabular file goes
+through :meth:`MapperBridge._parse_fallback`, the stdlib CSV/TSV reader, which
+is the behavior that actually runs today. ``.xlsx`` is the kept-on-bridge format:
+the fallback cannot read it (it returns no rows) and only a working folio-mapper
+load (openpyxl installed and the mapper ``app`` package importable) parses it.
+Both paths are covered by ``tests/test_mapper_bridge.py``.
 """
 
 from __future__ import annotations

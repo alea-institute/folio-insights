@@ -180,6 +180,14 @@ class KnowledgeClassifierStage(InsightsPipelineStage):
             from folio_insights.services.bridge.folio_bridge import (
                 get_citation_extractor,
             )
+            from folio_insights.services.citation_extraction import (
+                citation_backends_available,
+            )
+
+            if not any(citation_backends_available()):
+                # Neither library installed: every extract() would return [] (and log two
+                # warnings per unit). Skip; the probe logged the reason once.
+                return
 
             CitationExtractorClass = get_citation_extractor()
             extractor = CitationExtractorClass()

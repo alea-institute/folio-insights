@@ -12,7 +12,10 @@ class Settings(BaseSettings):
     """Global configuration for folio-insights."""
 
     # Bridge paths -- folio-insights imports services from sibling repos via
-    # a sys.path bridge (see src/folio_insights/services/bridge/).
+    # a sys.path bridge (see src/folio_insights/services/bridge/). Since the
+    # 2026-10-09 retirement (docs/bridge-retirement-2026-10-09.md) only the
+    # multi-format IngestionBridge (enrich) and the tabular MapperBridge
+    # (folio-mapper, with a stdlib CSV fallback) still use these paths.
     # Defaults assume folio-enrich and folio-mapper are cloned as sibling
     # directories next to this repo. Override with environment variables
     # FOLIO_INSIGHTS_FOLIO_ENRICH_PATH / FOLIO_INSIGHTS_FOLIO_MAPPER_PATH
@@ -44,6 +47,13 @@ class Settings(BaseSettings):
     # True (the default) fails the run loudly instead; False runs degraded. Either way the state
     # is recorded in output metadata (``metadata.folio_tagger``).
     require_deterministic_iri: bool = True
+
+    # In-repo FOLIO ontology service (services/folio_ontology.py). The label-lemma cache is
+    # insights-owned (never folio-enrich's directory). A failed FOLIO load (e.g. an offline box
+    # with no ~/.folio cache) is not retried for ``folio_load_retry_seconds``; lookups in that
+    # window raise immediately instead of re-attempting the GitHub fetch every call.
+    folio_lemma_cache_dir: Path = Path("~/.folio-insights/cache/lemmas")
+    folio_load_retry_seconds: float = 300.0
 
     # Boundary detection performance (B7). Ambiguous (long) paragraphs are refined
     # concurrently, at most ``boundary_tier_concurrency`` at a time. The Tier-3 LLM refiner is

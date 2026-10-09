@@ -1,7 +1,21 @@
-"""Bridge adapter for importing folio-enrich services.
+"""Getters for the FOLIO/enrich-derived services folio-insights depends on.
 
-Uses sys.path manipulation to import folio-enrich's services as a library
-without modifying folio-enrich's codebase.
+Historically every getter here inserted ``settings.folio_enrich_path`` into
+``sys.path`` and imported folio-enrich's working tree. Deployed images do not ship
+that checkout, so those getters silently degraded in production. As of the
+2026-10-09 bridge retirement (``docs/bridge-retirement-2026-10-09.md``) the
+getters return in-repo implementations with parity tests
+(``tests/test_bridge_retirement_parity.py``) and no longer touch ``sys.path``:
+
+* ``get_folio_service``      -> ``folio_insights.services.folio_ontology.FolioOntologyService``
+* ``get_embedding_service``  -> ``folio_insights.services.embedding.EmbeddingService``
+* ``get_normalizer``         -> ``folio_insights.services.text_normalization``
+* ``get_citation_extractor`` -> ``folio_insights.services.citation_extraction.CitationExtractor``
+* ``get_entity_ruler``       -> pinned ``folio_resolve.FOLIOEntityRuler`` (unchanged)
+
+``_ensure_folio_enrich_path`` remains only for the KEPT ``ingestion_bridge``
+(folio-enrich's multi-format ingestion registry) and the integration parity tests.
+Function names and return-value contracts are unchanged, so callers do not change.
 """
 
 from __future__ import annotations
@@ -49,8 +63,9 @@ def _get_enrich_path() -> str:
         raise FileNotFoundError(
             f"folio-enrich backend not found at {enrich_path}.\n"
             f"\n"
-            f"folio-insights imports services from folio-enrich via a sys.path\n"
-            f"bridge. Clone folio-enrich as a sibling directory:\n"
+            f"folio-insights still imports folio-enrich's multi-format ingestion\n"
+            f"registry (IngestionBridge: .md/.txt/.docx/.pdf/.html/.rtf/.eml/.msg)\n"
+            f"via a sys.path bridge. Clone folio-enrich as a sibling directory:\n"
             f"\n"
             f"    git clone https://github.com/alea-institute/folio-enrich\n"
             f"\n"
@@ -62,32 +77,30 @@ def _get_enrich_path() -> str:
 
 
 def get_folio_service() -> Any:
-    """Import and return the FolioService singleton from folio-enrich.
+    """Return the process-wide FOLIO ontology read service.
 
-    Returns an instance of ``app.services.folio.folio_service.FolioService``.
+    In-repo ``FolioOntologyService`` (vendored from folio-enrich's ``FolioService``):
+    ``search_by_label``, ``get_concept``, ``get_all_labels`` with the same return shapes.
     """
-    _ensure_folio_enrich_path()
-    from app.services.folio.folio_service import FolioService
+    from folio_insights.services.folio_ontology import FolioOntologyService
 
-    return FolioService.get_instance()
+    return FolioOntologyService.get_instance()
 
 
 def get_embedding_service() -> Any:
-    """Import and return the EmbeddingService singleton from folio-enrich."""
-    _ensure_folio_enrich_path()
-    from app.services.embedding.service import EmbeddingService
+    """Return the process-wide embedding service (sentence-transformers all-MiniLM-L6-v2)."""
+    from folio_insights.services.embedding import EmbeddingService
 
     return EmbeddingService.get_instance()
 
 
 def get_normalizer() -> dict[str, Any]:
-    """Import and return normalizer functions from folio-enrich.
+    """Return the in-repo normalizer functions.
 
     Returns a dict with keys: ``split_sentences``, ``chunk_text``,
     ``normalize_and_chunk``.
     """
-    _ensure_folio_enrich_path()
-    from app.services.normalization.normalizer import (
+    from folio_insights.services.text_normalization import (
         chunk_text,
         normalize_and_chunk,
         split_sentences,
@@ -151,8 +164,7 @@ def verify_deterministic_bridge() -> Any:
 
 
 def get_citation_extractor() -> Any:
-    """Import and return the CitationExtractor from folio-enrich."""
-    _ensure_folio_enrich_path()
-    from app.services.individual.citation_extractor import CitationExtractor
+    """Return the in-repo CitationExtractor class (vendored from folio-enrich)."""
+    from folio_insights.services.citation_extraction import CitationExtractor
 
     return CitationExtractor
