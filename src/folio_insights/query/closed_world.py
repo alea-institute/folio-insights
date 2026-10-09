@@ -40,7 +40,8 @@ RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
 WorldAssumption = Literal["closed", "open"]
 
-_IRI_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:[^\x00-\x20<>\"{}|\\^`]+$")
+# Applied with ``fullmatch``: "$" alone would also accept a trailing newline.
+_IRI_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.\-]*:[^\x00-\x20<>\"{}|\\^`]+")
 
 OPEN_NOTE = (
     "Open-world answer: only asserted facts are counted, and absence is not "
@@ -61,7 +62,7 @@ class SparqlRunner(Protocol):
 
 def _iri(value: str) -> str:
     """Validate ``value`` as an IRI and return its ``<...>`` SPARQL form."""
-    if not isinstance(value, str) or not _IRI_RE.match(value):
+    if not isinstance(value, str) or not _IRI_RE.fullmatch(value):
         raise InvalidIri(f"not a safe IRI: {value!r}")
     return f"<{value}>"
 
