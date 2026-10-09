@@ -1,0 +1,2493 @@
+{
+ "collection": "Liber Sextus Decretalium Bonifacii VIII, lib. V tit. XII 'De regulis iuris' (88 regulae)",
+ "citation_form": "VI 5.12.<n>",
+ "edition": "Corpus iuris canonici, ed. Aemilius Friedberg, pars secunda: Decretalium collectiones (Leipzig: B. Tauchnitz, 1881), cols. 1122-1124",
+ "license_note": "public domain (pre-1929 edition)",
+ "sources": [
+  {
+   "key": "T1",
+   "url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "item_page": "https://archive.org/details/liber-sextus-bonifacii-1298",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "local_file": "dl/ia_liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "description": "Internet Archive item 'liber-sextus-bonifacii-1298' (community upload 2022; IA date field '1298' is the work date, not the edition). A 98-page PDF of the Liber Sextus portion of Friedberg's edition (running footer 'Corpus iur. can. Ed. Friedberg, T. II.'; regulae at cols. 1122-1124, PDF pp. 97-98; 400-ppi bitonal page images). This file is IA's Tesseract 5 re-OCR of that PDF. PRIMARY transcription."
+  },
+  {
+   "key": "T2",
+   "url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298.pdf",
+   "item_page": "https://archive.org/details/liber-sextus-bonifacii-1298",
+   "retrieved_at": "2026-10-09T11:48:23Z",
+   "sha256": "e7264dce658d61fcbc2238e2564566db02c4717cab021bb3c6b84a2676f390f6",
+   "local_file": "dl/ia_ls1298_pdf/LiberSextusBonifacii1298.pdf",
+   "description": "Same scan, but the PDF's own embedded text layer (ABBYY FineReader, PDF created 2008-02-29), extracted per column with `pdftotext -r 72 -f P -l P -x {0|275} -y 0 -W 275 -H 797` for PDF pages 96-98. Independent OCR engine; same printed copy as T1."
+  },
+  {
+   "key": "T3",
+   "url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "item_page": "https://archive.org/details/corpusjuriscanon00richuoft",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "local_file": "dl/ia_corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "description": "Internet Archive item 'corpusjuriscanon00richuoft' (University of Toronto copy; IA metadata date field says 1879). Its OCR title page reads 'AEMILIUS FRIEDBERG / PARS SECUNDA / DECRETALIUM COLLECTIONES / EX OFFICINA BERNHARDI TAUCHNITZ / LIPSIAE MDCCCLXXXI'. OCR: ABBYY FineReader 8.0. Different physical copy and scan from T1/T2."
+  }
+ ],
+ "verification": {
+  "script": "scripts/verify.py",
+  "verified_substring_rule": "canonA(latin) is a substring of canonA(full text of the chosen transcription); canonA strips whitespace, hyphens and footnote call-out characters [0-9 ! ? * ' \" ^ · | _ » «] only",
+  "cross_check_rule": "the same canonA string also occurs in at least one other independent OCR transcription (T1/T2 = two OCR engines on one scan; T3 = a different copy and scan)",
+  "editorial_operations": [
+   "whitespace normalisation",
+   "re-joining line-break hyphenation",
+   "removal of Friedberg footnote call-outs (superscript numerals, OCR'd as digits/!/?/*/quotes)",
+   "stripping OCR noise outside the sentence"
+  ]
+ },
+ "summary": {
+  "items": 88,
+  "with_text": 88,
+  "verified_substring": 88,
+  "cross_checked": 84,
+  "found_in_all_three": 48,
+  "cross_checked_tokenwise": 88
+ },
+ "problems": [],
+ "items": [
+  {
+   "number": 1,
+   "citation": "VI 5.12.1",
+   "latin": "Beneficium ecclesiasticum non potest licite sine institutione canonica obtineri.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Beneficium ecclesiasticum non potest licite sin·4 instituione canonica obtineri.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "sine institutione",
+       "secondary": "sin·4 instituione"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 2,
+   "citation": "VI 5.12.2",
+   "latin": "Possessor malae fidei ullo tempore non praescribit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 3,
+   "citation": "VI 5.12.3",
+   "latin": "Sine possessione praescriptio non procedit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 4,
+   "citation": "VI 5.12.4",
+   "latin": "Peccatum non dimittitur, nisi restituatur ablatum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 5,
+   "citation": "VI 5.12.5",
+   "latin": "Peccati venia non datur, nisi correcto.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 6,
+   "citation": "VI 5.12.6",
+   "latin": "Nemo potest ad impossibile obligari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 7,
+   "citation": "VI 5.12.7",
+   "latin": "Privilegium personale personam sequitur, et exstinguitur cum persona.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 8,
+   "citation": "VI 5.12.8",
+   "latin": "Semel malus semper praesumitur esse malus.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 9,
+   "citation": "VI 5.12.9",
+   "latin": "Ratum quis habere non potest quod ipsius nomine non est gestum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 10,
+   "citation": "VI 5.12.10",
+   "latin": "Ratihabitionem retrotrahi, et mandato non est dubium comparari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 11,
+   "citation": "VI 5.12.11",
+   "latin": "Quum sunt partium iura obscura, reo favendum est potius quam actori.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "!"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Ouum sunti partium iura obscur.a, reo favendum est potius quam actori.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quum sunt",
+       "secondary": "Ouum sunti"
+      },
+      {
+       "op": "replace",
+       "primary": "obscura,",
+       "secondary": "obscur.a,"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 12,
+   "citation": "VI 5.12.12",
+   "latin": "In iudiciis non est acceptio personarum habenda.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "In iudieiis non est aeeeptio personarum habenda.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "iudiciis",
+       "secondary": "iudieiis"
+      },
+      {
+       "op": "replace",
+       "primary": "acceptio",
+       "secondary": "aeeeptio"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 13,
+   "citation": "VI 5.12.13",
+   "latin": "Ignorantia facti, non iuris, excusat.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 14,
+   "citation": "VI 5.12.14",
+   "latin": "Quum quis in ius succedit alterius: iustam ignorantiae causam censetur habere.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Ouum quis in ius succedit alterius: iustam ignorantiae causam censetur habere.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quum",
+       "secondary": "Ouum"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 15,
+   "citation": "VI 5.12.15",
+   "latin": "Odia restringi, et favores convenit ampliari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 16,
+   "citation": "VI 5.12.16",
+   "latin": "Decet concessum a principe beneficium esse mansurum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Decet concessum a prineipe beneficium esse mansurum.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "principe",
+       "secondary": "prineipe"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 17,
+   "citation": "VI 5.12.17",
+   "latin": "Indultum a iure beneficium non est alicui auferendum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 18,
+   "citation": "VI 5.12.18",
+   "latin": "Non firmatur tractu temporis quod de iure ab initio non subsistit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 19,
+   "citation": "VI 5.12.19",
+   "latin": "Non est sine culpa, qui rei, quae ad eum non pertinet, se immiscet.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Non est sine culpa, qui rei, quae ad eum non pertinet, se 1mmiscet.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "immiscet.",
+       "secondary": "1mmiscet."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 20,
+   "citation": "VI 5.12.20",
+   "latin": "Nullus pluribus uti defensionibus prohibetur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 21,
+   "citation": "VI 5.12.21",
+   "latin": "Quod semel placuit amplius displicere non potest.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Ouod semel placuit amplius displicere non potest.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quod",
+       "secondary": "Ouod"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 22,
+   "citation": "VI 5.12.22",
+   "latin": "Non debet aliquis alterius odio praegravari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 23,
+   "citation": "VI 5.12.23",
+   "latin": "Sine culpa, nisi subsit causa, non est aliquis puniendus.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 24,
+   "citation": "VI 5.12.24",
+   "latin": "Quod quis mandato facit iudicis, dolo facere non videtur, quum habeat parere necesse.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Ouod quis mandato facit iudicis, doIo facere non videtur, quum habeat parere necesse.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quod",
+       "secondary": "Ouod"
+      },
+      {
+       "op": "replace",
+       "primary": "dolo",
+       "secondary": "doIo"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 25,
+   "citation": "VI 5.12.25",
+   "latin": "Mora sua cuilibet est nociva.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Mora sua cuilibet est noeiva.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "nociva.",
+       "secondary": "noeiva."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 26,
+   "citation": "VI 5.12.26",
+   "latin": "Ea, quae fiunt a iudice, si ad eius non spectant officium, viribus non subsistunt.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "?"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Ea, quae fiunt a iudice, si ad eius non speetant officium, viribus non subsistunt.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "spectant",
+       "secondary": "speetant"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 27,
+   "citation": "VI 5.12.27",
+   "latin": "Scienti et consentienti non fit iniuria neque dolus.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Scienti et consentienti non fit iniuría neque dolus.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "iniuria",
+       "secondary": "iniuría"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 28,
+   "citation": "VI 5.12.28",
+   "latin": "Quae a iure communi exorbitant, nequaquam ad consequentiam sunt trahenda.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Quae a iure communi exorbitant, nequaciu.im ad consequentiam sunt trahenda.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "nequaquam",
+       "secondary": "nequaciu.im"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 29,
+   "citation": "VI 5.12.29",
+   "latin": "Quod omnes tangit debet ab omnibus approbari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Quod omnes tangit debet ab oninibus approbari.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "omnibus",
+       "secondary": "oninibus"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 30,
+   "citation": "VI 5.12.30",
+   "latin": "In obscuris minimum est sequendum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 31,
+   "citation": "VI 5.12.31",
+   "latin": "Eum, qui certus est, certiorari ulterius non oportet.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 32,
+   "citation": "VI 5.12.32",
+   "latin": "Non licet actori quod reo licitum non exsistit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 33,
+   "citation": "VI 5.12.33",
+   "latin": "Mutare consilium quis non potest in alterius detrimentum.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Mutare consilium quis non potest in alterius detrimentum.:",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "detrimentum.",
+       "secondary": "detrimentum.:"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 34,
+   "citation": "VI 5.12.34",
+   "latin": "Generi per speciem derogatur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 35,
+   "citation": "VI 5.12.35",
+   "latin": "Plus semper in se continet quod est minus.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Plus sempcr in se continet quod est minus.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "semper",
+       "secondary": "sempcr"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 36,
+   "citation": "VI 5.12.36",
+   "latin": "Pro possessore habetur qui dolo desiit possidere.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 37,
+   "citation": "VI 5.12.37",
+   "latin": "Utile non debet per inutile vitiari.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Utile non debet per inutile vitiari,",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "vitiari.",
+       "secondary": "vitiari,"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 38,
+   "citation": "VI 5.12.38",
+   "latin": "Ex eo non debet quis fructum consequi, quod nisus exstitit impugnare.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 39,
+   "citation": "VI 5.12.39",
+   "latin": "Quum quid prohibetur, prohibentur omnia, quae sequuntur ex illo.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Ouum quid prohibetur, prohibentur omnia, quae sequuntur ex illo.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quum",
+       "secondary": "Ouum"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 40,
+   "citation": "VI 5.12.40",
+   "latin": "Pluralis locutio duorum numero est contenta.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Pluralis locutio duorum numero est contenla.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "contenta.",
+       "secondary": "contenla."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 41,
+   "citation": "VI 5.12.41",
+   "latin": "Imputari non debet ei, per quem non stat, si non faciat quod per eum fuerat faciendum.",
+   "source": "T2",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298.pdf",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:48:23Z",
+   "sha256": "e7264dce658d61fcbc2238e2564566db02c4717cab021bb3c6b84a2676f390f6",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2"
+   ],
+   "cross_checked": false,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Imputari non debet ei, per quem non stat, si non faciat quod per eum fuerat faciendum:",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "faciendum.",
+       "secondary": "faciendum:"
+      }
+     ]
+    },
+    {
+     "transcription": "T3",
+     "reading": "Imputari non debet ei, per quem non stat, si non faciat quod per euin fuerat faciendum.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "eum",
+       "secondary": "euin"
+      }
+     ]
+    }
+   ],
+   "adjudication": {
+    "source": "T2",
+    "reason": "T1 OCR ends 'faciendum:' and T3 reads 'euin' for 'eum'; page image (col. 1123) shows 'quod per eum fuerat faciendum.' = T2 reading. Each word is attested by T1 or T3."
+   }
+  },
+  {
+   "number": 42,
+   "citation": "VI 5.12.42",
+   "latin": "Accessorium naturam sequi congruit principalis.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Accessorium naturam sequi congr\\iit principalis.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "congruit",
+       "secondary": "congr\\iit"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 43,
+   "citation": "VI 5.12.43",
+   "latin": "Qui tacet, consentire videtur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 44,
+   "citation": "VI 5.12.44",
+   "latin": "Is, qui tacet, non fatetur; sed nec utique negare videtur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Is, qui tacet, non fatetur; sed nee utique negare videtur.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "nec",
+       "secondary": "nee"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 45,
+   "citation": "VI 5.12.45",
+   "latin": "Inspicimus in obscuris quod est verisimilius, vel quod plerumque fieri consuevit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 46,
+   "citation": "VI 5.12.46",
+   "latin": "Is, qui in ius succedit alterius, eo iure, quo ille, uti debebit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "?"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 47,
+   "citation": "VI 5.12.47",
+   "latin": "Praesumitur ignorantia, ubi scientia non probatur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 48,
+   "citation": "VI 5.12.48",
+   "latin": "Locupletari non debet aliquis cum alterius iniuria vel iactura.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 49,
+   "citation": "VI 5.12.49",
+   "latin": "In poenis benignior est interpretatio facienda.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 50,
+   "citation": "VI 5.12.50",
+   "latin": "Actus legitimi conditionem non recipiunt neque diem.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Actus legitimi conditionem non reeipiunt neque diem.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "recipiunt",
+       "secondary": "reeipiunt"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 51,
+   "citation": "VI 5.12.51",
+   "latin": "Semel Deo dicatum non est ad usus humanos ulterius transferendum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "5*"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 52,
+   "citation": "VI 5.12.52",
+   "latin": "Non praestat impedimentum quod de iure non sortitur effectum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Non praestat impedimentum quod dc iure non sortitur effectum.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "de",
+       "secondary": "dc"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 53,
+   "citation": "VI 5.12.53",
+   "latin": "Cui licet quod est plus, licet utique quod est minus.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 54,
+   "citation": "VI 5.12.54",
+   "latin": "Qui prior est tempore potior est iure.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "8",
+    "7"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 55,
+   "citation": "VI 5.12.55",
+   "latin": "Qui sentit onus, sentire debet commodum, et e contra.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Qui sentit onus, sentire debct commodum, et e contra.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "debet",
+       "secondary": "debct"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 56,
+   "citation": "VI 5.12.56",
+   "latin": "In re communi potior est conditio prohibentis.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 57,
+   "citation": "VI 5.12.57",
+   "latin": "Contra eum, qui legem dicere potuit apertius, est interpretatio facienda.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Contra eumi, qui legem dicere potuit apertius, est interpretatio facienda.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "eum,",
+       "secondary": "eumi,"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 58,
+   "citation": "VI 5.12.58",
+   "latin": "Non est obligatorium contra bonos mores praestitum iuramentum.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Non est obligatorium contra bonos mores praestitum iuramentum..",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "iuramentum.",
+       "secondary": "iuramentum.."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 59,
+   "citation": "VI 5.12.59",
+   "latin": "Dolo facit, qui petit quod restituere oportet eundem.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Dolo facit, qui petit quod restituere oportct eundcm.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "oportet eundem.",
+       "secondary": "oportct eundcm."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 60,
+   "citation": "VI 5.12.60",
+   "latin": "Non est in mora qui potest exceptione legitima se tueri.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Non est in mora qui potest exceptione legitima se tuen.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "tueri.",
+       "secondary": "tuen."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 61,
+   "citation": "VI 5.12.61",
+   "latin": "Quod ob gratiam alicuius conceditur, non est in eius dispendium retorquendum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Quod ob gratiam alieuius conceditur, non est in eius dispendium retorquendum.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "alicuius",
+       "secondary": "alieuius"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 62,
+   "citation": "VI 5.12.62",
+   "latin": "Nullus ex consilio, dummodo fraudulentum non fuerit, obligatur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "?"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 63,
+   "citation": "VI 5.12.63",
+   "latin": "Exceptionem obiiciens non videtur de intentione adversarii confiteri.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Exceptionem obiieiens non videtur de intentione ad- versarii confiteri.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "obiiciens",
+       "secondary": "obiieiens"
+      },
+      {
+       "op": "replace",
+       "primary": "adversarii",
+       "secondary": "ad- versarii"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 64,
+   "citation": "VI 5.12.64",
+   "latin": "Quae contra ius fiunt debent utique pro infectis haberi.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Quac contia ius fiunt dcbent utique pro infectis haberi.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quae contra",
+       "secondary": "Quac contia"
+      },
+      {
+       "op": "replace",
+       "primary": "debent",
+       "secondary": "dcbent"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 65,
+   "citation": "VI 5.12.65",
+   "latin": "In pari delicto vel causa potior est conditio possidentis.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "In pari dclicto vel causa potior est conditio possidentis.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "delicto",
+       "secondary": "dclicto"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 66,
+   "citation": "VI 5.12.66",
+   "latin": "Quum non stat per eum, ad quem pertinet, quo minus conditio impleatur: haberi debet perinde, ac si impleta fuisset.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "?"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Quum non stat per cum, ad quem pertinet, quo minus conditio impleatur: haberi debet perinde, ac si impleta fuisset.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "eum,",
+       "secondary": "cum,"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 67,
+   "citation": "VI 5.12.67",
+   "latin": "Quod alicui suo non licet nomine, nec alieno licebit.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1"
+   ],
+   "cross_checked": false,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Quod alicui suo non licet nomine, nee alieno licebit.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "nec",
+       "secondary": "nee"
+      }
+     ]
+    },
+    {
+     "transcription": "T3",
+     "reading": "Ouod alicui suo non licet nomine, nec alieno licebit.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quod",
+       "secondary": "Ouod"
+      }
+     ]
+    }
+   ],
+   "adjudication": {
+    "source": "T1",
+    "reason": "T2 OCR reads 'nee' for 'nec', T3 reads 'Ouod' for 'Quod'; page image (col. 1124) shows 'Quod alicui suo non licet nomine, nec alieno licebit.' = T1 reading."
+   }
+  },
+  {
+   "number": 68,
+   "citation": "VI 5.12.68",
+   "latin": "Potest quis per alium, quod potest facere per se ipsum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "l'otest quis per alium, quod potest facere per se ipsum.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Potest",
+       "secondary": "l'otest"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 69,
+   "citation": "VI 5.12.69",
+   "latin": "In malis promissis fidem non expedit observari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "In inalis promissis fidcm non expedit observari.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "malis",
+       "secondary": "inalis"
+      },
+      {
+       "op": "replace",
+       "primary": "fidem",
+       "secondary": "fidcm"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 70,
+   "citation": "VI 5.12.70",
+   "latin": "In alternativis debitoris est electio, et sufficit alterum adimpleri.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 71,
+   "citation": "VI 5.12.71",
+   "latin": "Qui ad agendum admittitur, est ad excipiendum multo magis admittendus.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 72,
+   "citation": "VI 5.12.72",
+   "latin": "Qui facit per alium, est perinde, ac si faciat per se ipsum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "!!"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 73,
+   "citation": "VI 5.12.73",
+   "latin": "Factum legitime retractari non debet, licet casus postea eveniat, a quo non potuit inchoari.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1"
+   ],
+   "cross_checked": false,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "!?"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Factum legitime retraetari non debet licet casus postea eveniat, a quo non potuit inchoari.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "retractari",
+       "secondary": "retraetari"
+      },
+      {
+       "op": "replace",
+       "primary": "debet,",
+       "secondary": "debet"
+      }
+     ]
+    },
+    {
+     "transcription": "T3",
+     "reading": "Factum legitime retractari non debet, licet casus postea eveniat, a quo non potuit i- inchoari.",
+     "diff": [
+      {
+       "op": "insert",
+       "primary": "",
+       "secondary": "i-"
+      }
+     ]
+    }
+   ],
+   "adjudication": {
+    "source": "T1",
+    "reason": "T3 OCR renders footnote call-out 12 as 'i-' and T2 drops the comma after 'debet'; page image (col. 1124) shows 'non debet, licet ... potuit[12] inchoari.' = T1 reading."
+   }
+  },
+  {
+   "number": 74,
+   "citation": "VI 5.12.74",
+   "latin": "Quod alicui gratiose conceditur, trahi non debet ab aliis in exemplum.",
+   "source": "T3",
+   "source_url": "https://archive.org/download/corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:44:02Z",
+   "sha256": "a0330471b6f245aa8a6ea5d50025ebfaa4796dc4ed03175075e8144dd853366b",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "uod alicui gratiose conceditur, trahi non debet ab aliis in exemplum.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Quod",
+       "secondary": "uod"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 75,
+   "citation": "VI 5.12.75",
+   "latin": "Frustra sibi fidem quis postulat ab eo servari, cui fidem a se praestitam servare recusat.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 76,
+   "citation": "VI 5.12.76",
+   "latin": "Delictum personae non debet in detrimentum ecclesiae redundare.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T3",
+     "reading": "Dclictum personae non debet in detrimentum ecclesiae redundare.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Delictum",
+       "secondary": "Dclictum"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 77,
+   "citation": "VI 5.12.77",
+   "latin": "Rationi congruit, ut succedat in onere, qui substituitur in honore.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 78,
+   "citation": "VI 5.12.78",
+   "latin": "In argumentum trahi nequeunt, quae propter necessitatem aliquando sunt concessa.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 79,
+   "citation": "VI 5.12.79",
+   "latin": "Nemo potest plus iuris transferre in alium, quam sibi competere dinoscatur.",
+   "source": "T2",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298.pdf",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:48:23Z",
+   "sha256": "e7264dce658d61fcbc2238e2564566db02c4717cab021bb3c6b84a2676f390f6",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T2"
+   ],
+   "cross_checked": false,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T1",
+     "reading": "Nemo poe plus iuris transferre in alium, quam sibi competere dinoscatur.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "potest",
+       "secondary": "poe"
+      }
+     ]
+    },
+    {
+     "transcription": "T3",
+     "reading": "Nemo potest plus iuris transferre in aliuin, quam sibi competere dinoscatur.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "alium,",
+       "secondary": "aliuin,"
+      }
+     ]
+    }
+   ],
+   "adjudication": {
+    "source": "T2",
+    "reason": "T1 OCR reads 'poe' for 'potest', T3 reads 'aliuin' for 'alium'; page image (col. 1124) shows 'Nemo potest plus iuris transferre in alium, quam sibi competere dinoscatur.' = T2 reading."
+   }
+  },
+  {
+   "number": 80,
+   "citation": "VI 5.12.80",
+   "latin": "In toto partem non est dubium contineri.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 81,
+   "citation": "VI 5.12.81",
+   "latin": "In generali concessione non veniunt ea, quae quis non esset verisimiliter in specie concessurus.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "13"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 82,
+   "citation": "VI 5.12.82",
+   "latin": "Qui contra iura mercatur, bonam fidem praesumitur non habere.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 83,
+   "citation": "VI 5.12.83",
+   "latin": "Bona fides non patitur, ut semel exactum iterum exigatur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Bonafides non patitur, ut semel exaetum iterum exigatur.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "Bona fides",
+       "secondary": "Bonafides"
+      },
+      {
+       "op": "replace",
+       "primary": "exactum",
+       "secondary": "exaetum"
+      }
+     ]
+    }
+   ],
+   "adjudication": {
+    "source": "T1",
+    "latin_whitespace_override": "Bona fides non patitur, ut semel exactum iterum exigatur.",
+    "reason": "All three OCRs read 'Bonafides' and 'patitur,ut'; the page image (col. 1124) shows a narrow but visible space in 'Bona fides' and a tight comma before 'ut'. Only whitespace was changed (canonA identical)."
+   }
+  },
+  {
+   "number": 84,
+   "citation": "VI 5.12.84",
+   "latin": "Quum quid una via prohibetur alicui, ad id alia non debet admitti.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 85,
+   "citation": "VI 5.12.85",
+   "latin": "Contractus ex conventione legem accipere dinoscuntur.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": [
+    {
+     "transcription": "T2",
+     "reading": "Contractus ex conventione legem aeeipere dinoseuntur.",
+     "diff": [
+      {
+       "op": "replace",
+       "primary": "accipere dinoscuntur.",
+       "secondary": "aeeipere dinoseuntur."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "number": 86,
+   "citation": "VI 5.12.86",
+   "latin": "Damnum, quod quis sua culpa sentit, sibi debet, non aliis, imputare.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [
+    "14*"
+   ],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 87,
+   "citation": "VI 5.12.87",
+   "latin": "Infamibus portae non pateant dignitatum.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  },
+  {
+   "number": 88,
+   "citation": "VI 5.12.88",
+   "latin": "Certum est, quod is committit in legem, qui, legis verba complectens, contra legis nititur voluntatem.",
+   "source": "T1",
+   "source_url": "https://archive.org/download/liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt",
+   "edition": "Friedberg, Corpus iuris canonici, pars secunda (Leipzig 1881), Sext. lib. V tit. XII, cols. 1122-1124",
+   "retrieved_at": "2026-10-09T11:46:54Z",
+   "sha256": "a414644bd6eb58e051eefabe9c8920eb6045aab91066b3aa0d9cd7209fe03f39",
+   "verified_substring": true,
+   "found_in_transcriptions": [
+    "T1",
+    "T2",
+    "T3"
+   ],
+   "cross_checked": true,
+   "cross_checked_tokenwise": true,
+   "friedberg_footnote_callouts_removed": [],
+   "page_image_checked": "visually compared by the agent with a 300-dpi render of PDF p.97 (cols. 1121-1122) / p.98 (cols. 1123-1124) of the T1/T2 scan",
+   "ocr_variants": []
+  }
+ ]
+}

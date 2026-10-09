@@ -19,6 +19,21 @@ The upper-ontology spine (`src/folio_insights/vocab/bfo_spine.ttl`,
 Project-authored vocab/SHACL (`vocab/classes.ttl`, `predicates.ttl`,
 `shapes.ttl`, `export/context.jsonld`) is part of this repo under MIT.
 
+### Axiom kernel texts — public domain
+The kernel datasets (`src/folio_insights/kernel/data/*.json`) carry Latin texts
+cut by `scripts/kernel/fetch_and_verify_sources.py` out of public-domain
+editions (published before 1929); each item records its source URL, retrieval
+time and the SHA-256 of the fetched file. No translation or editorial
+apparatus is included.
+
+| Collection | Edition (public domain) | Transcriptions used (carriers of the text) |
+|------------|-------------------------|--------------------------------------------|
+| Liber Sextus, lib. V tit. XII *De regulis iuris* (VI 5.12.1-88) | *Corpus iuris canonici*, ed. Aemilius Friedberg, pars secunda (Leipzig: B. Tauchnitz, 1881), cols. 1122-1124 | Internet Archive scans of that edition: item `liber-sextus-bonifacii-1298` (OCR text and the PDF's text layer) and item `corpusjuriscanon00richuoft` (University of Toronto copy), https://archive.org/ |
+| Digest 50.17 *De diversis regulis iuris antiqui* (D.50.17.1-211) | Mommsen–Krüger Digest text | Université Grenoble Alpes, *Droit romain* site (https://droitromain.univ-grenoble-alpes.fr/Corpus/d-50.htm, primary) and The Latin Library (https://www.thelatinlibrary.com/justinian/digest50.shtml, cross-check) |
+
+The web transcriptions are credited as the sources the public-domain text was
+taken from; nothing of their site design or apparatus is copied.
+
 ## Runtime dependencies (`pyproject.toml` → `[project.dependencies]`)
 
 | Component | License | Used for |
