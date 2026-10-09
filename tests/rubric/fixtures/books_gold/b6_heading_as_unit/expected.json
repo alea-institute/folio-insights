@@ -1,0 +1,104 @@
+{
+  "format": 1,
+  "case": "b6_heading_as_unit",
+  "covers": [
+    "DE-RISK-Q1-heading",
+    "B6"
+  ],
+  "failure_mode": "Boundary detection emitting headings as units: the headings anchor verbatim (RUB-EXTRACT-05 passes) but RUB-EXTRACT-09 flags 2 of 4 units as headings-as-units (noisy, 0).",
+  "publishable": false,
+  "criteria": {
+    "RUB-EXTRACT-01": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-02": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-03": {
+      "status": "computed",
+      "score": 3.0,
+      "gate": "pass",
+      "per_unit": {
+        "head-01": 3,
+        "head-02": 3,
+        "body-03": 3,
+        "body-04": 3
+      }
+    },
+    "RUB-EXTRACT-04": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-05": {
+      "status": "computed",
+      "score": 3.0,
+      "gate": "pass",
+      "per_unit": {
+        "head-01": 3,
+        "head-02": 3,
+        "body-03": 3,
+        "body-04": 3
+      }
+    },
+    "RUB-EXTRACT-06": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-07": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-08": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-09": {
+      "status": "computed",
+      "score": 0.0,
+      "gate": null,
+      "per_unit": {
+        "head-01": [
+          "heading_as_unit"
+        ],
+        "head-02": [
+          "heading_as_unit"
+        ],
+        "body-03": [],
+        "body-04": []
+      }
+    },
+    "RUB-EXTRACT-10": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-11": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-12": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-13": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    },
+    "RUB-EXTRACT-14": {
+      "status": "not_scored",
+      "score": null,
+      "gate": null
+    }
+  }
+}

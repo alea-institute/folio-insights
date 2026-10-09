@@ -1,0 +1,7 @@
+{
+  "_comment": "Recorded baseline of the mapping-gold check over docs/evidence/books/mapping-corrections.gold.json (2026-10-09): the books-UAT pipeline agreed with 0 of the 1 human correction (EP-INSIGHTS-BOOKS-009 mapped 'Daubert/Frye Standard' with no IRI recorded; the correct IRI is Daubert Motion Practice). The correct IRI resolves in the frozen oracle. A change to either count is drift.",
+  "corrections": 1,
+  "agree": 0,
+  "agreement_rate": 0.0,
+  "correct_iri_resolves": 1
+}

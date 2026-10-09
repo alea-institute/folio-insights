@@ -861,3 +861,9 @@ cli.add_command(_bfo_group)
 def main() -> None:
     """Entry point for the folio-insights CLI."""
     cli()
+
+
+# Phase 10 U6: deterministic extraction-quality rubric (rubric score / rubric gold).
+from folio_insights.rubric.cli import rubric_group as _rubric_group  # noqa: E402
+
+cli.add_command(_rubric_group)

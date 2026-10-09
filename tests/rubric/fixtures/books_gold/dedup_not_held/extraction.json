@@ -1,0 +1,151 @@
+{
+  "corpus": "books-gold-dedup_not_held",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 4,
+  "by_confidence": {
+    "high": 4,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 4
+  },
+  "units": [
+    {
+      "id": "dup-01",
+      "text": "State the ground in a word or two.",
+      "original_span": {
+        "start": 83,
+        "end": 117,
+        "source_file": "objections.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "objections.txt",
+      "source_section": [
+        "Objections"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9Bk5v9AAJmhb4WcgIQjy29",
+          "label": "Inadmissible Evidence Objection",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Objectives",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "243112641f1b30891ecb3713f51c90851d554b8fe23a9179d9512e4d048aadac",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "dup-02",
+      "text": "State the ground in a word or two.",
+      "original_span": {
+        "start": 83,
+        "end": 117,
+        "source_file": "objections.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "objections.txt",
+      "source_section": [
+        "Objections"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9Bk5v9AAJmhb4WcgIQjy29",
+          "label": "Inadmissible Evidence Objection",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Objectives",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "243112641f1b30891ecb3713f51c90851d554b8fe23a9179d9512e4d048aadac",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "dup-03",
+      "text": "Ask for a ruling on the record.",
+      "original_span": {
+        "start": 118,
+        "end": 149,
+        "source_file": "objections.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "objections.txt",
+      "source_section": [
+        "Objections"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "bdf05385d45335447c679f83886db16e329284e89efe54737b21e9a6c1888556",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "dup-04",
+      "text": "Ask for a ruling on the record.",
+      "original_span": {
+        "start": 118,
+        "end": 149,
+        "source_file": "objections.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "objections.txt",
+      "source_section": [
+        "Objections"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "bdf05385d45335447c679f83886db16e329284e89efe54737b21e9a6c1888556",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

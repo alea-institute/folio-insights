@@ -1,0 +1,115 @@
+{
+  "corpus": "books-gold-ep001_generative_unanchored",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 3,
+  "by_confidence": {
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 2,
+    "procedural_rule": 1
+  },
+  "units": [
+    {
+      "id": "gen-01",
+      "text": "Always cite Rule 26 disclosures at trial.",
+      "original_span": {
+        "start": 0,
+        "end": 12,
+        "source_file": "deposition-prep.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "deposition-prep.txt",
+      "source_section": [
+        "Deposition Preparation"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RT7xQmfA7w5HT02clIpAe",
+          "label": "Daubert Motion Practice",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Service",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "9a0028f11a87e2217389d7d8db01894c3cd79db6aec2881fa8c2197ec023e3ee",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "gen-02",
+      "text": "Object to untimely expert disclosures immediately.",
+      "original_span": {
+        "start": 25,
+        "end": 37,
+        "source_file": "deposition-prep.txt"
+      },
+      "unit_type": "procedural_rule",
+      "source_file": "deposition-prep.txt",
+      "source_section": [
+        "Deposition Preparation"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "42116f92ee60f2d6cc96882fdba5cbbd2ad86acb0cb74a67be52a1670e65b0d0",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "ext-03",
+      "text": "pause, and answer only what was asked",
+      "original_span": {
+        "start": 214,
+        "end": 251,
+        "source_file": "deposition-prep.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "deposition-prep.txt",
+      "source_section": [
+        "Deposition Preparation"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "d23eb3c5d8836f673fdb1c263f315f12bcea9de3930039aad6309ba996cb245a",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

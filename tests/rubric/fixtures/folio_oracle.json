@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "_comment": "Frozen IRI oracle for the rubric tests and the books gold set (RUB-EXTRACT-03). Lists ONLY the IRIs the fixtures use. Every entry is a real FOLIO concept as the live ontology reported it on 2026-10-09; any IRI absent from this file does not exist for the oracle. Branch = label of the concept's top-level FOLIO class (child of owl:Thing), over every parent path.",
+  "source": "folio-resolve 0.4.0 FolioPythonProvider over folio-python 0.3.6 (local FOLIO cache), walked with folio_insights.rubric.oracle.FolioResolveOracle on 2026-10-09",
+  "concepts": {
+    "https://folio.openlegalstandard.org/RT7xQmfA7w5HT02clIpAe": {"label": "Daubert Motion Practice", "branches": ["Service"]},
+    "https://folio.openlegalstandard.org/R53E5e3A8871d86E4f7D1166": {"label": "Russian Federation", "branches": ["Location"]},
+    "https://folio.openlegalstandard.org/RCz1SYWoNDDTDvPr0kSJBq": {"label": "Cross-Examination of Witness", "branches": ["Event", "Service"]},
+    "https://folio.openlegalstandard.org/RXO2u2WBkUUcEG1jczLIcA": {"label": "Arbitration Practice", "branches": ["Service"]},
+    "https://folio.openlegalstandard.org/R9Bk5v9AAJmhb4WcgIQjy29": {"label": "Inadmissible Evidence Objection", "branches": ["Objectives"]},
+    "https://folio.openlegalstandard.org/R88vPQZIpfowihFD3P0RSJU": {"label": "Rye", "branches": ["Asset Type"]},
+    "https://folio.openlegalstandard.org/R00D1fcF039adD7Dd1aFAd45": {"label": "Hawaii State Courts", "branches": ["Forums and Venues"]}
+  }
+}
