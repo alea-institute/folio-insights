@@ -5,7 +5,7 @@
     "EP-INSIGHTS-BOOKS-001",
     "EP-INSIGHTS-BOOKS-007"
   ],
-  "failure_mode": "Generative units: fluent advice that is not in the source (a rule the source never mentions), with offsets that slice an unrelated fragment. RUB-EXTRACT-05 fails its gate; the one extractive unit still scores 3.",
+  "failure_mode": "Generative units: fluent advice that is not in the source (a rule the source never mentions), with offsets that slice an unrelated fragment. The judge grades both generative units 0 on RUB-EXTRACT-06 (fabrication), an automatic story fail never averaged away (EP-INSIGHTS-BOOKS-001); RUB-EXTRACT-05 fails its gate on the same units (EP-INSIGHTS-BOOKS-007); the one extractive unit still scores 3.",
   "publishable": false,
   "criteria": {
     "RUB-EXTRACT-01": {
@@ -44,9 +44,9 @@
       }
     },
     "RUB-EXTRACT-06": {
-      "status": "not_scored",
-      "score": null,
-      "gate": null
+      "status": "judged",
+      "score": 1.0,
+      "gate": "fail"
     },
     "RUB-EXTRACT-07": {
       "status": "not_scored",
