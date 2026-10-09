@@ -25,6 +25,17 @@ Operation IDs are explicit and deterministic:
   (``superseded_since`` lists proposals decided again since). A new batch is
   appended only if the ledger is still at the head it was validated against.
 
+Signed decisions (drain plan U9, R16, KTD11). A decision item may carry
+``signature`` (a ``signed_decisions.SignedDecision``). ``record_decisions`` verifies
+it before anything is appended: the signature must verify for its did:key, describe
+exactly this decision (kind ``proposed_class``, this corpus, the proposal ID, the
+verdict, the note and any merge target), be issued within the signing skew of server
+time and carry a nonce this ledger has not consumed. The stored item records
+``signer_did``, ``signature_verified: true`` and the signed decision; an unsigned item
+reads as ``signature_verified: false``. With signatures required
+(``FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1``) an unsigned item refuses the batch.
+One refused item refuses the whole batch, and nothing is appended.
+
 Every judgment, deterministic or recorded, passes ``judgments.validate_judgment``
 before it is appended, and ``apply_dedupe`` refuses a lexicon smaller than
 ``MIN_LEXICON_CONCEPTS`` (an empty or wrong lexicon would otherwise clear every
@@ -35,16 +46,27 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jcs
 
 from folio_insights.proposals.decisions import (
+    SIGNATURE_INPUT_KEY,
     DecisionInvalid,
+    expected_proposal_decision,
     validate_decided_by,
     validate_decision,
     validate_provenance,
+)
+from folio_insights.proposals.signed_decisions import (
+    DecisionReplayed,
+    DecisionSignaturePolicy,
+    DecisionSignatureRefused,
+    load_policy,
+    operator_record,
+    verify_signed_decision,
 )
 from folio_insights.proposals.dedupe import DeterministicDeduper
 from folio_insights.proposals.judgments import JudgmentInvalid, validate_judgment
@@ -64,6 +86,20 @@ if TYPE_CHECKING:
 
 RESERVED_OP_PREFIX = "proposals:"
 MIN_LEXICON_CONCEPTS = 3
+
+
+class ReviewerRequired(DecisionInvalid):
+    """An unsigned decision (or one by a signer the signers file does not map to a
+    handle) needs a ``decided_by`` reviewer, and none was given."""
+
+
+#: Placeholder reviewer while an item is validated before its signer is known.
+_PENDING_REVIEWER = "human:pending-signer"
+
+
+def _item_refusal(exc: DecisionSignatureRefused, index: int) -> DecisionSignatureRefused:
+    """``exc`` re-raised with the item index (same class, so callers map it the same)."""
+    return type(exc)(f"decision item {index}: {exc}")
 
 
 class LexiconTooSmall(ValueError):
@@ -200,12 +236,29 @@ class ProposalStore:
         decisions: Iterable[Mapping[str, Any]],
         *,
         op_id: str,
-        decided_by: str,
+        decided_by: str | None,
         provenance: Mapping[str, Mapping[str, Any]] | None = None,
         expected_head: int | None = None,
+        operator: str | None = None,
+        policy: DecisionSignaturePolicy | None = None,
+        now: datetime | None = None,
     ) -> dict[str, Any]:
         """Record explicit review decisions ``{proposal_id, status, note?,
-        merge_into?}`` by the human reviewer ``decided_by`` (``human:<name>``).
+        merge_into?, signature?}`` by the human reviewer ``decided_by``
+        (``human:<name>``).
+
+        ``signature`` (optional, per item) is a signed decision, verified before
+        anything is appended (module docstring). A verified item records its
+        ``signer_did``; when the signers file maps that DID to a handle, the item is
+        attributed to ``human:<handle>`` instead of ``decided_by``. ``decided_by`` may
+        be ``None`` only when every item is signed by such a mapped signer
+        (``ReviewerRequired`` otherwise). ``operator`` is the authenticated API
+        operator who submitted the batch, recorded on every item next to (never
+        instead of) its author. ``policy`` defaults to ``signed_decisions.load_policy()``
+        (``DecisionPolicyMisconfigured`` when unusable); ``now`` is the server time the
+        signatures' ``issued_at`` is checked against (default: the current time).
+        Signature refusals raise a ``DecisionSignatureRefused`` subclass naming the
+        item index and the rule.
 
         ``provenance`` optionally maps proposal IDs of this batch to a small
         map of scalar fields (``decisions.validate_provenance``) stored on that
@@ -231,23 +284,72 @@ class ProposalStore:
                 "a decision batch needs an explicit op_id that does not use the reserved "
                 f"{RESERVED_OP_PREFIX!r} prefix"
             )
-        decided_by = validate_decided_by(decided_by)
+        if decided_by is not None:
+            decided_by = validate_decided_by(decided_by)
         registry = await self.load()
         if expected_head is not None and (
             isinstance(expected_head, bool) or not isinstance(expected_head, int)
         ):
             raise ValueError("expected_head must be a ledger position (an integer)")
+        policy = policy if policy is not None else load_policy()
+        committed = {e.op_id for e in await self._ctx.proposals.entries()}
+        replaying = op_id in committed
+        recorded_operator = operator_record(operator)
         items: list[dict[str, Any]] = []
         seen: set[str] = set()
+        nonces: set[tuple[str, str]] = set()
         for index, raw in enumerate(decisions):
+            signed_raw = None
+            if isinstance(raw, Mapping) and SIGNATURE_INPUT_KEY in raw:
+                signed_raw = raw[SIGNATURE_INPUT_KEY]
+                raw = {k: v for k, v in raw.items() if k != SIGNATURE_INPUT_KEY}
             item = validate_decision(
-                raw, index=index, known=registry.proposals, decided_by=decided_by
+                raw, index=index, known=registry.proposals,
+                decided_by=decided_by or _PENDING_REVIEWER,
             )
             if item["proposal_id"] in seen:
                 raise DecisionInvalid(
                     f"decision item {index}: the batch names this proposal more than once"
                 )
             seen.add(item["proposal_id"])
+            author = decided_by
+            if signed_raw is None:
+                try:
+                    policy.check_unsigned()
+                except DecisionSignatureRefused as exc:
+                    raise _item_refusal(exc, index) from None
+            else:
+                try:
+                    verified = await verify_signed_decision(
+                        signed_raw,
+                        expected=expected_proposal_decision(item, self.corpus),
+                        policy=policy,
+                        now=now,
+                        check_freshness=not replaying,
+                    )
+                except DecisionSignatureRefused as exc:
+                    raise _item_refusal(exc, index) from None
+                key = (verified.signer_did, verified.nonce)
+                if key in nonces or (not replaying and key in registry.decision_nonces):
+                    raise DecisionReplayed(
+                        f"decision item {index}: this signed decision's nonce was already "
+                        "used; a signed decision can be recorded once. Sign it again. "
+                        "Nothing was recorded"
+                    )
+                nonces.add(key)
+                author = verified.signer_handle or decided_by
+                item["signer_did"] = verified.signer_did
+                item["signature_verified"] = True
+                item["signature"] = verified.signed.to_record()
+            if author is None:
+                raise ReviewerRequired(
+                    f"decision item {index}: no reviewer to attribute this decision to "
+                    "(give decided_by, or sign it with a key the signers file maps to a "
+                    "handle); nothing was recorded"
+                )
+            item["decided_by"] = author
+            if recorded_operator is not None:
+                item["operator"] = recorded_operator
             items.append(item)
         if not items:
             raise DecisionInvalid("a decision batch must hold at least one decision")
@@ -263,7 +365,6 @@ class ProposalStore:
                         provenance[item["proposal_id"]], where=f"decision item {index}"
                     )
         items.sort(key=lambda i: i["proposal_id"])
-        committed = {e.op_id for e in await self._ctx.proposals.entries()}
         if op_id not in committed and expected_head is not None and expected_head != registry.head:
             raise JournalStateChanged(expected=expected_head, actual=registry.head)
         # Every batch is appended, including one whose decisions all equal the current ones
@@ -333,6 +434,7 @@ __all__ = [
     "MIN_LEXICON_CONCEPTS",
     "RESERVED_OP_PREFIX",
     "LexiconTooSmall",
+    "ReviewerRequired",
     "ProposalStore",
     "collect_op_id",
     "load_run_proposals",

@@ -89,6 +89,16 @@ class Settings(BaseSettings):
     api_auth: str = "required"
     api_tokens_file: Path | None = None
 
+    # Signed review decisions (drain plan U9, R16, KTD11; proposals/signed_decisions.py). A
+    # review or proposed-class decision may carry a did:key signature, verified before it is
+    # stored. ``require_signed_decisions`` (env FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1)
+    # refuses every unsigned decision, and then needs ``decision_signers_file`` (env
+    # FOLIO_INSIGHTS_DECISION_SIGNERS_FILE): one ``<did:key> <handle>`` line per registered
+    # reviewer key, a regular file other users cannot write. With a signers file, only listed
+    # DIDs may sign and a signed decision is attributed to the DID's handle.
+    require_signed_decisions: bool = False
+    decision_signers_file: Path | None = None
+
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 
 

@@ -14,6 +14,14 @@ append-only proposal ledger of one corpus. Both subcommands are offline.
           original decision time. When a replayed operation's decisions were
           changed later, a warning says so and ``current_status`` shows today's
           state. A decision body may not carry its own ``proposal_id``.
+          Signed input (drain plan U9): a decision body may carry ``signature``
+          (a signed decision from ``folio-insights proposals sign-decision``),
+          and the decisions file may instead be signed decisions themselves
+          (see below). Every signature is verified before anything is recorded;
+          ``--decided-by`` is then optional for decisions whose signer the
+          signers file maps to a handle. With
+          ``FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1`` an unsigned decision
+          refuses the whole file.
   export  Write the approved-only backlog: only proposals whose current
           decision is ``approved``. The same ledger always gives the same
           bytes. The output passes the PII gate and the forbidden-key check,
@@ -37,9 +45,14 @@ Decisions file (``proposed-class-approvals/v1``)::
    "decisions": {"PC-...": {"status": "approve", "note": "..."},
                  "PC-...": {"status": "merge", "merge_into": "PC-..."}}}
 
+Signed decisions file: one signed decision (the ``sign-decision`` output), a JSON
+list of them, or ``{"schema": "proposed-class-signed-decisions/v1", "corpus": "C",
+"signed": [...]}``. Each must be kind ``proposed_class`` and name the proposal ID as
+target; its verdict, rationale and ``detail.merge_into`` become the decision.
+
 Usage:
   python scripts/apply_approvals.py apply  --corpus C --decisions FILE \\
-      --decided-by human:REVIEWER [--op-id ID]
+      [--decided-by human:REVIEWER] [--op-id ID]
   python scripts/apply_approvals.py export --corpus C --out /outside/repo/backlog.json
   python scripts/apply_approvals.py import-legacy --corpus C \\
       --review-db OUTPUT/C/review.db [--legacy-corpus NAME] [--dry-run] [--seal]
@@ -70,6 +83,11 @@ from folio_insights.proposals import (  # noqa: E402
     check_backlog,
 )
 from folio_insights.proposals.decisions import DecisionInvalid  # noqa: E402
+from folio_insights.proposals.signed_decisions import (  # noqa: E402
+    KIND_PROPOSED_CLASS,
+    DecisionPolicyMisconfigured,
+    DecisionSignatureRefused,
+)
 from folio_insights.persistence.review_db import (  # noqa: E402
     read_legacy_proposed_class_rows,
     seal_legacy_proposed_class_table,
@@ -85,13 +103,62 @@ from folio_insights.proposals.legacy import (  # noqa: E402
 from folio_insights.storage import CorpusStorageContext  # noqa: E402
 
 DECISIONS_SCHEMAS = frozenset({"proposed-class-approvals/v1"})
+SIGNED_DECISIONS_SCHEMA = "proposed-class-signed-decisions/v1"
+
+
+def _is_signed_decision(value: Any) -> bool:
+    return isinstance(value, dict) and set(value) == {"body", "signature"}
+
+
+def signed_items(signed: list[Any], corpus: str) -> list[dict[str, Any]]:
+    """Decision items from signed decisions: the signed body names the proposal
+    (``target``), the status (``verdict``), the note (``rationale``) and a merge's
+    ``detail.merge_into``; the signature rides along and the store verifies it."""
+    items = []
+    for index, value in enumerate(signed):
+        body = value.get("body") if _is_signed_decision(value) else None
+        if not isinstance(body, dict):
+            raise DecisionInvalid(f"signed decision {index}: must be an object with body and "
+                                  "signature")
+        if body.get("kind") != KIND_PROPOSED_CLASS:
+            raise DecisionInvalid(f"signed decision {index}: kind must be {KIND_PROPOSED_CLASS!r}")
+        if body.get("corpus") != corpus:
+            raise DecisionInvalid(f"signed decision {index}: names a different corpus")
+        detail = body.get("detail") or {}
+        if not isinstance(detail, dict) or set(detail) - {"merge_into"}:
+            raise DecisionInvalid(
+                f"signed decision {index}: a proposed-class detail may only name merge_into"
+            )
+        item: dict[str, Any] = {
+            "proposal_id": body.get("target"),
+            "status": body.get("verdict"),
+            "note": body.get("rationale", ""),
+            "signature": value,
+        }
+        if detail.get("merge_into") is not None:
+            item["merge_into"] = detail["merge_into"]
+        items.append(item)
+    if not items:
+        raise DecisionInvalid("the signed decisions file holds no signed decision")
+    return items
 
 
 def read_decisions(path: Path, corpus: str) -> list[dict[str, Any]]:
-    """Parse a paste-back file into decision items. Refuses a wrong schema,
-    a file for another corpus or a malformed decisions map. Errors never
-    echo values."""
+    """Parse a paste-back file (or a signed decisions file) into decision items.
+    Refuses a wrong schema, a file for another corpus or a malformed decisions map.
+    Errors never echo values."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if _is_signed_decision(payload):
+        return signed_items([payload], corpus)
+    if isinstance(payload, list):
+        return signed_items(payload, corpus)
+    if isinstance(payload, dict) and payload.get("schema") == SIGNED_DECISIONS_SCHEMA:
+        if payload.get("corpus") not in (None, corpus):
+            raise DecisionInvalid("the decisions file names a different corpus")
+        signed = payload.get("signed")
+        if not isinstance(signed, list):
+            raise DecisionInvalid("a signed decisions file needs a 'signed' list")
+        return signed_items(signed, corpus)
     if not isinstance(payload, dict):
         raise DecisionInvalid("the decisions file must be a JSON object")
     schema = payload.get("schema")
@@ -117,7 +184,7 @@ def read_decisions(path: Path, corpus: str) -> list[dict[str, Any]]:
 
 
 def default_op_id(
-    corpus: str, decided_by: str, items: list[dict[str, Any]], ledger_head: int
+    corpus: str, decided_by: str | None, items: list[dict[str, Any]], ledger_head: int
 ) -> str:
     """A digest of the corpus, reviewer, decisions and the ledger head they were applied at.
 
@@ -125,7 +192,7 @@ def default_op_id(
     after the ledger moved is a new operation against the current state, not a replay of an
     old one whose outcome may since have been superseded."""
     digest = hashlib.sha256(jcs.canonicalize({
-        "corpus": corpus, "decided_by": decided_by, "decisions": items,
+        "corpus": corpus, "decided_by": decided_by or "signed", "decisions": items,
         "ledger_head": ledger_head,
     })).hexdigest()
     return f"approvals:{digest[:32]}"
@@ -182,7 +249,11 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("apply", help="record the decisions of a paste-back file")
     common(a)
     a.add_argument("--decisions", required=True, help="proposed-class-approvals/v1 JSON")
-    a.add_argument("--decided-by", required=True, help="the reviewer, as human:<name>")
+    a.add_argument(
+        "--decided-by", default=None,
+        help="the reviewer, as human:<name> (optional when every decision is signed by a "
+        "signer the signers file maps to a handle)",
+    )
     a.add_argument("--op-id", default=None, help="explicit operation ID (default: digest)")
 
     e = sub.add_parser("export", help="write the approved-only backlog")
@@ -212,8 +283,10 @@ def main(argv: list[str] | None = None) -> int:
         result = asyncio.run(_run(args))
     except (FileNotFoundError, LegacyImportConflict) as exc:
         raise SystemExit(f"refused: {exc}") from None
-    except DecisionInvalid as exc:
+    except (DecisionInvalid, DecisionSignatureRefused) as exc:
         # The message names the item index and the rule (never a value); nothing was recorded.
+        raise SystemExit(f"refused: {exc}") from None
+    except DecisionPolicyMisconfigured as exc:
         raise SystemExit(f"refused: {exc}") from None
     print(json.dumps(result, sort_keys=True))
     return 0

@@ -910,3 +910,8 @@ cli.add_command(_graph_group)
 from folio_insights.api_cli import api_group as _api_group  # noqa: E402
 
 cli.add_command(_api_group)
+
+# Drain plan U9: signed review decisions (``folio-insights proposals sign-decision``).
+from folio_insights.proposals.cli import proposals_group as _proposals_group  # noqa: E402
+
+cli.add_command(_proposals_group)

@@ -34,10 +34,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Header, HTTPException, Query, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from sse_starlette.sse import EventSourceResponse
 
 from api.auth import WRITE_GUARD
+from api.services import decision_signatures as signing
+from folio_insights.proposals.signed_decisions import (
+    CORPUS_WIDE_TARGET,
+    KIND_TASK_BULK_APPROVE,
+    KIND_TASK_REVIEW,
+    ExpectedDecision,
+)
 from api.models.discovery import (
     ContradictionResolveRequest,
     ContradictionResponse,
@@ -493,10 +500,27 @@ async def review_task(
     corpus_id: str,
     task_id: str,
     body: TaskReviewRequest,
+    request: Request,
 ) -> TaskResponse:
-    """Submit a review decision for a task."""
+    """Submit a review decision for a task.
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified before
+    anything is stored: kind ``task_review``, target the task ID, verdict the status,
+    rationale the note, detail ``{"edited_label": ...}``. The row records the signer DID,
+    ``signature_verified`` and the authenticated operator
+    (``api/services/decision_signatures.py``)."""
     if body.status not in ("approved", "rejected", "edited"):
         raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
+
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_TASK_REVIEW, corpus=corpus_id, target=task_id, verdict=body.status,
+            rationale=body.note or "", detail={"edited_label": body.edited_label},
+        ),
+        policy=signing.policy_or_503(),
+    )
+    cols = signing.signature_columns(verified, signing.operator_handle(request))
 
     db = await _get_db(corpus_id)
     try:
@@ -510,6 +534,7 @@ async def review_task(
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
 
         now = _now_iso()
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
         await db.execute(
             """
             UPDATE task_decisions SET
@@ -517,7 +542,12 @@ async def review_task(
                 edited_label = ?,
                 reviewer_note = ?,
                 reviewed_at = ?,
-                updated_at = ?
+                updated_at = ?,
+                decided_by = ?,
+                signer_did = ?,
+                decision_signature = ?,
+                signature_verified = ?,
+                operator = ?
             WHERE task_id = ? AND corpus_name = ?
             """,
             (
@@ -526,6 +556,11 @@ async def review_task(
                 body.note or "",
                 now,
                 now,
+                cols["decided_by"],
+                cols["signer_did"],
+                cols["decision_signature"],
+                cols["signature_verified"],
+                cols["operator"],
                 task_id,
                 corpus_id,
             ),
@@ -543,20 +578,49 @@ async def review_task(
 async def bulk_approve_tasks(
     corpus_id: str,
     body: TaskBulkApproveRequest,
+    request: Request,
 ) -> dict:
-    """Approve all tasks matching criteria (specific IDs or confidence >= threshold)."""
+    """Approve all tasks matching criteria (specific IDs or confidence >= threshold).
+
+    An optional ``signature`` (signed decision, drain plan U9) is verified first: kind
+    ``task_bulk_approve``, target ``"*"``, verdict ``approved``, detail
+    ``{"task_ids": [...]}`` or ``{"confidence_min": x}``."""
+    if body.task_ids:
+        selector: dict = {"task_ids": list(body.task_ids)}
+    elif body.confidence_min is not None:
+        selector = {"confidence_min": body.confidence_min}
+    else:
+        raise HTTPException(status_code=400, detail="Provide task_ids or confidence_min")
+    verified = await signing.verify_or_refuse(
+        body.signature,
+        expected=ExpectedDecision(
+            kind=KIND_TASK_BULK_APPROVE, corpus=corpus_id, target=CORPUS_WIDE_TARGET,
+            verdict="approved", detail=selector,
+        ),
+        policy=signing.policy_or_503(),
+    )
+    operator = signing.operator_handle(request)
+    cols = signing.signature_columns(verified, operator)
+    signed_set = (
+        "decided_by = ?, signer_did = ?, decision_signature = ?, signature_verified = ?, "
+        "operator = ? "
+    )
+    signed_args = (cols["decided_by"], cols["signer_did"], cols["decision_signature"],
+                   cols["signature_verified"], cols["operator"])
+
     db = await _get_db(corpus_id)
     try:
         now = _now_iso()
+        await signing.prepare_write(db, verified, corpus=corpus_id, now_iso=now)
         approved_ids: list[str] = []
 
         if body.task_ids:
             for tid in body.task_ids:
                 await db.execute(
                     "UPDATE task_decisions SET status = 'approved', "
-                    "reviewed_at = ?, updated_at = ? "
-                    "WHERE task_id = ? AND corpus_name = ?",
-                    (now, now, tid, corpus_id),
+                    "reviewed_at = ?, updated_at = ?, " + signed_set
+                    + "WHERE task_id = ? AND corpus_name = ?",
+                    (now, now, *signed_args, tid, corpus_id),
                 )
                 approved_ids.append(tid)
         elif body.confidence_min is not None:
@@ -571,19 +635,15 @@ async def bulk_approve_tasks(
                 for tid in high_conf_ids:
                     await db.execute(
                         "UPDATE task_decisions SET status = 'approved', "
-                        "reviewed_at = ?, updated_at = ? "
-                        "WHERE task_id = ? AND corpus_name = ?",
-                        (now, now, tid, corpus_id),
+                        "reviewed_at = ?, updated_at = ?, " + signed_set
+                        + "WHERE task_id = ? AND corpus_name = ?",
+                        (now, now, *signed_args, tid, corpus_id),
                     )
                     approved_ids.append(tid)
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Provide task_ids or confidence_min",
-            )
 
         await db.commit()
-        return {"approved_count": len(approved_ids), "task_ids": approved_ids}
+        return {"approved_count": len(approved_ids), "task_ids": approved_ids,
+                **signing.signer_view(verified, operator)}
 
     finally:
         await db.close()
