@@ -857,6 +857,11 @@ from folio_insights.bfo.cli import bfo_group as _bfo_group  # noqa: E402
 
 cli.add_command(_bfo_group)
 
+# Drain U3: axiom kernel (list / seed / chain).
+from folio_insights.kernel.cli import kernel_group as _kernel_group  # noqa: E402
+
+cli.add_command(_kernel_group)
+
 
 def main() -> None:
     """Entry point for the folio-insights CLI."""
