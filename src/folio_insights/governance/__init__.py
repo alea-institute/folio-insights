@@ -45,7 +45,9 @@ from folio_insights.governance.authorize import (
     Deny,
     authorize,
 )
+from folio_insights.governance.clock import SIGNING_SKEW
 from folio_insights.governance.log import (
+    GovernanceClockSkew,
     GovernanceLog,
     InMemoryGovernanceLog,
     InvalidSignature,
@@ -80,6 +82,9 @@ __all__ = [
     # log.py — Protocol seam + in-memory implementation (07-03)
     "GovernanceLog",
     "InMemoryGovernanceLog",
+    # clock.py — server-assigned time (R17 / KTD12); refusal re-exported by log.py
+    "GovernanceClockSkew",
+    "SIGNING_SKEW",
     # log.py — exceptions added in 07-04a
     "InvalidSignature",
     "NotAuthorized",

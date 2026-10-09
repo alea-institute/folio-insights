@@ -21,6 +21,13 @@ projection failure after COMMIT is *pending recovery*, not an abort: the call
 raises ``ProjectionRecoveryPending`` and closes the context; reopening replays
 the journal, and retrying the operation ID returns the committed result.
 
+Governance time (R17 / KTD12): a governance append takes its server time
+inside that transaction (the server clock, never earlier than the newest
+committed governance row), refuses the event with ``GovernanceClockSkew``
+unless its ``signed_at`` is within ``SIGNING_SKEW`` of it, runs every role and
+authorization check at it over history windowed by each row's stored
+``committed_at``, and records it as the new row's ``committed_at``.
+
 Read path: every read first passes the barrier, which brings the projection's
 watermark up to the journal head, then reads at ``position <= watermark``. A
 barrier failure closes the context rather than serve a mixed revision.
@@ -66,12 +73,14 @@ import re
 import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import jcs
 from pydantic import TypeAdapter, ValidationError
 
+from folio_insights.governance.clock import check_signing_skew, parse_committed_at
 from folio_insights.governance.events import GovernanceEvent
 from folio_insights.governance.log import InMemoryGovernanceLog, InvalidSignature
 from folio_insights.shards import (
@@ -321,8 +330,32 @@ def _refuse_replayed_event(event: GovernanceEvent, history: list[GovernanceEvent
             )
 
 
+def _server_now() -> datetime:
+    """The server clock for governance commit times (R17 / KTD12).
+
+    A module-level seam so tests can pin or move the server clock; nothing
+    a signer sends reaches it."""
+    return datetime.now(UTC)
+
+
+def _governance_server_time(history_committed: list[datetime]) -> datetime:
+    """The server time a new governance row is committed at.
+
+    The current server clock, but never earlier than the newest committed
+    governance row: if the wall clock steps backwards, a new event must still
+    see every committed revocation, so commit times never decrease with
+    position (role windows compare them with ``<=``)."""
+    now = _server_now().astimezone(UTC)
+    if history_committed:
+        return max(now, max(history_committed))
+    return now
+
+
 async def _authorize_in_transaction(
-    event: GovernanceEvent, snapshot: InMemoryGovernanceLog, corpus: str
+    event: GovernanceEvent,
+    snapshot: InMemoryGovernanceLog,
+    corpus: str,
+    server_time: datetime,
 ) -> None:
     """Re-run the central ``authorize()`` decision against the committed
     history read inside the write transaction (KTD3).
@@ -331,7 +364,10 @@ async def _authorize_in_transaction(
     committed in between would otherwise still let the revoked signer
     append. Every event goes through the same policy the CLI uses: the
     first event of a corpus as the genesis carve-out (``corpus_init``), any
-    other as its own action, with roles resolved at commit time.
+    other as its own action, with roles resolved at ``server_time`` — the
+    commit time this row will record — over history windowed by each row's
+    stored ``committed_at`` (R17 / KTD12), never at the signer's
+    ``signed_at``.
     """
     from folio_insights.governance.authorize import GENESIS_ACTION, Allow, authorize
     from folio_insights.governance.log import NotAuthorized
@@ -346,7 +382,9 @@ async def _authorize_in_transaction(
             admin_did=getattr(event, "subject_did", None),
         )
     else:
-        decision = await authorize(signer, event.action, corpus, log=snapshot)
+        decision = await authorize(
+            signer, event.action, corpus, log=snapshot, asof=server_time
+        )
     if not isinstance(decision, Allow):
         raise NotAuthorized(
             f"governance {event.action} event refused: signer {signer!r} is not "
@@ -799,11 +837,24 @@ class CorpusStorageContext:
                             raise JournalStateChanged(
                                 expected=expected_head, actual=actual
                             )
-                    history = [_event_from_row(r) for r in await tx.governance_rows()]
+                    history_rows = await tx.governance_rows()
+                    history = [_event_from_row(r) for r in history_rows]
+                    # R17 / KTD12: server time decides. History is windowed by
+                    # each row's stored commit time; this event is checked,
+                    # and recorded, at the time this transaction commits it.
+                    history_committed = [
+                        parse_committed_at(r.committed_at) for r in history_rows
+                    ]
+                    server_time = _governance_server_time(history_committed)
                     _refuse_replayed_event(event, history)
-                    snapshot = InMemoryGovernanceLog._from_history(self.corpus, history)
-                    await _authorize_in_transaction(event, snapshot, self.corpus)
-                    persisted = await snapshot.append(event)
+                    check_signing_skew(event, server_time)
+                    snapshot = InMemoryGovernanceLog._from_history(
+                        self.corpus, history, committed_at=history_committed
+                    )
+                    await _authorize_in_transaction(
+                        event, snapshot, self.corpus, server_time
+                    )
+                    persisted = await snapshot._append(event, server_time=server_time)
                     if self.config.shacl is not None:
                         # Phase 11: the event as the projection will store
                         # it, with its log position now assigned.
@@ -820,7 +871,8 @@ class CorpusStorageContext:
                             record_schema_version=GOVERNANCE_RECORD_SCHEMA_VERSION,
                             payload=persisted.model_dump_json().encode("utf-8"),
                             governance_position=persisted.position,
-                        )
+                        ),
+                        committed_at=server_time,
                     )
             if appended:
                 self._unmarked.add(row.position)

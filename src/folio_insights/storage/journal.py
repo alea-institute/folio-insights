@@ -370,8 +370,10 @@ class JournalTransaction:
                 out[row.subject] = row
         return out
 
-    async def append(self, pending: PendingRow) -> JournalRow:
-        return (await self.append_many([pending]))[0]
+    async def append(
+        self, pending: PendingRow, *, committed_at: datetime | None = None
+    ) -> JournalRow:
+        return (await self.append_many([pending], committed_at=committed_at))[0]
 
     async def proposal_head(self) -> int:
         return await _proposal_head(self._conn, self.corpus)
@@ -401,11 +403,18 @@ class JournalTransaction:
         )
         return _proposal_row(values)
 
-    async def append_many(self, pendings: list[PendingRow]) -> list[JournalRow]:
+    async def append_many(
+        self, pendings: list[PendingRow], *, committed_at: datetime | None = None
+    ) -> list[JournalRow]:
         """Append ``pendings`` at the next contiguous positions in one
-        ``executemany`` (the insert triggers still check every row)."""
+        ``executemany`` (the insert triggers still check every row).
+
+        ``committed_at`` is the server time recorded on the rows (default:
+        now). The governance append path passes the time it already checked
+        roles and the signing skew at, so the row records exactly that time
+        (R17 / KTD12)."""
         position = await self.head() + 1
-        now = datetime.now(UTC).isoformat()
+        now = (committed_at or datetime.now(UTC)).astimezone(UTC).isoformat()
         rows = [
             (
                 self.corpus,
