@@ -1,8 +1,8 @@
 # Phase 7 fi:GovernanceLogShape — append-only structural invariant SHACL (D-05).
 #
 # The amended D-05 in-phase append-only gate has TWO halves:
-#   (a) THIS SHAPE refuses duplicate positions, signed_at moving backward with
-#       position, and gaps in the position sequence (the structural signature
+#   (a) THIS SHAPE refuses duplicate positions, event time (server commit
+#       time, else signed_at) moving backward with position, and gaps in the position sequence (the structural signature
 #       of a deletion under an append-only invariant).
 #   (b) tests/governance/test_governance_log_protocol_contract.py asserts no
 #       public mutation API exists on InMemoryGovernanceLog beyond `append`.
@@ -53,21 +53,30 @@ fi:GovernanceLogShape a sh:NodeShape ;
         """ ;
     ] ;
 
-    # Constraint 2: signed_at monotonically non-decreasing with position. A
-    # later-positioned event with an earlier signed_at than a smaller-
-    # positioned event is back-dating — refused. (Mirrors Phase 5's
-    # content_edit_shape forward-only polarity.)
+    # Constraint 2: event time monotonically non-decreasing with position. A
+    # later-positioned event with an earlier time than a smaller-positioned
+    # event is back-dating — refused. (Mirrors Phase 5's content_edit_shape
+    # forward-only polarity.)
+    #
+    # The compared value is fi:effectiveAt, the time each event took effect
+    # (R17 / KTD12): the server-assigned commit time wherever a server clock
+    # exists (persistent storage, whose commit times are non-decreasing by
+    # construction), else the signer-claimed signed_at (the in-memory /
+    # offline log). Ordering by signed_at in persistent storage would let a
+    # signer who forward-dates inside SIGNING_SKEW block every later honest
+    # append, including the revocation of that signer; signed_at there is
+    # only bounded by the skew check at append.
     sh:sparql [
-        sh:message "Event signed_at must be monotonically non-decreasing with position" ;
+        sh:message "Event time (server commit time, else signed_at) must be monotonically non-decreasing with position" ;
         sh:prefixes fi: ;
         sh:select """
             PREFIX fi: <https://folio-insights.example/>
             SELECT $this ?e1 ?e2 WHERE {
                 $this fi:hasEvent ?e1, ?e2 .
                 ?e1 fi:position ?p1 .
-                ?e1 fi:signedAt ?t1 .
+                ?e1 fi:effectiveAt ?t1 .
                 ?e2 fi:position ?p2 .
-                ?e2 fi:signedAt ?t2 .
+                ?e2 fi:effectiveAt ?t2 .
                 FILTER(?p1 < ?p2 && ?t2 < ?t1)
             }
         """ ;
@@ -89,7 +98,7 @@ fi:GovernanceLogShape a sh:NodeShape ;
     #     produces zero validation results — i.e. no violation fires.
     #   * That is the CORRECT behavior: an empty log has no positions, so a
     #     "gap" is undefined. The genesis-row append (position 0 against an
-    #     empty log) trips constraint 1 (dup) and constraint 2 (signed_at
+    #     empty log) trips constraint 1 (dup) and constraint 2 (event-time
     #     monotonicity) per their own SPARQL bodies, but constraint 3 here
     #     stays silent for the empty-log shape.
     #

@@ -120,18 +120,21 @@ async def test_last_admin_lockout_is_refused(ctx: CorpusStorageContext, admin) -
     assert await ctx.governance.latest_position("corpus-a") == 0
 
 
-async def test_positions_and_signed_at_order_enforced(ctx: CorpusStorageContext, admin) -> None:
+async def test_positions_enforced_and_order_is_commit_time(ctx: CorpusStorageContext, admin) -> None:
     await ctx.governance.append(genesis("corpus-a", admin, at(10)))
-    # signed_at moving backward with position is refused by the SHACL shape.
-    with pytest.raises(ValueError):
-        await ctx.governance.append(
-            role_assertion("corpus-a", admin, new_identity().did, "reviewer", at(5))
-        )
-    # A spoofed explicit position is refused.
+    # A spoofed explicit position is refused by the SHACL shape.
     spoof = role_assertion("corpus-a", admin, new_identity().did, "reviewer", at(11))
     with pytest.raises(ValueError):
         await ctx.governance.append(spoof.model_copy(update={"position": 0}))
     assert await ctx.governance.latest_position("corpus-a") == 0
+    # signed_at moving backward (within SIGNING_SKEW) is NOT refused here:
+    # persistent storage orders events by the server commit time, which never
+    # decreases, so honest clock drift cannot block an append (review fix C1;
+    # the skew check alone bounds signed_at).
+    await ctx.governance.append(
+        role_assertion("corpus-a", admin, new_identity().did, "reviewer", at(5))
+    )
+    assert await ctx.governance.latest_position("corpus-a") == 1
 
 
 async def test_verifier_can_be_disabled_for_unsigned_test_doubles(storage_root: Path) -> None:

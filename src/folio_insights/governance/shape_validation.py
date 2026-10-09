@@ -40,6 +40,8 @@ import pyshacl
 from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import XSD
 
+from folio_insights.governance.clock import as_utc
+
 if TYPE_CHECKING:
     from folio_insights.governance.clock import EventTime
     from folio_insights.governance.events import (
@@ -130,6 +132,9 @@ def _build_event_graph(event: GovernanceEvent) -> Graph:
 def _build_log_graph(
     history: "list[GovernanceEvent]",
     pending: "GovernanceEvent",
+    *,
+    event_time: "EventTime | None" = None,
+    pending_time: datetime | None = None,
 ) -> Graph:
     """Materialize the (history + pending) snapshot as RDF for pyshacl.
 
@@ -139,6 +144,12 @@ def _build_log_graph(
     ``fi:position`` (xsd:integer) and ``fi:signedAt`` (xsd:dateTime) — the
     two structural predicates the SHACL constraints query against. The DID
     is included for downstream PROV-O round-trips.
+
+    Each event also carries ``fi:effectiveAt``, the time it took effect and
+    the value the monotonicity constraint orders by (R17 / KTD12):
+    ``event_time(event)`` for history and ``pending_time`` for the pending
+    event when supplied (the persistent log's server commit times), else the
+    event's ``signature.signed_at`` (the in-memory / offline behaviour).
 
     The append-only invariant is structural over the post-append snapshot;
     if any constraint fires on the snapshot, the SHACL run reports a
@@ -150,8 +161,24 @@ def _build_log_graph(
     log_node = BNode()
     g.add((log_node, RDF.type, FI.GovernanceLog))
 
+    def effective(ev: "GovernanceEvent", is_pending: bool) -> datetime | None:
+        if is_pending:
+            return pending_time if pending_time is not None else ev.signature.signed_at
+        if event_time is not None:
+            return event_time(ev)
+        return ev.signature.signed_at
+
     all_events = [*history, pending]
     for i, ev in enumerate(all_events):
+        at = effective(ev, i == len(all_events) - 1)
+        if at is not None:
+            g.add(
+                (
+                    URIRef(f"urn:fi:event:{i}"),
+                    FI.effectiveAt,
+                    Literal(as_utc(at).isoformat(), datatype=XSD.dateTime),
+                )
+            )
         # Use a stable URIRef per event so the SPARQL self-join can compare
         # STR(?e1) != STR(?e2) (BNode comparison is implementation-dependent
         # in some pyshacl/rdflib configurations).
@@ -186,6 +213,9 @@ def _build_log_graph(
 def validate_governance_log_shape(
     history: "list[GovernanceEvent]",
     pending: "GovernanceEvent",
+    *,
+    event_time: "EventTime | None" = None,
+    pending_time: datetime | None = None,
 ) -> ValidationResult:
     """Validate the governance-log structural invariants (D-05; 07-03).
 
@@ -194,8 +224,16 @@ def validate_governance_log_shape(
     is False when any of the three constraints fire:
 
       1. duplicate position (two events share the same ``fi:position``);
-      2. signed_at goes backward with position (back-dating);
+      2. event time goes backward with position (back-dating);
       3. gap in the position sequence (deletion signature).
+
+    Time (R17 / KTD12): ``event_time`` maps each history event to the time
+    it took effect and ``pending_time`` is the pending event's time; the
+    persistent log passes server commit times, so constraint 2 orders by
+    them and a signer-chosen ``signed_at`` (bounded only by
+    ``SIGNING_SKEW``) can neither block later appends nor be refused for a
+    few seconds of honest clock drift. Both default to
+    ``signature.signed_at``, the in-memory / offline behaviour.
 
     Mirrors ``revision/shape_validation.validate_content_edit_shape`` body
     shape verbatim (Phase 5 D-07.2 precedent) — same pyshacl.validate call
@@ -205,7 +243,9 @@ def validate_governance_log_shape(
     lazy import; see governance/log.py D-04 boundary preservation).
     """
     shapes = _load_shape_graph("governance_log_shape.ttl")
-    data_graph = _build_log_graph(history, pending)
+    data_graph = _build_log_graph(
+        history, pending, event_time=event_time, pending_time=pending_time
+    )
 
     conforms, _results_graph, results_text = pyshacl.validate(
         data_graph,

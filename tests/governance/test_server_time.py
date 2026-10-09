@@ -359,6 +359,105 @@ async def test_signature_payload_and_verification_are_unchanged(store, clock) ->
     assert not await verify_event_signature_offline(moved)
 
 
+# ── Log-shape ordering is by commit time, not signed_at (review fix C1) ──
+
+
+async def test_forward_dated_append_does_not_block_a_later_honest_append(store, clock) -> None:
+    """A signer forward-dates inside SIGNING_SKEW; another admin's honest,
+    later-committed event must still append (ordering is by commit time)."""
+    first, second, r1, r2 = new_identity(), new_identity(), new_identity(), new_identity()
+    await store.governance.append(genesis(CORPUS, first, m(0)))
+    clock.at = m(1)
+    await store.governance.append(role_assertion(CORPUS, first, second.did, "corpus_admin", m(1)))
+    clock.at = m(2)
+    # Forward-dated by 4m50s: within the skew, accepted.
+    await store.governance.append(
+        role_assertion(CORPUS, first, r1.did, "reviewer", m(2) + timedelta(minutes=4, seconds=50))
+    )
+    clock.at = m(3)
+    persisted = await store.governance.append(
+        role_assertion(CORPUS, second, r2.did, "reviewer", m(3))
+    )
+    assert persisted.position == 3
+    times = await committed_times(store)
+    assert times == [m(0), m(1), m(2), m(3)]
+
+
+async def test_admin_can_revoke_a_signer_who_forward_dated(store, clock) -> None:
+    first, second, r1 = new_identity(), new_identity(), new_identity()
+    await store.governance.append(genesis(CORPUS, first, m(0)))
+    clock.at = m(1)
+    await store.governance.append(role_assertion(CORPUS, first, second.did, "corpus_admin", m(1)))
+    clock.at = m(2)
+    await store.governance.append(
+        role_assertion(CORPUS, second, r1.did, "reviewer", m(2) + SIGNING_SKEW)
+    )
+    # The first admin revokes the forward-dating admin with an honest time.
+    clock.at = m(2.5)
+    revoked = await store.governance.append(
+        role_revocation(CORPUS, first, second.did, "corpus_admin", m(2.5))
+    )
+    assert revoked.position == 3
+    roles = await store.governance.query_active_roles_at(CORPUS, m(2.5))
+    assert "corpus_admin" not in roles.get(second.did, set())
+
+
+async def test_small_clock_drift_between_honest_signers_is_accepted(store, clock) -> None:
+    """Two honest signers whose clocks differ by a few seconds commit out of
+    signed_at order; both land, in commit order."""
+    first, second, r1, r2 = new_identity(), new_identity(), new_identity(), new_identity()
+    await store.governance.append(genesis(CORPUS, first, m(0)))
+    clock.at = m(1)
+    await store.governance.append(role_assertion(CORPUS, first, second.did, "corpus_admin", m(1)))
+    clock.at = m(2)
+    # first's clock runs 3 s fast; second's runs 2 s slow.
+    await store.governance.append(
+        role_assertion(CORPUS, first, r1.did, "reviewer", m(2) + timedelta(seconds=3))
+    )
+    clock.at = m(2) + timedelta(seconds=1)
+    await store.governance.append(
+        role_assertion(CORPUS, second, r2.did, "reviewer", m(2) - timedelta(seconds=1))
+    )
+    assert await head(store) == 3
+
+
+def test_log_shape_orders_by_supplied_event_times() -> None:
+    """The structural shape compares the supplied (server) times; signed_at
+    order alone no longer decides when times are supplied."""
+    from folio_insights.governance.shape_validation import validate_governance_log_shape
+
+    admin = new_identity()
+    history: list[GovernanceEvent] = [
+        genesis(CORPUS, admin, m(5)).model_copy(update={"position": 0}),
+    ]
+    pending = role_assertion(CORPUS, admin, new_identity().did, "reviewer", m(1)).model_copy(
+        update={"position": 1}
+    )
+    # signed_at goes backward: refused when no times are supplied (offline).
+    assert not validate_governance_log_shape(history, pending).conforms
+    # Server times are non-decreasing: conforms.
+    ok = validate_governance_log_shape(
+        history, pending, event_time=lambda e: m(0), pending_time=m(2)
+    )
+    assert ok.conforms, ok.violations
+    # Server times going backward are still refused.
+    bad = validate_governance_log_shape(
+        history, pending, event_time=lambda e: m(3), pending_time=m(2)
+    )
+    assert not bad.conforms
+    assert any("monotonically non-decreasing" in v for v in bad.violations)
+
+
+async def test_in_memory_log_without_server_clock_still_refuses_backdating() -> None:
+    """Offline behaviour is unchanged: with no server clock, signed_at is
+    the event time and must not move backward with position."""
+    admin = new_identity()
+    log = InMemoryGovernanceLog()
+    await log.append(genesis(CORPUS, admin, m(10)))
+    with pytest.raises(ValueError, match="monotonically non-decreasing"):
+        await log.append(extract(admin, m(5)))
+
+
 async def test_in_memory_log_without_server_clock_windows_by_signed_at() -> None:
     """Documented offline / test behaviour: no server clock, signed_at decides."""
     admin, reviewer = new_identity(), new_identity()
