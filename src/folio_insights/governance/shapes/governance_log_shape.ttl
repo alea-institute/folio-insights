@@ -58,7 +58,8 @@ fi:GovernanceLogShape a sh:NodeShape ;
     # event is back-dating — refused. (Mirrors Phase 5's content_edit_shape
     # forward-only polarity.)
     #
-    # The compared value is fi:effectiveAt, the time each event took effect
+    # The compared value is fi:asof (the declared vocab predicate for
+    # governance event timestamps), the time each event took effect
     # (R17 / KTD12): the server-assigned commit time wherever a server clock
     # exists (persistent storage, whose commit times are non-decreasing by
     # construction), else the signer-claimed signed_at (the in-memory /
@@ -74,9 +75,9 @@ fi:GovernanceLogShape a sh:NodeShape ;
             SELECT $this ?e1 ?e2 WHERE {
                 $this fi:hasEvent ?e1, ?e2 .
                 ?e1 fi:position ?p1 .
-                ?e1 fi:effectiveAt ?t1 .
+                ?e1 fi:asof ?t1 .
                 ?e2 fi:position ?p2 .
-                ?e2 fi:effectiveAt ?t2 .
+                ?e2 fi:asof ?t2 .
                 FILTER(?p1 < ?p2 && ?t2 < ?t1)
             }
         """ ;

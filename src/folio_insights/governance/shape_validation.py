@@ -145,7 +145,7 @@ def _build_log_graph(
     two structural predicates the SHACL constraints query against. The DID
     is included for downstream PROV-O round-trips.
 
-    Each event also carries ``fi:effectiveAt``, the time it took effect and
+    Each event also carries ``fi:asof``, the time it took effect and
     the value the monotonicity constraint orders by (R17 / KTD12):
     ``event_time(event)`` for history and ``pending_time`` for the pending
     event when supplied (the persistent log's server commit times), else the
@@ -175,7 +175,7 @@ def _build_log_graph(
             g.add(
                 (
                     URIRef(f"urn:fi:event:{i}"),
-                    FI.effectiveAt,
+                    FI.asof,
                     Literal(as_utc(at).isoformat(), datatype=XSD.dateTime),
                 )
             )
