@@ -25,7 +25,7 @@ from click.testing import CliRunner
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from folio_insights.config import get_settings
-from folio_insights.frameworks.registry import SIGNING_SKEW
+from folio_insights.governance.clock import SIGNING_SKEW
 from folio_insights.proposals import ProposalStore
 from folio_insights.proposals.decisions import decision_row_problem
 from folio_insights.proposals.registry import KIND_DECISION

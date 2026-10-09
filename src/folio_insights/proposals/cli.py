@@ -6,7 +6,7 @@ object of a review API request, or give it to ``scripts/apply_approvals.py apply
 
 The input body is ``{kind, corpus, target, verdict, rationale?, detail?}``; the signer
 adds ``decided_by`` (the key's did:key), a fresh ``nonce`` and ``issued_at``. A server
-accepts the result for ``frameworks.registry.SIGNING_SKEW`` after signing, once.
+accepts the result for ``governance.clock.SIGNING_SKEW`` (the governance signing skew) after signing, once.
 
 The key file is read with ``identity.keys.load_signing_key`` (a JWK, refused when
 group- or world-accessible). The key never leaves this process and is never printed.

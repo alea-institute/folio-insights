@@ -36,7 +36,7 @@ Wire format (``SignedDecision``)::
   authorship of exactly this decision. Only ``did:key`` signers are accepted: they
   verify offline, and a server never fetches a DID document named by request input.
 * **Freshness and replay.** ``issued_at`` must sit within
-  ``frameworks.registry.SIGNING_SKEW`` of server time when the decision is recorded,
+  ``governance.clock.SIGNING_SKEW`` (the governance signing skew) of server time when the decision is recorded,
   and the ``nonce`` is single-use per signer: each store records the nonces it has
   consumed and refuses a second use (``DecisionReplayed``).
 * **Binding to the request.** The verifier compares the signed body with the decision
@@ -73,7 +73,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import jcs
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
-from folio_insights.frameworks.registry import SIGNING_SKEW
+from folio_insights.governance.clock import SIGNING_SKEW, GovernanceClockSkew
 
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -153,8 +153,9 @@ class DecisionSignatureInvalid(DecisionSignatureRefused):
     code = "invalid"
 
 
-class DecisionSignatureStale(DecisionSignatureRefused):
-    """``issued_at`` is not within ``SIGNING_SKEW`` of server time."""
+class DecisionSignatureStale(DecisionSignatureRefused, GovernanceClockSkew):
+    """``issued_at`` is not within ``SIGNING_SKEW`` of server time (the governance
+    clock-skew refusal, applied to a decision signature)."""
 
     code = "stale"
 

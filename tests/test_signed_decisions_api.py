@@ -30,7 +30,7 @@ from api import auth
 from api import main as api_main
 from api.main import app
 from folio_insights.config import get_settings
-from folio_insights.frameworks.registry import SIGNING_SKEW
+from folio_insights.governance.clock import SIGNING_SKEW
 from folio_insights.persistence.review_db import SCHEMA_SQL
 from folio_insights.proposals import ProposalStore
 from folio_insights.proposals.signed_decisions import (
