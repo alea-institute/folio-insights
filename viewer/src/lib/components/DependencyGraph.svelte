@@ -8,14 +8,19 @@
 
 	Every node is a link to its own graph view (click or Enter), shows its Tractarian path
 	prominently and its truncated IRI; kernel maxims are set as inscriptions with their citation.
-	Arrow keys move focus between nodes (up/down within a column, left/right across columns).
-	A graph wider than the canvas is scaled to fit down to 62%, and scrolls beyond that.
+	Keyboard: the graph is ONE Tab stop (a roving tabindex: the root, or the node focused last);
+	arrow keys move focus between nodes (up/down within a column, left/right across columns),
+	Home/End jump to the first/last node, Enter opens the focused node, Tab leaves the graph.
+	A pair of shards joined by several fields is one path styled by the highest-priority field
+	(`elaborates`, the Tractarian parent, first); its title lists every field.
+	A graph wider than the canvas is scaled to fit down to 62%, and scrolls beyond that; a very
+	deep web is folded into a bounded number of columns by the layout.
 	`highlighted` lights one derivation chain (the page's side panel drives it).
 -->
 <script lang="ts">
 	import type { ShardGraph, ShardGraphNode } from '$lib/api/client';
-	import { layoutGraph, neighbourOf, type GraphLayout } from '$lib/graph/layout';
-	import { edgeStyle, graphHref, shortIri } from '$lib/graph/format';
+	import { keyTarget, layoutGraph, type GraphLayout } from '$lib/graph/layout';
+	import { edgeFieldsByPair, edgeStyle, graphHref, shortIri } from '$lib/graph/format';
 
 	let {
 		graph,
@@ -40,7 +45,11 @@
 		})
 	);
 	let byIri = $derived(new Map(graph.nodes.map((n) => [n.iri, n])));
-	let fieldOf = $derived(new Map(graph.edges.map((e) => [`${e.from}>${e.to}`, e.field])));
+	/** Every field per `from>to` pair, highest priority first. */
+	let fieldsOf = $derived(edgeFieldsByPair(graph.edges));
+	/** The node holding the graph's single Tab stop: the last one focused, else the root. */
+	let focusedId: string | null = $state(null);
+	let tabStop = $derived(focusedId !== null && byIri.has(focusedId) ? focusedId : graph.root);
 	let lit = $derived(new Set(highlighted));
 	let litEdges = $derived(
 		new Set(highlighted.slice(1).map((iri, i) => `${highlighted[i]}>${iri}`))
@@ -73,35 +82,46 @@
 		return (node.epistemic_status ?? '').replaceAll('_', ' ');
 	}
 
-	const KEYS: Record<string, 'up' | 'down' | 'left' | 'right'> = {
-		ArrowUp: 'up',
-		ArrowDown: 'down',
-		ArrowLeft: 'left',
-		ArrowRight: 'right',
-	};
+	function nodeIdOf(event: Event): string | null {
+		const target = (event.target as Element | null)?.closest?.('[data-node]');
+		return target?.getAttribute('data-node') ?? null;
+	}
+
+	function onFocusin(event: FocusEvent) {
+		const id = nodeIdOf(event);
+		if (id !== null) focusedId = id;
+	}
 
 	function onKeydown(event: KeyboardEvent) {
-		const direction = KEYS[event.key];
-		const target = (event.target as Element | null)?.closest?.('[data-node]');
-		if (!direction || !target || !container) return;
+		const id = nodeIdOf(event);
+		if (id === null || !container) return;
+		const next = keyTarget(layout, id, event.key);
+		if (next === null) return; // Enter follows the link; Tab leaves the graph
 		event.preventDefault();
-		const next = neighbourOf(layout, target.getAttribute('data-node') ?? '', direction);
+		focusedId = next;
 		const el = container.querySelector<SVGElement>(`[data-node="${CSS.escape(next)}"]`);
 		el?.focus();
 		el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
 	}
 </script>
 
-<!-- Arrow-key roving focus across the node links inside; each node is itself a link. -->
+<!-- Roving tabindex: one node holds tabindex 0, arrows/Home/End move it; each node is a link. -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="canvas"
 	bind:this={container}
 	bind:clientWidth={canvasWidth}
 	role="group"
-	aria-label="Dependency graph: {graph.nodes.length} shards, {graph.edges.length} dependencies. Use arrow keys to move between shards and Enter to open one."
+	aria-label="Dependency graph: {graph.nodes.length} shards, {graph.edges.length} dependencies. Arrow keys move between shards, Home and End jump to the first and last, Enter opens one, Tab leaves the graph."
 	onkeydown={onKeydown}
+	onfocusin={onFocusin}
 >
+	{#if layout.compressed}
+		<p class="folded">
+			A deep web: {layout.layers.length} columns hold more dependency levels, each column read top
+			to bottom.
+		</p>
+	{/if}
 	<svg
 		width={layout.width * scale}
 		height={layout.height * scale}
@@ -128,8 +148,8 @@
 
 		<g class="edges" aria-hidden="true">
 			{#each layout.edges as edge (edge.from + '>' + edge.to)}
-				{@const field = fieldOf.get(`${edge.from}>${edge.to}`) ?? ''}
-				{@const style = edgeStyle(field)}
+				{@const fields = fieldsOf.get(`${edge.from}>${edge.to}`) ?? ['']}
+				{@const style = edgeStyle(fields[0])}
 				<path
 					d={edge.path}
 					class="edge edge-{style.kind}"
@@ -137,7 +157,10 @@
 					class:lit={litEdges.has(`${edge.from}>${edge.to}`)}
 					marker-start="url(#arrow-{style.kind})"
 				>
-					<title>{shortIri(edge.from)} {style.term} {shortIri(edge.to)}</title>
+					<title
+						>{shortIri(edge.from)} {fields.map((f) => edgeStyle(f).term).join(' + ')}
+						{shortIri(edge.to)}</title
+					>
 				</path>
 			{/each}
 		</g>
@@ -196,6 +219,7 @@
 						class:unstored={!node.stored}
 						class:lit={lit.has(node.iri)}
 						data-node={node.iri}
+						tabindex={box.id === tabStop ? 0 : -1}
 						style="--layer: {box.layer}"
 						aria-label={describe(node)}
 						aria-current={node.direction === 'root' ? 'page' : undefined}
@@ -208,7 +232,7 @@
 						class:lit={lit.has(node.iri)}
 						data-node={node.iri}
 						style="--layer: {box.layer}"
-						tabindex="0"
+						tabindex={box.id === tabStop ? 0 : -1}
 						role="link"
 						aria-disabled="true"
 						aria-label="{describe(node)} (no graph: not stored in this corpus)"
@@ -241,6 +265,13 @@
 	svg {
 		display: block;
 		overflow: visible;
+	}
+
+	.folded {
+		font-size: 11.5px;
+		letter-spacing: 0.04em;
+		color: var(--text-dim);
+		margin: 0 0 var(--sm);
 	}
 
 	/* ── edges ─────────────────────────────────────────────── */

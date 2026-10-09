@@ -13,11 +13,12 @@
 	import DependencyGraph from '$lib/components/DependencyGraph.svelte';
 	import {
 		EDGE_STYLES,
-		MAX_GRAPH_DEPTH,
+		depthOptions,
 		edgeStyle,
 		graphHref,
 		shardParam,
 		shortIri,
+		truncationNote,
 		type EdgeField,
 	} from '$lib/graph/format';
 
@@ -42,6 +43,8 @@
 	);
 
 	const LEGEND: EdgeField[] = ['elaborates', 'depends_on_axioms', 'depends_on_shards'];
+	const DEPTHS = depthOptions();
+	let note = $derived(graph ? truncationNote(graph) : null);
 
 	function changeDepth(event: Event) {
 		const depth = Number((event.currentTarget as HTMLSelectElement).value);
@@ -63,12 +66,6 @@
 
 <svelte:head>
 	<title>Graph {root?.tractarian_path ?? shortIri(data.iri)} — FOLIO Insights</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		rel="stylesheet"
-		href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
-	/>
 </svelte:head>
 
 <div class="graph-page">
@@ -100,8 +97,8 @@
 				<label class="depth">
 					<span>Depth</span>
 					<select value={data.depth} onchange={changeDepth} aria-label="Hops shown each way">
-						{#each Array.from({ length: MAX_GRAPH_DEPTH }, (_, i) => i + 1) as d (d)}
-							<option value={d}>{d} hop{d === 1 ? '' : 's'}</option>
+						{#each DEPTHS as option (option.value)}
+							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>
 				</label>
@@ -129,13 +126,8 @@
 	{:else if graph}
 		<div class="body">
 			<section class="stage" aria-label="Graph">
-				{#if graph.truncated}
-					<p class="banner" role="status">
-						Showing {graph.nodes.length} shards within {graph.depth} hop{graph.depth === 1
-							? ''
-							: 's'}{graph.nodes.length >= graph.node_cap ? ` (cap ${graph.node_cap})` : ''}; more
-						lie beyond. Raise the depth to see them.
-					</p>
+				{#if note}
+					<p class="banner" role="status">{note}</p>
 				{/if}
 				<div class="axis" aria-hidden="true">
 					<span>← derives from · toward the kernel</span>
@@ -195,6 +187,15 @@
 					</ol>
 				{/if}
 
+				{#if derivation?.truncated}
+					<p class="muted small" role="status">
+						{derivation.truncated_reasons?.includes('node_cap')
+							? `The walk stopped after ${derivation.node_cap} shards, nearest first;`
+							: `The walk stopped at ${derivation.max_depth} hops;`} chains through farther shards
+						are not listed.
+					</p>
+				{/if}
+
 				<h2>Reading the graph</h2>
 				<ul class="legend">
 					{#each LEGEND as field (field)}
@@ -223,9 +224,15 @@
 
 <style>
 	.graph-page {
-		--font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-		--font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-		--font-ui: 'IBM Plex Sans', 'Segoe UI', 'Helvetica Neue', sans-serif;
+		/* Local font stacks only (no third-party font request): an old-style book serif for
+		   paths and kernel Latin, a humanist sans for the interface, the platform monospace. */
+		--font-display:
+			'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', 'URW Palladio L',
+			'P052', Georgia, serif;
+		--font-mono:
+			ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'DejaVu Sans Mono', Menlo, Consolas,
+			monospace;
+		--font-ui: Optima, Candara, 'Noto Sans', 'Segoe UI', 'Helvetica Neue', sans-serif;
 		--gilt: #e3c27a;
 		--gilt-dim: rgba(227, 194, 122, 0.38);
 		--kernel-bg: #1e1a12;
@@ -281,7 +288,6 @@
 		font-family: var(--font-display);
 		font-size: 44px;
 		font-weight: 600;
-		font-variation-settings: 'opsz' 144;
 		color: var(--accent);
 		letter-spacing: -0.01em;
 		font-variant-numeric: lining-nums tabular-nums;

@@ -4,10 +4,21 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_LAYOUT, layoutGraph, neighbourOf, overlaps, type GraphLayout } from './layout';
+import {
+	DEFAULT_LAYOUT,
+	keyTarget,
+	layoutGraph,
+	neighbourOf,
+	overlaps,
+	type GraphLayout,
+} from './layout';
 import {
 	DEFAULT_GRAPH_DEPTH,
+	MAX_GRAPH_DEPTH,
+	depthOptions,
+	edgeFieldsByPair,
 	edgeStyle,
+	truncationNote,
 	graphHref,
 	parseDepth,
 	shardIriFromParam,
@@ -24,11 +35,13 @@ function layerOf(layout: GraphLayout): Record<string, number> {
 }
 
 function assertNoOverlaps(layout: GraphLayout) {
+	const hits: string[] = [];
 	for (let i = 0; i < layout.nodes.length; i++) {
 		for (let j = i + 1; j < layout.nodes.length; j++) {
-			expect(overlaps(layout.nodes[i], layout.nodes[j]), `${i} vs ${j}`).toBe(false);
+			if (overlaps(layout.nodes[i], layout.nodes[j])) hits.push(`${i} vs ${j}`);
 		}
 	}
+	expect(hits).toEqual([]);
 }
 
 /** A deterministic pseudo-random DAG: node i may depend on any j < i. */
@@ -301,5 +314,166 @@ describe('format helpers', () => {
 		expect(edgeStyle('depends_on_precedents').kind).toBe('other');
 		expect(edgeStyle('depends_on_shards').kind).toBe('other');
 		expect(edgeStyle('future_field')).toMatchObject({ kind: 'other', legend: 'future field' });
+	});
+});
+
+describe('bounded work on dense and deep inputs (review fix)', () => {
+	/** 500 nodes, each depending on ~29 earlier ones: about 14,500 edges. */
+	function denseWeb() {
+		let state = 42;
+		const rand = () => {
+			state = (state * 1103515245 + 12345) % 2147483648;
+			return state / 2147483648;
+		};
+		const ids = Array.from({ length: 500 }, (_, i) => `d${i}`);
+		const edges: Array<{ from: string; to: string }> = [];
+		for (let i = 1; i < ids.length; i++) {
+			const want = Math.min(i, 29);
+			const picked = new Set<number>();
+			while (picked.size < want) picked.add(Math.floor(rand() * i));
+			for (const j of picked) edges.push(edge(ids[i], ids[j]));
+		}
+		return { nodes: nodes(...ids), edges };
+	}
+
+	it('lays out 500 nodes and ~14.5k edges within a time budget', () => {
+		const g = denseWeb();
+		expect(g.edges.length).toBeGreaterThan(14000);
+		const t0 = performance.now();
+		const layout = layoutGraph(g.nodes, g.edges);
+		const elapsed = performance.now() - t0;
+		expect(elapsed).toBeLessThan(500);
+		expect(layout.nodes).toHaveLength(500);
+		expect(layout.edges).toHaveLength(g.edges.length);
+		expect(layout.layers.length).toBeLessThanOrEqual(DEFAULT_LAYOUT.maxLayers);
+		expect(layout.compressed).toBe(true);
+		assertNoOverlaps(layout);
+	});
+
+	it('compresses a 500-long chain into a bounded number of columns', () => {
+		const ids = Array.from({ length: 500 }, (_, i) => `c${i}`);
+		const chain = ids.slice(1).map((id, i) => edge(id, ids[i]));
+		const t0 = performance.now();
+		const layout = layoutGraph(nodes(...ids), chain);
+		expect(performance.now() - t0).toBeLessThan(500);
+		const pitch = DEFAULT_LAYOUT.nodeWidth + DEFAULT_LAYOUT.layerGap;
+		expect(layout.layers.length).toBe(DEFAULT_LAYOUT.maxLayers);
+		expect(layout.width).toBeLessThanOrEqual(2 * DEFAULT_LAYOUT.padding + DEFAULT_LAYOUT.maxLayers * pitch);
+		expect(layout.compressed).toBe(true);
+		// Folding keeps the reading direction: no edge runs leftward, and a chain reads top to
+		// bottom inside each column.
+		const at = new Map(layout.nodes.map((n) => [n.id, n]));
+		for (const e of chain) {
+			const dep = at.get(e.to)!;
+			const dependent = at.get(e.from)!;
+			expect(dep.layer).toBeLessThanOrEqual(dependent.layer);
+			if (dep.layer === dependent.layer) expect(dep.order).toBeLessThan(dependent.order);
+		}
+		assertNoOverlaps(layout);
+	});
+
+	it('leaves an ordinary chain uncompressed', () => {
+		const ids = Array.from({ length: 17 }, (_, i) => `o${i}`);
+		const layout = layoutGraph(nodes(...ids), ids.slice(1).map((id, i) => edge(id, ids[i])));
+		expect(layout.layers).toHaveLength(17);
+		expect(layout.compressed).toBe(false);
+	});
+
+	it('caps the virtual lanes and routes the rest as plain curves', () => {
+		const g = denseWeb();
+		const layout = layoutGraph(g.nodes, g.edges, { maxVirtual: 50 });
+		const lanes = layout.edges.reduce((sum, e) => sum + (e.path.match(/ L /g)?.length ?? 0), 0);
+		expect(lanes).toBeLessThanOrEqual(50);
+		for (const e of layout.edges) {
+			expect(e.path.startsWith(`M ${e.start.x} ${e.start.y}`)).toBe(true);
+			expect(e.path.endsWith(`${e.end.x} ${e.end.y}`)).toBe(true);
+		}
+	});
+
+	it('counts crossings exactly (inversion count) on small inputs', () => {
+		// k1, k2 left; a -> k2 and b -> k1 with input order [a, b] cross once unless reordered.
+		const crossed = layoutGraph(nodes('k1', 'k2', 'a', 'b'), [edge('a', 'k2'), edge('b', 'k1')], {
+			sweeps: 0,
+		});
+		expect(crossed.crossings).toBe(1);
+		const shared = layoutGraph(nodes('k', 'a', 'b'), [edge('a', 'k'), edge('b', 'k')], { sweeps: 0 });
+		expect(shared.crossings).toBe(0);
+	});
+});
+
+describe('keyboard targets (roving tabindex)', () => {
+	const layout = layoutGraph(nodes('k', 'a', 'b', 'd'), [
+		edge('a', 'k'),
+		edge('b', 'k'),
+		edge('d', 'b'),
+	]);
+
+	it('maps arrows to neighbours and Home/End to the first and last node', () => {
+		expect(keyTarget(layout, 'a', 'ArrowDown')).toBe('b');
+		expect(keyTarget(layout, 'k', 'ArrowRight')).toBe('a');
+		expect(keyTarget(layout, 'b', 'Home')).toBe('k');
+		expect(keyTarget(layout, 'a', 'End')).toBe('d');
+	});
+
+	it('ignores other keys', () => {
+		expect(keyTarget(layout, 'a', 'Enter')).toBeNull();
+		expect(keyTarget(layout, 'a', 'Tab')).toBeNull();
+	});
+});
+
+describe('edge fields per pair (review fix)', () => {
+	it('lists every field of a pair with the Tractarian parent first, whatever the input order', () => {
+		const fields = edgeFieldsByPair([
+			{ from: 's', to: 'h', field: 'depends_on_shards' },
+			{ from: 's', to: 'h', field: 'elaborates' },
+			{ from: 'h', to: 'k', field: 'depends_on_axioms' },
+		]);
+		expect(fields.get('s>h')).toEqual(['elaborates', 'depends_on_shards']);
+		expect(fields.get('h>k')).toEqual(['depends_on_axioms']);
+	});
+
+	it('draws a pair in its highest-priority style', () => {
+		const fields = edgeFieldsByPair([
+			{ from: 's', to: 'h', field: 'depends_on_shards' },
+			{ from: 's', to: 'h', field: 'elaborates' },
+		]);
+		expect(edgeStyle(fields.get('s>h')![0]).kind).toBe('elaborates');
+	});
+});
+
+describe('depth options (review fix)', () => {
+	it('offers 0..8 hops, matching the API, with 0 meaning this shard only', () => {
+		const options = depthOptions();
+		expect(options.map((o) => o.value)).toEqual(
+			Array.from({ length: MAX_GRAPH_DEPTH + 1 }, (_, i) => i)
+		);
+		expect(options[0].label).toBe('0 hops (this shard only)');
+		expect(options[1].label).toBe('1 hop');
+		expect(options[3].label).toBe('3 hops');
+		// Every value parseDepth can produce has an option.
+		for (const raw of ['0', '1', '8', '99', null]) {
+			expect(options.some((o) => o.value === parseDepth(raw))).toBe(true);
+		}
+	});
+});
+
+describe('truncation note (review fix)', () => {
+	const base = { nodes: new Array(12), edges: new Array(30), depth: 3, node_cap: 500, edge_cap: 2000 };
+
+	it('says nothing for a complete graph', () => {
+		expect(truncationNote({ ...base, truncated: false, truncated_reasons: [] })).toBeNull();
+	});
+
+	it('names each bound that cut the graph', () => {
+		expect(truncationNote({ ...base, truncated: true, truncated_reasons: ['depth'] })).toBe(
+			'Showing 12 shards and 30 dependencies. More lie beyond 3 hops; raise the depth to see them.'
+		);
+		const both = truncationNote({ ...base, truncated: true, truncated_reasons: ['node_cap', 'edge_cap'] })!;
+		expect(both).toContain('The 500-shard cap left the farthest out.');
+		expect(both).toContain('only 2000 dependencies are drawn');
+	});
+
+	it('falls back to the depth wording for an API without reasons', () => {
+		expect(truncationNote({ ...base, truncated: true })).toContain('More lie beyond 3 hops');
 	});
 });

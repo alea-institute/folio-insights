@@ -684,10 +684,15 @@ export interface ShardGraph {
 	root: string;
 	depth: number;
 	node_cap: number;
+	/** Most edges one response carries (the API keeps every node's reaching edge first). */
+	edge_cap: number;
 	nodes: ShardGraphNode[];
+	/** Node then field order, so a pair joined by two fields lists `elaborates` first. */
 	edges: ShardGraphEdge[];
-	/** True when the depth bound or the node cap left nodes out. */
+	/** True when a bound (depth, node cap, edge cap) left something out. */
 	truncated: boolean;
+	/** Which bounds cut the graph, in the order `depth`, `node_cap`, `edge_cap`. */
+	truncated_reasons: Array<'depth' | 'node_cap' | 'edge_cap'>;
 }
 
 export interface KernelChain {
@@ -718,6 +723,10 @@ export interface ShardDerivation {
 	}>;
 	missing: string[];
 	truncated: boolean;
+	/** Most shards the derivation walk visits (nearest first). */
+	node_cap: number;
+	/** Which bounds cut the walk: `depth` (max_depth), `node_cap`. */
+	truncated_reasons: Array<'depth' | 'node_cap'>;
 }
 
 /** A refused graph read: the HTTP status (0 for a network failure) and the API's detail. */

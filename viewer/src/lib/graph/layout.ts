@@ -14,14 +14,23 @@
  * 2. **Longest-path layering.** `layer(n) = 0` for a node with no (forward) dependency in the
  *    graph, else `1 + max(layer(dependency))`, computed in topological order (Kahn). Every forward
  *    edge therefore runs from a lower layer to a strictly higher one.
- * 3. **Virtual lanes.** A forward edge spanning several layers gets one virtual node per
- *    intermediate layer (a thin lane, not a box), so every segment spans one layer, the ordering
- *    sees long edges, and they route through their lanes instead of under real nodes.
+ *    **Column compression.** A dense web can make the longest path as long as the node count
+ *    (500 columns, ~170k px). Past `maxLayers` columns, layer `l` of `L` folds into column
+ *    `floor(l * maxLayers / L)`: monotone, so no forward edge ever runs leftward; an edge whose
+ *    ends fold into one column is drawn as a side arc, and each column keeps its nodes in layer
+ *    order (a folded chain reads top to bottom, then continues in the next column).
+ * 3. **Virtual lanes.** A forward edge spanning several columns gets one virtual node per
+ *    intermediate column (a thin lane, not a box), so every segment spans one column, the
+ *    ordering sees long edges, and they route through their lanes instead of under real nodes.
+ *    At most `maxVirtual` lanes are made (edges in input order); an edge past the budget is
+ *    drawn as one plain curve and left out of the ordering.
  * 4. **Barycentre ordering.** Each layer starts in input order (the API's breadth-first order),
  *    then alternating left-to-right and right-to-left sweeps reorder each layer by the mean
  *    position of its neighbours in the adjacent layer. Ties and neighbourless nodes keep their
  *    current place (a stable sort), so the result is deterministic. The best ordering seen (fewest
- *    crossings between adjacent layers) wins.
+ *    crossings between adjacent layers, counted as inversions in O(E log V)) wins. Above
+ *    `orderingLimit` segments the sweeps are skipped and the input order stands, so the work
+ *    stays bounded on any input.
  * 5. **Coordinates.** Layer `l` is column `l`, `nodeWidth + layerGap` apart. Each column stacks
  *    its items top to bottom (boxes `nodeHeight` tall, lanes thinner) with `nodeGap` between
  *    them and is centred vertically against the tallest column, so no two boxes (or a box and a
@@ -49,6 +58,12 @@ export interface LayoutOptions {
 	padding: number;
 	/** Barycentre sweep pairs (left-to-right then right-to-left). */
 	sweeps: number;
+	/** Most columns before the layering is compressed (see the module comment). */
+	maxLayers: number;
+	/** Most virtual lane nodes; long edges past the budget are drawn as plain curves. */
+	maxVirtual: number;
+	/** Most one-column segments (real and lane) the barycentre sweeps run on. */
+	orderingLimit: number;
 }
 
 export const DEFAULT_LAYOUT: LayoutOptions = {
@@ -58,6 +73,9 @@ export const DEFAULT_LAYOUT: LayoutOptions = {
 	nodeGap: 28,
 	padding: 32,
 	sweeps: 6,
+	maxLayers: 24,
+	maxVirtual: 600,
+	orderingLimit: 6000,
 };
 
 export interface PositionedNode {
@@ -93,6 +111,8 @@ export interface GraphLayout {
 	height: number;
 	/** Crossings between adjacent layers in the final ordering. */
 	crossings: number;
+	/** True when the longest path exceeded `maxLayers` and the columns were folded. */
+	compressed: boolean;
 }
 
 interface Arc {
@@ -135,17 +155,36 @@ function backEdges(n: number, out: number[][], edgeIndex: Map<string, number[]>)
 	return back;
 }
 
-/** Number of crossings between two adjacent layers' arcs, given each node's row. */
+/**
+ * Number of crossings between two adjacent layers' arcs, given each node's row: the inversions of
+ * the right-hand rows once the arcs are sorted by (left row, right row). Arcs sharing an endpoint
+ * never count. O(E log E) (merge-sort inversion count).
+ */
 function crossingsBetween(arcs: Arc[], row: number[]): number {
+	if (arcs.length < 2) return 0;
+	const sorted = [...arcs].sort((a, b) => row[a.u] - row[b.u] || row[a.v] - row[b.v]);
+	let values = sorted.map((a) => row[a.v]);
+	let buffer = new Array<number>(values.length);
 	let count = 0;
-	for (let i = 0; i < arcs.length; i++) {
-		for (let j = i + 1; j < arcs.length; j++) {
-			const a = arcs[i];
-			const b = arcs[j];
-			const du = row[a.u] - row[b.u];
-			const dv = row[a.v] - row[b.v];
-			if ((du < 0 && dv > 0) || (du > 0 && dv < 0)) count++;
+	for (let width = 1; width < values.length; width *= 2) {
+		for (let lo = 0; lo < values.length; lo += 2 * width) {
+			const mid = Math.min(lo + width, values.length);
+			const hi = Math.min(lo + 2 * width, values.length);
+			let i = lo;
+			let j = mid;
+			let k = lo;
+			while (i < mid && j < hi) {
+				if (values[j] < values[i]) {
+					count += mid - i; // strictly smaller: every remaining left value crosses it
+					buffer[k++] = values[j++];
+				} else {
+					buffer[k++] = values[i++];
+				}
+			}
+			while (i < mid) buffer[k++] = values[i++];
+			while (j < hi) buffer[k++] = values[j++];
 		}
+		[values, buffer] = [buffer, values];
 	}
 	return count;
 }
@@ -236,16 +275,24 @@ export function layoutGraph(
 		}
 	}
 
-	const layerCount = n === 0 ? 0 : Math.max(...layerOf) + 1;
+	const longest = layerOf.reduce((m, l) => Math.max(m, l), -1) + 1;
+	const maxLayers = Math.max(1, Math.floor(opt.maxLayers));
+	const compressed = longest > maxLayers;
+	const column = compressed
+		? layerOf.map((l) => Math.floor((l * maxLayers) / longest))
+		: layerOf;
+	const layerCount = n === 0 ? 0 : compressed ? maxLayers : longest;
 
-	// Long forward arcs get one virtual node per intermediate layer, so every segment spans one
-	// layer: ordering then accounts for them and their edges route around real nodes, not under.
+	// Long forward arcs get one virtual node per intermediate column (within the lane budget), so
+	// every segment spans one column: ordering then accounts for them and their edges route
+	// around real nodes, not under. Arcs folded into one column join no column pair.
 	const isVirtual: boolean[] = new Array<boolean>(n).fill(false);
-	const nodeLayer: number[] = [...layerOf];
+	const nodeLayer: number[] = [...column];
 	const left: number[][] = Array.from({ length: n }, () => []);
 	const right: number[][] = Array.from({ length: n }, () => []);
 	const arcsBetween: Arc[][] = Array.from({ length: Math.max(0, layerCount - 1) }, () => []);
 	const chainOf: number[][] = arcs.map(() => []); // virtual nodes of each arc, left to right
+	let laneBudget = Math.max(0, Math.floor(opt.maxVirtual));
 	const link = (u: number, v: number) => {
 		left[v].push(u);
 		right[u].push(v);
@@ -253,8 +300,11 @@ export function layoutGraph(
 	};
 	arcs.forEach((arc, i) => {
 		if (back.has(i)) return;
+		const span = column[arc.v] - column[arc.u];
+		if (span <= 0) return; // folded into one column: a side arc
+		if (span > 1 && span - 1 > laneBudget) return; // past the lane budget: a plain curve
 		let prev = arc.u;
-		for (let l = layerOf[arc.u] + 1; l < layerOf[arc.v]; l++) {
+		for (let l = column[arc.u] + 1; l < column[arc.v]; l++) {
 			const dummy = isVirtual.length;
 			isVirtual.push(true);
 			nodeLayer.push(l);
@@ -263,20 +313,34 @@ export function layoutGraph(
 			chainOf[i].push(dummy);
 			link(prev, dummy);
 			prev = dummy;
+			laneBudget--;
 		}
 		link(prev, arc.v);
 	});
 	const total = isVirtual.length;
 
 	let layers: number[][] = Array.from({ length: layerCount }, () => []);
-	for (let i = 0; i < total; i++) layers[nodeLayer[i]].push(i);
+	if (compressed) {
+		// Inside a folded column, nodes start in layer order (input order within a layer).
+		const byLayer = Array.from({ length: n }, (_, i) => i).sort(
+			(a, b) => layerOf[a] - layerOf[b] || a - b
+		);
+		for (const i of byLayer) layers[nodeLayer[i]].push(i);
+		for (let i = n; i < total; i++) layers[nodeLayer[i]].push(i);
+	} else {
+		for (let i = 0; i < total; i++) layers[nodeLayer[i]].push(i);
+	}
 
 	let best = layers.map((l) => [...l]);
 	let bestCrossings = totalCrossings(best, arcsBetween);
 	const row = new Array<number>(total).fill(0);
 	const setRows = () => layers.forEach((l) => l.forEach((node, i) => (row[node] = i)));
 	setRows();
-	for (let sweep = 0; sweep < opt.sweeps && bestCrossings > 0; sweep++) {
+	const segments = arcsBetween.reduce((sum, a) => sum + a.length, 0);
+	// Folding needs the layer order inside each column (it keeps a folded chain top to bottom),
+	// so the barycentre sweeps run only on an uncompressed layering.
+	const sweeps = compressed || segments + total > opt.orderingLimit ? 0 : opt.sweeps;
+	for (let sweep = 0; sweep < sweeps && bestCrossings > 0; sweep++) {
 		for (let l = 1; l < layerCount; l++) {
 			layers[l] = reorder(layers[l], row, left);
 			layers[l].forEach((node, i) => (row[node] = i));
@@ -296,12 +360,19 @@ export function layoutGraph(
 
 	// Coordinates: each column stacks its items (real boxes, thin virtual lanes) top to bottom
 	// and is centred against the tallest column.
-	const laneHeight = Math.min(opt.nodeHeight, Math.max(8, opt.nodeGap));
+	// Consecutive lanes pack tighter than boxes: a bundle of long edges stays a bundle.
+	const laneHeight = Math.min(opt.nodeHeight, Math.max(8, opt.nodeGap / 2));
+	const laneGap = Math.min(opt.nodeGap, 4);
 	const itemHeight = (node: number) => (isVirtual[node] ? laneHeight : opt.nodeHeight);
-	const columnHeight = (layer: number[]) =>
-		layer.length === 0
-			? 0
-			: layer.reduce((sum, node) => sum + itemHeight(node), 0) + (layer.length - 1) * opt.nodeGap;
+	const gapAfter = (layer: number[], i: number) =>
+		isVirtual[layer[i]] && isVirtual[layer[i + 1]] ? laneGap : opt.nodeGap;
+	const columnHeight = (layer: number[]) => {
+		let h = 0;
+		for (let i = 0; i < layer.length; i++) {
+			h += itemHeight(layer[i]) + (i + 1 < layer.length ? gapAfter(layer, i) : 0);
+		}
+		return h;
+	};
 	const tallest = layers.reduce((m, l) => Math.max(m, columnHeight(l)), 0);
 	const colPitch = opt.nodeWidth + opt.layerGap;
 	const top = new Array<number>(total).fill(0);
@@ -309,7 +380,7 @@ export function layoutGraph(
 	layers.forEach((layer, l) => {
 		let y = opt.padding + (tallest - columnHeight(layer)) / 2;
 		let order = 0;
-		for (const node of layer) {
+		layer.forEach((node, i) => {
 			top[node] = y;
 			if (!isVirtual[node]) {
 				positioned[node] = {
@@ -322,8 +393,8 @@ export function layoutGraph(
 					height: opt.nodeHeight,
 				};
 			}
-			y += itemHeight(node) + opt.nodeGap;
-		}
+			y += itemHeight(node) + (i + 1 < layer.length ? gapAfter(layer, i) : 0);
+		});
 	});
 
 	const routed: RoutedEdge[] = arcs.map((arc, i) => {
@@ -339,6 +410,16 @@ export function layoutGraph(
 			path += curve(at.x, at.y, x, y) + ` L ${x + opt.nodeWidth} ${y}`;
 			at = { x: x + opt.nodeWidth, y };
 		}
+		if (!back.has(i) && dep.layer === dependent.layer) {
+			// Folded into one column: leave the dependency's right side and re-enter the
+			// dependent's right side, bulging into the gap beside the column.
+			const sideEnd = { x: dependent.x + dependent.width, y: end.y };
+			const bulge = Math.min(opt.layerGap * 0.8, 24 + Math.abs(sideEnd.y - start.y) / 6);
+			path +=
+				` C ${start.x + bulge} ${start.y}, ${sideEnd.x + bulge} ${sideEnd.y},` +
+				` ${sideEnd.x} ${sideEnd.y}`;
+			return { from: kept[i].from, to: kept[i].to, back: false, path, start, end: sideEnd };
+		}
 		path += curve(at.x, at.y, end.x, end.y);
 		return { from: kept[i].from, to: kept[i].to, back: back.has(i), path, start, end };
 	});
@@ -351,6 +432,7 @@ export function layoutGraph(
 		width: n === 0 ? 0 : 2 * opt.padding + layerCount * colPitch - opt.layerGap,
 		height: n === 0 ? 0 : 2 * opt.padding + tallest,
 		crossings: bestCrossings,
+		compressed,
 	};
 }
 
@@ -389,4 +471,30 @@ export function neighbourOf(
 		}
 	}
 	return best;
+}
+
+const ARROWS: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+	ArrowUp: 'up',
+	ArrowDown: 'down',
+	ArrowLeft: 'left',
+	ArrowRight: 'right',
+};
+
+/**
+ * The node a key moves keyboard focus to from `id` (the graph's roving tabindex): arrows go to
+ * `neighbourOf`, Home to the first node (top of the first column), End to the last (bottom of
+ * the last column). `null` for any other key, so the caller leaves it alone (Enter opens the
+ * focused node's link; Tab leaves the graph).
+ */
+export function keyTarget(layout: GraphLayout, id: string, key: string): string | null {
+	const direction = ARROWS[key];
+	if (direction) return neighbourOf(layout, id, direction);
+	const columns = layout.layers.filter((column) => column.length > 0);
+	if (columns.length === 0) return null;
+	if (key === 'Home') return columns[0][0];
+	if (key === 'End') {
+		const last = columns[columns.length - 1];
+		return last[last.length - 1];
+	}
+	return null;
 }
