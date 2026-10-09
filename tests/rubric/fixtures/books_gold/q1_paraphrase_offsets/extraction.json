@@ -1,0 +1,133 @@
+{
+  "corpus": "books-gold-q1_paraphrase_offsets",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 4,
+  "by_confidence": {
+    "high": 4,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 4
+  },
+  "units": [
+    {
+      "id": "para-01",
+      "text": "Lead the witness through every exhibit.",
+      "original_span": {
+        "start": 0,
+        "end": 12,
+        "source_file": "cross-examination.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "cross-examination.txt",
+      "source_section": [
+        "Cross-Examination"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "99102be84e2ebb60628959168cacb217ce2a4c67092510e802707384dac02d6f",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "para-02",
+      "text": "Keep every question on cross short.",
+      "original_span": {
+        "start": 110,
+        "end": 145,
+        "source_file": "cross-examination.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "cross-examination.txt",
+      "source_section": [
+        "Cross-Examination"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "33ed28ef39e48074f7c569c020dcf0151116e54b9aa90c17dcf5c48747ec2c9b",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "para-03",
+      "text": "Ask leading questions so witnesses agree.",
+      "original_span": {
+        "start": 110,
+        "end": 151,
+        "source_file": "cross-examination.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "cross-examination.txt",
+      "source_section": [
+        "Cross-Examination"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "32211e131b7dc019dbe74817c85aa1f2ad562bcaec56857ebbe15f753e6dc579",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "para-04",
+      "text": "Close the examination on your strongest admission",
+      "original_span": {
+        "start": 168,
+        "end": 217,
+        "source_file": "cross-examination.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "cross-examination.txt",
+      "source_section": [
+        "Cross-Examination"
+      ],
+      "folio_tags": [],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "36225e2d658575e30576fa24c00c4d9c5731a9e95cd61b9c10429a14bb9ae9a9",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

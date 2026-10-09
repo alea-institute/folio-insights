@@ -1,0 +1,133 @@
+{
+  "corpus": "books-gold-clean_exemplary",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 3,
+  "by_confidence": {
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 2,
+    "principle": 1
+  },
+  "units": [
+    {
+      "id": "cl-01",
+      "text": "Cross-examine the opposing expert on assumptions.",
+      "original_span": {
+        "start": 22,
+        "end": 71,
+        "source_file": "arbitration.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "arbitration.txt",
+      "source_section": [
+        "Arbitration Hearings"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RCz1SYWoNDDTDvPr0kSJBq",
+          "label": "Cross-Examination of Witness",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Event",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "b9335cfc79cd636040a352979cf2bcc5bfa2ab9371864580adf131bca3ed8290",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "cl-02",
+      "text": "Brief the legal issues for the panel.",
+      "original_span": {
+        "start": 126,
+        "end": 163,
+        "source_file": "arbitration.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "arbitration.txt",
+      "source_section": [
+        "Arbitration Hearings"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/RXO2u2WBkUUcEG1jczLIcA",
+          "label": "Arbitration Practice",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Service",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "29e42b4fc0ec6bcf99b6dbf335559446d5a3de04be9e5a35c9ed79a1bb50749f",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "cl-03",
+      "text": "Objecting to inadmissible evidence preserves error.",
+      "original_span": {
+        "start": 164,
+        "end": 215,
+        "source_file": "arbitration.txt"
+      },
+      "unit_type": "principle",
+      "source_file": "arbitration.txt",
+      "source_section": [
+        "Arbitration Hearings"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/R9Bk5v9AAJmhb4WcgIQjy29",
+          "label": "Inadmissible Evidence Objection",
+          "confidence": 0.8,
+          "extraction_path": "entity_ruler",
+          "branch": "Objectives",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "1d4702ddd45c2559a7ff528f8dc2508c05f984e6be825ea1411eeca336664599",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

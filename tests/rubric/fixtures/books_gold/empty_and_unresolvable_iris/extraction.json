@@ -1,0 +1,133 @@
+{
+  "corpus": "books-gold-empty_and_unresolvable_iris",
+  "generated_at": "2026-10-09T00:00:00+00:00",
+  "total_units": 3,
+  "by_confidence": {
+    "high": 3,
+    "medium": 0,
+    "low": 0
+  },
+  "by_type": {
+    "advice": 2,
+    "procedural_rule": 1
+  },
+  "units": [
+    {
+      "id": "em-01",
+      "text": "Attach the exhibit you want excluded.",
+      "original_span": {
+        "start": 91,
+        "end": 128,
+        "source_file": "motions.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "motions.txt",
+      "source_section": [
+        "Motions in Limine"
+      ],
+      "folio_tags": [
+        {
+          "iri": "",
+          "label": "limine timing",
+          "confidence": 0.8,
+          "extraction_path": "llm",
+          "branch": "",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "8a38ab5fcc9dca14aa97838fc9ffff41f6b540a54f1817ca82920b584efdece4",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "em-02",
+      "text": "File motions in limine early enough",
+      "original_span": {
+        "start": 19,
+        "end": 54,
+        "source_file": "motions.txt"
+      },
+      "unit_type": "advice",
+      "source_file": "motions.txt",
+      "source_section": [
+        "Motions in Limine"
+      ],
+      "folio_tags": [
+        {
+          "iri": "",
+          "label": "Motion in Limine Timing",
+          "confidence": 0.8,
+          "extraction_path": "proposed_class",
+          "branch": "",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "35eeed703fb96fd4094235b1cd7cf6110c52dd74341c558d298332a7ebedd454",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    },
+    {
+      "id": "em-03",
+      "text": "Renew the objection at trial",
+      "original_span": {
+        "start": 129,
+        "end": 157,
+        "source_file": "motions.txt"
+      },
+      "unit_type": "procedural_rule",
+      "source_file": "motions.txt",
+      "source_section": [
+        "Motions in Limine"
+      ],
+      "folio_tags": [
+        {
+          "iri": "https://folio.openlegalstandard.org/SYNTHETIC-NOT-A-REAL-CONCEPT",
+          "label": "SYNTHETIC unresolvable IRI",
+          "confidence": 0.8,
+          "extraction_path": "llm",
+          "branch": "Service",
+          "judge_status": null
+        }
+      ],
+      "surprise_score": 0.4,
+      "confidence": 0.9,
+      "content_hash": "6fa20765c884165cc49ba9edaead74d39af8e778dc2ab4167d484f3dca9c7856",
+      "lineage": [
+        {
+          "stage": "synthetic_fixture",
+          "action": "authored",
+          "detail": "books gold set",
+          "confidence": null,
+          "timestamp": "2026-10-09T00:00:00+00:00"
+        }
+      ],
+      "cross_references": []
+    }
+  ],
+  "summary": {
+    "documents_processed": 1,
+    "folio_concepts_used": 0,
+    "dedup_count": 0,
+    "folio_tagger": {}
+  }
+}

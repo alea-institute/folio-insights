@@ -910,3 +910,8 @@ cli.add_command(_graph_group)
 from folio_insights.api_cli import api_group as _api_group  # noqa: E402
 
 cli.add_command(_api_group)
+
+# Phase 10 U6: deterministic extraction-quality rubric (rubric score / rubric gold).
+from folio_insights.rubric.cli import rubric_group as _rubric_group  # noqa: E402
+
+cli.add_command(_rubric_group)
