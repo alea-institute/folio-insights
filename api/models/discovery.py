@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -89,6 +90,10 @@ class TaskReviewRequest(BaseModel):
     status: str  # "approved" | "rejected" | "edited"
     edited_label: str | None = None
     note: str | None = None
+    # Optional signed decision (drain plan U9; folio_insights.proposals.signed_decisions):
+    # kind "task_review", target the task ID, verdict the status, rationale the note,
+    # detail {"edited_label": ...}. Verified before anything is stored.
+    signature: dict[str, Any] | None = None
 
 
 class TaskCreateRequest(BaseModel):
@@ -105,6 +110,9 @@ class TaskBulkApproveRequest(BaseModel):
 
     task_ids: list[str] | None = None
     confidence_min: float | None = None
+    # Optional signed decision: kind "task_bulk_approve", target "*", verdict "approved",
+    # detail {"task_ids": [...]} or {"confidence_min": x} (whichever selects the tasks).
+    signature: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------

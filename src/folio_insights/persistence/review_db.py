@@ -25,6 +25,17 @@ already exists: in a review.db this code creates (``apply_schema(..., new_file=T
 by the explicit ``seal_legacy_proposed_class_table`` (``import-legacy --seal``). Opening an
 existing review.db never writes it, so a read-only file still opens and a tracked
 review.db is not rewritten by being read.
+
+Signed decisions (drain plan U9, R16). ``review_decisions`` and ``task_decisions`` record
+who authored each decision: ``decided_by`` (the handle a signers file maps the signer to),
+``signer_did``, ``decision_signature`` (the signed decision, JSON), ``signature_verified``
+(1 only for a verified signature, 0 for an unsigned decision) and ``operator`` (the
+authenticated API operator who submitted it). ``decision_nonces`` records every signer
+nonce a decision consumed, so a signed decision can be recorded once. The migration
+(``ensure_decision_signature_schema``) only adds nullable or defaulted columns and a table,
+so it is backwards compatible, and it runs on the WRITE paths only (and in a database this
+code creates): opening an existing review.db still writes nothing, and the read paths
+check ``decision_signature_columns`` before selecting the new columns.
 """
 
 from __future__ import annotations
@@ -251,10 +262,104 @@ END;
 
 async def apply_schema(db: Any, *, new_file: bool) -> None:
     """Create the review.db tables (``SCHEMA_SQL``, a no-op on an existing database) and,
-    in a database this call's caller just created, the legacy read-only triggers."""
+    in a database this call's caller just created, the legacy read-only triggers and the
+    signed-decision columns."""
     await db.executescript(SCHEMA_SQL)
     if new_file:
         await db.executescript(LEGACY_READ_ONLY_TRIGGERS_SQL)
+        await ensure_decision_signature_schema(db)
+        await db.commit()
+
+
+#: Tables whose rows are review decisions, and the signed-decision columns each gains.
+DECISION_TABLES = ("review_decisions", "task_decisions")
+DECISION_SIGNATURE_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("decided_by", "TEXT"),
+    ("signer_did", "TEXT"),
+    ("decision_signature", "TEXT"),
+    ("signature_verified", "INTEGER NOT NULL DEFAULT 0"),
+    ("operator", "TEXT"),
+)
+
+DECISION_NONCES_SQL = """\
+CREATE TABLE IF NOT EXISTS decision_nonces (
+    signer_did TEXT NOT NULL,
+    nonce TEXT NOT NULL,
+    body_hash TEXT NOT NULL UNIQUE,
+    corpus_name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    target TEXT NOT NULL,
+    used_at TEXT NOT NULL,
+    PRIMARY KEY (signer_did, nonce)
+);
+"""
+
+
+class DecisionNonceReused(Exception):
+    """A signer nonce (or the same signed body) was already consumed in this review.db."""
+
+
+async def _columns(db: Any, table: str) -> set[str]:
+    cursor = await db.execute(f"PRAGMA table_info({table})")
+    return {row[1] for row in await cursor.fetchall()}
+
+
+async def decision_signature_columns(db: Any, table: str) -> bool:
+    """Whether ``table`` already has every signed-decision column (read paths use this
+    instead of migrating, so reading never writes)."""
+    if table not in DECISION_TABLES:
+        raise ValueError(f"{table!r} is not a decision table")
+    have = await _columns(db, table)
+    return all(name in have for name, _ in DECISION_SIGNATURE_COLUMNS)
+
+
+async def ensure_decision_signature_schema(db: Any) -> None:
+    """Add the signed-decision columns and the ``decision_nonces`` table where missing.
+
+    Idempotent and additive (nullable or defaulted columns only), so existing rows read as
+    unsigned (``signature_verified = 0``). Writes only what is missing, and does not
+    commit: a write path calls it inside the transaction of its decision write."""
+    for table in DECISION_TABLES:
+        have = await _columns(db, table)
+        for name, decl in DECISION_SIGNATURE_COLUMNS:
+            if name not in have:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+    cursor = await db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'decision_nonces'"
+    )
+    if await cursor.fetchone() is None:
+        # ``execute``, not ``executescript``: the latter would COMMIT the caller's open
+        # transaction first.
+        await db.execute(DECISION_NONCES_SQL)
+
+
+async def claim_decision_nonce(
+    db: Any,
+    *,
+    signer_did: str,
+    nonce: str,
+    body_hash: str,
+    corpus_name: str,
+    kind: str,
+    target: str,
+    used_at: str,
+) -> None:
+    """Consume a signer nonce inside the caller's transaction, or raise
+    ``DecisionNonceReused`` when this signer's nonce (or this exact signed body) was
+    already used. The caller rolls back on that error, so nothing is written."""
+    import sqlite3
+
+    try:
+        await db.execute(
+            "INSERT INTO decision_nonces (signer_did, nonce, body_hash, corpus_name, kind, "
+            "target, used_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (signer_did, nonce, body_hash, corpus_name, kind, target, used_at),
+        )
+    except sqlite3.IntegrityError:
+        raise DecisionNonceReused(
+            "this signed decision's nonce was already used; a signed decision can be "
+            "recorded once"
+        ) from None
 
 
 def seal_legacy_proposed_class_table(db_path: Path) -> bool:
@@ -321,10 +426,17 @@ def read_legacy_proposed_class_rows(db_path: Path) -> list[dict[str, Any]]:
 
 
 __all__ = [
+    "DECISION_NONCES_SQL",
+    "DECISION_SIGNATURE_COLUMNS",
+    "DECISION_TABLES",
+    "DecisionNonceReused",
     "LEGACY_PROPOSED_CLASS_COLUMNS",
     "LEGACY_READ_ONLY_TRIGGERS_SQL",
     "SCHEMA_SQL",
     "apply_schema",
+    "claim_decision_nonce",
+    "decision_signature_columns",
+    "ensure_decision_signature_schema",
     "persist_discovery",
     "read_legacy_proposed_class_rows",
     "seal_legacy_proposed_class_table",

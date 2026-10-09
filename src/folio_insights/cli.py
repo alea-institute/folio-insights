@@ -920,3 +920,8 @@ cli.add_command(_rubric_group)
 from folio_insights.validation.cli import validate_group as _validate_group  # noqa: E402
 
 cli.add_command(_validate_group)
+
+# Drain plan U9: signed review decisions (``folio-insights proposals sign-decision``).
+from folio_insights.proposals.cli import proposals_group as _proposals_group  # noqa: E402
+
+cli.add_command(_proposals_group)

@@ -34,7 +34,11 @@ Ledger operation kinds folded here:
   imported legacy decision keeps its original time in ``provenance``). Every
   stored item is re-validated (``decisions.decision_row_problem``): an item with
   an unknown status, a non-human ``decided_by`` or a bad merge target decides
-  nothing and is listed in ``invalid_decisions``.
+  nothing and is listed in ``invalid_decisions``. A signed item (drain plan U9) is
+  re-verified here too: its stored signature must verify for its ``signer_did``,
+  describe exactly this decision in this corpus and be issued within the signing
+  skew of the row's commit time. Every signer nonce a decision item carries, valid or
+  not, is listed in ``decision_nonces`` so the store can refuse its reuse.
 """
 from __future__ import annotations
 
@@ -203,6 +207,8 @@ class ProposalRegistry:
     runs: dict[str, dict[str, Any]] = field(default_factory=dict)
     head: int = -1
     invalid_decisions: list[dict[str, Any]] = field(default_factory=list)
+    #: ``(signer DID, nonce)`` of every signed decision item -> its ledger position.
+    decision_nonces: dict[tuple[str, str], int] = field(default_factory=dict)
 
     @classmethod
     def fold(cls, corpus: str, entries: Iterable[ProposalLedgerEntry]) -> ProposalRegistry:
@@ -301,7 +307,12 @@ class ProposalRegistry:
 
     def _apply_decision(self, entry: ProposalLedgerEntry) -> None:
         for index, item in enumerate(entry.payload.get("decisions", [])):
-            problem = decision_row_problem(item, self.proposals)
+            nonce_key = _signed_nonce(item)
+            if nonce_key is not None:
+                self.decision_nonces.setdefault(nonce_key, entry.position)
+            problem = decision_row_problem(
+                item, self.proposals, corpus=self.corpus, committed_at=entry.committed_at
+            )
             if problem is not None:
                 # The ledger is append-only, so an invalid row (a raw append that bypassed
                 # ProposalStore.record_decisions) cannot be removed. Refusing the whole fold
@@ -330,6 +341,10 @@ class ProposalRegistry:
             }
             if "provenance" in item:
                 record["provenance"] = dict(item["provenance"])
+            record["signature_verified"] = item.get("signature_verified", False) is True
+            for key in ("signature", "operator"):
+                if item.get(key) is not None:
+                    record[key] = item[key]
             p.decision_history.append(dict(record))
             p.decision = record
 
@@ -354,6 +369,20 @@ class ProposalRegistry:
             "invalid_decisions": [dict(d) for d in self.invalid_decisions],
             "proposals": [p.to_dict() for p in self.all()],
         }
+
+
+def _signed_nonce(item: Any) -> tuple[str, str] | None:
+    """``(signer DID, nonce)`` of a stored decision item's signature, if it has one."""
+    if not isinstance(item, Mapping):
+        return None
+    signed = item.get("signature")
+    body = signed.get("body") if isinstance(signed, Mapping) else None
+    if not isinstance(body, Mapping):
+        return None
+    did, nonce = body.get("decided_by"), body.get("nonce")
+    if isinstance(did, str) and isinstance(nonce, str):
+        return did, nonce
+    return None
 
 
 def judgment_core(judgment: Mapping[str, Any] | None) -> dict[str, Any] | None:

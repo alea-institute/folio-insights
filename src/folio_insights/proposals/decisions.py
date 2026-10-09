@@ -25,6 +25,17 @@ row and timestamp of a decision imported from the legacy ``review.db``
 table). It is set by ``ProposalStore.record_decisions(provenance=...)``,
 never by an input decision, and it is not part of the decision's identity
 (``decision_core``).
+
+Signed decisions (drain plan U9, R16, ``signed_decisions``). An input item may also
+carry ``signature``, a signed decision that ``ProposalStore.record_decisions``
+verifies before anything is appended (``validate_decision`` never sees it). A stored
+item then records ``signer_did``, ``signature_verified`` (``true`` only for a verified
+signature; ``false`` for an unsigned decision) and ``signature`` (the signed decision
+itself), and ``operator`` names the authenticated API operator who submitted it (a
+store records both: operator authentication is not decision authorship). The signer is
+part of the decision's identity: the same verdict signed by another key (or signed at
+all, after an unsigned one) is a new decision. ``decision_row_problem`` re-verifies a
+stored signature, so a raw append cannot claim a signer.
 """
 from __future__ import annotations
 
@@ -49,7 +60,9 @@ INPUT_STATUSES: dict[str, str] = {
     **{s: s for s in DECIDED_STATUSES},
 }
 DECISION_INPUT_KEYS = frozenset({"proposal_id", "status", "note", "merge_into"})
-DECISION_CORE_KEYS = ("status", "note", "decided_by", "merge_into")
+DECISION_CORE_KEYS = ("status", "note", "decided_by", "merge_into", "signer_did")
+SIGNATURE_INPUT_KEY = "signature"
+SIGNATURE_RECORD_KEYS = ("signer_did", "signature_verified", "signature", "operator")
 MAX_NOTE_CHARS = 500
 MAX_DECIDED_BY_CHARS = 100
 MAX_PROVENANCE_KEYS = 8
@@ -171,7 +184,70 @@ def decision_core(decision: Mapping[str, Any] | None) -> dict[str, Any]:
         "note": decision.get("note", "") or "",
         "decided_by": decision.get("decided_by"),
         "merge_into": decision.get("merge_into"),
+        "signer_did": decision.get("signer_did"),
     }
+
+
+def expected_proposal_decision(item: Mapping[str, Any], corpus: str) -> Any:
+    """The ``signed_decisions.ExpectedDecision`` a signature over this stored-form
+    decision item must describe: kind ``proposed_class``, the corpus, the proposal ID as
+    target, the stored status as verdict, the note as rationale and, for a merge,
+    ``{"merge_into": <surviving proposal>}`` as detail."""
+    from folio_insights.proposals.signed_decisions import (
+        KIND_PROPOSED_CLASS,
+        ExpectedDecision,
+    )
+
+    merge_into = item.get("merge_into")
+    return ExpectedDecision(
+        kind=KIND_PROPOSED_CLASS,
+        corpus=corpus,
+        target=item.get("proposal_id"),
+        verdict=item.get("status"),
+        rationale=item.get("note", "") or "",
+        detail={"merge_into": merge_into} if merge_into is not None else {},
+    )
+
+
+def signature_record_problem(
+    item: Mapping[str, Any], *, corpus: str | None, committed_at: str | None
+) -> str | None:
+    """Why the signature fields of a STORED decision item are invalid, or ``None``.
+
+    An unsigned item has no ``signature``, no ``signer_did`` and ``signature_verified``
+    absent or ``false``. A signed item has ``signature_verified: true``, and its stored
+    signature must verify for ``signer_did`` and describe exactly this item (in
+    ``corpus``, issued within the signing skew of ``committed_at``)."""
+    from folio_insights.proposals.signed_decisions import (
+        operator_record_problem,
+        stored_signature_problem,
+    )
+
+    verified = item.get("signature_verified", False)
+    if not isinstance(verified, bool):
+        return "signature_verified is not a boolean"
+    problem = operator_record_problem(item.get("operator"))
+    if problem is not None:
+        return problem
+    signed = item.get("signature")
+    if signed is None:
+        if verified or item.get("signer_did") is not None:
+            return "signer_did or signature_verified without a signature"
+        return None
+    if verified is not True:
+        return "a stored signature must be a verified one"
+    expected = expected_proposal_decision(
+        item, corpus if corpus is not None else _signed_corpus(signed)
+    )
+    return stored_signature_problem(
+        signed, expected=expected, signer_did=item.get("signer_did"), committed_at=committed_at
+    )
+
+
+def _signed_corpus(signed: Any) -> str:
+    body = signed.get("body") if isinstance(signed, Mapping) else None
+    corpus = body.get("corpus") if isinstance(body, Mapping) else None
+    return corpus if isinstance(corpus, str) else ""
 
 
 __all__ = [
@@ -180,6 +256,8 @@ __all__ = [
     "DECISION_INPUT_KEYS",
     "INPUT_STATUSES",
     "MAX_NOTE_CHARS",
+    "SIGNATURE_INPUT_KEY",
+    "SIGNATURE_RECORD_KEYS",
     "STATUS_APPROVED",
     "STATUS_MERGED",
     "STATUS_NEEDS_WORK",
@@ -188,16 +266,26 @@ __all__ = [
     "DecisionInvalid",
     "decision_core",
     "decision_row_problem",
+    "expected_proposal_decision",
     "provenance_problem",
+    "signature_record_problem",
     "validate_decided_by",
     "validate_decision",
     "validate_provenance",
 ]
 
 
-def decision_row_problem(item: Any, proposals: Mapping[str, Any]) -> str | None:
+def decision_row_problem(
+    item: Any,
+    proposals: Mapping[str, Any],
+    *,
+    corpus: str | None = None,
+    committed_at: str | None = None,
+) -> str | None:
     """Why a STORED decision item is invalid, or ``None``. The fold applies this to every
-    ledger row, so a raw append that bypassed ``validate_decision`` cannot decide anything."""
+    ledger row, so a raw append that bypassed ``validate_decision`` cannot decide anything.
+    ``corpus`` and ``committed_at`` (the ledger row's) bind a stored signature to this
+    corpus and to the time it was committed (``signature_record_problem``)."""
     if not isinstance(item, Mapping):
         return "not an object"
     pid = item.get("proposal_id")
@@ -220,4 +308,4 @@ def decision_row_problem(item: Any, proposals: Mapping[str, Any]) -> str | None:
         return "merge_into without status merged"
     if "provenance" in item and provenance_problem(item["provenance"]) is not None:
         return "provenance is not a small map of scalar fields"
-    return None
+    return signature_record_problem(item, corpus=corpus, committed_at=committed_at)
