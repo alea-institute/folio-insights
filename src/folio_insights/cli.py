@@ -920,3 +920,8 @@ cli.add_command(_rubric_group)
 from folio_insights.validation.cli import validate_group as _validate_group  # noqa: E402
 
 cli.add_command(_validate_group)
+
+# Drain U8: the gated shard minter (`folio-insights mint CORPUS --run extraction.json`).
+from folio_insights.minting.cli import mint_cmd as _mint_cmd  # noqa: E402
+
+cli.add_command(_mint_cmd)

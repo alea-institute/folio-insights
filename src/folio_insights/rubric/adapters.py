@@ -314,9 +314,10 @@ def shard_unit(shard: Any, resolver: SourceResolver) -> RubricUnit:
         text=shard.sense,
         chapter=shard.source_uri,
         content_hash=canonical_content_hash(shard),
-        tags=_folio_iris(
-            [shard.reference, shard.triple.subject, shard.triple.predicate, shard.triple.object]
-        ),
+        # RUB-EXTRACT-03 checks concept tags. The triple's predicate names a relation (the
+        # minter's folio-insights module annotation properties live under the FOLIO host
+        # but are not FOLIO concepts), so only the reference and the triple's terms count.
+        tags=_folio_iris([shard.reference, shard.triple.subject, shard.triple.object]),
         anchor=AnchorClaim(
             source_key=shard.source_uri,
             source_text=text,
