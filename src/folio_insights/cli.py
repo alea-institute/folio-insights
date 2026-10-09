@@ -861,3 +861,9 @@ cli.add_command(_bfo_group)
 def main() -> None:
     """Entry point for the folio-insights CLI."""
     cli()
+
+
+# Phase 9 U1: cluster validator (`folio-insights validate clusters`; worker tier).
+from folio_insights.validation.cli import validate_group as _validate_group  # noqa: E402
+
+cli.add_command(_validate_group)
