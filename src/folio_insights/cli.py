@@ -915,3 +915,8 @@ cli.add_command(_api_group)
 from folio_insights.rubric.cli import rubric_group as _rubric_group  # noqa: E402
 
 cli.add_command(_rubric_group)
+
+# Phase 9 U1: cluster validator (`folio-insights validate clusters`; worker tier).
+from folio_insights.validation.cli import validate_group as _validate_group  # noqa: E402
+
+cli.add_command(_validate_group)
