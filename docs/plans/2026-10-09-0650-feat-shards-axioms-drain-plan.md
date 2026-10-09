@@ -38,7 +38,7 @@ The v2 store, governance and identity layers are complete but hold no real conte
 - **Kernel content is fetched, never generated.** Every kernel maxim is a verbatim substring of a recorded public-domain edition, with URL, edition and SHA-256 of the fetched page; nothing is typed from memory or produced by a model. Governs R9, R10.
 - **Kernel status is `authority_only`.** The regulae are accepted on the authority of the Liber Sextus and the Digest, not proved, so seeds enter with `epistemic_status="authority_only"` and `verification_method="textual_citation"`. Chief answered `folio-insights-2026-10-09-1148-kernel-epistemic-status` q1 with this option (tier auto, provenance chief; Damien can overrule). Governs R10.
 - **Publishing needs judged scores the harness does not compute.** The deterministic harness alone can never mark a run publishable; it reports `publishable: false` with the missing criteria until judged scores are supplied. Governs R7, R8.
-- **Paths are assigned once and never renumbered.** A Tractarian path is persisted at first assignment; later siblings take the next ordinal, so a path cited in prose stays valid. Governs R12.
+- **Paths are assigned once and never renumbered.** A Tractarian path is derived from first commit order (KTD8, no sidecar store); later siblings take the next ordinal, so a path cited in prose stays valid unless a content edit moves that shard's primary parent. Governs R12.
 
 ### Requirements
 
@@ -65,7 +65,7 @@ The v2 store, governance and identity layers are complete but hold no real conte
 **Tractarian paths and acyclicity**
 
 - R12. Each shard in a corpus gets a Tractarian path (`1`, `1.1`, `1.2.3`) derived from its primary `elaborates` parent, kernel shards forming the top level, shown alongside the hash URN in CLI output, API responses and the viewer.
-- R13. A write that would close a cycle in the dependency graph (dependency fields plus `elaborates`) is refused with the cycle named, and `folio-insights validate graph <corpus>` reports any cycle already stored.
+- R13. A write that would close a cycle in the dependency graph (dependency fields plus `elaborates`) is refused with the cycle named, and `folio-insights graph validate <corpus>` reports any cycle already stored.
 - R14. The viewer shows a shard's dependency graph: its derivation chain to the kernel, its dependents, and every node's Tractarian path and IRI.
 
 **Hardening**
