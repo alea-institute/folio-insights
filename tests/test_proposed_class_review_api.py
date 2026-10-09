@@ -171,10 +171,11 @@ def test_pii_in_the_note_is_refused(env):
 
 
 def test_bad_corpus_id_is_refused(env):
+    # Refused centrally (api/corpus_ids.py, 422) before the route's own ledger check (400).
     r = review(env["client"], "Zephyr Quorum Widget", corpus="../escape", status="approved")
-    assert r.status_code == 400
+    assert r.status_code == 422
     assert env["client"].get("/api/v1/proposed-classes",
-                             params={"corpus": "a b"}).status_code == 400
+                             params={"corpus": "a b"}).status_code == 422
 
 
 def test_client_op_id_replays_and_refuses_reuse(env):
@@ -446,7 +447,10 @@ def test_opening_an_existing_review_db_does_not_rewrite_it(env):
 
 
 def test_a_new_review_db_gets_the_read_only_triggers(env):
+    # A read never creates review.db (it reads as empty); the first write does.
     assert env["client"].get("/api/v1/review/stats", params={"corpus": "fresh"}).status_code == 200
+    assert not (env["out"] / "fresh" / "review.db").exists()
+    assert env["client"].post("/api/v1/review/reset", params={"corpus": "fresh"}).status_code == 200
     conn = sqlite3.connect(env["out"] / "fresh" / "review.db")
     with pytest.raises(sqlite3.DatabaseError, match="read-only legacy"):
         conn.execute("INSERT INTO proposed_class_decisions (concept_label, corpus_name) "

@@ -8,12 +8,14 @@ from pathlib import Path
 from typing import Any
 
 import aiosqlite
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from api.db.session import get_db
+from api.auth import CORS_ALLOWED_ORIGINS
+from api.corpus_ids import check_corpus_id, require_valid_corpus_ids
+from api.db.session import get_db, get_db_read_only
 from api.routes import (
     corpus,
     discovery,
@@ -71,7 +73,13 @@ async def lifespan(application: FastAPI):
             await runtime.stop()
 
 
-app = FastAPI(title="folio-insights Review Viewer", lifespan=lifespan)
+# Every route refuses a corpus name that is not a corpus ID (422) before its handler runs, so
+# a ``{corpus_id}`` or ``?corpus=`` value can never become a path (``api/corpus_ids.py``).
+app = FastAPI(
+    title="folio-insights Review Viewer",
+    lifespan=lifespan,
+    dependencies=[Depends(require_valid_corpus_ids)],
+)
 
 
 @app.get("/health")
@@ -82,7 +90,9 @@ async def health() -> dict[str, str]:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8700"],
+    # The same list decides which browser origins a tokenless loopback write may come from
+    # in loopback-open mode (``api.auth.is_cross_site_request``).
+    allow_origins=list(CORS_ALLOWED_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -144,9 +154,10 @@ def configure(
 def load_extraction(corpus: str | None = None) -> dict[str, Any]:
     """Load extraction JSON from disk into memory.
 
-    Returns the loaded data dict.
+    Returns the loaded data dict. Raises ``HTTPException(422)`` for a name that is not a
+    corpus ID (``api/corpus_ids.py``).
     """
-    corpus = corpus or _default_corpus
+    corpus = check_corpus_id(corpus or _default_corpus)
     extraction_path = _output_dir / corpus / "extraction.json"
     if extraction_path.exists():
         data = json.loads(extraction_path.read_text(encoding="utf-8"))
@@ -158,7 +169,7 @@ def load_extraction(corpus: str | None = None) -> dict[str, Any]:
 
 def get_extraction_data(corpus: str | None = None) -> dict[str, Any]:
     """Return extraction data for *corpus*, loading from disk if needed."""
-    corpus = corpus or _default_corpus
+    corpus = check_corpus_id(corpus or _default_corpus)
     if corpus not in _extraction_data:
         load_extraction(corpus)
     return _extraction_data[corpus]
@@ -169,10 +180,20 @@ def set_extraction_data(corpus: str, data: dict[str, Any]) -> None:
     _extraction_data[corpus] = data
 
 
-async def get_db_for_corpus(corpus: str | None = None) -> aiosqlite.Connection:
-    """Return an aiosqlite connection for the given corpus."""
-    corpus = corpus or _default_corpus
+async def get_db_for_corpus(
+    corpus: str | None = None, *, writable: bool = False,
+) -> aiosqlite.Connection:
+    """Return an aiosqlite connection to the corpus's ``review.db``.
+
+    Read-only by default: nothing is created, and an absent database reads as empty
+    (:func:`api.db.session.get_db_read_only`), so a GET never leaves state behind. A route that
+    changes state passes ``writable=True``, which creates the corpus directory, the file and
+    its tables when absent. Raises ``HTTPException(422)`` for a name that is not a corpus ID.
+    """
+    corpus = check_corpus_id(corpus or _default_corpus)
     db_path = _output_dir / corpus / "review.db"
+    if not writable:
+        return await get_db_read_only(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return await get_db(db_path)
 

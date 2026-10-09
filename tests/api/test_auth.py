@@ -39,6 +39,18 @@ READ_ONLY_POSTS = {
     # Validates the candidate in the body against the SHACL suite and stores nothing.
     ("POST", "/validate"),
 }
+#: GET routes that change state, so they need an operator like any write. Each needs a reason;
+#: the enumeration test fails on a GET that requires an operator but is not listed here, and on
+#: a listed GET that does not require one. Every other GET must write nothing
+#: (``tests/api/test_read_side_effects.py`` sweeps them against a seeded output dir).
+GET_ROUTES_THAT_WRITE = {
+    # Each mints permanent IRIs into iri_registry and (re)writes the corpus's export files
+    # (.owl/.ttl/CHANGELOG.md, .jsonld), the same work as the guarded POST /export/bundle.
+    ("GET", "/api/v1/corpus/{corpus_id}/export/owl"),
+    ("GET", "/api/v1/corpus/{corpus_id}/export/ttl"),
+    ("GET", "/api/v1/corpus/{corpus_id}/export/jsonld"),
+    ("GET", "/api/v1/corpus/{corpus_id}/export/validation"),
+}
 
 REMOTE = ("203.0.113.7", 40000)  # TEST-NET-3, never loopback
 LOCAL = ("127.0.0.1", 40000)
@@ -241,6 +253,42 @@ def test_every_mutating_route_refuses_without_a_valid_token_off_loopback(
         _assert_refused(client.request(method, url, headers=headers))
 
 
+def _route_requires_operator(dependant) -> bool:
+    """True when *dependant* resolves :func:`auth.require_operator` itself (not only the
+    method-gated router guard, which passes GET through)."""
+    return auth.require_operator in set(_dependency_calls(dependant))
+
+
+def test_get_routes_that_write_are_exactly_the_allowlist() -> None:
+    guarded_gets = {
+        ("GET", path)
+        for path, methods, dependant in _api_routes(app)
+        if "GET" in methods and _route_requires_operator(dependant)
+    }
+    assert guarded_gets == GET_ROUTES_THAT_WRITE
+
+
+@pytest.mark.parametrize("method,path", sorted(GET_ROUTES_THAT_WRITE))
+def test_get_routes_that_write_refuse_without_a_token(
+    required: Path, isolated_api: Path, method: str, path: str,
+) -> None:
+    client = _client()
+    url = _concrete(path)
+    for headers in ({}, _bearer(auth.generate_token())):
+        _assert_refused(client.request(method, url, headers=headers))
+    assert not (isolated_api / "output" / "synthetic").exists()
+
+
+def test_get_routes_that_write_accept_an_operator_token(
+    required: Path, tokens: dict[str, str],
+) -> None:
+    client = _client()
+    for _, path in sorted(GET_ROUTES_THAT_WRITE):
+        # Past the guard, the handler answers on its merits: no such corpus has tasks.
+        resp = client.get(_concrete(path), headers=_bearer(tokens["alice"]))
+        assert resp.status_code == 404, (path, resp.status_code, resp.text)
+
+
 # ---------------------------------------------------------------------------
 # Token acceptance and refusal
 # ---------------------------------------------------------------------------
@@ -391,6 +439,8 @@ def test_loopback_open_lets_a_local_tokenless_request_write(
     (LOCAL, "127.0.0.1", {"Forwarded": "for=198.51.100.9"}),
     (LOCAL, "127.0.0.1", {"X-Real-IP": "198.51.100.9"}),
     (LOCAL, "127.0.0.1", {"X-Forwarded-Host": "api.example.org"}),
+    (LOCAL, "127.0.0.1", {"CF-Connecting-IP": "198.51.100.9"}),  # Cloudflare tunnel/proxy
+    (LOCAL, "127.0.0.1", {"True-Client-IP": "198.51.100.9"}),  # Akamai / Cloudflare Enterprise
     (("testclient", 50000), "testserver", {}),  # not an address at all
 ])
 def test_loopback_open_still_needs_a_token_off_loopback(
@@ -399,6 +449,85 @@ def test_loopback_open_still_needs_a_token_off_loopback(
     _configure(monkeypatch, auth.MODE_LOOPBACK_OPEN, None)
     client = TestClient(_probe_app(), base_url=f"http://{host}", client=peer)
     _assert_refused(client.post("/probe", headers=headers))
+
+
+# Cross-site request forgery: a browser page on another origin connects from loopback too.
+@pytest.mark.parametrize("headers", [
+    {"Origin": "https://evil.example", "Content-Type": "application/x-www-form-urlencoded"},
+    {"Origin": "https://evil.example", "Content-Type": "text/plain"},
+    {"Origin": "https://evil.example", "Content-Type": "multipart/form-data; boundary=x"},
+    {"Origin": "null"},  # sandboxed iframe, file:// page, or a redirect chain
+    {"Origin": "http://localhost:9999"},  # another local dev server is another origin
+    {"Origin": "http://127.0.0.1:8700.evil.example"},
+    {"Sec-Fetch-Site": "cross-site"},
+    {"Sec-Fetch-Site": "same-site"},  # e.g. http://localhost:3000 -> http://localhost:8700
+    {"Origin": "http://127.0.0.1:8700", "Sec-Fetch-Site": "cross-site"},
+    {"Sec-Fetch-Site": "unexpected-value"},
+    [("Origin", "http://127.0.0.1:8700"), ("Origin", "https://evil.example")],
+])
+def test_loopback_open_refuses_a_cross_site_tokenless_write(
+    monkeypatch: pytest.MonkeyPatch, headers,
+) -> None:
+    _configure(monkeypatch, auth.MODE_LOOPBACK_OPEN, None)
+    client = TestClient(_probe_app(), base_url="http://127.0.0.1:8700", client=LOCAL)
+    _assert_refused(client.post("/probe", headers=headers))
+
+
+def test_cross_site_form_post_cannot_reset_reviews(
+    monkeypatch: pytest.MonkeyPatch, isolated_api: Path,
+) -> None:
+    """The reviewer's repro: a cross-origin form POST to a destructive, bodiless route."""
+    _configure(monkeypatch, auth.MODE_LOOPBACK_OPEN, None)
+    client = TestClient(app, base_url="http://127.0.0.1:8700", client=LOCAL)
+    _assert_refused(client.post(
+        "/api/v1/review/reset",
+        headers={"Origin": "https://evil.example",
+                 "Content-Type": "application/x-www-form-urlencoded"},
+        content=b"",
+    ))
+    _assert_refused(client.post(
+        "/api/v1/corpora", content=b'{"name":"evil-corpus"}',
+        headers={"Origin": "https://evil.example", "Content-Type": "text/plain"},
+    ))
+    assert not (isolated_api / "output" / "evil-corpus").exists()
+
+
+@pytest.mark.parametrize("host,headers", [
+    ("127.0.0.1:8700", {}),  # curl, scripts: no browser headers at all
+    ("127.0.0.1:8700", {"Origin": "http://127.0.0.1:8700"}),  # the SPA served by this API
+    ("127.0.0.1:8700", {"Origin": "http://127.0.0.1:8700", "Sec-Fetch-Site": "same-origin"}),
+    ("localhost:8700", {"Origin": "http://localhost:8700", "Sec-Fetch-Site": "same-origin"}),
+    ("localhost:8700", {"Origin": "http://LOCALHOST:8700"}),  # origins compare case-insensitively
+    ("127.0.0.1:8700", {"Origin": "http://localhost:5173"}),  # the Vite dev server (CORS list)
+    ("127.0.0.1:8700", {"Sec-Fetch-Site": "none"}),  # typed into the address bar
+])
+def test_loopback_open_still_accepts_same_origin_and_non_browser_writes(
+    monkeypatch: pytest.MonkeyPatch, host: str, headers: dict[str, str],
+) -> None:
+    _configure(monkeypatch, auth.MODE_LOOPBACK_OPEN, None)
+    client = TestClient(_probe_app(), base_url="http://127.0.0.1:8700", client=LOCAL)
+    resp = client.post("/probe", headers={"Host": host, **headers})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["via"] == "loopback"
+
+
+def test_a_cross_site_request_with_a_valid_token_is_unchanged(
+    monkeypatch: pytest.MonkeyPatch, tokens_file: Path, tokens: dict[str, str],
+) -> None:
+    """Bearer tokens are not ambient credentials, so the origin checks do not apply to them."""
+    _configure(monkeypatch, auth.MODE_LOOPBACK_OPEN, tokens_file)
+    client = TestClient(_probe_app(), base_url="http://127.0.0.1:8700", client=LOCAL)
+    resp = client.post("/probe", headers={**_bearer(tokens["alice"]),
+                                          "Origin": "https://evil.example",
+                                          "Sec-Fetch-Site": "cross-site"})
+    assert resp.json() == {"handle": "alice", "role": "operator", "via": "token"}
+
+
+def test_cors_allow_list_is_the_one_the_csrf_check_uses() -> None:
+    from starlette.middleware.cors import CORSMiddleware
+
+    (cors,) = [m for m in app.user_middleware if m.cls is CORSMiddleware]
+    assert tuple(cors.kwargs["allow_origins"]) == auth.CORS_ALLOWED_ORIGINS
 
 
 def test_loopback_open_with_tokens_checks_any_presented_token(

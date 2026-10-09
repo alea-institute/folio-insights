@@ -164,7 +164,7 @@ async def review_unit(
     if body.status not in ("approved", "rejected", "edited"):
         raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
 
-    db = await get_db_for_corpus(corpus)
+    db = await get_db_for_corpus(corpus, writable=True)
     try:
         now = _now_iso()
         await db.execute(
@@ -216,7 +216,7 @@ async def bulk_approve(
     else:
         raise HTTPException(status_code=400, detail="Provide unit_ids or confidence_min")
 
-    db = await get_db_for_corpus(corpus)
+    db = await get_db_for_corpus(corpus, writable=True)
     try:
         now = _now_iso()
         for uid in target_ids:
@@ -428,7 +428,7 @@ async def reset_reviews(
     ledger, and the legacy ``proposed_class_decisions`` table is read-only."""
     from api.main import get_db_for_corpus
 
-    db = await get_db_for_corpus(corpus)
+    db = await get_db_for_corpus(corpus, writable=True)
     try:
         cursor = await db.execute(
             "DELETE FROM review_decisions WHERE corpus_name = ?",

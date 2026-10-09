@@ -26,9 +26,21 @@ Modes (``FOLIO_INSIGHTS_API_AUTH``)
         a write needs ``Authorization: Bearer <token>`` matching an entry.
     ``loopback-open`` (local development and the test suite)
         a write from a loopback client (127.0.0.1, ::1 or an IPv4-mapped loopback) that
-        addresses a loopback ``Host`` and carries no proxy forwarding headers needs no token;
-        any other client still needs one. A token that *is* presented must be valid, even on
-        loopback. Never use this mode behind a reverse proxy on the same host.
+        addresses a loopback ``Host``, carries no proxy forwarding headers
+        (:data:`FORWARDING_HEADERS`) and is not a cross-site browser request
+        (:func:`is_cross_site_request`) needs no token; any other client still needs one. A
+        token that *is* presented must be valid, even on loopback. Never use this mode behind a
+        reverse proxy on the same host.
+
+Cross-site request forgery (``loopback-open``)
+    A web page on any origin, open in the developer's browser, connects from loopback with
+    ``Host: 127.0.0.1``: CORS stops it reading the response, not sending a form POST or a
+    ``no-cors`` fetch. A tokenless loopback write is therefore refused (401, the same refusal as
+    any missing token) when it carries an ``Origin`` that is neither this server's own origin
+    nor in :data:`CORS_ALLOWED_ORIGINS` (``null`` included), or a ``Sec-Fetch-Site`` other than
+    ``same-origin`` or ``none``, or either header twice. Non-browser clients send neither
+    header and are unaffected. A request bearing a token is unaffected too: a bearer token is
+    never an ambient credential a browser attaches on its own.
 
 Comparison and refusal
     The presented token is hashed and compared with :func:`hmac.compare_digest` against every
@@ -90,7 +102,20 @@ LOOPBACK_HANDLE = "loopback"
 
 LOOPBACK_HOST_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
 #: Headers a reverse proxy adds; their presence means the TCP peer is not the real client.
-FORWARDING_HEADERS = ("forwarded", "x-forwarded-for", "x-forwarded-host", "x-real-ip")
+#: ``cf-connecting-ip`` (Cloudflare, including ``cloudflared`` tunnels) and ``true-client-ip``
+#: (Akamai, Cloudflare Enterprise) are listed because those proxies may send them *without*
+#: ``X-Forwarded-For``.
+FORWARDING_HEADERS = (
+    "forwarded", "x-forwarded-for", "x-forwarded-host", "x-real-ip",
+    "cf-connecting-ip", "true-client-ip",
+)
+
+#: Browser origins the API's CORS middleware allows (``api/main.py``): the Vite dev server and
+#: the API serving the SPA itself. In ``loopback-open`` mode a tokenless loopback write is
+#: accepted only from these origins or the server's own (:func:`is_cross_site_request`).
+CORS_ALLOWED_ORIGINS = ("http://localhost:5173", "http://localhost:8700")
+#: ``Sec-Fetch-Site`` values of a request the page's own origin (or the user) initiated.
+SAME_ORIGIN_FETCH_SITES = frozenset({"same-origin", "none"})
 
 _DIGEST_FIELD = re.compile(r"sha256:([0-9a-f]{64})")
 _HANDLE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._@-]{0,63}")
@@ -401,6 +426,41 @@ def is_local_request(request: Request) -> bool:
     return not any(name in request.headers for name in FORWARDING_HEADERS)
 
 
+def _own_origin(request: Request) -> str | None:
+    """This server's origin as the browser addressed it: ``<scheme>://<Host header>``."""
+    hosts = request.headers.getlist("host")
+    if len(hosts) != 1 or not hosts[0].strip():
+        return None
+    return f"{request.url.scheme}://{hosts[0].strip()}".lower()
+
+
+def is_cross_site_request(request: Request) -> bool:
+    """True when browser-supplied headers show the request did not come from an allowed page.
+
+    Refuses (returns True) on an ``Origin`` other than this server's own origin or one of
+    :data:`CORS_ALLOWED_ORIGINS` (``null`` included), on a ``Sec-Fetch-Site`` other than
+    :data:`SAME_ORIGIN_FETCH_SITES`, and on either header repeated. A request carrying neither
+    header (curl, scripts, the test client) is not cross-site. Browsers set both headers
+    themselves and page script cannot forge or remove them, so a forged cross-site form POST or
+    ``no-cors`` fetch is always recognised.
+    """
+    origins = request.headers.getlist("origin")
+    if len(origins) > 1:
+        return True
+    if origins:
+        origin = origins[0].strip().lower()
+        allowed = {o.lower() for o in CORS_ALLOWED_ORIGINS}
+        own = _own_origin(request)
+        if own is not None:
+            allowed.add(own)
+        if origin not in allowed:
+            return True
+    sites = request.headers.getlist("sec-fetch-site")
+    if len(sites) > 1:
+        return True
+    return bool(sites) and sites[0].strip().lower() not in SAME_ORIGIN_FETCH_SITES
+
+
 def _bearer_token(request: Request) -> str | None:
     """The token of a single well-formed ``Authorization: Bearer <token>`` header, else None."""
     values = request.headers.getlist("authorization")
@@ -441,13 +501,18 @@ def require_operator(request: Request) -> Operator:
     """FastAPI dependency: the authenticated operator, stored on ``request.state.operator``.
 
     401 (``WWW-Authenticate: Bearer``) when no valid operator token is presented, unless the
-    server is ``loopback-open`` and the request is local (:func:`is_local_request`) and carries
-    no ``Authorization`` header. 503 when the configuration is unusable.
+    server is ``loopback-open``, the request is local (:func:`is_local_request`), is not a
+    cross-site browser request (:func:`is_cross_site_request`) and carries no ``Authorization``
+    header. 503 when the configuration is unusable.
     """
     try:
         mode = auth_mode()
         if not request.headers.getlist("authorization"):
-            if mode == MODE_LOOPBACK_OPEN and is_local_request(request):
+            if (
+                mode == MODE_LOOPBACK_OPEN
+                and is_local_request(request)
+                and not is_cross_site_request(request)
+            ):
                 operator = Operator(handle=LOOPBACK_HANDLE, role=DEFAULT_ROLE, via="loopback")
                 request.state.operator = operator
                 return operator
@@ -480,12 +545,15 @@ WRITE_GUARD = [Depends(require_operator_for_writes)]
 
 __all__ = [
     "AUTH_MODE_ENV",
+    "CORS_ALLOWED_ORIGINS",
     "DEFAULT_ROLE",
     "MODES",
     "MODE_LOOPBACK_OPEN",
     "MODE_REQUIRED",
+    "FORWARDING_HEADERS",
     "ROLES",
     "SAFE_METHODS",
+    "SAME_ORIGIN_FETCH_SITES",
     "TOKENS_FILE_ENV",
     "TOKEN_PREFIX",
     "WRITE_GUARD",
@@ -500,6 +568,7 @@ __all__ = [
     "entry_line",
     "generate_token",
     "hash_token",
+    "is_cross_site_request",
     "is_local_request",
     "load_tokens_file",
     "parse_tokens",
