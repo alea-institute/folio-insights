@@ -182,6 +182,9 @@ class JobRuntime:
         handlers = {EXTRACT_KIND: run_extraction_job, DISCOVER_KIND: run_discovery_job}
         kwargs.setdefault("lease_seconds", float(os.environ.get("FOLIO_INSIGHTS_JOB_LEASE_SECONDS", 120)))
         kwargs.setdefault("meter_factory", job_meter_factory)
+        from folio_insights.config import get_settings
+
+        kwargs.setdefault("paused_ttl_seconds", get_settings().job_paused_ttl_seconds)
         self.worker = JobWorker(
             self.queue, handlers, owner=self.owner, secret_store=self.secret_store, **kwargs
         )

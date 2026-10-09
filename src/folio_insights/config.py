@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -65,6 +66,19 @@ class Settings(BaseSettings):
     # Substantive-input guard (B6). Boundary detection drops boundaries by SHAPE only (heading,
     # contents entry, attribution); the distiller additionally skips text shorter than this.
     min_substantive_chars: int = 20
+
+    # Abandoned paused jobs (R18, KTD13): a needs_credentials / budget_exhausted job nobody
+    # resumed within this many seconds is cancelled as "expired", so it stops blocking its
+    # corpus. 0 or negative disables the sweep; non-finite values are rejected.
+    # Env: FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS.
+    job_paused_ttl_seconds: float = 86400.0
+
+    @field_validator("job_paused_ttl_seconds", mode="before")
+    @classmethod
+    def _check_paused_ttl(cls, value: object) -> float:
+        from folio_insights.jobs.worker import parse_paused_ttl
+
+        return parse_paused_ttl(value)
 
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 

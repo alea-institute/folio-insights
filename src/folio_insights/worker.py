@@ -12,6 +12,8 @@ Options::
                            folio_insights.jobs.handlers:WORKER_HANDLERS)
     --lease-seconds N      lease length; heartbeats renew it every N/3 seconds (default 60)
     --poll-interval N      idle poll interval in seconds (default 2)
+    --paused-ttl N         cancel paused jobs idle longer than N seconds as "expired" (R18;
+                           default $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS else 86400; <= 0 off)
     --until-idle           exit when no runnable job is left (tests, one-shot drains)
 
 The standalone worker never holds an LLM key, and never reads one from its environment.
@@ -47,6 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help=f"handler registry MODULE:ATTR (default {DEFAULT_HANDLERS})")
     parser.add_argument("--lease-seconds", type=float, default=60.0)
     parser.add_argument("--poll-interval", type=float, default=2.0)
+    parser.add_argument("--paused-ttl", type=float, default=None)
     parser.add_argument("--until-idle", action="store_true")
     return parser
 
@@ -67,6 +70,7 @@ async def _serve(args: argparse.Namespace) -> None:
         lease_seconds=args.lease_seconds,
         poll_interval=args.poll_interval,
         meter_factory=job_meter_factory,
+        paused_ttl_seconds=args.paused_ttl,  # None -> $FOLIO_INSIGHTS_JOB_PAUSED_TTL_SECONDS
     )
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
