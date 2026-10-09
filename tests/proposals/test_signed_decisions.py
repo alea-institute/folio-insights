@@ -105,6 +105,7 @@ async def test_signed_decision_verifies_and_binds_the_signer():
     verified = await verify_signed_decision(wire, expected=_unit_expected(), policy=OPEN)
     assert verified.signer_did == did_key_of(key)
     assert verified.signer_handle is None
+    assert verified.signer_registered is False
     assert verified.body_hash == signed.body.canonical_hash()
 
 
@@ -312,6 +313,7 @@ async def test_registered_signer_maps_to_its_handle_and_others_are_refused(tmp_p
         expected=_unit_expected(), policy=policy,
     )
     assert verified.signer_handle == "human:alice"
+    assert verified.signer_registered is True
     with pytest.raises(DecisionSignerUnregistered):
         await verify_signed_decision(
             sign_decision(_unit_fields(), signing_key=_key()).to_record(),
@@ -382,6 +384,7 @@ async def test_signed_proposal_decision_records_the_signer(ledger):
     assert decision["status"] == "approved"
     assert decision["signer_did"] == did_key_of(key)
     assert decision["signature_verified"] is True
+    assert decision["signer_registered"] is False
     assert decision["decided_by"] == REVIEWER  # no signers file: the server's attribution
     assert decision["operator"] == "ops-1"
     assert SignedDecision.model_validate(decision["signature"]) == signed
@@ -401,6 +404,7 @@ async def test_registered_signer_is_the_author_without_a_reviewer(ledger):
     )
     decision = (await store.load()).get(pid).decision
     assert decision["decided_by"] == "human:alice"
+    assert decision["signer_registered"] is True
     assert decision["signer_did"] == did_key_of(key)
     # An unsigned decision still needs a reviewer.
     with pytest.raises(ReviewerRequired):
@@ -572,6 +576,82 @@ def test_decision_row_problem_accepts_a_store_written_signed_row():
 
 
 # ---- CLI: sign-decision and apply_approvals.py ---------------------------------------------
+
+
+async def test_invalid_raw_decision_does_not_burn_a_valid_signature_nonce(ledger):
+    ctx, ids = ledger
+    pid = ids[LABELS[0]]
+    key = _key()
+    signed = sign_decision(_proposal_fields(pid), signing_key=key).to_record()
+    await ctx.proposals.append(KIND_DECISION, {"decisions": [{
+        "proposal_id": pid, "status": "rejected", "note": "Synthetic note.",
+        "decided_by": REVIEWER, "merge_into": None, "signer_did": did_key_of(key),
+        "signature_verified": True, "signature": signed,
+    }]}, op_id="invalid:nonce")
+    store = ProposalStore(ctx)
+    reg = await store.load()
+    assert len(reg.invalid_decisions) == 1
+    assert reg.decision_nonces == {}
+    result = await store.record_decisions([{
+        "proposal_id": pid, "status": "approve", "note": "Synthetic note.",
+        "signature": signed,
+    }], op_id="valid:nonce", decided_by=REVIEWER, policy=OPEN)
+    assert result["recorded"] == 1
+    assert (await store.load()).get(pid).decision["status"] == "approved"
+
+
+@pytest.mark.parametrize("offset,accepted", [
+    (SIGNING_SKEW, True), (SIGNING_SKEW + timedelta(microseconds=1), False),
+])
+async def test_freshness_uses_the_actual_ledger_commit_time(ledger, monkeypatch, offset, accepted):
+    ctx, ids = ledger
+    store = ProposalStore(ctx)
+    pid = ids[LABELS[0]]
+    issued = datetime.now(UTC)
+    signed = sign_decision(_proposal_fields(pid), signing_key=_key(), now=issued).to_record()
+    commit_time = issued + offset
+    monkeypatch.setattr("folio_insights.storage.context._server_now", lambda: commit_time)
+    item = {"proposal_id": pid, "status": "approve", "note": "Synthetic note.",
+            "signature": signed}
+    head = (await store.load()).head
+    if accepted:
+        result = await store.record_decisions([item], op_id="commit:time", decided_by=REVIEWER,
+                                             policy=OPEN, now=issued)
+        reg = await store.load()
+        assert result["recorded"] == 1 and reg.invalid_decisions == []
+        assert reg.get(pid).decision["status"] == "approved"
+        entry = (await ctx.proposals.entries())[-1]
+        assert datetime.fromisoformat(entry.committed_at) == commit_time
+        # A committed operation still replays after it has expired.
+        monkeypatch.setattr("folio_insights.storage.context._server_now",
+                            lambda: commit_time + SIGNING_SKEW)
+        assert (await store.record_decisions([item], op_id="commit:time", decided_by=REVIEWER,
+                                            policy=OPEN, now=issued))["replayed"] is True
+    else:
+        with pytest.raises(DecisionSignatureStale, match="decision item 0"):
+            await store.record_decisions([item], op_id="commit:time", decided_by=REVIEWER,
+                                         policy=OPEN, now=issued)
+        reg = await store.load()
+        assert reg.head == head and reg.decision_nonces == {}
+        # The failed transaction leaves the operation ID and nonce available.
+        monkeypatch.setattr("folio_insights.storage.context._server_now", lambda: issued)
+        assert (await store.record_decisions([item], op_id="commit:time", decided_by=REVIEWER,
+                                            policy=OPEN, now=issued))["recorded"] == 1
+
+
+def test_cli_selection_digest_is_order_independent_and_rejects_bad_ids(tmp_path):
+    import hashlib
+
+    from folio_insights.cli import cli
+
+    path = tmp_path / "ids.json"
+    path.write_text('["b", "a", "b"]')
+    result = CliRunner().invoke(cli, ["proposals", "selection-digest", "--ids", str(path)])
+    assert result.exit_code == 0
+    assert result.output.strip() == hashlib.sha256(b'["a","b"]').hexdigest()
+    path.write_text('["a", 1]')
+    result = CliRunner().invoke(cli, ["proposals", "selection-digest", "--ids", str(path)])
+    assert result.exit_code != 0 and "array of strings" in result.output
 
 
 def _jwk_key(tmp_path: Path) -> tuple[Path, str]:

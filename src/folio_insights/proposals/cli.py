@@ -8,6 +8,12 @@ The input body is ``{kind, corpus, target, verdict, rationale?, detail?}``; the 
 adds ``decided_by`` (the key's did:key), a fresh ``nonce`` and ``issued_at``. A server
 accepts the result for ``governance.clock.SIGNING_SKEW`` (the governance signing skew) after signing, once.
 
+``selection-digest`` prints ``signed_decisions.selection_digest`` of a JSON list of IDs:
+the ``selection_sha256`` a bulk approval by threshold must carry in its signed detail
+(``{"confidence_min": x, "selection_sha256": <digest>}``), computed over the IDs the
+reviewer saw selected. The server refuses the approval (409) if its own selection
+differs.
+
 The key file is read with ``identity.keys.load_signing_key`` (a JWK, refused when
 group- or world-accessible). The key never leaves this process and is never printed.
 """
@@ -71,4 +77,23 @@ def sign_decision_cmd(key_path: Path, body_path: Path, out_path: Path | None) ->
         click.echo(f"signed decision written to {out_path}", err=True)
 
 
-__all__ = ["proposals_group", "sign_decision_cmd"]
+@proposals_group.command("selection-digest")
+@click.option(
+    "--ids", "ids_path", required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="JSON list of the selected unit or task IDs (order and repeats do not matter).",
+)
+def selection_digest_cmd(ids_path: Path) -> None:
+    """Print the selection_sha256 of a list of IDs (for a signed bulk approval)."""
+    from folio_insights.proposals.signed_decisions import selection_digest
+
+    try:
+        ids = json.loads(ids_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        raise click.ClickException("the ID list is not a readable JSON file") from None
+    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+        raise click.ClickException("the ID list must be a JSON array of strings")
+    click.echo(selection_digest(ids))
+
+
+__all__ = ["proposals_group", "selection_digest_cmd", "sign_decision_cmd"]

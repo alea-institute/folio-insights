@@ -37,8 +37,9 @@ Ledger operation kinds folded here:
   nothing and is listed in ``invalid_decisions``. A signed item (drain plan U9) is
   re-verified here too: its stored signature must verify for its ``signer_did``,
   describe exactly this decision in this corpus and be issued within the signing
-  skew of the row's commit time. Every signer nonce a decision item carries, valid or
-  not, is listed in ``decision_nonces`` so the store can refuse its reuse.
+  skew of the row's commit time. The signer nonce of every VALID signed item is listed
+  in ``decision_nonces`` so the store can refuse its reuse; an invalid item decides
+  nothing and consumes no nonce, so it cannot burn a reviewer's signed decision.
 """
 from __future__ import annotations
 
@@ -207,7 +208,7 @@ class ProposalRegistry:
     runs: dict[str, dict[str, Any]] = field(default_factory=dict)
     head: int = -1
     invalid_decisions: list[dict[str, Any]] = field(default_factory=list)
-    #: ``(signer DID, nonce)`` of every signed decision item -> its ledger position.
+    #: ``(signer DID, nonce)`` of every valid signed decision item -> its ledger position.
     decision_nonces: dict[tuple[str, str], int] = field(default_factory=dict)
 
     @classmethod
@@ -307,9 +308,6 @@ class ProposalRegistry:
 
     def _apply_decision(self, entry: ProposalLedgerEntry) -> None:
         for index, item in enumerate(entry.payload.get("decisions", [])):
-            nonce_key = _signed_nonce(item)
-            if nonce_key is not None:
-                self.decision_nonces.setdefault(nonce_key, entry.position)
             problem = decision_row_problem(
                 item, self.proposals, corpus=self.corpus, committed_at=entry.committed_at
             )
@@ -329,6 +327,9 @@ class ProposalRegistry:
                     index, entry.position, problem,
                 )
                 continue
+            nonce_key = _signed_nonce(item)
+            if nonce_key is not None:
+                self.decision_nonces.setdefault(nonce_key, entry.position)
             p = self.proposals[item["proposal_id"]]
             core = decision_core(item)
             if core == decision_core(p.decision):
@@ -342,6 +343,7 @@ class ProposalRegistry:
             if "provenance" in item:
                 record["provenance"] = dict(item["provenance"])
             record["signature_verified"] = item.get("signature_verified", False) is True
+            record["signer_registered"] = item.get("signer_registered", False) is True
             for key in ("signature", "operator"):
                 if item.get(key) is not None:
                     record[key] = item[key]

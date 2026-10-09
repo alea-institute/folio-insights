@@ -32,9 +32,20 @@ exactly this decision (kind ``proposed_class``, this corpus, the proposal ID, th
 verdict, the note and any merge target), be issued within the signing skew of server
 time and carry a nonce this ledger has not consumed. The stored item records
 ``signer_did``, ``signature_verified: true`` and the signed decision; an unsigned item
-reads as ``signature_verified: false``. With signatures required
+reads as ``signature_verified: false``. ``signer_registered`` records whether the
+signers file listed the signer DID (``false`` without a signers file); it is a separate
+fact from ``signature_verified``. With signatures required
 (``FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1``) an unsigned item refuses the batch.
 One refused item refuses the whole batch, and nothing is appended.
+
+Freshness is checked twice with one rule (``signed_decisions.check_fresh``): first
+against ``now`` (an early refusal), then inside the ledger's write transaction against
+the very ``committed_at`` the new row records (``PersistentProposalLedger.append
+(check_commit_time=)``), which is the instant the fold re-checks. A decision the store
+appends is therefore never dropped on read-back, and a decision that turns stale while
+waiting for the write lock is refused with nothing appended and no nonce consumed. If a
+just-appended item nevertheless folds invalid, ``DecisionNotRecorded`` is raised rather
+than reporting a silent no-op.
 
 Every judgment, deterministic or recorded, passes ``judgments.validate_judgment``
 before it is appended, and ``apply_dedupe`` refuses a lexicon smaller than
@@ -64,8 +75,10 @@ from folio_insights.proposals.signed_decisions import (
     DecisionReplayed,
     DecisionSignaturePolicy,
     DecisionSignatureRefused,
+    check_fresh,
     load_policy,
     operator_record,
+    parse_issued_at,
     verify_signed_decision,
 )
 from folio_insights.proposals.dedupe import DeterministicDeduper
@@ -86,6 +99,14 @@ if TYPE_CHECKING:
 
 RESERVED_OP_PREFIX = "proposals:"
 MIN_LEXICON_CONCEPTS = 3
+
+
+class DecisionNotRecorded(RuntimeError):
+    """A just-appended decision item folded as invalid, so it decides nothing.
+
+    The store's own checks make this unreachable; it exists so a disagreement between
+    write-time validation and the fold surfaces as an error instead of a successful
+    answer that recorded nothing. The message names item indexes and fold reasons only."""
 
 
 class ReviewerRequired(DecisionInvalid):
@@ -298,6 +319,9 @@ class ProposalStore:
         items: list[dict[str, Any]] = []
         seen: set[str] = set()
         nonces: set[tuple[str, str]] = set()
+        #: ``(input item index, issued_at instant)`` of every signed item, re-checked
+        #: against the row's commit time inside the write transaction.
+        signed_issued: list[tuple[int, datetime]] = []
         for index, raw in enumerate(decisions):
             signed_raw = None
             if isinstance(raw, Mapping) and SIGNATURE_INPUT_KEY in raw:
@@ -340,7 +364,11 @@ class ProposalStore:
                 author = verified.signer_handle or decided_by
                 item["signer_did"] = verified.signer_did
                 item["signature_verified"] = True
+                item["signer_registered"] = verified.signer_registered
                 item["signature"] = verified.signed.to_record()
+                signed_issued.append(
+                    (index, parse_issued_at(verified.signed.body.issued_at))
+                )
             if author is None:
                 raise ReviewerRequired(
                     f"decision item {index}: no reviewer to attribute this decision to "
@@ -371,6 +399,14 @@ class ProposalStore:
         # (the fold ignores those items), so a retry under the same op_id always replays.
         # A committed op_id replays (or refuses a different request) before the head check;
         # a new batch must still be at the head it was validated against.
+        def check_commit_time(committed_at: datetime) -> None:
+            # The fold's freshness rule at the instant the row will record.
+            for index, issued in signed_issued:
+                try:
+                    check_fresh(issued, committed_at)
+                except DecisionSignatureRefused as exc:
+                    raise _item_refusal(exc, index) from None
+
         entry, replayed = await self._ctx.proposals.append(
             KIND_DECISION,
             {"decisions": items},
@@ -378,12 +414,21 @@ class ProposalStore:
             expected_head=None if op_id in committed else (
                 registry.head if expected_head is None else expected_head
             ),
+            check_commit_time=check_commit_time if signed_issued else None,
         )
         position = entry.position
         entries = await self._ctx.proposals.entries()
         # The result as of this operation (a replay returns the original outcome), and the
         # current state, which later decisions may have changed since.
         as_of = ProposalRegistry.fold(self.corpus, [e for e in entries if e.position <= position])
+        dropped = [d for d in as_of.invalid_decisions if d["ledger_position"] == position]
+        if dropped and not replayed:
+            raise DecisionNotRecorded(
+                "decision batch appended at ledger position "
+                f"{position} but {len(dropped)} item(s) folded invalid ("
+                + "; ".join(f"item {d['item']}: {d['reason']}" for d in dropped)
+                + "); those items decide nothing"
+            )
         current = ProposalRegistry.fold(self.corpus, entries)
         results: dict[str, dict[str, Any]] = {}
         recorded = 0
@@ -433,6 +478,7 @@ def load_run_proposals(run_dir: str | Path) -> tuple[list[dict[str, Any]], dict[
 __all__ = [
     "MIN_LEXICON_CONCEPTS",
     "RESERVED_OP_PREFIX",
+    "DecisionNotRecorded",
     "LexiconTooSmall",
     "ReviewerRequired",
     "ProposalStore",

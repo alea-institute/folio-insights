@@ -38,11 +38,20 @@ Wire format (``SignedDecision``)::
 * **Freshness and replay.** ``issued_at`` must sit within
   ``governance.clock.SIGNING_SKEW`` (the governance signing skew) of server time when the decision is recorded,
   and the ``nonce`` is single-use per signer: each store records the nonces it has
-  consumed and refuses a second use (``DecisionReplayed``).
+  consumed and refuses a second use (``DecisionReplayed``). The proposal ledger checks
+  freshness against the very commit time its row records, inside the write transaction,
+  which is the instant its fold re-checks: a decision the store accepted is never dropped
+  on read-back.
 * **Binding to the request.** The verifier compares the signed body with the decision
   the server is about to store (kind, corpus, target, verdict, rationale and the
   kind's detail fields), so a signature cannot be moved to another unit, proposal,
   corpus or verdict.
+* **Binding a server-side selection.** A bulk approval by threshold selects its targets
+  on the server. Its signed detail carries ``selection_sha256`` (``selection_digest`` of
+  the exact selected IDs) next to the threshold, the server computes the digest of the
+  selection it is about to approve, and a different selection is refused with
+  ``DecisionSelectionChanged`` (HTTP 409): a signature never approves items the signer
+  did not see.
 
 Registered signers (``FOLIO_INSIGHTS_DECISION_SIGNERS_FILE``): one ``<did:key> <handle>``
 line per reviewer key (``#`` comments and blank lines allowed). The file holds public
@@ -50,7 +59,10 @@ DIDs only; it is refused when it is not a regular file owned by this user (or ro
 when other users may write it. With a signers file, a signed decision must come from a
 listed DID, and it is attributed to ``human:<handle>`` (the handle mapped to the DID).
 Without one, any did:key verifies, the signer DID is recorded, and the decision keeps
-the server's reviewer attribution. Requiring signatures without a signers file would
+the server's reviewer attribution. Stores and API views keep the two facts apart:
+``signature_verified`` means the signature is cryptographically valid for its did:key,
+``signer_registered`` that a signers file listed that DID when the decision was recorded
+(always ``false`` without a signers file). Requiring signatures without a signers file would
 accept a key anyone can generate, so that configuration refuses every decision
 (``DecisionPolicyMisconfigured``) instead of pretending to authenticate reviewers.
 
@@ -64,7 +76,7 @@ import re
 import secrets
 import stat
 import threading
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -88,6 +100,10 @@ KIND_UNIT_BULK_APPROVE = "unit_bulk_approve"
 KIND_UNIT_REVIEW_RESET = "unit_review_reset"
 KIND_TASK_REVIEW = "task_review"
 KIND_TASK_BULK_APPROVE = "task_bulk_approve"
+KIND_TASK_CREATE = "task_create"
+KIND_TASK_DELETE = "task_delete"
+KIND_HIERARCHY_EDIT = "hierarchy_edit"
+KIND_CONTRADICTION_RESOLVE = "contradiction_resolve"
 DecisionKind = Literal[
     "proposed_class",
     "unit_review",
@@ -95,11 +111,19 @@ DecisionKind = Literal[
     "unit_review_reset",
     "task_review",
     "task_bulk_approve",
+    "task_create",
+    "task_delete",
+    "hierarchy_edit",
+    "contradiction_resolve",
 ]
 DECISION_KINDS: frozenset[str] = frozenset(DecisionKind.__args__)  # type: ignore[attr-defined]
 
-#: Target of a corpus-wide decision (a bulk approval by confidence, a review reset).
+#: Target of a corpus-wide decision (a bulk approval by confidence, a review reset) and of
+#: a decision whose subject has no ID yet (a task created by the decision).
 CORPUS_WIDE_TARGET = "*"
+
+#: Detail key binding a server-side selection (``selection_digest``).
+SELECTION_DIGEST_KEY = "selection_sha256"
 
 #: The ``action`` handed to ``sign_attestation`` / ``verify_attestation``. Not signed (the
 #: primitives sign ``over_content_hash`` only) and never stored with a decision.
@@ -158,6 +182,13 @@ class DecisionSignatureStale(DecisionSignatureRefused, GovernanceClockSkew):
     clock-skew refusal, applied to a decision signature)."""
 
     code = "stale"
+
+
+class DecisionSelectionChanged(DecisionSignatureMismatch):
+    """The signed selection digest is not the digest of what the server would select now
+    (the items matching a bulk threshold changed after the reviewer signed)."""
+
+    code = "selection_changed"
 
 
 class DecisionReplayed(DecisionSignatureRefused):
@@ -406,6 +437,16 @@ def did_key_signing_key_id(did: str) -> str:
     return f"{did}#{did.removeprefix('did:key:')}"
 
 
+def selection_digest(ids: Iterable[str]) -> str:
+    """SHA-256 hex of the JCS-canonical sorted, de-duplicated list of ``ids``.
+
+    The ``selection_sha256`` a signer puts in the detail of a bulk approval by threshold,
+    and the digest the server computes over the IDs it is about to approve. Order and
+    repetition do not change it; any added or removed ID does."""
+    items = sorted({str(i) for i in ids})
+    return hashlib.sha256(jcs.canonicalize(items)).hexdigest()
+
+
 def new_nonce() -> str:
     """A fresh 128-bit nonce (32 lowercase hex characters)."""
     return secrets.token_hex(16)
@@ -516,7 +557,7 @@ def _normalized_detail(detail: Mapping[str, Any] | None) -> dict[str, Any]:
 def check_matches(body: DecisionBody, expected: ExpectedDecision) -> None:
     """Refuse (``DecisionSignatureMismatch``) a body that does not describe ``expected``.
     The message names the differing fields, never their values."""
-    differing = []
+    differing: list[str] = []
     if body.kind != expected.kind:
         differing.append("kind")
     if body.corpus != expected.corpus:
@@ -531,11 +572,33 @@ def check_matches(body: DecisionBody, expected: ExpectedDecision) -> None:
         differing.append("rationale")
     if _normalized_detail(body.detail) != _normalized_detail(expected.detail):
         differing.append("detail")
+        if not differing[:-1] and _only_selection_differs(body.detail, expected.detail):
+            raise DecisionSelectionChanged(
+                "the signed selection is not what this request would approve now (the "
+                "items matching the threshold changed after signing); review the current "
+                "selection and sign it again. Nothing was recorded"
+            )
     if differing:
         raise DecisionSignatureMismatch(
             "the signed decision does not match this request (" + ", ".join(differing)
             + " differ); sign exactly the decision being submitted. Nothing was recorded"
         )
+
+
+def _only_selection_differs(
+    signed: Mapping[str, Any], expected: Mapping[str, Any] | None
+) -> bool:
+    """True when the expected detail binds a selection digest, the signed detail names one
+    too, and the two details agree on every other field."""
+    expected = dict(expected or {})
+    signed = dict(signed)
+    if SELECTION_DIGEST_KEY not in expected or SELECTION_DIGEST_KEY not in signed:
+        return False
+    if signed[SELECTION_DIGEST_KEY] == expected[SELECTION_DIGEST_KEY]:
+        return False
+    signed.pop(SELECTION_DIGEST_KEY)
+    expected.pop(SELECTION_DIGEST_KEY)
+    return _normalized_detail(signed) == _normalized_detail(expected)
 
 
 def _structural_checks(signed: SignedDecision) -> tuple[str, datetime]:
@@ -574,6 +637,10 @@ def _carrier(sig: DecisionSignature) -> AttestedSignature:
 
 
 def check_fresh(issued: datetime, now: datetime) -> None:
+    """Refuse (``DecisionSignatureStale``) an ``issued`` instant more than
+    ``SIGNING_SKEW`` away from server time ``now``. The single freshness rule: the
+    verifier, the proposal ledger's in-transaction commit check and its fold all apply
+    exactly this comparison."""
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
     if abs(now - issued) > SIGNING_SKEW:
@@ -592,6 +659,9 @@ class VerifiedDecision:
     signer_did: str
     #: ``human:<handle>`` when a signers file maps the DID, else ``None``.
     signer_handle: str | None
+    #: Whether a signers file listed the DID (``False`` when none is configured).
+    #: Distinct from verification: every ``VerifiedDecision`` is cryptographically valid.
+    signer_registered: bool = False
 
     @property
     def nonce(self) -> str:
@@ -636,7 +706,7 @@ async def verify_signed_decision(
     handle = policy.signer_handle(signed.signature.did)
     return VerifiedDecision(
         signed=signed, body_hash=content_hash, signer_did=signed.signature.did,
-        signer_handle=handle,
+        signer_handle=handle, signer_registered=handle is not None,
     )
 
 
@@ -680,9 +750,9 @@ def stored_signature_problem(
             committed = datetime.fromisoformat(committed_at)
         except (TypeError, ValueError):
             return "ledger commit time is unreadable"
-        if committed.tzinfo is None:
-            committed = committed.replace(tzinfo=UTC)
-        if abs(committed - issued) > SIGNING_SKEW:
+        try:
+            check_fresh(issued, committed)
+        except DecisionSignatureStale:
             return "stored signature was not issued within the signing skew of its commit"
     return None
 
@@ -878,16 +948,22 @@ __all__ = [
     "CORPUS_WIDE_TARGET",
     "DECISION_BODY_FORMAT",
     "DECISION_KINDS",
+    "KIND_CONTRADICTION_RESOLVE",
+    "KIND_HIERARCHY_EDIT",
     "KIND_PROPOSED_CLASS",
     "KIND_TASK_BULK_APPROVE",
+    "KIND_TASK_CREATE",
+    "KIND_TASK_DELETE",
     "KIND_TASK_REVIEW",
     "KIND_UNIT_BULK_APPROVE",
     "KIND_UNIT_REVIEW",
     "KIND_UNIT_REVIEW_RESET",
+    "SELECTION_DIGEST_KEY",
     "SIGNABLE_FIELDS",
     "DecisionBody",
     "DecisionPolicyMisconfigured",
     "DecisionReplayed",
+    "DecisionSelectionChanged",
     "DecisionSignature",
     "DecisionSignatureInvalid",
     "DecisionSignatureMalformed",
@@ -916,6 +992,7 @@ __all__ = [
     "parse_signed_decision",
     "parse_signers",
     "reset_signers_cache",
+    "selection_digest",
     "sign_decision",
     "stored_signature_problem",
     "verify_signed_decision",

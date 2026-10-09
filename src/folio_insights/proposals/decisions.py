@@ -30,8 +30,9 @@ Signed decisions (drain plan U9, R16, ``signed_decisions``). An input item may a
 carry ``signature``, a signed decision that ``ProposalStore.record_decisions``
 verifies before anything is appended (``validate_decision`` never sees it). A stored
 item then records ``signer_did``, ``signature_verified`` (``true`` only for a verified
-signature; ``false`` for an unsigned decision) and ``signature`` (the signed decision
-itself), and ``operator`` names the authenticated API operator who submitted it (a
+signature; ``false`` for an unsigned decision), ``signer_registered`` (``true`` only when
+the signers file listed the signer DID when it was recorded; a separate fact from a valid
+signature) and ``signature`` (the signed decision itself), and ``operator`` names the authenticated API operator who submitted it (a
 store records both: operator authentication is not decision authorship). The signer is
 part of the decision's identity: the same verdict signed by another key (or signed at
 all, after an unsigned one) is a new decision. ``decision_row_problem`` re-verifies a
@@ -62,7 +63,9 @@ INPUT_STATUSES: dict[str, str] = {
 DECISION_INPUT_KEYS = frozenset({"proposal_id", "status", "note", "merge_into"})
 DECISION_CORE_KEYS = ("status", "note", "decided_by", "merge_into", "signer_did")
 SIGNATURE_INPUT_KEY = "signature"
-SIGNATURE_RECORD_KEYS = ("signer_did", "signature_verified", "signature", "operator")
+SIGNATURE_RECORD_KEYS = (
+    "signer_did", "signature_verified", "signer_registered", "signature", "operator",
+)
 MAX_NOTE_CHARS = 500
 MAX_DECIDED_BY_CHARS = 100
 MAX_PROVENANCE_KEYS = 8
@@ -226,13 +229,16 @@ def signature_record_problem(
     verified = item.get("signature_verified", False)
     if not isinstance(verified, bool):
         return "signature_verified is not a boolean"
+    registered = item.get("signer_registered", False)
+    if not isinstance(registered, bool):
+        return "signer_registered is not a boolean"
     problem = operator_record_problem(item.get("operator"))
     if problem is not None:
         return problem
     signed = item.get("signature")
     if signed is None:
-        if verified or item.get("signer_did") is not None:
-            return "signer_did or signature_verified without a signature"
+        if verified or registered or item.get("signer_did") is not None:
+            return "signer_did, signature_verified or signer_registered without a signature"
         return None
     if verified is not True:
         return "a stored signature must be a verified one"
