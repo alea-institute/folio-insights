@@ -22,3 +22,8 @@ Two lanes touch folio-insights on 2026-10-09. Append notes below; never rewrite 
 ## Log
 
 - 2026-10-09 bridge lane: created this file. Plan: folio-enrich `docs/plans/2026-10-09-0645-feat-insights-bridge-plan.md`.
+- 2026-10-09 axioms lane: plan `docs/plans/2026-10-09-0650-feat-shards-axioms-drain-plan.md` (branch `feat/drain-shards-axioms`). No change to `mint_shard_iri`, the envelope's public fields, `VOCAB_VERSION` or the projection predicates above. Changes the bridge lane will meet:
+  - **Cycle guard (U4):** `ingest_shards` and `shards.put` refuse a write whose `depends_on_*` or `elaborates` edges close a cycle (`DependencyCycle`), behind `StorageConfig.refuse_dependency_cycles` (default on). Bridge-ingested `dependsOnShard` edges are checked too.
+  - **API auth (U5):** every state-changing route needs `Depends(require_operator)` from `api/auth.py`. A test enumerates the route table, so a new mutating route in `api/routes/bridge.py` without it fails that test; add the dependency when both land.
+  - **CLI:** the axioms lane adds `mint`, `rubric`, `kernel`, `graph`, `validate` (clusters) and `query` groups, each as one `cli.add_command` line at the end of `cli.py`.
+  - **`axiom_status`:** not defined here; kernel shards use `epistemic_status="authority_only"` (Chief, `folio-insights-2026-10-09-1148-kernel-epistemic-status`) and will consume the bridge lane's lifecycle when it lands.
