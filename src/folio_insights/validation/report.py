@@ -75,6 +75,9 @@ class ClusterResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     formal_axiom_count: int = 0
     finding_ids: list[str] = Field(default_factory=list)
+    # Per-checker diagnostics (e.g. the NLI screen's pairs_scored and the
+    # shards it excluded for empty text).
+    detail: dict[str, Any] = Field(default_factory=dict)
 
 
 class CheckerStatus(BaseModel):

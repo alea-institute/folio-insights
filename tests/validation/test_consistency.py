@@ -166,6 +166,9 @@ def test_unsatisfiable_class_is_explained_by_its_shards() -> None:
     assert finding.kind == "unsatisfiable_class"
     assert finding.detail["class"] == folio("Hybrid")
     assert finding.shards == [iri(2), iri(3)]
+    # the background is minimized too (review fix C4), so minimal is honest
+    assert finding.detail["background_axioms"] == [[folio("A"), OWL_DISJOINT_WITH, folio("B")]]
+    assert finding.detail["minimal"] is True and finding.detail["background_minimal"] is True
 
 
 def test_tbox_inconsistent_on_its_own_is_reported_once() -> None:
@@ -256,6 +259,106 @@ def test_builder_cluster_feeds_the_checker(registry) -> None:
     checker = ConsistencyChecker(reasoner=None, nli=FakeNli())
     result = checker.check_cluster(clusters[0], {s.shard_iri: s for s in shards})
     assert [f.shards for f in result.findings] == [[iri(1), iri(2)]]
+
+
+# ── review fix C3: an NLI screen that compared nothing is not a check ──────
+
+
+def test_nli_with_no_comparable_text_pairs_reads_unchecked() -> None:
+    a = vshard(1, sense="", source_span="", source_uri="urn:x:s")
+    b = vshard(2, sense="", source_span="", source_uri="urn:x:s")
+    nli = FakeNli()
+    result = ConsistencyChecker(reasoner=None, nli=nli).check_cluster(
+        cluster_of([a, b]), {a.shard_iri: a, b.shard_iri: b})
+    assert result.mode == "unchecked"
+    assert "nli" not in result.checkers
+    assert result.findings == [] and nli.scored == []
+    assert any("NLI: no comparable text pairs" in n for n in result.notes)
+    assert result.detail["nli"]["pairs_scored"] == 0
+    assert result.detail["nli"]["excluded_empty_text"] == [iri(1), iri(2)]
+
+
+def test_supersession_only_cluster_reads_unchecked_not_screened() -> None:
+    a = vshard(1, sense=ENFORCEABLE, superseded_by=iri(2))
+    b = vshard(2, sense=UNENFORCEABLE, supersedes=iri(1))
+    result = ConsistencyChecker(reasoner=None, nli=FakeNli()).check_cluster(
+        cluster_of([a, b]), {a.shard_iri: a, b.shard_iri: b})
+    assert result.mode == "unchecked" and result.checkers == []
+    assert any("NLI: no comparable text pairs" in n for n in result.notes)
+    assert result.detail["nli"]["supersession_pairs_skipped"] == 1
+
+
+def test_empty_text_shards_in_a_screened_cluster_are_recorded(registry) -> None:
+    shards = [*planted_pair()[:2], vshard(9, sense="", source_span="")]
+    result = ConsistencyChecker(reasoner=None, nli=FakeNli()).check_cluster(
+        cluster_of(shards), {s.shard_iri: s for s in shards})
+    assert result.mode == "nli_fallback" and result.checkers == ["nli"]
+    assert result.detail["nli"] == {
+        "pairs_scored": 1,
+        "excluded_empty_text": [iri(9)],
+        "supersession_pairs_skipped": 0,
+    }
+    assert any("1 shard(s) with no text" in n for n in result.notes)
+    # the detail reaches the report's cluster entry
+    report = build_validator(registry, reasoner=None, nli=FakeNli()).validate(shards)
+    entry = next(c for c in report.clusters if set(c.members) == {s.shard_iri for s in shards})
+    assert entry.detail["nli"]["excluded_empty_text"] == [iri(9)]
+
+
+# ── review fix C4: no formal verdict, no formal mode; honest "minimal" ─────
+
+
+def test_budget_exhausted_before_the_cluster_verdict_reads_unchecked() -> None:
+    shards = [vshard(1, triple=type_triple("urn:x:party/1", folio("A"))),
+              vshard(2, triple=type_triple("urn:x:party/1", folio("B")))]
+    checker = ConsistencyChecker(reasoner=FakeReasoner(), nli=None, max_reasoner_calls=1,
+                                 disjoint_seeds=[(folio("A"), folio("B"))])
+    result = checker.check_cluster(cluster_of(shards), {s.shard_iri: s for s in shards})
+    assert result.mode == "unchecked"
+    assert result.checkers == [] and result.findings == []
+    assert any("before the cluster verdict" in n for n in result.notes)
+    assert not any("explanations partial" in n for n in result.notes)
+
+
+def test_budget_exhausted_before_verdict_falls_back_to_nli_when_available() -> None:
+    shards = [vshard(1, triple=type_triple("urn:x:party/1", folio("A")), sense=ENFORCEABLE),
+              vshard(2, triple=type_triple("urn:x:party/1", folio("B")), sense=UNENFORCEABLE)]
+    checker = ConsistencyChecker(reasoner=FakeReasoner(), nli=FakeNli(), max_reasoner_calls=1,
+                                 disjoint_seeds=[(folio("A"), folio("B"))])
+    result = checker.check_cluster(cluster_of(shards), {s.shard_iri: s for s in shards})
+    assert result.mode == "nli_fallback" and result.checkers == ["nli"]
+
+
+def test_unminimized_background_is_not_reported_as_minimal() -> None:
+    party = "urn:x:party/1"
+    shards = [vshard(1, triple=type_triple(party, folio("Merchant"))),
+              vshard(2, triple=type_triple(party, folio("Consumer")))]
+    # 50 background axioms reachable from Merchant: above the minimization cap.
+    tbox = [(folio("Merchant"), RDFS_SUBCLASS_OF, folio(f"P{k}")) for k in range(50)]
+    checker = ConsistencyChecker(reasoner=FakeReasoner(), nli=None, tbox=tbox,
+                                 disjoint_seeds=[(folio("Merchant"), folio("Consumer"))])
+    result = checker.check_cluster(cluster_of(shards), {s.shard_iri: s for s in shards})
+    [finding] = result.findings
+    assert finding.shards == [iri(1), iri(2)]
+    assert finding.detail["shards_minimal"] is True
+    assert finding.detail["background_minimal"] is False
+    assert finding.detail["minimal"] is False
+    assert len(finding.detail["background_axioms"]) == 51
+    assert any("background axioms not minimized" in n for n in result.notes)
+    assert not any("budget" in n for n in result.notes)  # not a budget problem
+
+
+def test_minimized_explanation_reports_both_halves_minimal() -> None:
+    party = "urn:x:party/1"
+    shards = [vshard(1, triple=type_triple(party, folio("Merchant"))),
+              vshard(2, triple=type_triple(party, folio("Consumer")))]
+    checker = ConsistencyChecker(reasoner=FakeReasoner(), nli=None,
+                                 disjoint_seeds=[(folio("Merchant"), folio("Consumer"))])
+    [finding] = checker.check_cluster(
+        cluster_of(shards), {s.shard_iri: s for s in shards}).findings
+    assert finding.detail["minimal"] is True
+    assert finding.detail["shards_minimal"] is True
+    assert finding.detail["background_minimal"] is True
 
 
 def Triple3(s, p, o):  # noqa: N802 - a Triple builder named for readability
