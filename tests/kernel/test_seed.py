@@ -38,7 +38,7 @@ from folio_insights.shards import SimpleAssertionShard, dump_shard_record, load_
 from folio_insights.storage import CorpusStorageContext
 
 from tests.kernel.conftest import SeededCorpus, bootstrap_corpus
-from tests.storage.conftest import T0, new_identity, role_assertion
+from tests.storage.conftest import new_identity, role_assertion
 
 
 async def _all_shards(ctx: CorpusStorageContext) -> list:
@@ -195,7 +195,8 @@ async def test_partial_then_full_seed_by_another_admin(tmp_path: Path) -> None:
     ctx = await CorpusStorageContext.open(root, "c")
     try:
         await ctx.governance.append(
-            role_assertion("c", admin, second_admin.did, "corpus_admin", T0 + timedelta(seconds=1))
+            role_assertion("c", admin, second_admin.did, "corpus_admin",
+                           datetime.now(UTC) + timedelta(seconds=1))
         )
     finally:
         await ctx.close()
