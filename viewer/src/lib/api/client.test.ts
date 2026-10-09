@@ -6,7 +6,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 
-import { apiFetch, createCorpusApi, deleteCorpusApi, triggerExport, uploadFiles } from './client';
+import {
+	apiFetch,
+	createCorpusApi,
+	deleteCorpusApi,
+	fetchShardDerivation,
+	fetchShardGraph,
+	triggerExport,
+	uploadFiles,
+} from './client';
 import { cancelJob, describeJobError, submitJob } from './jobs';
 import {
 	forgetOperatorToken,
@@ -129,5 +137,39 @@ describe('operator token header', () => {
 
 	it('explains a 401 in terms of the operator token', () => {
 		expect(describeJobError(401, '')).toMatch(/operator token/);
+	});
+});
+
+describe('shard graph reads (drain U10)', () => {
+	const URN = 'urn:folio:shard/0123456789abcdef0123456789abcdef';
+
+	it('encodes the corpus and the IRI as single path segments', async () => {
+		await fetchShardGraph('kernel-corpus', URN, 2);
+		await fetchShardDerivation('kernel-corpus', 'https://x.org/a b');
+		await fetchShardGraph('c', URN);
+		expect(calls.map((c) => c.url)).toEqual([
+			'/api/v1/corpus/kernel-corpus/shards/urn%3Afolio%3Ashard%2F0123456789abcdef0123456789abcdef/graph?depth=2',
+			'/api/v1/corpus/kernel-corpus/shards/https%3A%2F%2Fx.org%2Fa%20b/derivation',
+			'/api/v1/corpus/c/shards/urn%3Afolio%3Ashard%2F0123456789abcdef0123456789abcdef/graph',
+		]);
+	});
+
+	it('reports a refusal with its status and the API detail', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				new Response(JSON.stringify({ detail: "no corpus 'x'" }), {
+					status: 404,
+					headers: { 'Content-Type': 'application/json' },
+				})
+			)
+		);
+		expect(await fetchShardGraph('x', URN)).toEqual({ error: "no corpus 'x'", status: 404 });
+	});
+
+	it('reports a network failure as status 0', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('offline'))));
+		const result = await fetchShardDerivation('x', URN);
+		expect(result).toMatchObject({ status: 0 });
 	});
 });

@@ -1,8 +1,14 @@
 <!-- viewer/src/routes/shards/[id]/+page.svelte -->
 <!-- D-09 shard surface — critical-path render + {#await} streamed payloads. -->
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
+	// Drain U10: the dependency graph of this shard (derivation to the kernel + dependents).
+	let corpus = $derived(page.url.searchParams.get('corpus') ?? 'default');
+	let graphHref = $derived(
+		`/shards/${encodeURIComponent(page.params.id ?? '')}/graph?corpus=${encodeURIComponent(corpus)}`
+	);
 </script>
 
 <svelte:head>
@@ -11,6 +17,7 @@
 
 <article>
 	<h1>{data.shard.label}</h1>
+	<p><a href={graphHref}>Dependency graph and derivation to the kernel →</a></p>
 	<dl>
 		<dt>IRI</dt>
 		<dd><code>{data.shard.iri}</code></dd>
