@@ -12,6 +12,13 @@ store is walked once), never from per-shard queries.
 * ``cycles`` — iterative depth-first search with three-color marking; each
   cycle is a finding (canonically rotated, deduplicated), never an error.
 
+``include_elaborates`` (drain U4, KTD9) adds the Tractarian ``elaborates``
+edges to the web. It defaults to ``False`` so the retraction and cascade
+consumers keep reading the four ``depends_on_*`` lists only; the cycle guard
+(``revision/acyclicity.py``) and ``folio-insights graph validate`` pass
+``True``. The projection does not carry ``elaborates``, so a store read with
+it walks ``iter_shards()`` once instead of the bulk projection query.
+
 Stdlib + Pydantic only (the shard envelope is the only folio import).
 """
 from __future__ import annotations
@@ -39,11 +46,18 @@ class DependencyEdge:
     field: str
 
 
-def shard_edges(shard: ShardEnvelope) -> list[DependencyEdge]:
+ELABORATES_FIELD = "elaborates"
+
+
+def shard_edges(
+    shard: ShardEnvelope, *, include_elaborates: bool = False
+) -> list[DependencyEdge]:
     """The dependency edges one shard declares (a self-reference included: the
-    graph reports it as a one-node cycle)."""
+    graph reports it as a one-node cycle). ``include_elaborates`` adds one
+    edge per ``elaborates`` entry, after the four dependency lists."""
+    fields = (*DEPENDENCY_FIELDS, ELABORATES_FIELD) if include_elaborates else DEPENDENCY_FIELDS
     out: list[DependencyEdge] = []
-    for name in DEPENDENCY_FIELDS:
+    for name in fields:
         for target in getattr(shard, name):
             out.append(DependencyEdge(shard.shard_iri, target, name))
     return out
@@ -81,24 +95,31 @@ class DependencyGraph:
     # ── construction ─────────────────────────────────────────────────────
 
     @classmethod
-    def from_shards(cls, shards: Iterable[ShardEnvelope]) -> DependencyGraph:
+    def from_shards(
+        cls, shards: Iterable[ShardEnvelope], *, include_elaborates: bool = False
+    ) -> DependencyGraph:
         nodes: list[str] = []
         edges: list[DependencyEdge] = []
         for shard in shards:
             nodes.append(shard.shard_iri)
-            edges.extend(shard_edges(shard))
+            edges.extend(shard_edges(shard, include_elaborates=include_elaborates))
         return cls(edges, nodes)
 
     @classmethod
-    async def from_store(cls, store: ShardStore) -> DependencyGraph:
+    async def from_store(
+        cls, store: ShardStore, *, include_elaborates: bool = False
+    ) -> DependencyGraph:
         """One bulk read: the store's ``dependency_edges()`` when it has one
         (the persistent store: a single projection query), else one walk of
-        ``iter_shards()``."""
+        ``iter_shards()``. With ``include_elaborates`` it is always one walk
+        of ``iter_shards()``: the projection does not carry ``elaborates``."""
         bulk: Any = getattr(store, "dependency_edges", None)
-        if callable(bulk):
+        if callable(bulk) and not include_elaborates:
             nodes, edges = await bulk()
             return cls(edges, nodes)
-        return cls.from_shards([s async for s in store.iter_shards()])
+        return cls.from_shards(
+            [s async for s in store.iter_shards()], include_elaborates=include_elaborates
+        )
 
     # ── reads ────────────────────────────────────────────────────────────
 
@@ -188,6 +209,7 @@ class DependencyGraph:
 
 
 __all__ = [
+    "ELABORATES_FIELD",
     "DependencyEdge",
     "DependencyGraph",
     "shard_edges",

@@ -861,3 +861,9 @@ cli.add_command(_bfo_group)
 def main() -> None:
     """Entry point for the folio-insights CLI."""
     cli()
+
+
+# Drain U4: dependency-cycle validation and Tractarian paths.
+from folio_insights.graph_cli import graph_group as _graph_group  # noqa: E402
+
+cli.add_command(_graph_group)
