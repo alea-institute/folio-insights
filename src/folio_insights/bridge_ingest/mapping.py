@@ -229,7 +229,13 @@ def _manifest_source(record: PropositionDocumentRecord, p: Proposition) -> Manif
         end_char=p.end_char,
         disposition=p.disposition.value,
         asserter_role=_role(p),
-        citation_edges=[edge.model_dump(mode="json") for edge in p.citation_edges],
+        # Only the structured edge fields: authority_text is free text and
+        # stays out of the manifest (it never passes the shard PII gate).
+        citation_edges=[
+            {"edge_type": edge.edge_type.value,
+             "authority_individual_id": edge.authority_individual_id}
+            for edge in p.citation_edges
+        ],
     )
 
 

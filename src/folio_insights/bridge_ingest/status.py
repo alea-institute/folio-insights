@@ -22,7 +22,8 @@ Sources, per field of ``StatusResult``:
   ``objections``), so they come from the shard records: one pass over
   ``ctx.shards.iter_shards()`` per journal head, cached per
   ``(storage root, corpus, journal head)``.
-* ``enrich_sources`` — the bridge-ingest provenance manifest.
+* ``enrich_sources`` — the bridge-ingest provenance manifest, read in a worker
+  thread without taking the manifest lock.
 """
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from folio_insights.bridge_ingest.manifest import manifest_path, read_manifest
+from folio_insights.bridge_ingest.manifest import read_manifest_async
 from folio_insights.storage.projection import DEPENDENCY_PREDICATES, corpus_graph, governance_graph
 from folio_insights.vocab._constants import FI_PREFIX
 
@@ -131,7 +132,6 @@ def _edge_query(iris: list[str], abox: str, gov: str) -> str:
 # (root, corpus) -> (journal head, forward, inverse); a few corpora at most.
 _RECORD_INDEX: OrderedDict[tuple[str, str], tuple[int, dict, dict]] = OrderedDict()
 _RECORD_INDEX_MAX = 8
-_MANIFEST_CACHE: OrderedDict[tuple[str, str], tuple[tuple[int, int], dict]] = OrderedDict()
 
 
 def _cache_put(cache: OrderedDict, key: Any, value: Any) -> None:
@@ -172,22 +172,6 @@ async def _record_index(ctx: Any) -> tuple[dict[str, set[tuple[str, str]]], dict
             inverse.setdefault(objection.cites, set()).add((iri, "objection"))
     _cache_put(_RECORD_INDEX, key, (head, forward, inverse))
     return forward, inverse
-
-
-def _enrich_sources(ctx: Any) -> dict[str, list[dict[str, Any]]]:
-    path = manifest_path(ctx.root)
-    key = (str(Path(ctx.root).resolve()), ctx.corpus)
-    try:
-        st = path.stat()
-        stamp = (st.st_mtime_ns, st.st_size)
-    except OSError:
-        return {}
-    cached = _MANIFEST_CACHE.get(key)
-    if cached is not None and cached[0] == stamp:
-        return cached[1]
-    lines = read_manifest(ctx.root, ctx.corpus)
-    _cache_put(_MANIFEST_CACHE, key, (stamp, lines))
-    return lines
 
 
 def normalize_iris(iris: list[str]) -> list[str]:
@@ -252,7 +236,7 @@ async def shard_status(ctx: Any, iris: list[str]) -> list[StatusResult]:
                     contesting[iri].add((other, rel))
                 else:
                     related[iri].add((other, rel))
-        manifest = _enrich_sources(ctx)
+        manifest = await read_manifest_async(ctx.root, ctx.corpus)
         for iri in present:
             res = results[iri]
             res.related = [RelatedRef(iri=o, relation=r) for o, r in sorted(related[iri], key=lambda t: (t[1], t[0]))]  # type: ignore[arg-type]

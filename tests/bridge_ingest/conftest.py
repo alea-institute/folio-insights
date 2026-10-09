@@ -1,8 +1,14 @@
-"""bridge-ingest fixtures: synthetic enrich records and a disposable storage root.
+"""bridge-ingest fixtures: enrich records and a disposable storage root.
 
-All data is synthetic. ``FIXTURE_RECORD`` is the committed enrich export the
-end-to-end test drives; replacing that file with a real export needs no code
-change.
+Two committed enrich records:
+
+* ``REAL_RECORD`` (``fixtures/enrich-propositions-record.json``) is a real
+  folio-enrich export of a public-domain opinion (Palsgraf v. Long Island R.R.,
+  248 N.Y. 339). Only the end-to-end test reads it; replacing it with another
+  export needs no code change.
+* ``SYNTHETIC_RECORD`` (``fixtures/synthetic-propositions-record.json``) is
+  synthetic and small; every other test that needs a whole record uses it, so
+  those tests stay deterministic. Records built in tests are synthetic too.
 """
 from __future__ import annotations
 
@@ -19,13 +25,16 @@ from folio_propositions import (
     stamp_content_iris,
 )
 
-FIXTURE_RECORD = Path(__file__).parent / "fixtures" / "enrich-propositions-record.json"
+FIXTURES = Path(__file__).parent / "fixtures"
+REAL_RECORD = FIXTURES / "enrich-propositions-record.json"
+SYNTHETIC_RECORD = FIXTURES / "synthetic-propositions-record.json"
+E2E_RECORDS = (REAL_RECORD, SYNTHETIC_RECORD)
 SOURCE_URI = "https://opinions.example.org/synthetic/bridge-test"
 CORPUS = "bridge-test"
 
 
 def fixture_record_dict() -> dict[str, Any]:
-    return json.loads(FIXTURE_RECORD.read_text(encoding="utf-8"))
+    return json.loads(SYNTHETIC_RECORD.read_text(encoding="utf-8"))
 
 
 def proposition(

@@ -7,13 +7,13 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from folio_insights.cli import cli
-from tests.bridge_ingest.conftest import FIXTURE_RECORD, fixture_record_dict
+from tests.bridge_ingest.conftest import SYNTHETIC_RECORD, fixture_record_dict
 
 
 def test_bridge_ingest_and_status(tmp_path: Path) -> None:
     root = tmp_path / "cli-root"
     runner = CliRunner()
-    args = ["bridge-ingest", str(FIXTURE_RECORD), "--corpus", "cli-corpus",
+    args = ["bridge-ingest", str(SYNTHETIC_RECORD), "--corpus", "cli-corpus",
             "--corpus-root", str(root), "--json"]
     first = runner.invoke(cli, args)
     assert first.exit_code == 0, first.output

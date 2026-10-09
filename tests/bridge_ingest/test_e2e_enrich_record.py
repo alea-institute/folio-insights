@@ -1,23 +1,30 @@
 """Plan R14 / AE4: an enrich export ingested into a temp corpus is found by SPARQL.
 
-Data-driven: everything is derived from ``fixtures/enrich-propositions-record.json``,
-so dropping a real enrich export of an opinion in its place needs no code change.
+Data-driven and parametrized over both committed records: the real folio-enrich
+export of a public-domain opinion (``fixtures/enrich-propositions-record.json``)
+and the synthetic one (``fixtures/synthetic-propositions-record.json``).
+Everything asserted is derived from the file, so swapping in another export
+needs no code change.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from folio_insights.bridge_ingest import ingest_record, load_record, shard_status
 from folio_insights.storage import CorpusStorageContext
 from folio_insights.storage.projection import corpus_graph
-from tests.bridge_ingest.conftest import FIXTURE_RECORD
+from tests.bridge_ingest.conftest import E2E_RECORDS
 
 CORPUS = "e2e-enrich"
 FI = "https://folio-insights.aleainstitute.ai/vocab/"
 
+records = pytest.mark.parametrize("record_path", E2E_RECORDS, ids=lambda p: p.stem)
 
-def _expected() -> tuple[set[str], dict[str, set[str]]]:
-    record = load_record(FIXTURE_RECORD).record
+
+def _expected(record_path: Path) -> tuple[set[str], dict[str, set[str]]]:
+    record = load_record(record_path).record
     iris: set[str] = set()
     by_iri: dict[str, set[str]] = {}
     for p in record.propositions:
@@ -28,14 +35,16 @@ def _expected() -> tuple[set[str], dict[str, set[str]]]:
     return iris, by_iri
 
 
-async def test_enrich_record_round_trip(storage_root: Path) -> None:
-    expected, sources = _expected()
+@records
+async def test_enrich_record_round_trip(storage_root: Path, record_path: Path) -> None:
+    expected, sources = _expected(record_path)
     assert len(expected) >= 1
     report = await ingest_record(
-        FIXTURE_RECORD, corpus_root=storage_root, corpus=CORPUS,
+        record_path, corpus_root=storage_root, corpus=CORPUS,
         framework_id="us.case-law.unspecified", extractor_did="did:web:folio-enrich.local",
     )
     assert report.refused == 0, report.refused_shards
+    assert report.manifest_refused == []
     assert set(report.created_iris) == expected
 
     ctx = await CorpusStorageContext.open(storage_root, CORPUS)
@@ -62,8 +71,9 @@ async def test_enrich_record_round_trip(storage_root: Path) -> None:
         await ctx.close()
 
 
-async def test_fixture_has_a_shared_span() -> None:
-    """The synthetic fixture exercises R12 (≥5 propositions, one shared span)."""
-    _, sources = _expected()
+@records
+async def test_fixture_has_a_shared_span(record_path: Path) -> None:
+    """Each fixture exercises R12 (≥5 propositions, at least one shared span)."""
+    _, sources = _expected(record_path)
     assert sum(len(v) for v in sources.values()) >= 5
     assert any(len(v) >= 2 for v in sources.values())

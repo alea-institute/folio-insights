@@ -28,6 +28,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from folio_insights import __version__ as INSIGHTS_VERSION
+from folio_insights.bridge_ingest.mapping import DEFAULT_FRAMEWORK_ID
 
 router = APIRouter(prefix="/api/bridge/v1", tags=["bridge"])
 
@@ -172,10 +173,11 @@ async def _read_body(request: Request, limit: int) -> bytes:
 async def bridge_ingest(
     request: Request,
     corpus: str | None = Query(default=None),
-    framework_id: str = Query(default="us.case-law.unspecified", min_length=1, max_length=256),
+    framework_id: str = Query(default=DEFAULT_FRAMEWORK_ID, min_length=1, max_length=256),
 ) -> dict[str, Any]:
     from folio_insights.bridge_ingest.errors import BridgeIngestError
-    from folio_insights.bridge_ingest.ingest import ingest_record
+    from folio_insights.bridge_ingest import ingest as ingest_module
+    from folio_insights.bridge_ingest.manifest import ManifestBusy
     from folio_insights.bridge_ingest.mapping import DEFAULT_EXTRACTOR_DID
     from folio_insights.bridge_ingest.record import parse_record_text, record_from_mapping
     from folio_insights.storage.errors import StorageError
@@ -192,13 +194,13 @@ async def bridge_ingest(
         record = record_from_mapping(
             parse_record_text(body, ndjson=content_type in NDJSON_CONTENT_TYPES)
         )
-        report = await ingest_record(
+        report = await ingest_module.ingest_record(
             record, corpus_root=root, corpus=name, framework_id=framework_id,
             extractor_did=did,
         )
     except BridgeIngestError as exc:
         raise HTTPException(status_code=422, detail=f"{type(exc).__name__}: {exc}") from None
-    except StorageError as exc:
+    except (StorageError, ManifestBusy) as exc:
         raise HTTPException(
             status_code=503, detail=f"corpus storage unavailable ({type(exc).__name__})"
         ) from None

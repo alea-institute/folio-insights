@@ -79,7 +79,12 @@ The envelope also requires `schema_version`, `vocab_version` and `transaction_ti
 The envelope is `extra="forbid"`, so enrich provenance goes to a manifest instead.
 `<corpus storage root>/bridge-ingest/manifest.jsonl` holds one JSON line per `(corpus, iri, document_id, proposition_id)`.
 Each line carries `proposition_type`, `start_char`, `end_char`, `disposition`, `asserter_role` and `citation_edges`.
-Appends take a `flock`, skip keys already present and `fsync`.
+Citation edges keep only `edge_type` and `authority_individual_id`; the free-text `authority_text` is dropped.
+Every candidate line passes the corpus PII gate (the same gate `ingest_shards` applies to shards) before it is written.
+A refused line is dropped and listed in the report's `manifest_refused` by IRI, field path and pattern name, never by value.
+Appends take a non-blocking `flock` on `manifest.lock`, retried for up to 5 seconds, then fail with `ManifestBusy` (HTTP 503).
+Under the lock, keys already present are skipped (the seen-key set is cached by file size and mtime), and the append is `fsync`ed.
+Reads take no lock, and all manifest I/O runs in a worker thread, so a held lock never stalls `/status` or `/health`.
 
 ## Ingest semantics
 
@@ -88,7 +93,13 @@ Appends take a `flock`, skip keys already present and `fsync`.
 - New IRIs land in one batch with operation ID `bridge-ingest:<record sha256[:16]>:<new-IRI-set sha256[:16]>`.
 - If the batch is refused (PII, SHACL, record validation), each new shard is retried alone.
   Refused shards are reported with a reason that never contains the matched value; the rest land.
-- A concurrent writer that lands the same IRIs first causes one re-check and retry.
+- Another writer can land an IRI between the existence check and the write.
+  The same record pushed twice shows up as an operation-ID conflict or a replay.
+  A different record sharing a span shows up as `ShardIdentityViolation`, because its `extracted_at` differs.
+  Either way ingest re-checks and retries (up to 3 attempts).
+  After the write, any shard reported refused that is now in the corpus moves to `existing` and keeps its manifest provenance.
+- Concurrent first pushes to a brand-new storage root race inside SQLite on the WAL pragma; ingest retries opening storage a few times.
+- The manifest is appended after the shards commit. If that step fails (`ManifestBusy`), re-pushing the record appends the provenance.
 - The report (`IngestReport`) lists `created`, `existing`, `skipped` and `refused` counts and the IRIs or proposition ids behind them.
 
 ## HTTP contract (`/api/bridge/v1`)
@@ -136,7 +147,10 @@ Optional query `corpus`.
 - Query: `corpus` (default below), `framework_id` (default `us.case-law.unspecified`).
 - Answers 200 with the `IngestReport`, also on re-push (then `created` is 0 and `existing` counts every IRI).
   folio-enrich pushes records automatically after a job, so repeated pushes are expected.
-- A refused record answers 422 with the refusal class; storage failures answer 503.
+- A refused record answers 422 with the refusal class.
+  Storage failures and a held manifest lock answer 503; other storage input refusals (such as an operation-ID conflict) answer 409.
+  An invalid `Content-Length` answers 400.
+  Error details name only the error class, never a path.
 
 Read endpoints are unauthenticated, like the rest of the insights API today; adding auth is a follow-up.
 No response contains a filesystem path.

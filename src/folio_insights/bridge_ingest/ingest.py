@@ -8,17 +8,31 @@ reported as ``existing``; only new IRIs are written, in one batch.
 Operation IDs are deterministic: ``bridge-ingest:<record sha256[:16]>:<sha256
 of the sorted new IRIs[:16]>`` (or the caller's ``op_id``). The second part
 keeps a retry that finds fewer new IRIs (some landed meanwhile) from reusing
-an operation ID for a different batch. A concurrent writer that commits the
-same IRIs first surfaces as ``OperationIdConflict``; ingest then re-checks
-which IRIs exist and retries once.
+an operation ID for a different batch.
+
+Races: another writer can land an IRI between the existence check and the
+write. The same record pushed twice surfaces as ``OperationIdConflict`` (or
+replays the committed batch); a different record that shares a span surfaces
+as ``ShardIdentityViolation`` (its ``extracted_at`` or extractor differs from
+the committed revision). Either way ingest re-checks which IRIs exist and
+retries, at most ``MAX_ATTEMPTS`` times. After the write, every shard
+reported refused is checked once more: one that is in the corpus (it landed
+from the other writer) moves to ``existing`` and keeps its manifest
+provenance.
 
 When the batch is refused (PII, SHACL, record validation), each new shard is
 retried alone so one refused shard is reported as ``refused`` instead of
 sinking the record; the others still land.
+
+The provenance manifest is appended after the shards, in a worker thread,
+through the same PII gate (``ManifestBusy`` if its lock stays held; the shards
+are already committed then, and a re-push appends the provenance).
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import sqlite3
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +41,7 @@ from typing import Any
 from folio_propositions import PropositionDocumentRecord
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from folio_insights.bridge_ingest.manifest import append_manifest
+from folio_insights.bridge_ingest.manifest import RefusedManifestLine, append_manifest_async
 from folio_insights.bridge_ingest.mapping import (
     DEFAULT_EXTRACTOR_DID,
     DEFAULT_FRAMEWORK_ID,
@@ -45,6 +59,8 @@ from folio_insights.storage import (
     StorageConfig,
     open_corpus_storage,
 )
+
+MAX_ATTEMPTS = 3
 
 # Per-shard refusals: the storage gates' input refusals. Everything else
 # (storage failures, lock timeouts) propagates.
@@ -81,6 +97,28 @@ class IngestReport(BaseModel):
     skipped_propositions: list[SkippedProposition] = Field(default_factory=list)
     refused_shards: list[RefusedShard] = Field(default_factory=list)
     manifest_lines_added: int = 0
+    manifest_refused: list[RefusedManifestLine] = Field(default_factory=list)
+
+
+OPEN_ATTEMPTS = 5
+
+
+async def _open_storage(root: Path, corpus: str, config: StorageConfig | None) -> Any:
+    """``open_corpus_storage`` with a short retry on SQLite "database is locked".
+
+    Two processes (or contexts) opening a brand-new journal at the same moment
+    race on ``PRAGMA journal_mode = WAL``, which does not wait on the busy
+    timeout; the loser gets ``sqlite3.OperationalError``. Concurrent first
+    pushes to a fresh storage root hit exactly that, so retry a few times.
+    """
+    for attempt in range(OPEN_ATTEMPTS):
+        try:
+            return await open_corpus_storage(root, corpus, config=config)
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc) or attempt == OPEN_ATTEMPTS - 1:
+                raise
+            await asyncio.sleep(0.05 * (attempt + 1))
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def _sha(text: str) -> str:
@@ -142,18 +180,20 @@ async def ingest_record(
         skipped_propositions=mapped.skipped,
     )
     root = Path(corpus_root)
-    ctx = await open_corpus_storage(root, corpus, config=storage_config)
+    ctx = await _open_storage(root, corpus, storage_config)
+    pii_gate = ctx.config.pii_gate
     try:
         created: list[str] = []
         refused: list[RefusedShard] = []
         existing: list[str] = []
-        for attempt in range(2):
+        for attempt in range(MAX_ATTEMPTS):
             existing = [
                 s.shard_iri for s in mapped.shards
                 if await ctx.shards.get_record(s.shard_iri) is not None
             ]
             present = set(existing)
             new = [s for s in mapped.shards if s.shard_iri not in present]
+            created, refused = [], []
             if not new:
                 break
             op = op_id or (
@@ -163,25 +203,37 @@ async def ingest_record(
             report.op_id = op
             try:
                 created, refused = await _write_new(ctx, new, op)
-            except REFUSALS as exc:  # a one-shard batch refused
-                created, refused = [], [RefusedShard(iri=new[0].shard_iri, reason=_reason(exc))]
-                break
-            except OperationIdConflict:
-                if attempt == 1 or op_id is not None:
+            except (OperationIdConflict, ShardIdentityViolation) as exc:
+                # Another writer landed some IRIs first: re-check and retry.
+                last = attempt == MAX_ATTEMPTS - 1
+                if last or (op_id is not None and isinstance(exc, OperationIdConflict)):
                     raise
-                continue  # another writer landed some IRIs: re-check and retry
+                continue
+            except REFUSALS as exc:  # a one-shard batch refused
+                refused = [RefusedShard(iri=new[0].shard_iri, reason=_reason(exc))]
             break
+        # A shard refused because another writer landed the same IRI is present.
+        still_refused: list[RefusedShard] = []
+        for item in refused:
+            if await ctx.shards.get_record(item.iri) is not None:
+                existing.append(item.iri)
+            else:
+                still_refused.append(item)
+        refused = still_refused
     finally:
         await ctx.close()
 
+    order = {s.shard_iri: i for i, s in enumerate(mapped.shards)}
+    existing = sorted(set(existing), key=order.__getitem__)
     report.created, report.created_iris = len(created), created
     report.existing, report.existing_iris = len(existing), existing
     report.refused, report.refused_shards = len(refused), refused
     landed = set(created) | set(existing)
-    report.manifest_lines_added = append_manifest(
-        root, corpus, [entry for entry in mapped.manifest if entry.iri in landed]
+    report.manifest_lines_added, report.manifest_refused = await append_manifest_async(
+        root, corpus, [entry for entry in mapped.manifest if entry.iri in landed],
+        pii_gate=pii_gate,
     )
     return report
 
 
-__all__ = ["REFUSALS", "IngestReport", "RefusedShard", "ingest_record"]
+__all__ = ["MAX_ATTEMPTS", "REFUSALS", "IngestReport", "RefusedShard", "ingest_record"]

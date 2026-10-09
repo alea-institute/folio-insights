@@ -9,6 +9,7 @@ from pathlib import Path
 
 import click
 
+from folio_insights.bridge_ingest.mapping import DEFAULT_FRAMEWORK_ID
 from folio_insights.governance.cli._state import corpus_root_option, resolve_corpus_root
 
 
@@ -16,7 +17,7 @@ from folio_insights.governance.cli._state import corpus_root_option, resolve_cor
 @click.argument("record_path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option("--corpus", "corpus", required=True, help="Target corpus name.")
 @corpus_root_option
-@click.option("--framework-id", default="us.case-law.unspecified", show_default=True,
+@click.option("--framework-id", default=DEFAULT_FRAMEWORK_ID, show_default=True,
               help="Envelope framework_id for every shard.")
 @click.option("--extractor-did", default=None,
               help="first_extractor_did (default: $FOLIO_INSIGHTS_BRIDGE_EXTRACTOR_DID, "
@@ -35,6 +36,7 @@ def bridge_ingest_cmd(
     """Ingest a folio-enrich proposition export (JSON or NDJSON) as hypothesis shards."""
     from folio_insights.bridge_ingest.errors import BridgeIngestError
     from folio_insights.bridge_ingest.ingest import ingest_record
+    from folio_insights.bridge_ingest.manifest import ManifestBusy
     from folio_insights.bridge_ingest.mapping import DEFAULT_EXTRACTOR_DID
     from folio_insights.storage.errors import StorageError
 
@@ -50,7 +52,7 @@ def bridge_ingest_cmd(
                 op_id=op_id,
             )
         )
-    except (BridgeIngestError, StorageError) as exc:
+    except (BridgeIngestError, StorageError, ManifestBusy) as exc:
         click.echo(f"bridge-ingest refused: {type(exc).__name__}: {exc}", err=True)
         sys.exit(1)
     if as_json:
@@ -65,6 +67,8 @@ def bridge_ingest_cmd(
         click.echo(f"  refused {refused.iri}: {refused.reason}")
     for skipped in report.skipped_propositions:
         click.echo(f"  skipped {skipped.proposition_id}: {skipped.reason}")
+    for line in report.manifest_refused:
+        click.echo(f"  manifest line for {line.iri} refused: {line.field_path} matches {line.pattern}")
     if report.refused:
         sys.exit(2)
 
