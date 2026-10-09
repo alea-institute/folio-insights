@@ -20,6 +20,7 @@ import logging
 import re
 
 from folio_insights.config import get_settings
+from folio_insights.llm.templates import BOUNDARY, PromptTemplate
 from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit, Span
 from folio_insights.pipeline.stages.base import (
     InsightsJob,
@@ -35,6 +36,17 @@ logger = logging.getLogger(__name__)
 
 # Threshold for "ambiguous" segments that need Tier 2/3
 _AMBIGUOUS_CHAR_THRESHOLD = 500
+
+# Boundary methods produced by an LLM call, and the registered template each call used (KTD2).
+# A segment of an LLM-refined boundary that the size cap re-splits keeps the LLM method as its
+# prefix ("llm_refined+sentence_group"): its cut points still came from the model.
+_LLM_REFINED = "llm_refined"
+_LLM_METHOD_TEMPLATES: dict[str, PromptTemplate] = {_LLM_REFINED: BOUNDARY}
+
+
+def _template_for_method(method: str) -> PromptTemplate | None:
+    """The prompt template behind a boundary ``method``, or ``None`` for a deterministic one."""
+    return _LLM_METHOD_TEMPLATES.get(method.split("+", 1)[0])
 
 
 class BoundaryDetectionStage(InsightsPipelineStage):
@@ -147,6 +159,7 @@ class BoundaryDetectionStage(InsightsPipelineStage):
                 action="split",
                 detail=f"method={b.method}",
                 confidence=b.confidence,
+                template=_template_for_method(b.method),
             )
             units.append(unit)
 
@@ -203,9 +216,10 @@ class BoundaryDetectionStage(InsightsPipelineStage):
                 current += added
         if not split_indices:
             return []
-        return _indices_to_boundaries(
-            sentences, split_indices, boundary, method="sentence_group"
-        )
+        method = "sentence_group"
+        if _template_for_method(boundary.method) is not None:
+            method = f"{boundary.method.split('+', 1)[0]}+sentence_group"
+        return _indices_to_boundaries(sentences, split_indices, boundary, method=method)
 
     def _cap_sizes(self, boundaries: list[Boundary], max_chars: int) -> list[Boundary]:
         capped: list[Boundary] = []

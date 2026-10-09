@@ -84,12 +84,12 @@ async def test_the_ratio_is_configurable(settings_env) -> None:
 
 
 class _DownJudge:
-    async def structured(self, prompt, *, schema=None, temperature=0):  # noqa: ARG002
+    async def structured(self, prompt, *, schema=None, temperature=0, **_kw):  # noqa: ARG002
         raise ConnectionError("synthetic judge outage")
 
 
 class _PartialJudge:
-    async def structured(self, prompt, *, schema=None, temperature=0):  # noqa: ARG002
+    async def structured(self, prompt, *, schema=None, temperature=0, **_kw):  # noqa: ARG002
         return {"judged": [{"iri_hash": "c0", "adjusted_score": 80, "verdict": "confirmed"}]}
 
 

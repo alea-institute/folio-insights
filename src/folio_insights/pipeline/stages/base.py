@@ -5,11 +5,15 @@ from __future__ import annotations
 import abc
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
 from folio_insights.models.corpus import CorpusDocument
 from folio_insights.models.knowledge_unit import KnowledgeUnit, StageEvent
+
+if TYPE_CHECKING:  # the stage base must not import the LLM layer at runtime
+    from folio_insights.llm.templates import PromptTemplate
 
 
 class InsightsJob(BaseModel):
@@ -44,8 +48,31 @@ def record_lineage(
     action: str,
     detail: str = "",
     confidence: float | None = None,
+    *,
+    template: PromptTemplate | None = None,
+    template_id: str | None = None,
+    template_hash: str | None = None,
 ) -> None:
-    """Append a StageEvent to a knowledge unit's lineage trail."""
+    """Append a StageEvent to a knowledge unit's lineage trail.
+
+    An event written as the direct result of an LLM call names the prompt template that call
+    used (KTD2), so the unit's prompt hash is derivable from its lineage alone. Pass the
+    registered :class:`~folio_insights.llm.templates.PromptTemplate` the call site rendered as
+    ``template`` (its id and hash are read from it, never recomputed), or the identity directly
+    as ``template_id`` + ``template_hash`` (both or neither). Giving ``template`` together with
+    an id or hash that disagrees with it is an error. Deterministic events pass none of them.
+    """
+    if template is not None:
+        if template_id is not None and template_id != template.id:
+            raise ValueError(
+                f"record_lineage: template_id {template_id!r} disagrees with template "
+                f"{template.id!r}"
+            )
+        if template_hash is not None and template_hash != template.hash:
+            raise ValueError(
+                f"record_lineage: template_hash disagrees with template {template.id!r}'s hash"
+            )
+        template_id, template_hash = template.id, template.hash
     unit.lineage.append(
         StageEvent(
             stage=stage,
@@ -53,6 +80,8 @@ def record_lineage(
             detail=detail,
             confidence=confidence,
             timestamp=datetime.now(timezone.utc).isoformat(),
+            template_id=template_id,
+            template_hash=template_hash,
         )
     )
 
