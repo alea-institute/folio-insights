@@ -5,15 +5,17 @@ the frameworks its corpus admins registered. A registration is:
 
 * **DID-signed by a corpus admin** (PRD §8 P2: "new frameworks get minted per
   corpus and are DID-signed by the corpus admin"). The signer must hold
-  ``corpus_admin`` in the corpus governance log NOW (register) and at the
-  ledger's commit time (load); the signing time must sit within
-  ``SIGNING_SKEW`` of the commit time, so it cannot be backdated; the Ed25519
+  ``corpus_admin`` in the corpus governance log at the ledger's commit time,
+  checked inside the ledger write transaction (register) and again on load;
+  the signing time must sit within ``SIGNING_SKEW`` of the commit time, so
+  it cannot be backdated; the Ed25519
   signature covers the JCS-canonical registration (framework, corpus, signer,
   time) under a domain tag. did:key signers verify offline.
 * **Persisted per corpus** as an append-only row of the corpus's ledger
   (``storage/proposals.py`` journal table, kind ``framework_register``), with
   an explicit operation ID, so a retried registration commits once. Loading
-  re-verifies every signature and the signer's role.
+  re-verifies every signature and the signer's role, and skips (and
+  reports) a row that fails, so one bad row cannot brick the registry.
 
 Registration is NOT a governance-log event: adding a ``SignedAction`` value
 would widen the shard envelope's ``AttestedSignature.action`` literal, an
@@ -28,7 +30,9 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -48,6 +52,7 @@ from folio_insights.models.framework import (
 if TYPE_CHECKING:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+    from folio_insights.governance.log import GovernanceLog
     from folio_insights.shards import ShardEnvelope
     from folio_insights.storage.context import CorpusStorageContext, StorageConfig
 
@@ -58,6 +63,7 @@ LEDGER_KIND = "framework_register"
 # Shared with governance appends (R17 / KTD12); defined in governance.clock
 # and kept importable here.
 REGISTRATION_FORMAT = "folio-insights/framework-registration/v1"
+_log = logging.getLogger(__name__)
 ADMIN_ROLE = "corpus_admin"
 
 
@@ -142,47 +148,103 @@ def verify_registration(registration: FrameworkRegistration) -> bool:
     return True
 
 
-async def _is_admin(ctx: CorpusStorageContext, did: str, at: datetime) -> bool:
+async def _is_admin(log: GovernanceLog, corpus: str, did: str, at: datetime) -> bool:
     from folio_insights.governance.roles import active_roles_for_did
 
-    roles = await active_roles_for_did(ctx.corpus, did, at, log=ctx.governance)
+    roles = await active_roles_for_did(corpus, did, at, log=log)
     return ADMIN_ROLE in roles
+
+
+@dataclass(frozen=True)
+class RefusedRegistration:
+    """A framework-registration ledger row that load did not register."""
+
+    position: int
+    op_id: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class RegistryLoad:
+    """``load_registry_report``'s result: the registry plus every ledger row
+    it was built from (``accepted``) and every row it skipped (``refused``)."""
+
+    registry: FrameworkRegistry
+    accepted: tuple[FrameworkRegistration, ...]
+    refused: tuple[RefusedRegistration, ...]
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+async def load_registry_report(ctx: CorpusStorageContext) -> RegistryLoad:
+    """The corpus registry with a diagnostic for every ledger row it skipped.
+
+    A ledger row registers its framework only when it parses, is for this
+    corpus, its signature verifies, its ``signed_at`` sits within
+    ``SIGNING_SKEW`` of the row's ledger commit time, its signer held
+    ``corpus_admin`` at that commit time (windowed by governance commit
+    times), and its framework fits the registry (known parent, no
+    conflicting definition). Any other row is skipped and listed in
+    ``refused`` with the reason: it never takes effect, and one bad row
+    (for example a registration that raced a revocation before
+    registrations were authorized in-transaction) cannot make the corpus
+    registry unloadable.
+    """
+    from pydantic import ValidationError
+
+    registry = FrameworkRegistry.with_defaults()
+    accepted: list[FrameworkRegistration] = []
+    refused: list[RefusedRegistration] = []
+    for entry in await ctx.proposals.entries():
+        if entry.kind != LEDGER_KIND:
+            continue
+
+        def refuse(reason: str) -> None:
+            refused.append(RefusedRegistration(entry.position, entry.op_id, reason))
+
+        try:
+            registration = FrameworkRegistration.model_validate(entry.payload)
+        except ValidationError:
+            refuse("the row is not a valid framework registration")
+            continue
+        if registration.corpus != ctx.corpus or not verify_registration(registration):
+            refuse("framework registration does not verify for this corpus")
+            continue
+        committed = _as_utc(datetime.fromisoformat(entry.committed_at))
+        if abs(registration.signed_at - committed) > SIGNING_SKEW:
+            refuse(f"signed_at is not within {SIGNING_SKEW} of the ledger commit time")
+            continue
+        # The role is checked at the ledger's commit time, not the signer's clock.
+        if not await _is_admin(ctx.governance, ctx.corpus, registration.signer_did, committed):
+            refuse("signer was not a corpus admin when the registration was committed")
+            continue
+        try:
+            registry.register(registration.framework)
+        except ValueError as exc:
+            refuse(f"framework does not fit the registry: {exc}")
+            continue
+        accepted.append(registration)
+    return RegistryLoad(registry, tuple(accepted), tuple(refused))
 
 
 async def load_registry(ctx: CorpusStorageContext) -> FrameworkRegistry:
     """The corpus registry: the starter set plus every verified registration.
 
-    A ledger row whose signature does not verify, or whose signer was not a
-    corpus admin when it signed, is refused (``FrameworkRegistrationRefused``)
-    rather than silently skipped: a registry must never be quietly smaller
+    A ledger row that does not verify, or whose signer was not a corpus admin
+    when it was committed, is skipped and reported (one ``WARNING`` per row on
+    this module's logger; ``load_registry_report`` returns them) rather than
+    raised: it never takes effect, and the registry is never quietly smaller
     than its ledger says.
     """
-    registry = FrameworkRegistry.with_defaults()
-    for entry in await ctx.proposals.entries():
-        if entry.kind != LEDGER_KIND:
-            continue
-        registration = FrameworkRegistration.model_validate(entry.payload)
-        if registration.corpus != ctx.corpus or not verify_registration(registration):
-            raise FrameworkRegistrationRefused(
-                f"ledger position {entry.position}: framework registration does not verify "
-                "for this corpus"
-            )
-        committed = datetime.fromisoformat(entry.committed_at)
-        if committed.tzinfo is None:
-            committed = committed.replace(tzinfo=UTC)
-        if abs(registration.signed_at - committed) > SIGNING_SKEW:
-            raise FrameworkRegistrationRefused(
-                f"ledger position {entry.position}: signed_at is not within "
-                f"{SIGNING_SKEW} of the ledger commit time"
-            )
-        # The role is checked at the ledger's commit time, not the signer's clock.
-        if not await _is_admin(ctx, registration.signer_did, committed):
-            raise FrameworkRegistrationRefused(
-                f"ledger position {entry.position}: signer was not a corpus admin "
-                "when the registration was committed"
-            )
-        registry.register(registration.framework)
-    return registry
+    load = await load_registry_report(ctx)
+    for row in load.refused:
+        _log.warning(
+            "corpus %r: framework registration at ledger position %d (op %r) skipped: %s",
+            ctx.corpus, row.position, row.op_id, row.reason,
+        )
+    return load.registry
 
 
 async def register_framework(
@@ -192,53 +254,61 @@ async def register_framework(
     signing_key: Ed25519PrivateKey,
     did: str,
     op_id: str | None = None,
-    now: datetime | None = None,
 ) -> FrameworkRegistration:
     """Register ``framework`` in ``ctx``'s corpus, signed by a corpus admin.
 
-    Refuses (nothing appended) when the signer is not a corpus admin at
-    signing time, when the parent is unregistered, or when the ID is already
-    registered with a different definition. Re-registering the identical
-    framework returns the committed registration (``op_id`` defaults to
-    ``framework:<id>``).
+    Refuses (nothing appended) when the signer is not a corpus admin at the
+    ledger commit time, when the parent is unregistered, or when the ID is
+    already registered with a different definition. Re-registering the
+    identical framework returns the committed registration (``op_id``
+    defaults to ``framework:<id>``).
+
+    Time (R17 / KTD12): there is no caller-chosen time. The registration is
+    signed at the current time; the authoritative admin check runs INSIDE the
+    proposal-ledger write transaction, at the server commit time the row
+    records, against governance history windowed by commit times, so a
+    revocation committed after the pre-check still refuses the write.
     """
-    # Authorized and signed at the current time; there is no caller-chosen
-    # signing time (a backdated one let a revoked admin register — review P1).
-    # ``now`` exists for tests and must itself be within SIGNING_SKEW of the
-    # wall clock, because load re-checks it against the ledger commit time.
-    wall = datetime.now(UTC)
-    when = now or wall
-    if when.tzinfo is None:
-        when = when.replace(tzinfo=UTC)
-    if abs(when - wall) > SIGNING_SKEW:
-        raise FrameworkRegistrationRefused(
-            f"registration time {when.isoformat()} is not within {SIGNING_SKEW} of now"
-        )
-    if not await _is_admin(ctx, did, when):
+    # Advisory pre-check at the wall clock: a clear refusal before signing.
+    # The in-transaction check below is the one that decides.
+    if not await _is_admin(ctx.governance, ctx.corpus, did, datetime.now(UTC)):
         raise FrameworkRegistrationRefused(
             f"{did} does not hold {ADMIN_ROLE!r} in corpus {ctx.corpus!r}; "
             "only a corpus admin can register a framework"
         )
-    registry = await load_registry(ctx)
-    existing = registry.get(framework.id)
+    load = await load_registry_report(ctx)
+    existing = load.registry.get(framework.id)
     if existing is not None and existing != framework:
         raise ValueError(f"framework {framework.id!r} is already registered differently")
     if existing is not None:
         # Identical re-registration: return the committed row, append nothing.
-        for entry in await ctx.proposals.entries():
-            if entry.kind == LEDGER_KIND and entry.payload["framework"]["id"] == framework.id:
-                return FrameworkRegistration.model_validate(entry.payload)
+        for accepted in load.accepted:
+            if accepted.framework.id == framework.id:
+                return accepted
         raise ValueError(f"framework {framework.id!r} is already in the starter set")
-    registry.copy().register(framework)  # parent / conflict checks before signing
-    registration = sign_registration(
-        ctx.corpus, framework, signing_key=signing_key, did=did, signed_at=when
-    )
+    load.registry.copy().register(framework)  # parent / conflict checks before signing
+    registration = sign_registration(ctx.corpus, framework, signing_key=signing_key, did=did)
     if not verify_registration(registration):
         raise FrameworkRegistrationRefused("the registration signature does not verify")
-    entry, _replayed = await ctx.proposals.append(
+
+    async def authorize(snapshot: GovernanceLog, server_time: datetime) -> None:
+        if abs(registration.signed_at - server_time) > SIGNING_SKEW:
+            raise FrameworkRegistrationRefused(
+                f"registration signed at {registration.signed_at.isoformat()} is not "
+                f"within {SIGNING_SKEW} of the ledger commit time "
+                f"{server_time.isoformat()}; nothing was appended"
+            )
+        if not await _is_admin(snapshot, ctx.corpus, did, server_time):
+            raise FrameworkRegistrationRefused(
+                f"{did} does not hold {ADMIN_ROLE!r} in corpus {ctx.corpus!r} at the "
+                f"ledger commit time {server_time.isoformat()}; nothing was appended"
+            )
+
+    entry, _replayed = await ctx.proposals._append_authorized(
         LEDGER_KIND,
         registration.model_dump(mode="json"),
         op_id=op_id or f"framework:{framework.id}",
+        authorize=authorize,
     )
     return FrameworkRegistration.model_validate(entry.payload)
 
@@ -324,10 +394,13 @@ __all__ = [
     "FrameworkRegistrationRefused",
     "LEDGER_KIND",
     "MalformedFrameworkId",
+    "RefusedRegistration",
+    "RegistryLoad",
     "SIGNING_SKEW",
     "UnregisteredFramework",
     "guarded_config",
     "load_registry",
+    "load_registry_report",
     "open_framework_checked_context",
     "register_framework",
     "registration_signing_bytes",

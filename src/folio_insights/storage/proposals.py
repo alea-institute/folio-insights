@@ -33,8 +33,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -44,7 +45,13 @@ from folio_insights.storage.errors import JournalStateChanged
 from folio_insights.storage.journal import ProposalLedgerRow, check_replay
 
 if TYPE_CHECKING:
+    from folio_insights.governance.log import InMemoryGovernanceLog
     from folio_insights.storage.context import CorpusStorageContext
+
+#: An in-transaction authorization for ``_append_authorized``: called with the
+#: committed governance history (windowed by stored commit times) and the
+#: server time the row will record; raises to refuse, appending nothing.
+LedgerAuthorization = Callable[["InMemoryGovernanceLog", datetime], Awaitable[None]]
 
 _KIND = re.compile(r"[a-z][a-z0-9_]{0,63}")
 MAX_OP_ID_CHARS = 200
@@ -136,6 +143,41 @@ class PersistentProposalLedger:
     ) -> tuple[ProposalLedgerEntry, bool]:
         """Commit one operation. Returns ``(entry, replayed)``: ``replayed``
         is true when ``op_id`` was already committed for this same request."""
+        return await self._append(
+            kind, payload, op_id=op_id, expected_head=expected_head, authorize=None
+        )
+
+    async def _append_authorized(
+        self,
+        kind: str,
+        payload: Mapping[str, Any],
+        *,
+        op_id: str,
+        authorize: LedgerAuthorization,
+    ) -> tuple[ProposalLedgerEntry, bool]:
+        """``append`` with an authorization run INSIDE the write transaction.
+
+        ``authorize(snapshot, server_time)`` sees the committed governance
+        history read in the same ``BEGIN IMMEDIATE`` transaction and the
+        server time the new row records as its ``committed_at`` (R17 /
+        KTD12), so no governance write (a revocation) can land between the
+        check and the append, and the check runs at exactly the time a later
+        load re-checks it at. A replay of a committed ``op_id`` returns the
+        committed row without re-authorizing (it was authorized when it
+        committed)."""
+        return await self._append(
+            kind, payload, op_id=op_id, expected_head=None, authorize=authorize
+        )
+
+    async def _append(
+        self,
+        kind: str,
+        payload: Mapping[str, Any],
+        *,
+        op_id: str,
+        expected_head: int | None,
+        authorize: LedgerAuthorization | None,
+    ) -> tuple[ProposalLedgerEntry, bool]:
         ctx = self._ctx
         ctx._ensure_open()
         if not isinstance(op_id, str) or not op_id.strip() or len(op_id) > MAX_OP_ID_CHARS:
@@ -163,8 +205,22 @@ class PersistentProposalLedger:
                     actual = await tx.proposal_head()
                     if actual != expected_head:
                         raise JournalStateChanged(expected=expected_head, actual=actual)
+                committed_at: datetime | None = None
+                if authorize is not None:
+                    from folio_insights.storage.context import (
+                        _governance_snapshot_in_transaction,
+                    )
+
+                    snapshot, committed_at = await _governance_snapshot_in_transaction(
+                        tx, ctx.corpus
+                    )
+                    await authorize(snapshot, committed_at)
                 row = await tx.append_proposal(
-                    op_id=op_id, request_sha256=request_sha, kind=kind, payload=body
+                    op_id=op_id,
+                    request_sha256=request_sha,
+                    kind=kind,
+                    payload=body,
+                    committed_at=committed_at,
                 )
         return _entry(row), False
 
