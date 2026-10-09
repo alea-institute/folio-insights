@@ -175,7 +175,12 @@ async def authorize(
         log: the GovernanceLog instance (Phase 7 in-memory; Phase 13 persistent).
         admin_did: required when ``action == "corpus_init"``. The CLI binds
             this from the ``--admin-did`` flag at the genesis bootstrap step.
-        asof: the wall-clock at which roles are resolved. Defaults to UTC now.
+        asof: the time at which roles are resolved. Defaults to UTC now.
+            Role windows place each log event at the time it took effect
+            (R17 / KTD12): its server commit time for persistent storage
+            and for a snapshot built from it, ``signed_at`` only for an
+            in-memory log with no server clock. The persistent append path
+            passes the new event's server commit time here.
     """
     resolved_asof = asof if asof is not None else datetime.now(UTC)
 

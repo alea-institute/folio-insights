@@ -29,13 +29,14 @@ from __future__ import annotations
 import base64
 import hashlib
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jcs
 from pydantic import BaseModel, ConfigDict
 
+from folio_insights.governance.clock import SIGNING_SKEW
 from folio_insights.models.framework import (
     Framework,
     FrameworkRegistry,
@@ -54,7 +55,8 @@ LEDGER_KIND = "framework_register"
 # How far a registration's signing time may sit from the moment it is
 # authorized (register) or committed (load). The admin role is checked at the
 # ledger-controlled time, never at a time the signer chose (review P1).
-SIGNING_SKEW = timedelta(minutes=5)
+# Shared with governance appends (R17 / KTD12); defined in governance.clock
+# and kept importable here.
 REGISTRATION_FORMAT = "folio-insights/framework-registration/v1"
 ADMIN_ROLE = "corpus_admin"
 
