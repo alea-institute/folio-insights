@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from api.models.processing import ActivityEntry, ProcessingStatus
 
@@ -54,6 +54,14 @@ class TaskResponse(BaseModel):
     has_orphans: bool = False
     is_jurisdiction_sensitive: bool = False
     is_manual: bool = False
+    # Authorship of the task's last decision (drain plan U9): the signers-file handle, the
+    # signer DID, whether the signature is cryptographically valid, whether the signers file
+    # listed the DID (false without one), and the operator who submitted it.
+    decided_by: str | None = None
+    signer_did: str | None = None
+    signature_verified: bool = False
+    signer_registered: bool = False
+    operator: str | None = None
 
 
 class TaskTreeNode(BaseModel):
@@ -103,6 +111,18 @@ class TaskCreateRequest(BaseModel):
     folio_iri: str | None = None
     parent_task_id: str | None = None
     is_procedural: bool = False
+    # Optional signed decision: kind "task_create", target "*" (the task has no ID yet),
+    # verdict "create", detail {"label", "folio_iri", "parent_task_id", "is_procedural"}.
+    signature: dict[str, Any] | None = None
+
+
+class TaskDeleteRequest(BaseModel):
+    """Optional body of ``DELETE /tasks/{task_id}``: only a signed decision (kind
+    "task_delete", target the task ID, verdict "delete")."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    signature: dict[str, Any] | None = None
 
 
 class TaskBulkApproveRequest(BaseModel):
@@ -111,7 +131,9 @@ class TaskBulkApproveRequest(BaseModel):
     task_ids: list[str] | None = None
     confidence_min: float | None = None
     # Optional signed decision: kind "task_bulk_approve", target "*", verdict "approved",
-    # detail {"task_ids": [...]} or {"confidence_min": x} (whichever selects the tasks).
+    # detail {"task_ids": [...]} or, for a threshold, {"confidence_min": x,
+    # "selection_sha256": d} with d = signed_decisions.selection_digest of the task IDs the
+    # threshold selects (a different selection at request time answers 409).
     signature: dict[str, Any] | None = None
 
 
@@ -132,6 +154,12 @@ class ContradictionResponse(BaseModel):
     resolution: str | None = None
     resolved_text: str | None = None
     resolver_note: str = ""
+    # Authorship of the resolution (drain plan U9), as on TaskResponse.
+    decided_by: str | None = None
+    signer_did: str | None = None
+    signature_verified: bool = False
+    signer_registered: bool = False
+    operator: str | None = None
 
 
 class ContradictionResolveRequest(BaseModel):
@@ -140,6 +168,10 @@ class ContradictionResolveRequest(BaseModel):
     resolution: str  # "keep_both" | "prefer_a" | "prefer_b" | "merge" | "jurisdiction"
     resolved_text: str | None = None
     note: str | None = None
+    # Optional signed decision: kind "contradiction_resolve", target the contradiction ID
+    # (as a string), verdict the resolution, rationale the note, detail
+    # {"resolved_text": ...}.
+    signature: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -154,6 +186,9 @@ class HierarchyEditRequest(BaseModel):
     source_task_id: str | None = None
     target_task_id: str | None = None
     detail: str = ""
+    # Optional signed decision: kind "hierarchy_edit", target the source task ID ("*" when
+    # none), verdict the edit type, rationale the detail, detail {"target_task_id": ...}.
+    signature: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------

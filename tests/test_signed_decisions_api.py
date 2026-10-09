@@ -36,6 +36,7 @@ from folio_insights.proposals import ProposalStore
 from folio_insights.proposals.signed_decisions import (
     did_key_of,
     reset_signers_cache,
+    selection_digest,
     sign_decision,
 )
 from folio_insights.storage import CorpusStorageContext
@@ -131,6 +132,7 @@ def test_signed_unit_review_stores_the_signer(env):
     body = r.json()
     assert body["signer_did"] == did_key_of(key)
     assert body["signature_verified"] is True
+    assert body["signer_registered"] is False
     assert body["operator"] == auth.LOOPBACK_HANDLE
     row = _rows(env)["unit-001"]
     assert row["signer_did"] == did_key_of(key)
@@ -296,8 +298,11 @@ def test_signed_bulk_approve_by_ids_and_by_confidence(env):
                                verdict="approved", detail={"unit_ids": ["unit-001"]})})
     assert r.status_code == 400
     assert "unit-003" not in _rows(env)
+    # A threshold binds the digest of the exact selection (all three units are >= 0.3).
     sig = _sign(key, kind="unit_bulk_approve", target="*", verdict="approved",
-                detail={"confidence_min": 0.3})
+                detail={"confidence_min": 0.3,
+                        "selection_sha256": selection_digest(["unit-001", "unit-002",
+                                                              "unit-003"])})
     r = env["client"].post("/api/v1/units/bulk-approve", params={"corpus": CORPUS},
                            json={"confidence_min": 0.3, "signature": sig})
     assert r.status_code == 200, r.text
@@ -346,6 +351,62 @@ def test_existing_review_db_is_migrated_on_first_write(env):
 # ---- tasks (discovery routes) ----------------------------------------------------------------
 
 
+def test_threshold_selection_change_refuses_without_consuming_nonce(env):
+    key = _key()
+    sig = _sign(key, kind="unit_bulk_approve", target="*", verdict="approved",
+                detail={"confidence_min": 0.8,
+                        "selection_sha256": selection_digest(["unit-001"])})
+    url = "/api/v1/units/bulk-approve"
+    r = env["client"].post(url, params={"corpus": CORPUS},
+                           json={"confidence_min": 0.8, "signature": sig})
+    assert r.status_code == 409 and "selection" in r.json()["detail"]
+    assert _rows(env) == {}
+    # Restore exactly what the reviewer signed: the refused nonce remains available.
+    api_main.get_extraction_data(CORPUS)["units"][1] = {**UNITS[1], "confidence": 0.7}
+    r = env["client"].post(url, params={"corpus": CORPUS},
+                           json={"confidence_min": 0.8, "signature": sig})
+    assert r.status_code == 200, r.text
+    assert r.json()["unit_ids"] == ["unit-001"]
+
+
+def test_partial_signature_schema_read_preserves_attribution_without_migrating(env):
+    with sqlite3.connect(env["db"]) as db:
+        db.executescript(SCHEMA_SQL)
+        db.execute("ALTER TABLE review_decisions ADD COLUMN signer_did TEXT")
+        db.execute("ALTER TABLE review_decisions ADD COLUMN signature_verified INTEGER DEFAULT 0")
+        db.execute("INSERT INTO review_decisions (unit_id, corpus_name, status, signer_did, "
+                   "signature_verified) VALUES ('unit-001', ?, 'approved', 'did:key:legacy', 1)",
+                   (CORPUS,))
+    before = env["db"].read_bytes()
+    r = env["client"].get("/api/v1/units", params={"corpus": CORPUS, "concept_iri": "__all__"})
+    assert r.status_code == 200
+    row = next(u for u in r.json() if u["id"] == "unit-001")
+    assert row["signer_did"] == "did:key:legacy" and row["signature_verified"] is True
+    assert row["signer_registered"] is False
+    assert env["db"].read_bytes() == before
+
+
+async def test_signature_migrations_are_serialized_across_connections(tmp_path):
+    import aiosqlite
+
+    from folio_insights.persistence.review_db import (
+        DECISION_TABLES,
+        decision_signature_columns,
+        ensure_decision_signature_schema,
+    )
+
+    path = tmp_path / "review.db"
+    async with aiosqlite.connect(path) as first, aiosqlite.connect(path) as second:
+        await first.executescript(SCHEMA_SQL)
+        await asyncio.gather(ensure_decision_signature_schema(first),
+                             ensure_decision_signature_schema(second))
+        for table in DECISION_TABLES:
+            assert await decision_signature_columns(first, table)
+        assert first.in_transaction is False and second.in_transaction is False
+        await ensure_decision_signature_schema(first)
+        assert first.in_transaction is False
+
+
 def _seed_tasks(env) -> None:
     conn = sqlite3.connect(env["db"])
     conn.executescript(SCHEMA_SQL)
@@ -392,6 +453,10 @@ def test_signed_task_review_and_bulk_approve(env):
     assert r.status_code == 200, r.text
     row = _tasks(env)["task-b"]
     assert row["status"] == "approved" and row["signature_verified"] == 1
+    tree = env["client"].get(f"/api/v1/corpus/{CORPUS}/tasks/tree").json()
+    shown = next(t for t in tree if t["id"] == "task-b")
+    assert shown["signer_did"] == did_key_of(key)
+    assert shown["signature_verified"] is True and shown["signer_registered"] is False
 
 
 def test_require_signed_refuses_unsigned_task_review(env):
@@ -406,6 +471,98 @@ def test_require_signed_refuses_unsigned_task_review(env):
                            json={"task_ids": ["task-a"]})
     assert r.status_code == 403
     assert _tasks(env)["task-a"]["status"] == "unreviewed"
+
+
+def _seed_contradiction(env):
+    with sqlite3.connect(env["db"]) as db:
+        cursor = db.execute("INSERT INTO contradictions "
+                            "(corpus_name, task_id, unit_id_a, unit_id_b) "
+                            "VALUES (?, 'task-a', 'unit-001', 'unit-002')", (CORPUS,))
+        return cursor.lastrowid
+
+
+@pytest.mark.parametrize("operation", ["create", "delete", "move", "resolve"])
+def test_task_mutations_require_signatures_and_record_registered_authors(env, operation):
+    _seed_tasks(env)
+    cid = _seed_contradiction(env)
+    key = _key()
+    _configure(env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1",
+               FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(
+                   _signers(env, f"{did_key_of(key)} alice")))
+    base = f"/api/v1/corpus/{CORPUS}"
+    if operation == "create":
+        method, url, body = "POST", base + "/tasks", {"label": "Synthetic manual task"}
+        fields = dict(kind="task_create", target="*", verdict="create",
+                      detail={"label": body["label"], "is_procedural": False})
+    elif operation == "delete":
+        method, url, body = "DELETE", base + "/tasks/task-a", {}
+        fields = dict(kind="task_delete", target="task-a", verdict="delete")
+    elif operation == "move":
+        method, url = "POST", base + "/tasks/hierarchy-edit"
+        body = {"edit_type": "move", "source_task_id": "task-a", "target_task_id": "task-b"}
+        fields = dict(kind="hierarchy_edit", target="task-a", verdict="move",
+                      detail={"target_task_id": "task-b"})
+    else:
+        method, url, body = "POST", base + f"/contradictions/{cid}/resolve", {"resolution": "keep_both"}
+        fields = dict(kind="contradiction_resolve", target=str(cid), verdict="keep_both")
+    before = env["db"].read_bytes()
+    refused = env["client"].request(method, url, json=body)
+    assert refused.status_code == 403, refused.text
+    assert env["db"].read_bytes() == before
+    signature = _sign(key, **fields)
+    r = env["client"].request(method, url, json={**body, "signature": signature})
+    assert r.status_code == (201 if operation == "create" else 204 if operation == "delete" else 200), r.text
+    with sqlite3.connect(env["db"]) as db:
+        db.row_factory = sqlite3.Row
+        if operation == "create":
+            row = db.execute("SELECT * FROM task_decisions WHERE task_id = ?",
+                             (r.json()["id"],)).fetchone()
+        elif operation in {"delete", "move"}:
+            row = db.execute("SELECT * FROM hierarchy_edits ORDER BY id DESC").fetchone()
+        else:
+            row = db.execute("SELECT * FROM contradictions WHERE id = ?", (cid,)).fetchone()
+        assert row["signer_did"] == did_key_of(key)
+        assert row["decided_by"] == "human:alice"
+        assert row["signature_verified"] == row["signer_registered"] == 1
+        assert row["operator"] == auth.LOOPBACK_HANDLE
+        assert db.execute("SELECT count(*) FROM decision_nonces").fetchone()[0] == 1
+    if operation != "delete":
+        assert r.json()["signer_registered"] is True
+    replay = env["client"].request(method, url, json={**body, "signature": signature})
+    assert replay.status_code == (404 if operation == "delete" else 409), replay.text
+
+
+def test_unsigned_contradiction_replacement_clears_authorship(env):
+    _seed_tasks(env)
+    cid = _seed_contradiction(env)
+    url = f"/api/v1/corpus/{CORPUS}/contradictions/{cid}/resolve"
+    sig = _sign(_key(), kind="contradiction_resolve", target=str(cid), verdict="keep_both")
+    r = env["client"].post(url, json={"resolution": "keep_both", "signature": sig})
+    assert r.status_code == 200 and r.json()["signature_verified"] is True
+    shown = env["client"].get(f"/api/v1/corpus/{CORPUS}/contradictions/{cid}")
+    assert shown.json()["signer_did"] == sig["signature"]["did"]
+    r = env["client"].post(url, json={"resolution": "prefer_a"})
+    assert r.status_code == 200 and r.json()["signer_did"] is None
+    assert r.json()["signature_verified"] is r.json()["signer_registered"] is False
+
+
+def test_task_threshold_selection_is_bound_to_signed_ids(env):
+    _seed_tasks(env)
+    path = env["db"].parent / "task_tree.json"
+    path.write_text(json.dumps([{"id": "task-a", "confidence": 0.9},
+                                {"id": "task-b", "confidence": 0.9}]))
+    key = _key()
+    signature = _sign(key, kind="task_bulk_approve", target="*", verdict="approved",
+                      detail={"confidence_min": 0.8,
+                              "selection_sha256": selection_digest(["task-a"])})
+    url = f"/api/v1/corpus/{CORPUS}/tasks/bulk-approve"
+    r = env["client"].post(url, json={"confidence_min": 0.8, "signature": signature})
+    assert r.status_code == 409
+    assert all(t["status"] == "unreviewed" for t in _tasks(env).values())
+    path.write_text(json.dumps([{"id": "task-a", "confidence": 0.9}]))
+    r = env["client"].post(url, json={"confidence_min": 0.8, "signature": signature})
+    assert r.status_code == 200 and r.json()["task_ids"] == ["task-a"]
+    assert _tasks(env)["task-b"]["status"] == "unreviewed"
 
 
 # ---- proposed classes (the proposal ledger) --------------------------------------------------

@@ -10,14 +10,20 @@ only through ``scripts/apply_approvals.py import-legacy``.
 Signed decisions (drain plan U9, R16, KTD11). Every decision route accepts an optional
 ``signature`` object in its body: a signed decision (``folio-insights proposals
 sign-decision``) verified before anything is stored (``api/services/decision_signatures.py``).
-Unit decisions record ``signer_did``, ``signature_verified`` and the authenticated
-operator in ``review.db``; proposed-class decisions record them in the proposal ledger.
+Unit decisions record ``signer_did``, ``signature_verified``, ``signer_registered`` and the
+authenticated operator in ``review.db``; proposed-class decisions record them in the
+proposal ledger. ``signature_verified`` means the signature is valid for its did:key;
+``signer_registered`` that the signers file listed the DID (false without one).
 The signed body must describe the request exactly:
 
 * ``POST /units/{unit_id}/review``: kind ``unit_review``, target the unit ID, verdict the
   status, rationale the note, detail ``{"edited_text": ...}`` when given;
 * ``POST /units/bulk-approve``: kind ``unit_bulk_approve``, target ``"*"``, verdict
-  ``approved``, detail ``{"unit_ids": [...]}`` or ``{"confidence_min": x}``;
+  ``approved``, detail ``{"unit_ids": [...]}`` (the exact list, in request order) or,
+  for a threshold, ``{"confidence_min": x, "selection_sha256": d}`` where ``d`` is
+  ``signed_decisions.selection_digest`` of the IDs of the units at or above ``x`` (what
+  ``GET /units`` lists). The server computes the digest of the units it would approve at
+  request time; a different selection answers 409 and records nothing;
 * ``POST /review/reset``: kind ``unit_review_reset``, target ``"*"``, verdict ``reset``;
 * ``POST /proposed-classes/{label}/review``: kind ``proposed_class``, target the
   proposal ID, verdict the status, rationale the note, detail ``{"merge_into": ...}`` for
@@ -26,6 +32,7 @@ The signed body must describe the request exactly:
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -35,14 +42,18 @@ from pydantic import BaseModel, ConfigDict
 from api.auth import WRITE_GUARD
 from api.services import decision_signatures as signing
 from api.services import proposals as proposal_svc
-from folio_insights.persistence.review_db import decision_signature_columns
+from folio_insights.persistence.review_db import present_signature_columns
 from folio_insights.proposals.signed_decisions import (
     CORPUS_WIDE_TARGET,
     KIND_UNIT_BULK_APPROVE,
     KIND_UNIT_REVIEW,
     KIND_UNIT_REVIEW_RESET,
+    SELECTION_DIGEST_KEY,
     ExpectedDecision,
+    selection_digest,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=WRITE_GUARD)
 
@@ -95,17 +106,15 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-_SIGNER_COLUMNS = ("decided_by", "signer_did", "signature_verified", "operator")
-
-
 async def _get_review_status(
-    db, unit_id: str, *, signed_columns: bool | None = None
+    db, unit_id: str, *, signed_columns: tuple[str, ...] | None = None
 ) -> dict[str, Any] | None:
-    """Fetch review decision row for a unit. The signed-decision columns are read only
-    when the database already has them (reading never migrates)."""
+    """Fetch review decision row for a unit. Only the signed-decision columns the database
+    already has are read (``present_signature_columns``; reading never migrates)."""
     if signed_columns is None:
-        signed_columns = await decision_signature_columns(db, "review_decisions")
-    extra = "".join(f", {c}" for c in _SIGNER_COLUMNS) if signed_columns else ""
+        signed_columns = await present_signature_columns(db, "review_decisions")
+    selected = [c for c in signing.VIEW_COLUMNS if c in signed_columns]
+    extra = "".join(f", {c}" for c in selected)
     cursor = await db.execute(
         "SELECT unit_id, status, edited_text, reviewer_note, reviewed_at" + extra
         + " FROM review_decisions WHERE unit_id = ?",
@@ -121,9 +130,7 @@ async def _get_review_status(
         "reviewer_note": row[3],
         "reviewed_at": row[4],
     }
-    if signed_columns:
-        review.update(dict(zip(_SIGNER_COLUMNS, row[5:])))
-        review["signature_verified"] = bool(review["signature_verified"])
+    review.update(signing.authorship_view(dict(zip(selected, row[5:])), tuple(selected)))
     return review
 
 
@@ -145,6 +152,7 @@ def _merge_review(unit: dict[str, Any], review: dict[str, Any] | None) -> dict[s
     result["decided_by"] = review.get("decided_by")
     result["signer_did"] = review.get("signer_did")
     result["signature_verified"] = bool(review.get("signature_verified", False))
+    result["signer_registered"] = bool(review.get("signer_registered", False))
     result["operator"] = review.get("operator")
     return result
 
@@ -192,7 +200,7 @@ async def list_units(
     # Merge review status from SQLite
     db = await get_db_for_corpus(corpus)
     try:
-        signed_columns = await decision_signature_columns(db, "review_decisions")
+        signed_columns = await present_signature_columns(db, "review_decisions")
         results = []
         for unit in units:
             review = await _get_review_status(db, unit["id"], signed_columns=signed_columns)
@@ -238,8 +246,8 @@ async def review_unit(
         await db.execute(
             """
             INSERT INTO review_decisions (unit_id, corpus_name, status, edited_text, original_text, reviewer_note, reviewed_at, updated_at,
-                                          decided_by, signer_did, decision_signature, signature_verified, operator)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                          decided_by, signer_did, decision_signature, signature_verified, signer_registered, operator)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(unit_id) DO UPDATE SET
                 status = excluded.status,
                 edited_text = excluded.edited_text,
@@ -250,6 +258,7 @@ async def review_unit(
                 signer_did = excluded.signer_did,
                 decision_signature = excluded.decision_signature,
                 signature_verified = excluded.signature_verified,
+                signer_registered = excluded.signer_registered,
                 operator = excluded.operator
             """,
             (
@@ -265,6 +274,7 @@ async def review_unit(
                 cols["signer_did"],
                 cols["decision_signature"],
                 cols["signature_verified"],
+                cols["signer_registered"],
                 cols["operator"],
             ),
         )
@@ -293,8 +303,11 @@ async def bulk_approve(
         target_ids = body.unit_ids
         selector: dict[str, Any] = {"unit_ids": list(body.unit_ids)}
     elif body.confidence_min is not None:
+        # The selection is computed once, here, and the signature (if any) must bind its
+        # digest: what is approved below is exactly what the signer saw.
         target_ids = [u["id"] for u in units if u.get("confidence", 0) >= body.confidence_min]
-        selector = {"confidence_min": body.confidence_min}
+        selector = {"confidence_min": body.confidence_min,
+                    SELECTION_DIGEST_KEY: selection_digest(target_ids)}
     else:
         raise HTTPException(status_code=400, detail="Provide unit_ids or confidence_min")
 
@@ -319,8 +332,8 @@ async def bulk_approve(
             await db.execute(
                 """
                 INSERT INTO review_decisions (unit_id, corpus_name, status, original_text, reviewer_note, reviewed_at, updated_at,
-                                              decided_by, signer_did, decision_signature, signature_verified, operator)
-                VALUES (?, ?, 'approved', ?, '', ?, ?, ?, ?, ?, ?, ?)
+                                              decided_by, signer_did, decision_signature, signature_verified, signer_registered, operator)
+                VALUES (?, ?, 'approved', ?, '', ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(unit_id) DO UPDATE SET
                     status = 'approved',
                     reviewer_note = '',
@@ -330,10 +343,12 @@ async def bulk_approve(
                     signer_did = excluded.signer_did,
                     decision_signature = excluded.decision_signature,
                     signature_verified = excluded.signature_verified,
+                    signer_registered = excluded.signer_registered,
                     operator = excluded.operator
                 """,
                 (uid, corpus, original_text, now, now, cols["decided_by"], cols["signer_did"],
-                 cols["decision_signature"], cols["signature_verified"], cols["operator"]),
+                 cols["decision_signature"], cols["signature_verified"],
+                 cols["signer_registered"], cols["operator"]),
             )
         await db.commit()
         return {"approved_count": len(target_ids), "unit_ids": target_ids,
@@ -440,7 +455,7 @@ async def review_proposed_class(
     from folio_insights.proposals import ProposalStore
     from folio_insights.proposals.decisions import INPUT_STATUSES, DecisionInvalid
     from folio_insights.proposals.signed_decisions import DecisionSignatureRefused
-    from folio_insights.proposals.store import ReviewerRequired
+    from folio_insights.proposals.store import DecisionNotRecorded, ReviewerRequired
     from folio_insights.storage.errors import (
         JournalStateChanged,
         OperationIdConflict,
@@ -528,6 +543,14 @@ async def review_proposed_class(
                 status_code=409,
                 detail="the proposal ledger changed during the request; retry. Nothing was recorded",
             ) from None
+        except DecisionNotRecorded as exc:
+            # Never answer 200 for a decision that decides nothing.
+            logger.error("proposed-class decision not recorded: %s", exc)
+            raise HTTPException(
+                status_code=500,
+                detail="the decision was appended but did not validate on read-back; it "
+                "decides nothing. The server log names the reason",
+            ) from None
         current = (await store.load()).get(pid)
 
     outcome = result["results"][pid]
@@ -552,6 +575,10 @@ async def review_proposed_class(
         # submitted it (the authenticated operator).
         "signer_did": current.decision.get("signer_did")
         if pid not in result["superseded_since"] else None,
+        "signature_verified": current.decision.get("signature_verified", False) is True
+        if pid not in result["superseded_since"] else False,
+        "signer_registered": current.decision.get("signer_registered", False) is True
+        if pid not in result["superseded_since"] else False,
         "operator": operator,
     }
 

@@ -26,16 +26,20 @@ by the explicit ``seal_legacy_proposed_class_table`` (``import-legacy --seal``).
 existing review.db never writes it, so a read-only file still opens and a tracked
 review.db is not rewritten by being read.
 
-Signed decisions (drain plan U9, R16). ``review_decisions`` and ``task_decisions`` record
-who authored each decision: ``decided_by`` (the handle a signers file maps the signer to),
-``signer_did``, ``decision_signature`` (the signed decision, JSON), ``signature_verified``
-(1 only for a verified signature, 0 for an unsigned decision) and ``operator`` (the
-authenticated API operator who submitted it). ``decision_nonces`` records every signer
-nonce a decision consumed, so a signed decision can be recorded once. The migration
+Signed decisions (drain plan U9, R16). The decision tables (``DECISION_TABLES``:
+``review_decisions``, ``task_decisions``, and the ``contradictions`` resolutions and
+``hierarchy_edits`` records of reviewer edits) record who authored each decision:
+``decided_by`` (the handle a signers file maps the signer to), ``signer_did``,
+``decision_signature`` (the signed decision, JSON), ``signature_verified`` (1 only for a
+cryptographically valid signature, 0 for an unsigned decision), ``signer_registered`` (1
+only when a signers file listed the signer DID; always 0 without one) and ``operator``
+(the authenticated API operator who submitted it). ``decision_nonces`` records every
+signer nonce a decision consumed, so a signed decision can be recorded once. The migration
 (``ensure_decision_signature_schema``) only adds nullable or defaulted columns and a table,
-so it is backwards compatible, and it runs on the WRITE paths only (and in a database this
-code creates): opening an existing review.db still writes nothing, and the read paths
-check ``decision_signature_columns`` before selecting the new columns.
+so it is backwards compatible; it is atomic across connections (``BEGIN IMMEDIATE`` with
+the column check repeated inside) and runs on the WRITE paths only (and in a database this
+code creates): opening an existing review.db still writes nothing, and the read paths ask
+``present_signature_columns`` which of the new columns exist before selecting them.
 """
 
 from __future__ import annotations
@@ -272,12 +276,13 @@ async def apply_schema(db: Any, *, new_file: bool) -> None:
 
 
 #: Tables whose rows are review decisions, and the signed-decision columns each gains.
-DECISION_TABLES = ("review_decisions", "task_decisions")
+DECISION_TABLES = ("review_decisions", "task_decisions", "contradictions", "hierarchy_edits")
 DECISION_SIGNATURE_COLUMNS: tuple[tuple[str, str], ...] = (
     ("decided_by", "TEXT"),
     ("signer_did", "TEXT"),
     ("decision_signature", "TEXT"),
     ("signature_verified", "INTEGER NOT NULL DEFAULT 0"),
+    ("signer_registered", "INTEGER NOT NULL DEFAULT 0"),
     ("operator", "TEXT"),
 )
 
@@ -304,33 +309,85 @@ async def _columns(db: Any, table: str) -> set[str]:
     return {row[1] for row in await cursor.fetchall()}
 
 
-async def decision_signature_columns(db: Any, table: str) -> bool:
-    """Whether ``table`` already has every signed-decision column (read paths use this
-    instead of migrating, so reading never writes)."""
+async def present_signature_columns(db: Any, table: str) -> tuple[str, ...]:
+    """The signed-decision columns ``table`` already has, in ``DECISION_SIGNATURE_COLUMNS``
+    order. Read paths select only these (an absent column reads as its default: ``None``
+    or 0), so reading never migrates and a partly migrated database still reads."""
     if table not in DECISION_TABLES:
         raise ValueError(f"{table!r} is not a decision table")
     have = await _columns(db, table)
-    return all(name in have for name, _ in DECISION_SIGNATURE_COLUMNS)
+    return tuple(name for name, _ in DECISION_SIGNATURE_COLUMNS if name in have)
+
+
+async def decision_signature_columns(db: Any, table: str) -> bool:
+    """Whether ``table`` already has every signed-decision column (read paths use this
+    or ``present_signature_columns`` instead of migrating, so reading never writes)."""
+    present = await present_signature_columns(db, table)
+    return len(present) == len(DECISION_SIGNATURE_COLUMNS)
+
+
+async def _signature_schema_missing(db: Any) -> bool:
+    for table in DECISION_TABLES:
+        if not await decision_signature_columns(db, table):
+            return True
+    cursor = await db.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'decision_nonces'"
+    )
+    return await cursor.fetchone() is None
+
+
+async def _add_missing_signature_schema(db: Any) -> None:
+    import sqlite3
+
+    for table in DECISION_TABLES:
+        have = await _columns(db, table)
+        for name, decl in DECISION_SIGNATURE_COLUMNS:
+            if name in have:
+                continue
+            try:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+            except sqlite3.OperationalError:
+                # Another writer added it first (a connection outside this transaction
+                # discipline). Anything else is a real failure.
+                if name not in await _columns(db, table):
+                    raise
+    # ``execute``, not ``executescript``: the latter would COMMIT an open transaction first.
+    await db.execute(DECISION_NONCES_SQL)
 
 
 async def ensure_decision_signature_schema(db: Any) -> None:
     """Add the signed-decision columns and the ``decision_nonces`` table where missing.
 
-    Idempotent and additive (nullable or defaulted columns only), so existing rows read as
-    unsigned (``signature_verified = 0``). Writes only what is missing, and does not
-    commit: a write path calls it inside the transaction of its decision write."""
-    for table in DECISION_TABLES:
-        have = await _columns(db, table)
-        for name, decl in DECISION_SIGNATURE_COLUMNS:
-            if name not in have:
-                await db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
-    cursor = await db.execute(
-        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'decision_nonces'"
-    )
-    if await cursor.fetchone() is None:
-        # ``execute``, not ``executescript``: the latter would COMMIT the caller's open
-        # transaction first.
-        await db.execute(DECISION_NONCES_SQL)
+    Idempotent, additive (nullable or defaulted columns only, so existing rows read as
+    unsigned, ``signature_verified = 0``) and atomic across connections:
+
+    * When nothing is missing it writes nothing and opens no transaction.
+    * Otherwise, on a connection with no open transaction, it takes ``BEGIN IMMEDIATE``
+      (the database write lock, waiting on the busy timeout for a concurrent writer),
+      repeats the column check inside, adds only what is still missing and COMMITs. A
+      second connection migrating at the same time waits, then finds nothing to add.
+      The migration is committed on its own, before the caller's decision write: it is
+      additive, so committing it even when that write later rolls back is harmless.
+    * Inside a transaction the caller already opened (which holds the write lock once
+      it has written), it migrates within that transaction and leaves committing to
+      the caller.
+
+    A duplicate-column error from a writer outside this discipline is tolerated when the
+    column now exists."""
+    if not await _signature_schema_missing(db):
+        return
+    if getattr(db, "in_transaction", False):
+        await _add_missing_signature_schema(db)
+        return
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        if await _signature_schema_missing(db):
+            await _add_missing_signature_schema(db)
+        await db.commit()
+    except BaseException:
+        if getattr(db, "in_transaction", False):
+            await db.rollback()
+        raise
 
 
 async def claim_decision_nonce(
@@ -436,6 +493,7 @@ __all__ = [
     "apply_schema",
     "claim_decision_nonce",
     "decision_signature_columns",
+    "present_signature_columns",
     "ensure_decision_signature_schema",
     "persist_discovery",
     "read_legacy_proposed_class_rows",
