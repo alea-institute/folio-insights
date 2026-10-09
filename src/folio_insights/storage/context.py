@@ -365,6 +365,25 @@ def _governance_server_time(history_committed: list[datetime]) -> datetime:
     return now
 
 
+async def _governance_snapshot_in_transaction(
+    tx: JournalTransaction, corpus: str
+) -> tuple[InMemoryGovernanceLog, datetime]:
+    """The committed governance history of ``corpus`` read inside the write
+    transaction ``tx``, windowed by each row's stored ``committed_at``, and
+    the server time a row committed by ``tx`` records (R17 / KTD12).
+
+    Used by writes outside the governance log that must be authorized
+    against governance roles at their own commit time (framework
+    registrations in the proposal ledger): inside the transaction no
+    revocation can land between the check and the append."""
+    history_rows = await tx.governance_rows()
+    committed = [parse_committed_at(r.committed_at) for r in history_rows]
+    snapshot = InMemoryGovernanceLog._from_history(
+        corpus, [_event_from_row(r) for r in history_rows], committed_at=committed
+    )
+    return snapshot, _governance_server_time(committed)
+
+
 async def _authorize_in_transaction(
     event: GovernanceEvent,
     snapshot: InMemoryGovernanceLog,

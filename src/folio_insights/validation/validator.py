@@ -97,6 +97,7 @@ class ClusterValidator:
                 notes=list(checked.notes),
                 formal_axiom_count=checked.formal_axiom_count,
                 finding_ids=sorted({f.id for f in checked.findings}),
+                detail=dict(checked.detail),
             ))
         status = CheckerStatus()
         if self.consistency is not None:

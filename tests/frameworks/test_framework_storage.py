@@ -18,6 +18,7 @@ from folio_insights.frameworks.registry import (
     LEDGER_KIND,
     FrameworkRegistrationRefused,
     load_registry,
+    load_registry_report,
     open_framework_checked_context,
     register_framework,
     sign_registration,
@@ -268,49 +269,142 @@ async def test_revoked_admin_cannot_register_with_a_backdated_time(tmp_path: Pat
     try:
         with pytest.raises(FrameworkRegistrationRefused):
             await register_framework(ctx, DGCL, signing_key=former.sk, did=former.did)
-        # ``at()`` is anchored at the real clock (R17 fixtures), so an hour
-        # back is what "backdated" means here.
-        with pytest.raises(FrameworkRegistrationRefused, match="not within"):
-            await register_framework(
-                ctx, DGCL, signing_key=former.sk, did=former.did, now=at(-3600)
-            )
-        with pytest.raises(TypeError):
-            await register_framework(  # the old caller-chosen signing time is gone
-                ctx, DGCL, signing_key=former.sk, did=former.did, signed_at=at(5)  # type: ignore[call-arg]
-            )
-        # a backdated row appended straight to the ledger is refused on load
+        for kwarg in ("signed_at", "now"):  # no caller-chosen time of any kind
+            with pytest.raises(TypeError):
+                await register_framework(
+                    ctx, DGCL, signing_key=former.sk, did=former.did, **{kwarg: at(5)}
+                )
+        assert await ctx.proposals.head() == -1  # nothing appended
+        # a backdated row appended straight to the ledger is skipped (and
+        # reported) on load, never registered
         forged = sign_registration("corpus-a", DGCL, signing_key=former.sk, did=former.did,
                                    signed_at=at(-3600))
         await ctx.proposals.append(LEDGER_KIND, forged.model_dump(mode="json"), op_id="forged")
-        with pytest.raises(FrameworkRegistrationRefused, match="commit time"):
-            await load_registry(ctx)
+        assert "us.delaware.dgcl" not in await load_registry(ctx)
+        report = await load_registry_report(ctx)
+        assert [r.op_id for r in report.refused] == ["forged"]
+        assert "commit time" in report.refused[0].reason
     finally:
         await ctx.close()
 
 
-async def test_current_time_row_from_a_revoked_admin_is_refused_on_load(tmp_path: Path) -> None:
+async def test_current_time_row_from_a_revoked_admin_is_skipped_on_load(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     root = tmp_path / "storage"
     _admin, former = await _seed_revoked(root)
     ctx = await CorpusStorageContext.open(root, "corpus-a")
     try:
         row = sign_registration("corpus-a", DGCL, signing_key=former.sk, did=former.did)
         await ctx.proposals.append(LEDGER_KIND, row.model_dump(mode="json"), op_id="direct")
-        with pytest.raises(FrameworkRegistrationRefused, match="not a corpus admin"):
-            await load_registry(ctx)
+        with caplog.at_level("WARNING", logger="folio_insights.frameworks.registry"):
+            registry = await load_registry(ctx)
+        assert "us.delaware.dgcl" not in registry
+        assert "us.federal.fre" in registry  # the corpus still loads
+        assert any("not a corpus admin" in r.getMessage() for r in caplog.records)
+        report = await load_registry_report(ctx)
+        assert report.refused[0].position == 0
+        assert "not a corpus admin" in report.refused[0].reason
+        assert report.accepted == ()
     finally:
         await ctx.close()
 
 
-async def test_non_admin_row_appended_directly_is_refused_on_load(tmp_path: Path) -> None:
+async def test_non_admin_row_appended_directly_is_skipped_on_load(tmp_path: Path) -> None:
     root = tmp_path / "storage"
-    reviewer = new_identity()
-    await _seed(root, new_identity(), reviewer)
+    admin, reviewer = new_identity(), new_identity()
+    await _seed(root, admin, reviewer)
     ctx = await CorpusStorageContext.open(root, "corpus-a")
     try:
         row = sign_registration("corpus-a", DGCL, signing_key=reviewer.sk, did=reviewer.did)
         await ctx.proposals.append(LEDGER_KIND, row.model_dump(mode="json"), op_id="direct")
-        with pytest.raises(FrameworkRegistrationRefused, match="not a corpus admin"):
-            await load_registry(ctx)
+        report = await load_registry_report(ctx)
+        assert "us.delaware.dgcl" not in report.registry
+        assert "not a corpus admin" in report.refused[0].reason
+        # A bad row cannot brick the corpus: the admin still registers it
+        # (under a fresh op_id; the default one is not taken by the bad row).
+        registration = await register_framework(ctx, DGCL, signing_key=admin.sk, did=admin.did)
+        assert registration.signer_did == admin.did
+        assert "us.delaware.dgcl" in await load_registry(ctx)
+        # The identical re-registration returns the ACCEPTED row, not the bad one.
+        again = await register_framework(ctx, DGCL, signing_key=admin.sk, did=admin.did)
+        assert again == registration
+    finally:
+        await ctx.close()
+
+
+async def test_child_of_a_skipped_registration_is_skipped_too(tmp_path: Path) -> None:
+    root = tmp_path / "storage"
+    admin, reviewer = new_identity(), new_identity()
+    await _seed(root, admin, reviewer)
+    child = Framework(id="us.delaware.dgcl.sub", label="Sub", jurisdiction="us.delaware",
+                      parent="us.delaware.dgcl")
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        bad = sign_registration("corpus-a", DGCL, signing_key=reviewer.sk, did=reviewer.did)
+        await ctx.proposals.append(LEDGER_KIND, bad.model_dump(mode="json"), op_id="bad")
+        good_child = sign_registration("corpus-a", child, signing_key=admin.sk, did=admin.did)
+        await ctx.proposals.append(LEDGER_KIND, good_child.model_dump(mode="json"), op_id="kid")
+        report = await load_registry_report(ctx)
+        assert child.id not in report.registry and DGCL.id not in report.registry
+        assert [r.op_id for r in report.refused] == ["bad", "kid"]
+        assert "parent" in report.refused[1].reason
+    finally:
+        await ctx.close()
+
+
+async def test_revocation_committed_between_check_and_append_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The admin pre-check passes, then the signer is revoked before the
+    ledger write: the in-transaction check at the commit time refuses."""
+    from folio_insights.frameworks import registry as registry_module
+    from tests.storage.conftest import role_revocation
+
+    root = tmp_path / "storage"
+    admin, second = new_identity(), new_identity()
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        await ctx.governance.append(genesis("corpus-a", admin, at(0)))
+        await ctx.governance.append(
+            role_assertion("corpus-a", admin, second.did, "corpus_admin", at(1))
+        )
+        original = registry_module.load_registry_report
+
+        async def revoke_then_load(c):  # runs after the pre-check, before the append
+            await c.governance.append(
+                role_revocation("corpus-a", admin, second.did, "corpus_admin", at(2))
+            )
+            return await original(c)
+
+        monkeypatch.setattr(registry_module, "load_registry_report", revoke_then_load)
+        with pytest.raises(FrameworkRegistrationRefused, match="commit time"):
+            await register_framework(ctx, DGCL, signing_key=second.sk, did=second.did)
+        monkeypatch.setattr(registry_module, "load_registry_report", original)
+        assert await ctx.proposals.head() == -1  # nothing appended
+        report = await load_registry_report(ctx)
+        assert report.refused == () and DGCL.id not in report.registry
+    finally:
+        await ctx.close()
+
+
+async def test_registration_row_records_the_commit_time_it_was_checked_at(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import timedelta
+
+    from folio_insights.storage import context as storage_context
+
+    root = tmp_path / "storage"
+    admin = new_identity()
+    await _seed(root, admin)
+    pinned = datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=30)
+    monkeypatch.setattr(storage_context, "_server_now", lambda: pinned)
+    ctx = await CorpusStorageContext.open(root, "corpus-a")
+    try:
+        await register_framework(ctx, DGCL, signing_key=admin.sk, did=admin.did)
+        (entry,) = [e for e in await ctx.proposals.entries() if e.kind == LEDGER_KIND]
+        assert datetime.fromisoformat(entry.committed_at) == pinned
     finally:
         await ctx.close()
 
@@ -328,8 +422,9 @@ async def test_registration_replayed_into_another_corpus_is_refused(tmp_path: Pa
     try:
         await other.governance.append(genesis("corpus-b", admin, at(0)))  # same admin there too
         await other.proposals.append(LEDGER_KIND, registration.model_dump(mode="json"), op_id="replay")
-        with pytest.raises(FrameworkRegistrationRefused, match="this corpus"):
-            await load_registry(other)
+        report = await load_registry_report(other)
+        assert DGCL.id not in report.registry
+        assert "this corpus" in report.refused[0].reason
     finally:
         await other.close()
 

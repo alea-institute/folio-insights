@@ -11,7 +11,10 @@ entails. The ``ConsistencyChecker`` is therefore hybrid, per cluster:
   a ``FormalReasoner``, HermiT in the worker image. An inconsistent cluster
   is explained by deletion-based minimization: shards are dropped one at a
   time while the rest stays inconsistent, which leaves a minimal conflicting
-  set; the background axioms that participate are minimized the same way.
+  set; the background axioms that participate are minimized the same way
+  (when the slice has at most ``DEFAULT_MAX_BACKGROUND_MINIMIZATION``
+  axioms). A finding's ``detail["minimal"]`` holds only when both halves
+  were minimized (``shards_minimal`` / ``background_minimal``).
   Up to ``max_conflicts`` disjoint conflicting sets are reported. A
   consistent cluster that makes a named class unsatisfiable (beyond what the
   TBox alone does) gets an ``unsatisfiable_class`` finding with the shards
@@ -22,7 +25,11 @@ entails. The ``ConsistencyChecker`` is therefore hybrid, per cluster:
 
 A cluster with no formal axioms, or a run without a reasoner, falls back to
 NLI and records why (``mode="nli_fallback"``); a cluster no checker could
-examine reads ``unchecked``, never consistent. Each finding names its checker
+examine reads ``unchecked``, never consistent. That includes a reasoner whose
+call budget ran out before the cluster verdict, and an NLI screen with no
+comparable text pairs (empty texts, supersession pairs only); the NLI screen
+records ``pairs_scored`` and the shards it excluded for empty text in the
+cluster's ``detail["nli"]``. Each finding names its checker
 and carries ranked reconciliation proposals (``validation.proposals``), which
 are never applied.
 
@@ -85,7 +92,8 @@ def _supersession_pair(a: ShardEnvelope, b: ShardEnvelope) -> bool:
 
 
 class _BudgetExhausted(Exception):
-    """The per-cluster reasoner call budget ran out mid-explanation."""
+    """The per-cluster reasoner call budget ran out (before the cluster
+    verdict, or mid-explanation)."""
 
 
 @dataclass
@@ -97,6 +105,9 @@ class ClusterConsistency:
     notes: list[str] = field(default_factory=list)
     formal_axiom_count: int = 0
     findings: list[Finding] = field(default_factory=list)
+    # Per-checker diagnostics, e.g. ``{"nli": {"pairs_scored": 3,
+    # "excluded_empty_text": [...], "supersession_pairs_skipped": 0}}``.
+    detail: dict[str, Any] = field(default_factory=dict)
 
 
 class ConsistencyChecker:
@@ -223,12 +234,19 @@ class ConsistencyChecker:
             | set(self.seed_axioms)
         )
         self._calls_left = self.max_reasoner_calls
-        result.checkers.append("hermit")
         try:
             base = self._check(background)
-        except _BudgetExhausted:  # pragma: no cover - budget >= 1 always allows the base check
-            result.notes.append("reasoner call budget exhausted")
-            return True
+            if base.consistent:
+                full = self._check(background + all_axioms)
+        except _BudgetExhausted:
+            # No verdict on the cluster: it was not formally checked, whatever
+            # calls were spent (distinct from running out mid-explanation).
+            result.notes.append(
+                f"reasoner call budget ({self.max_reasoner_calls}) exhausted before the "
+                "cluster verdict; formal consistency not determined"
+            )
+            return False
+        result.checkers.append("hermit")
         if not base.consistent:
             result.findings.append(Finding(
                 id=finding_id("tbox_inconsistent", "hermit", [], background),
@@ -240,7 +258,6 @@ class ConsistencyChecker:
             ))
             return True
         try:
-            full = self._check(background + all_axioms)
             if not full.consistent:
                 self._explain_inconsistency(groups, background, by_iri, result)
             else:
@@ -296,19 +313,35 @@ class ConsistencyChecker:
     ) -> None:
         remaining = sorted(groups)
         for _ in range(self.max_conflicts):
-            core, minimal = self._minimize(
+            core, shards_minimal = self._minimize(
                 remaining,
                 lambda keys: not self._check(background + self._axioms(groups, keys)).consistent,
             )
             used_background = background
-            if minimal and len(background) <= DEFAULT_MAX_BACKGROUND_MINIMIZATION:
+            background_minimal = False
+            budget_ran_out = not shards_minimal
+            if shards_minimal and len(background) <= DEFAULT_MAX_BACKGROUND_MINIMIZATION:
                 fixed = self._axioms(groups, core)
-                used_background, minimal = self._minimize(
+                used_background, background_minimal = self._minimize(
                     background, lambda bg: not self._check(bg + fixed).consistent
                 )
-            self._add_conflict(core, used_background, minimal, groups, by_iri, result)
+                budget_ran_out = not background_minimal
+            elif shards_minimal:
+                # Too large to minimize within budget: the whole slice is
+                # reported, and the explanation does not claim minimality.
+                note = (
+                    f"background axioms not minimized ({len(background)} > "
+                    f"{DEFAULT_MAX_BACKGROUND_MINIMIZATION}); contradiction findings list "
+                    "the whole TBox slice"
+                )
+                if note not in result.notes:
+                    result.notes.append(note)
+            self._add_conflict(
+                core, used_background, shards_minimal, background_minimal, budget_ran_out,
+                groups, by_iri, result,
+            )
             remaining = [k for k in remaining if k not in core]
-            if not minimal or not remaining:
+            if budget_ran_out or not remaining:
                 break
             if self._check(background + self._axioms(groups, remaining)).consistent:
                 break
@@ -317,13 +350,17 @@ class ConsistencyChecker:
         self,
         core: list[str],
         background: list[Triple3],
-        minimal: bool,
+        shards_minimal: bool,
+        background_minimal: bool,
+        budget_ran_out: bool,
         groups: Mapping[str, tuple[Triple3, ...]],
         by_iri: Mapping[str, ShardEnvelope],
         result: ClusterConsistency,
     ) -> None:
+        """Record one conflicting set. ``detail["minimal"]`` holds only when
+        both the shard core and its background axioms were minimized."""
         conflicting = [by_iri[k] for k in core]
-        if not minimal:
+        if budget_ran_out:
             self._note_budget(result)
         what = (
             "is inconsistent with the TBox slice" if len(core) == 1
@@ -337,7 +374,9 @@ class ConsistencyChecker:
             summary=f"Formal contradiction: {', '.join(core)} {what}.",
             detail={
                 "reasoner": self.reasoner_name,
-                "minimal": minimal,
+                "minimal": shards_minimal and background_minimal,
+                "shards_minimal": shards_minimal,
+                "background_minimal": background_minimal,
                 "shard_axioms": {k: [list(t) for t in groups[k]] for k in core},
                 "background_axioms": [list(t) for t in background],
                 "source_uris": {k: by_iri[k].source_uri for k in core},
@@ -356,13 +395,31 @@ class ConsistencyChecker:
     ) -> None:
         new = sorted(set(full.unsatisfiable) - set(base.unsatisfiable))
         for cls in new[: self.max_unsatisfiable]:
-            core, minimal = self._minimize(
+            core, shards_minimal = self._minimize(
                 sorted(groups),
                 lambda keys, cls=cls: cls in self._check(
                     background + self._axioms(groups, keys)
                 ).unsatisfiable,
             )
-            if not minimal:
+            used_background = background
+            background_minimal = False
+            budget_ran_out = not shards_minimal
+            if shards_minimal and len(background) <= DEFAULT_MAX_BACKGROUND_MINIMIZATION:
+                fixed = self._axioms(groups, core)
+                used_background, background_minimal = self._minimize(
+                    background,
+                    lambda bg, cls=cls, fixed=fixed: cls in self._check(bg + fixed).unsatisfiable,
+                )
+                budget_ran_out = not background_minimal
+            elif shards_minimal:
+                note = (
+                    f"background axioms not minimized ({len(background)} > "
+                    f"{DEFAULT_MAX_BACKGROUND_MINIMIZATION}); unsatisfiable-class findings "
+                    "list the whole TBox slice"
+                )
+                if note not in result.notes:
+                    result.notes.append(note)
+            if budget_ran_out:
                 self._note_budget(result)
             result.findings.append(Finding(
                 id=finding_id("unsatisfiable_class", "hermit", core, cls),
@@ -373,9 +430,11 @@ class ConsistencyChecker:
                 detail={
                     "reasoner": self.reasoner_name,
                     "class": cls,
-                    "minimal": minimal,
+                    "minimal": shards_minimal and background_minimal,
+                    "shards_minimal": shards_minimal,
+                    "background_minimal": background_minimal,
                     "shard_axioms": {k: [list(t) for t in groups[k]] for k in core},
-                    "background_axioms": [list(t) for t in background],
+                    "background_axioms": [list(t) for t in used_background],
                 },
                 proposals=propose_for_conflict_set(
                     [by_iri[k] for k in core], jurisdiction_of=self.jurisdiction_of
@@ -393,12 +452,30 @@ class ConsistencyChecker:
             result.notes.append(f"NLI screen {self.nli_status}")
             return False
         texts = {s.shard_iri: self.text_of(s) for s in shards}
-        pairs = [
-            (a, b)
-            for i, a in enumerate(shards)
-            for b in shards[i + 1:]
-            if texts[a.shard_iri] and texts[b.shard_iri] and not _supersession_pair(a, b)
-        ]
+        empty = sorted(s.shard_iri for s in shards if not texts[s.shard_iri])
+        with_text = [s for s in shards if texts[s.shard_iri]]
+        pairs: list[tuple[ShardEnvelope, ShardEnvelope]] = []
+        superseding = 0
+        for i, a in enumerate(with_text):
+            for b in with_text[i + 1:]:
+                if _supersession_pair(a, b):
+                    superseding += 1
+                else:
+                    pairs.append((a, b))
+        nli_detail: dict[str, Any] = {
+            "pairs_scored": 0,
+            "excluded_empty_text": empty,
+            "supersession_pairs_skipped": superseding,
+        }
+        result.detail["nli"] = nli_detail
+        if empty:
+            result.notes.append(
+                f"NLI: {len(empty)} shard(s) with no text not compared"
+            )
+        if not pairs:
+            # Nothing was compared: the cluster was not screened.
+            result.notes.append("NLI: no comparable text pairs")
+            return False
         if len(pairs) > self.max_nli_pairs:
             result.notes.append(
                 f"NLI screen skipped: {len(pairs)} pairs exceed the cap of {self.max_nli_pairs}"
@@ -423,6 +500,7 @@ class ConsistencyChecker:
             for k, key in enumerate(todo):
                 self._pair_scores[key] = max(float(scores[k]), float(scores[k + n]))
         result.checkers.append("nli")
+        nli_detail["pairs_scored"] = len(pairs)
         model = getattr(self.nli, "name", type(self.nli).__name__)
         for a, b in pairs:
             score = self._pair_scores[(a.shard_iri, b.shard_iri)]

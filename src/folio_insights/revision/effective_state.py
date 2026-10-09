@@ -8,7 +8,8 @@ back:
 * **Supersession** — the old shard reads ``superseded`` with
   ``superseded_by`` and an effective ``valid_time_end`` from the event: the
   successor's ``valid_time_start`` when it has one (the SHACL supersession
-  alignment rule), else the event's signing time. Both shards stay
+  alignment rule), else the time the event took effect: its server commit
+  time where the log has one (R17 / KTD12), else its signing time. Both shards stay
   queryable; ``as_of_graph`` exposes the effective windows to
   ``temporal.query_as_of``.
 * **Retraction** — the shard reads ``retracted``; its direct dependents get
@@ -102,6 +103,7 @@ def derive_effective_states(
     events: Iterable[Any],
     *,
     graph: DependencyGraph | None = None,
+    event_times: Mapping[int, datetime | None] | None = None,
 ) -> dict[str, EffectiveState]:
     """The effective state of every shard, from records plus governance events.
 
@@ -112,6 +114,11 @@ def derive_effective_states(
     the closest retraction(s) reaching it, the most conservative bucket among
     those (review_needed > aporetic > auto_rederive), and lists every cause.
     ``graph`` defaults to the graph of ``shards``.
+
+    ``event_times`` maps an event's log position to the time it took effect
+    (the persistent log's server commit time). A supersession without a
+    successor ``valid_time_start`` ends the old shard at that time, falling
+    back to the signer-claimed ``signed_at`` only when none is supplied.
     """
     by_iri = {s.shard_iri: s for s in shards}
     graph = graph if graph is not None else DependencyGraph.from_shards(by_iri.values())
@@ -135,11 +142,11 @@ def derive_effective_states(
     for event in ordered:
         if isinstance(event, SupersessionEvent):
             successor = by_iri.get(event.new_shard_iri)
-            end = (
-                successor.valid_time_start
-                if successor is not None and successor.valid_time_start is not None
-                else event.signature.signed_at
-            )
+            if successor is not None and successor.valid_time_start is not None:
+                end = successor.valid_time_start
+            else:
+                committed = (event_times or {}).get(event.position)
+                end = committed if committed is not None else event.signature.signed_at
             touch(
                 event.old_shard_iri,
                 event.position,
@@ -227,11 +234,19 @@ async def effective_states(
     log: GovernanceLog,
 ) -> dict[str, EffectiveState]:
     """``derive_effective_states`` over a store and its corpus governance log
-    (the persistent store reads both at the committed watermark)."""
+    (the persistent store reads both at the committed watermark).
+
+    Event times come from ``roles.timed_events``: each row's server commit
+    time for the persistent log, ``signed_at`` for a log without a server
+    clock."""
+    from folio_insights.governance.roles import timed_events
+
     shards = [s async for s in store.iter_shards()]
-    events = [e async for e in log.iter_events(store.corpus)]
+    pairs = [pair async for pair in timed_events(store.corpus, log=log)]
+    events = [event for event, _ in pairs]
+    times = {event.position: at for event, at in pairs}
     graph = await DependencyGraph.from_store(store)
-    return derive_effective_states(shards, events, graph=graph)
+    return derive_effective_states(shards, events, graph=graph, event_times=times)
 
 
 def as_of_graph(

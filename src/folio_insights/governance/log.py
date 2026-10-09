@@ -21,8 +21,9 @@ pyshacl (mirrors revision/shape_validation.py).
 
 D-05 amended in-phase append-only gate (TWO halves):
 
-  (a) ``fi:GovernanceLogShape`` SHACL refuses duplicate positions / signed_at
-      moving backward with position / position gaps. Wired here:
+  (a) ``fi:GovernanceLogShape`` SHACL refuses duplicate positions / event
+      time (server commit time, else signed_at) moving backward with
+      position / position gaps. Wired here:
       ``append()`` calls ``validate_governance_log_shape(history, pending)``
       and raises ``ValueError`` if ``conforms=False``.
   (b) THIS MODULE EXPOSES NO PUBLIC MUTATOR BEYOND ``append``. The Protocol
@@ -322,8 +323,17 @@ class InMemoryGovernanceLog:
             )
 
         # Run the structural fi:GovernanceLogShape guard over the post-append
-        # snapshot (catches duplicate position, signed_at backward, gap).
-        result = validate_governance_log_shape(history, event)
+        # snapshot (catches duplicate position, event time backward, gap).
+        # Event time is each event's server time where one was assigned, else
+        # its signed_at (R17): with a server clock the order is the commit
+        # order, so a signer forward-dating inside SIGNING_SKEW cannot block
+        # later appends; without one (offline) signed_at must not go back.
+        result = validate_governance_log_shape(
+            history,
+            event,
+            event_time=self._event_time(event.corpus),
+            pending_time=asof,
+        )
         if not result.conforms:
             raise ValueError(
                 f"GovernanceLogShape violation refused append: "

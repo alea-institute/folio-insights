@@ -382,9 +382,19 @@ class JournalTransaction:
         return await _find_proposal_op(self._conn, self.corpus, op_id)
 
     async def append_proposal(
-        self, *, op_id: str, request_sha256: str, kind: str, payload: bytes
+        self,
+        *,
+        op_id: str,
+        request_sha256: str,
+        kind: str,
+        payload: bytes,
+        committed_at: datetime | None = None,
     ) -> ProposalLedgerRow:
-        """Append one proposal-ledger row at the next contiguous position."""
+        """Append one proposal-ledger row at the next contiguous position.
+
+        ``committed_at`` is the server time recorded on the row (default:
+        now). An authorized ledger write passes the time its in-transaction
+        authorization ran at, so the row records exactly that time."""
         values = (
             self.corpus,
             await self.proposal_head() + 1,
@@ -394,7 +404,7 @@ class JournalTransaction:
             PROPOSAL_LEDGER_SCHEMA_VERSION,
             payload,
             sha256_hex(payload),
-            datetime.now(UTC).isoformat(),
+            (committed_at or datetime.now(UTC)).astimezone(UTC).isoformat(),
         )
         await self._conn.execute(
             f"INSERT INTO proposal_ledger ({_PROPOSAL_COLUMNS}) "
