@@ -180,7 +180,7 @@ Each unit runs in its own worktree branched from the integration branch `feat/dr
 ### U3. Axiom kernel seed, traversal and chain export
 
 - **Goal:** a real kernel to derive from. **Requirements:** R9, R10, R11, R20. **Decisions:** KTD6, KTD7, KTD8.
-- **Files (owned):** new `src/folio_insights/kernel/{__init__,catalog,seed,traversal,export,cli}.py`, `src/folio_insights/kernel/data/*.json` (from the orchestrator's verified datasets), `scripts/kernel/verify_sources.py`, package-data entry in `pyproject.toml`, one `cli.add_command` line, `THIRD-PARTY.md` source attribution rows, new `tests/kernel/**`.
+- **Files (owned):** new `src/folio_insights/kernel/{__init__,catalog,seed,traversal,export,cli}.py`, `src/folio_insights/kernel/data/*.json` (from the orchestrator's verified datasets), `scripts/kernel/fetch_and_verify_sources.py` (the operator fetch-and-verify tool; the plan first named it `verify_sources.py`), one `cli.add_command` line, `THIRD-PARTY.md` source attribution rows, new `tests/kernel/**`. No `pyproject.toml` change: the hatchling wheel target (`packages = ["src/folio_insights"]`) already ships every non-Python file under the package, as it does `frameworks/default_frameworks.json` and `vocab/*.ttl` (checked with `uv build --wheel`).
 - **Test scenarios:** the catalog loads 88 Liber Sextus items (or the verified count) and every Digest 50.17 fragment, each with provenance; IRIs equal `mint_shard_iri(citation_uri, latin)` and are identical on a second load; seeding twice writes nothing new; seeded shards pass envelope validation, SHACL and the framework guard; AE4's two-hop chain exports in JSON and Turtle; traversal terminates on a planted cycle; non-kernel roots report "no kernel reached".
 
 ### U4. Tractarian paths and the cycle guard

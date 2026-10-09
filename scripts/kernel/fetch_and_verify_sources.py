@@ -1,9 +1,30 @@
 #!/usr/bin/env python3
-"""Build and verify the two source datasets (run with python3 -I).
+"""Build and verify the axiom kernel's two source datasets (drain U3, KTD6).
 
-  python3 -I verify.py build-digest <root>   -> out/digest_50_17.json
-  python3 -I verify.py build-ls     <root>   -> out/liber_sextus_regulae.json
-  python3 -I verify.py check        <root>   -> re-verifies both outputs from the raw downloads
+OPERATOR TOOL — not imported by the package and not run by the test suite.
+It needs the raw source downloads, which are NOT in this repository: fetch
+them (network access required) into a scratch working root ``<root>`` laid
+out as
+
+  <root>/dl/grenoble/d-50.htm             droitromain.univ-grenoble-alpes.fr/Corpus/d-50.htm
+  <root>/dl/latlib/digest50.shtml         thelatinlibrary.com/justinian/digest50.shtml
+  <root>/dl/ia_liber-sextus-bonifacii-1298/LiberSextusBonifacii1298_djvu.txt
+  <root>/dl/ia_ls1298_pdf/LiberSextusBonifacii1298.pdf
+  <root>/dl/ia_corpusjuriscanon00richuoft/corpusjuriscanon00richuoft_djvu.txt
+  <root>/work/ls_adjudications.json       (copy of scripts/kernel/ls_adjudications.json)
+
+(the archive.org files come from https://archive.org/download/<item>/<file>),
+then run, from a directory outside the repository, with an isolated
+interpreter:
+
+  python3 -I fetch_and_verify_sources.py build-digest <root>   -> <root>/out/digest_50_17.json
+  python3 -I fetch_and_verify_sources.py build-ls     <root>   -> <root>/out/liber_sextus_regulae.json
+  python3 -I fetch_and_verify_sources.py check        <root>   -> re-verifies both outputs from the raw downloads
+
+The outputs are written under ``<root>/out/``; a reviewed copy of each is
+committed as package data at ``src/folio_insights/kernel/data/`` (loaded by
+``folio_insights.kernel.catalog``). The datasets' ``verification.script``
+field names this tool by its working name, ``scripts/verify.py``.
 
 Rules of the game
 -----------------
@@ -164,11 +185,11 @@ def build_digest(root):
     gp = root / "dl/grenoble/d-50.htm"
     lp = root / "dl/latlib/digest50.shtml"
     g, gfull = parse_grenoble(gp)
-    l, lfull = parse_latlib(lp)
+    latlib, lfull = parse_latlib(lp)
     items = []
     problems = []
     for n in range(1, 212):
-        gf, lf = g.get(n), l.get(n)
+        gf, lf = g.get(n), latlib.get(n)
         if gf is None:
             problems.append({"n": n, "issue": "missing in primary (Grenoble)"})
             items.append({"number": n, "citation": f"D.50.17.{n}", "verified_substring": False,
@@ -242,7 +263,7 @@ def build_digest(root):
         items.append(item)
         if not item["verified_substring"] or not item["cross_checked"]:
             problems.append({"n": n, "verified": item["verified_substring"], "cross_checked": item["cross_checked"]})
-    extra = sorted(set(l) - set(range(1, 212)) - {0})
+    extra = sorted(set(latlib) - set(range(1, 212)) - {0})
     out = {
         "collection": "Digesta Iustiniani 50.17 — De diversis regulis iuris antiqui",
         "citation_form": "D.50.17.<n>",
@@ -500,7 +521,8 @@ def check(root):
     d = json.loads((root / "out/digest_50_17.json").read_text(encoding="utf-8"))
     for s in d["sources"]:
         if sha256(root / s["local_file"]) != s["sha256"]:
-            print("SHA MISMATCH", s["local_file"]); ok = False
+            print("SHA MISMATCH", s["local_file"])
+            ok = False
     _, gfull = parse_grenoble(root / "dl/grenoble/d-50.htm")
     _, lfull = parse_latlib(root / "dl/latlib/digest50.shtml")
     lkey = letters(lfull)
@@ -509,7 +531,8 @@ def check(root):
         for p in it.get("paragraphs", []):
             target = lfull if p.get("latin_source_url") == LATLIB_URL else gfull
             if not contains(target, ws(p["latin"])):
-                print("B not substring:", it["citation"], p["para"]); ok = False
+                print("B not substring:", it["citation"], p["para"])
+                ok = False
             else:
                 nv += 1
             if letters(p["latin"]) in lkey:
@@ -519,22 +542,26 @@ def check(root):
     a = json.loads((root / "out/liber_sextus_regulae.json").read_text(encoding="utf-8"))
     for s in a["sources"]:
         if sha256(root / s["local_file"]) != s["sha256"]:
-            print("SHA MISMATCH", s["local_file"]); ok = False
+            print("SHA MISMATCH", s["local_file"])
+            ok = False
     full = {k: canonA(ls_text(root, k)) for k in LS_SOURCES}
     va = xa = 0
     for it in a["items"]:
         if not it.get("latin"):
-            print("A unverified item", it["citation"]); continue
+            print("A unverified item", it["citation"])
+            continue
         c = canonA(it["latin"])
         found = [k for k in full if contains(full[k], c)]
         if it["source"] not in found:
-            print("A not substring:", it["citation"], it["source"]); ok = False
+            print("A not substring:", it["citation"], it["source"])
+            ok = False
         else:
             va += 1
         if len(found) >= 2:
             xa += 1
         if sorted(found) != sorted(it["found_in_transcriptions"]):
-            print("A support mismatch", it["citation"], found, it["found_in_transcriptions"]); ok = False
+            print("A support mismatch", it["citation"], found, it["found_in_transcriptions"])
+            ok = False
     print(f"A: verified={va}, cross_checked={xa}, of {len(a['items'])}")
     print("CHECK", "PASSED" if ok else "FAILED")
     return ok
