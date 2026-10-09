@@ -441,18 +441,23 @@ def _keep_edges(
     edges: list[dict[str, str]], tree: set[tuple[str, str]], cap: int
 ) -> list[dict[str, str]]:
     """At most ``cap`` of ``edges``, in their original order. The edges that
-    placed a node (``tree``) are kept first, so every placed node keeps a link
-    to the walk; the rest follow in ``EDGE_FIELDS`` priority, then BFS order."""
+    placed a node (``tree``) each reserve one edge first, so parallel fields
+    cannot crowd out another node's link to the walk. The rest follow in
+    ``EDGE_FIELDS`` priority, then BFS order."""
     if len(edges) <= cap:
         return edges
     rank = {name: i for i, name in enumerate(EDGE_FIELDS)}
     order = sorted(
         range(len(edges)),
-        key=lambda i: (
-            (edges[i]["from"], edges[i]["to"]) not in tree, rank[edges[i]["field"]], i
-        ),
+        key=lambda i: (rank[edges[i]["field"]], i),
     )
-    keep = sorted(order[:cap])
+    reaching: dict[tuple[str, str], int] = {}
+    for i in order:
+        pair = (edges[i]["from"], edges[i]["to"])
+        if pair in tree:
+            reaching.setdefault(pair, i)
+    reserved = set(reaching.values())
+    keep = sorted((list(reaching.values()) + [i for i in order if i not in reserved])[:cap])
     return [edges[i] for i in keep]
 
 

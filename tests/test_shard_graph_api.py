@@ -624,6 +624,25 @@ def test_edges_are_capped_and_every_placed_node_keeps_its_reaching_edge() -> Non
     assert {e["from"] for e in body["edges"] if e["to"] == root} == touched - {root}
 
 
+def test_parallel_fields_do_not_displace_other_nodes_reaching_edges() -> None:
+    root = _shard(1)
+    neighbours = [
+        _shard(100 + i, **{
+            field: [root.shard_iri]
+            for field in (shard_routes.EDGE_FIELDS if i < 401 else ("depends_on_shards",))
+        })
+        for i in range(499)
+    ]
+    body = build_graph([(s, i) for i, s in enumerate([root, *neighbours])],
+                       root.shard_iri, depth=1)
+    assert len(body["nodes"]) == 500
+    assert len(body["edges"]) == 2000
+    assert body["truncated_reasons"] == ["edge_cap"]
+    assert {e["from"] for e in body["edges"] if e["to"] == root.shard_iri} == {
+        s.shard_iri for s in neighbours
+    }
+
+
 def test_truncation_reasons_name_each_bound() -> None:
     root = _shard(1)
     near = [_shard(100 + i, depends_on_shards=[root.shard_iri]) for i in range(3)]
