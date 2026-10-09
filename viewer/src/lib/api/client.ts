@@ -645,3 +645,138 @@ export async function downloadExport(
 export function getExportDownloadUrl(corpusId: string, format: string): string {
 	return `${API_BASE}/api/v1/corpus/${corpusId}/export/${format}`;
 }
+
+// ---------------------------------------------------------------------------
+// Shard dependency graph (drain U10, R12/R14)
+// ---------------------------------------------------------------------------
+
+/** One node of a shard dependency graph (`GET .../shards/{iri}/graph`). */
+export interface ShardGraphNode {
+	iri: string;
+	/** Display path (`1`, `1.2.3`); null for an IRI that is not a shard of the corpus. */
+	tractarian_path: string | null;
+	/** One-line label, at most 140 characters (sense, else triple, else kernel Latin). */
+	label: string;
+	shard_type: string | null;
+	epistemic_status: string | null;
+	is_kernel: boolean;
+	/** Kernel citation such as "VI 5.12.6"; null for a non-kernel node. */
+	citation: string | null;
+	citation_uri: string | null;
+	/** False for a cited IRI the corpus does not hold (dangling, or an unseeded kernel maxim). */
+	stored: boolean;
+	/** Where the walk reached the node: the root, upstream (what it derives from) or downstream. */
+	direction: 'root' | 'upstream' | 'downstream';
+	/** Hops from the root. */
+	distance: number;
+}
+
+/** `from` names `to` in its `field` list (so `from` depends on `to`). */
+export interface ShardGraphEdge {
+	from: string;
+	to: string;
+	field: string;
+}
+
+export interface ShardGraph {
+	format: string;
+	corpus: string;
+	root: string;
+	depth: number;
+	node_cap: number;
+	/** Most edges one response carries (the API keeps every node's reaching edge first). */
+	edge_cap: number;
+	nodes: ShardGraphNode[];
+	/** Node then field order, so a pair joined by two fields lists `elaborates` first. */
+	edges: ShardGraphEdge[];
+	/** True when a bound (depth, node cap, edge cap) left something out. */
+	truncated: boolean;
+	/** Which bounds cut the graph, in the order `depth`, `node_cap`, `edge_cap`. */
+	truncated_reasons: Array<'depth' | 'node_cap' | 'edge_cap'>;
+}
+
+export interface KernelChain {
+	kernel_iri: string;
+	citation: string;
+	citation_uri: string;
+	depth: number;
+	/** Root first, kernel shard last. */
+	path: string[];
+	edges: ShardGraphEdge[];
+}
+
+/** `GET .../shards/{iri}/derivation` (format `folio-insights/kernel-chain/v1`). */
+export interface ShardDerivation {
+	format: string;
+	corpus: string;
+	root: string;
+	tractarian_path: string | null;
+	max_depth: number;
+	kernel_reached: boolean;
+	derivedFromKernel: KernelChain[];
+	nodes: Array<{
+		iri: string;
+		kernel: boolean;
+		citation: string | null;
+		citation_uri: string | null;
+		tractarian_path: string | null;
+	}>;
+	missing: string[];
+	truncated: boolean;
+	/** Most shards the derivation walk visits (nearest first). */
+	node_cap: number;
+	/** Which bounds cut the walk: `depth` (max_depth), `node_cap`. */
+	truncated_reasons: Array<'depth' | 'node_cap'>;
+}
+
+/** A refused graph read: the HTTP status (0 for a network failure) and the API's detail. */
+export interface GraphError {
+	error: string;
+	status: number;
+}
+
+async function graphRequest<T>(url: string): Promise<T | GraphError> {
+	try {
+		const res = await apiFetch(url);
+		if (!res.ok) {
+			let detail = res.statusText || 'request failed';
+			try {
+				const body = await res.json();
+				if (typeof body?.detail === 'string') detail = body.detail;
+			} catch {
+				// a non-JSON error body keeps the status text
+			}
+			return { error: detail, status: res.status };
+		}
+		return (await res.json()) as T;
+	} catch (err) {
+		return { error: String(err), status: 0 };
+	}
+}
+
+function shardUrl(corpus: string, iri: string, view: 'graph' | 'derivation'): string {
+	return (
+		`${API_BASE}/api/v1/corpus/${encodeURIComponent(corpus)}` +
+		`/shards/${encodeURIComponent(iri)}/${view}`
+	);
+}
+
+/** The bounded dependency graph around `iri` (depth 0-8, server default 3). */
+export async function fetchShardGraph(
+	corpus: string,
+	iri: string,
+	depth?: number
+): Promise<ShardGraph | GraphError> {
+	return graphRequest<ShardGraph>(`${shardUrl(corpus, iri, 'graph')}${qs({ depth })}`);
+}
+
+/** Every kernel maxim `iri` derives from, with the shortest chain to each. */
+export async function fetchShardDerivation(
+	corpus: string,
+	iri: string,
+	maxDepth?: number
+): Promise<ShardDerivation | GraphError> {
+	return graphRequest<ShardDerivation>(
+		`${shardUrl(corpus, iri, 'derivation')}${qs({ max_depth: maxDepth })}`
+	);
+}

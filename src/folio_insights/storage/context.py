@@ -306,6 +306,14 @@ class ShardRevisionRow:
     payload: bytes
 
 
+def shard_revision_batch(op_id: str, request_sha256: str) -> str:
+    """The ``ShardRevisionRow.batch`` key of one journal row: its op ID without
+    the ``#<row>`` suffix, ``@`` its request digest. Every reader that replays
+    the Tractarian history (this context and the read-only graph API) builds
+    the key here, so their paths agree."""
+    return f"{str(op_id).rsplit('#', 1)[0]}@{request_sha256}"
+
+
 def _event_from_row(row: JournalRow) -> GovernanceEvent:
     return _EVENT_ADAPTER.validate_json(row.payload)
 
@@ -1291,7 +1299,7 @@ class CorpusStorageContext:
         history = [
             ShardRevisionRow(
                 int(position), str(subject),
-                f"{str(op_id).rsplit('#', 1)[0]}@{request_sha}", bytes(payload),
+                shard_revision_batch(op_id, request_sha), bytes(payload),
             )
             for position, subject, op_id, request_sha, payload in rows
         ]
@@ -1677,5 +1685,6 @@ __all__ = [
     "StoredShardRecord",
     "cached_event_verifier",
     "open_corpus_storage",
+    "shard_revision_batch",
     "verify_event_signature_offline",
 ]
