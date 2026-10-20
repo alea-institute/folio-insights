@@ -42,3 +42,26 @@ def test_default_path_goes_through_the_port(tmp_path: pathlib.Path, monkeypatch)
                                          llm_provider="claude-haiku-4-5")
     assert result == {"total": 1, "agreements": 1, "disagreements": 0}
     assert calls == [("polysemy_fallback", PolysemyVerdict, POLYSEMY_FP_AUDIT)]
+
+
+def test_injected_port_client_needs_no_route(tmp_path: pathlib.Path, monkeypatch) -> None:  # noqa: ANN001
+    """An injected port-shaped fake is used as-is: no bridge, route or credential."""
+    from folio_insights.services.bridge import llm_bridge
+
+    monkeypatch.setattr(llm_bridge, "LLMBridge", None)  # any bridge use would fail
+
+    class _Fake:
+        def __init__(self) -> None:
+            self.calls: list = []
+
+        def structured_model_sync(self, prompt, schema=None, *, template=None):  # noqa: ANN001, ANN202
+            self.calls.append((schema, template))
+            return PolysemyVerdict(decision="coincidence", polysemy_vs_homonymy_reasoning="r",
+                                   rationale="synthetic")
+
+    fake = _Fake()
+    path = _seed_jsonl(tmp_path, [_sample_record(cluster_id="fi:C_y", decision="reject",
+                                                 rationale="detector miscall")])
+    result = fp_audit.run_llm_audit_pass(path, tmp_path / "audit.md", llm=fake)
+    assert result == {"total": 1, "agreements": 1, "disagreements": 0}
+    assert fake.calls == [(PolysemyVerdict, POLYSEMY_FP_AUDIT)]

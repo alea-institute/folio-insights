@@ -1,0 +1,2150 @@
+{
+  "format": "folio-insights/polysemy-labeled-set/v1",
+  "description": "Phase 9 U6 polysemy labeled set. Agent-authored, synthetic paraphrase of general legal doctrine; no book or other copyrighted text. Each case is one term in two registered frameworks, the TBox disjointness it asserts, a gold label and the agent's first-pass disposition. Not certified: the FP gate reports provisional until a human certifies it (Phase 9 plan, Open Question 1).",
+  "labeling": {
+    "labeler": "agent",
+    "authored": "2026-10-20",
+    "gold_labels": {
+      "polysemy": "related senses across frameworks; a fork with a prime analogate is warranted (accept)",
+      "homonymy": "unrelated concepts sharing a spelling; no fork (reject with rationale)",
+      "univocal": "one sense across frameworks; no fork (reject with rationale)"
+    },
+    "fp_definition": "detector said polysemy and the disposition rejects it with a rationale (KTD9)",
+    "tuning": "cases were written before the detector ran on them and are not edited to move the gate"
+  },
+  "certification": null,
+  "cases": [
+    {
+      "id": "p-consideration-cl-la",
+      "term": "consideration",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A promise binds only when something is bargained for in return.",
+          "The promisee must give a detriment or the promisor receive a benefit in exchange.",
+          "A purely gratuitous promise lacks the exchange needed for enforcement."
+        ],
+        "us.louisiana.civil_code": [
+          "An obligation needs a lawful reason for which the party binds itself.",
+          "A gratuitous promise binds if the giver's motive is lawful and the form is observed.",
+          "The reason for obligating oneself need not be an exchange of value."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Bargain and civil-law cause both answer why a promise binds; analogous senses, common-law prime."
+      }
+    },
+    {
+      "id": "p-consideration-uk-la",
+      "term": "consideration",
+      "gold": "polysemy",
+      "senses": {
+        "uk.england.common_law": [
+          "Something of value in the eye of the law must move from the promisee.",
+          "Past acts do not count as the price of a later promise.",
+          "A nominal return can support a promise if it is genuinely requested."
+        ],
+        "us.louisiana.civil_code": [
+          "A contract is formed by consent, with a lawful motive for the undertaking.",
+          "Liberality is a sufficient motive for a donation made in proper form.",
+          "The law asks whether the reason for the obligation is lawful, not whether value was exchanged."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "uk.england.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "English price-for-promise and civil-law motive are proportional answers to enforceability."
+      }
+    },
+    {
+      "id": "p-consideration-r2-la",
+      "term": "consideration",
+      "gold": "polysemy",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A performance or return promise must be sought in exchange for the promise.",
+          "The exchange must induce the promise and the promise must induce the exchange.",
+          "Adequacy of the exchange is not examined once a bargain exists."
+        ],
+        "us.louisiana.civil_code": [
+          "Every obligation rests on a lawful purpose that moved the obligor.",
+          "An onerous contract and a gratuitous one can both be valid if their purpose is lawful.",
+          "A contract without a lawful purpose is absolutely null."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.restatement_2d.contracts",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Restatement bargain test and civil-law purpose requirement are analogous validity conditions."
+      }
+    },
+    {
+      "id": "p-good-faith-ucc-la",
+      "term": "good faith",
+      "gold": "polysemy",
+      "senses": {
+        "us.ucc": [
+          "Good faith means honesty in fact and observance of reasonable commercial standards of fair dealing.",
+          "Every contract within the commercial code imposes a duty of good faith in its performance.",
+          "A merchant who acts honestly but outside fair trade norms may fall short of good faith."
+        ],
+        "us.louisiana.civil_code": [
+          "Parties must perform their obligations in good faith throughout the contract.",
+          "Bad faith includes a deliberate failure to perform without a lawful excuse.",
+          "Good faith governs the formation, performance and termination of conventional obligations."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "A commercial-standards duty and a general civil-law duty of loyal performance: related senses."
+      }
+    },
+    {
+      "id": "p-possession-cl-la",
+      "term": "possession",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Possession is physical control of a thing with intent to exclude others.",
+          "A prior peaceful possessor can recover the thing from a later wrongdoer.",
+          "Constructive possession exists when a person can control a thing not held physically."
+        ],
+        "us.louisiana.civil_code": [
+          "Possession is the detention or enjoyment of a thing held as owner.",
+          "A possessor for one year acquires the right to be maintained in possession.",
+          "Possession may be exercised through another who holds the thing for the possessor."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Control-with-intent and detention-as-owner are analogous; the civil-law sense adds a possessory right."
+      }
+    },
+    {
+      "id": "p-ownership-cl-la",
+      "term": "ownership",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Ownership of land is held as an estate measured by its duration.",
+          "Different persons may hold present and future estates in the same parcel.",
+          "The fee simple is the largest estate a person may hold."
+        ],
+        "us.louisiana.civil_code": [
+          "Ownership is the right to use, enjoy and dispose of a thing within legal limits.",
+          "The owner holds the thing itself, not an estate in it.",
+          "Ownership may be burdened by dismemberments such as usufruct."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Estates doctrine versus unitary dominium; analogous senses of the right over property."
+      }
+    },
+    {
+      "id": "p-fault-cl-la",
+      "term": "fault",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Fault in negligence is a failure to use the care a reasonable person would use.",
+          "Comparative fault reduces recovery by the plaintiff's share of responsibility.",
+          "Fault is measured against an objective standard of conduct."
+        ],
+        "us.louisiana.civil_code": [
+          "Every act of a person that causes damage to another obliges the one at fault to repair it.",
+          "Fault includes intentional wrongdoing, negligence and imprudence.",
+          "The general fault provision is the source of delictual liability."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "A negligence standard versus the general source of delictual obligation; analogous senses."
+      }
+    },
+    {
+      "id": "p-lease-cl-la",
+      "term": "lease",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A lease conveys a possessory estate in land for a term.",
+          "The tenant holds an interest in the land itself during the term.",
+          "Covenants in a lease may run with the land to successors."
+        ],
+        "us.louisiana.civil_code": [
+          "A lease is a contract by which the lessor binds himself to give the lessee use of a thing for a term.",
+          "The lessee's rights are personal rights arising from the contract.",
+          "Things movable and immovable alike may be leased."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Conveyance of an estate versus a contract for use; analogous senses with the common-law prime."
+      }
+    },
+    {
+      "id": "p-trust-cl-la",
+      "term": "trust",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A trust splits legal title in the trustee from equitable title in the beneficiary.",
+          "Equity enforces the trustee's duties for the beneficiary's benefit.",
+          "A trust arises from intent, a res and an identified beneficiary."
+        ],
+        "us.louisiana.civil_code": [
+          "A trust is a relationship in which property is transferred to a trustee to administer for a beneficiary.",
+          "The statutory trust does not divide ownership into legal and equitable shares.",
+          "A trust is created by a written instrument in authentic or signed form."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Divided-title trust and the statutory civil-law trust: one function, analogous structures."
+      }
+    },
+    {
+      "id": "p-mistake-r2-la",
+      "term": "mistake",
+      "gold": "polysemy",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A mistake is a belief not in accord with the facts at formation.",
+          "A mutual mistake on a basic assumption may make the contract voidable.",
+          "The party bearing the risk of the mistake cannot avoid the contract."
+        ],
+        "us.louisiana.civil_code": [
+          "Error vitiates consent when it concerns a cause without which the obligation would not have been incurred.",
+          "The other party must have known or should have known of that cause.",
+          "Error does not vitiate consent when it can be corrected without loss."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.restatement_2d.contracts",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Basic-assumption mistake and vitiating error answer the same question with different tests."
+      }
+    },
+    {
+      "id": "p-offer-r2-la",
+      "term": "offer",
+      "gold": "polysemy",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "An offer manifests willingness to bargain so that assent concludes it.",
+          "An offer may be revoked at any time before acceptance unless supported by an option.",
+          "A firm offer needs consideration or a statute to stay open."
+        ],
+        "us.louisiana.civil_code": [
+          "An offer that specifies a period for acceptance is irrevocable during that time.",
+          "An offer without a stated period may be revoked before acceptance is received.",
+          "An offer expires if not accepted within a reasonable time."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.restatement_2d.contracts",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Freely revocable offer versus offer irrevocable by its own terms: analogous senses."
+      }
+    },
+    {
+      "id": "p-warranty-ucc-la",
+      "term": "warranty",
+      "gold": "polysemy",
+      "senses": {
+        "us.ucc": [
+          "A seller who is a merchant impliedly warrants that goods are merchantable.",
+          "An express warranty arises from an affirmation of fact that becomes part of the basis of the bargain.",
+          "Warranties may be disclaimed by conspicuous language."
+        ],
+        "us.louisiana.civil_code": [
+          "The seller warrants the buyer against redhibitory defects in the thing sold.",
+          "A defect that renders the thing useless gives the buyer the right to rescind the sale.",
+          "The seller also warrants peaceful possession against eviction."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Merchantability warranty and redhibition guarantee: analogous protections, related senses."
+      }
+    },
+    {
+      "id": "p-prescription-cl-la",
+      "term": "prescription",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A prescriptive easement arises from open, continuous and adverse use for the statutory period.",
+          "Permissive use cannot ripen into a prescriptive right.",
+          "Prescription creates a servitude-like right, not ownership of the land."
+        ],
+        "us.louisiana.civil_code": [
+          "Acquisitive prescription is a mode of acquiring ownership by possession for a period.",
+          "Liberative prescription bars an action by inaction for a period.",
+          "Prescription runs against all persons unless an exception applies."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Use-based easement and the civil-law family of time-based acquisition and loss: analogous senses."
+      }
+    },
+    {
+      "id": "p-obligation-cl-la",
+      "term": "obligation",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "An obligation is a duty one person owes another under a contract.",
+          "Breach of an obligation gives the other party a claim for damages.",
+          "An obligation may be conditional on an event."
+        ],
+        "us.louisiana.civil_code": [
+          "An obligation is a legal relationship whereby an obligor is bound to render a performance in favor of an obligee.",
+          "Obligations arise from contracts, from the law and from other declarations of will.",
+          "A natural obligation is not enforceable but cannot be reclaimed once performed."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "A contractual duty versus the juridical bond in general: the civil-law sense is wider, proportionally related."
+      }
+    },
+    {
+      "id": "p-contract-cl-la",
+      "term": "contract",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A contract is a promise or set of promises the law will enforce.",
+          "Enforceability depends on offer, acceptance and bargained exchange.",
+          "A promise without exchange is not a contract unless reliance supports it."
+        ],
+        "us.louisiana.civil_code": [
+          "A contract is an agreement by two or more parties whereby obligations are created, modified or extinguished.",
+          "A contract may be onerous or gratuitous.",
+          "A contract is formed by the consent of the parties established through offer and acceptance."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Enforceable promise versus obligation-creating agreement: analogous senses, prime in common law."
+      }
+    },
+    {
+      "id": "p-notice-ucc-frcp",
+      "term": "notice",
+      "gold": "polysemy",
+      "senses": {
+        "us.ucc": [
+          "A person has notice of a fact when he has actual knowledge of it or reason to know it.",
+          "Notice is given by taking reasonable steps to inform another.",
+          "Notice to an organization is effective when it reaches the person handling the transaction."
+        ],
+        "us.federal.frcp": [
+          "A complaint need only give fair notice of the claim and its grounds.",
+          "Parties must receive notice of a hearing on a motion.",
+          "Notice of a dismissal must be filed and served."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Knowledge-based notice and procedural notice share the sense of being informed; analogous senses."
+      }
+    },
+    {
+      "id": "p-material-frcp-r2",
+      "term": "material",
+      "gold": "polysemy",
+      "senses": {
+        "us.federal.frcp": [
+          "A fact is material if it might affect the outcome of the suit.",
+          "Summary judgment requires no genuine dispute of material fact.",
+          "Immaterial factual disputes do not preclude judgment."
+        ],
+        "us.restatement_2d.contracts": [
+          "A breach is material when it deprives the injured party of the benefit reasonably expected.",
+          "A material failure of performance suspends the other party's duties.",
+          "The extent of compensation available bears on whether a failure is material."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.restatement_2d.contracts"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Outcome-significance in procedure and in performance: one root sense applied in two frameworks."
+      }
+    },
+    {
+      "id": "p-reasonable-cl-ucc",
+      "term": "reasonable",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "The reasonable person is the standard against which conduct is judged in negligence.",
+          "Reasonableness is measured by what an ordinarily prudent person would do.",
+          "A defendant's subjective good intentions do not make conduct reasonable."
+        ],
+        "us.ucc": [
+          "Commercially reasonable conduct follows the practices of the trade.",
+          "A disposition of collateral must be commercially reasonable in every aspect.",
+          "A reasonable time depends on the nature, purpose and circumstances of the action."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.ucc"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Prudent-person and commercial-practice reasonableness: proportional senses of one standard."
+      }
+    },
+    {
+      "id": "p-person-cl-la",
+      "term": "person",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A person in tort is a human being who can sue and be sued.",
+          "A corporation is treated as a person only by legal fiction for some purposes.",
+          "An unborn child is not a person for most common-law claims."
+        ],
+        "us.louisiana.civil_code": [
+          "There are two kinds of persons: natural persons and juridical persons.",
+          "A juridical person is an entity to which the law attributes personality.",
+          "A natural person's personality begins at live birth."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Human being with fictional extension versus a two-kind classification: analogous senses."
+      }
+    },
+    {
+      "id": "p-estoppel-r2-uk",
+      "term": "promissory estoppel",
+      "gold": "polysemy",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A promise that the promisor should expect to induce reliance is binding if injustice can be avoided only by enforcement.",
+          "Reliance may be a substitute for bargained exchange.",
+          "The remedy may be limited as justice requires."
+        ],
+        "uk.england.common_law": [
+          "A promise not to enforce strict rights may prevent their enforcement where the other party relied on it.",
+          "The doctrine operates as a shield and not as a sword.",
+          "It suspends rather than extinguishes the promisor's rights in many cases."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.restatement_2d.contracts",
+          "uk.england.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "A cause of action and a defensive equity share the reliance sense; analogous senses."
+      }
+    },
+    {
+      "id": "p-succession-cl-la",
+      "term": "succession",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Intestate succession passes a decedent's property to heirs named by statute.",
+          "A will displaces intestate succession to the extent of its dispositions.",
+          "The personal representative collects and distributes the estate."
+        ],
+        "us.louisiana.civil_code": [
+          "Succession is the transmission of the estate of the deceased to successors.",
+          "The successors represent the deceased and are bound for the estate's debts within its value.",
+          "Forced heirs are entitled to a portion the decedent cannot freely give away."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Distribution through a representative versus universal transmission to successors: analogous senses."
+      }
+    },
+    {
+      "id": "p-accession-cl-la",
+      "term": "accession",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Accession gives the owner of a chattel title to improvements added by another's labor.",
+          "Where the added value is great, the improver may acquire title subject to compensation.",
+          "Accession disputes turn on the relative value of the original and the improvement."
+        ],
+        "us.louisiana.civil_code": [
+          "The ownership of a thing includes what it produces and what is united to it.",
+          "Fruits belong to the owner of the thing that produces them.",
+          "Buildings and plantings become component parts of the land they are attached to."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "A narrow improvement rule versus a general mode of acquiring fruits and attachments: related senses."
+      }
+    },
+    {
+      "id": "p-default-frcp-ucc",
+      "term": "default",
+      "gold": "polysemy",
+      "senses": {
+        "us.federal.frcp": [
+          "A party who fails to plead or otherwise defend may have its default entered.",
+          "A default judgment may be set aside for good cause.",
+          "Entry of default precedes a default judgment."
+        ],
+        "us.ucc": [
+          "After default, a secured party may take possession of the collateral.",
+          "The parties' agreement determines what events constitute default.",
+          "A debtor in default may redeem the collateral before its disposition."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.ucc"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Failure to answer and failure to pay both name a failure to perform a duty; analogous senses."
+      }
+    },
+    {
+      "id": "p-acceptance-ucc-r2",
+      "term": "acceptance",
+      "gold": "polysemy",
+      "senses": {
+        "us.ucc": [
+          "Acceptance of goods occurs when the buyer signifies that they are conforming or fails to reject them.",
+          "Once goods are accepted, the buyer must pay at the contract rate.",
+          "A buyer may revoke acceptance of goods whose nonconformity substantially impairs their value."
+        ],
+        "us.restatement_2d.contracts": [
+          "Acceptance of an offer is a manifestation of assent to its terms.",
+          "An acceptance must be made in the manner invited by the offer.",
+          "A reply that adds conditions is a counter-offer, not an acceptance."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.restatement_2d.contracts"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Assent to terms and assent to tendered goods: related senses of agreeing to receive."
+      }
+    },
+    {
+      "id": "p-damages-cl-la",
+      "term": "damages",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Expectation damages put the injured party where performance would have put it.",
+          "Damages are limited to losses foreseeable at formation.",
+          "Punitive damages are generally unavailable for breach of contract."
+        ],
+        "us.louisiana.civil_code": [
+          "Damages are measured by the loss sustained and the profit of which the obligee was deprived.",
+          "An obligor in good faith is liable only for damages foreseeable at the time of the contract.",
+          "Damages for nonpecuniary loss may be recovered when the contract was meant to gratify a nonpecuniary interest."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Expectation measure and loss-plus-lost-profit measure: close but framework-scoped senses."
+      },
+      "note": "Close senses; the TBox records a conflict on non-pecuniary loss."
+    },
+    {
+      "id": "p-marital-property-cl-la",
+      "term": "marital property",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "Each spouse owns what he or she earns, subject to equitable division at divorce.",
+          "Courts divide marital property according to fairness factors.",
+          "Title alone does not decide distribution on divorce."
+        ],
+        "us.louisiana.civil_code": [
+          "Property acquired during the community regime by either spouse is community property.",
+          "Each spouse owns a present undivided one-half interest in community property.",
+          "Separate property includes things acquired before marriage or by inheritance."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Separate-title equitable distribution and community ownership: analogous senses."
+      }
+    },
+    {
+      "id": "p-servitude-cl-la-noseed",
+      "term": "servitude",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "An easement appurtenant benefits a dominant parcel.",
+          "Servitudes include easements, profits and covenants running with land.",
+          "An easement may be created by express grant or by necessity."
+        ],
+        "us.louisiana.civil_code": [
+          "A predial servitude is a charge on a servient estate for the benefit of a dominant estate.",
+          "Personal servitudes include usufruct, habitation and rights of use.",
+          "Servitudes are established by title, by destination of the owner or by prescription."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Anglo-American servitudes and civil-law predial and personal servitudes are analogous senses."
+      },
+      "note": "No TBox seed: Rule 1 cannot fire; expected false negative."
+    },
+    {
+      "id": "p-capacity-cl-la-noseed",
+      "term": "capacity",
+      "gold": "polysemy",
+      "senses": {
+        "us.common_law": [
+          "A minor may disaffirm most contracts made before majority.",
+          "Contracts for necessaries bind a minor to pay reasonable value.",
+          "Mental incapacity makes a contract voidable."
+        ],
+        "us.louisiana.civil_code": [
+          "All persons have capacity to contract except unemancipated minors, interdicts and persons deprived of reason.",
+          "A contract made by a person without capacity is relatively null.",
+          "Emancipation confers capacity in whole or in part."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Disaffirmance doctrine and statutory incapacity with relative nullity: analogous senses."
+      },
+      "note": "No TBox seed: expected false negative."
+    },
+    {
+      "id": "p-consideration-ucc-la-small",
+      "term": "consideration",
+      "gold": "polysemy",
+      "senses": {
+        "us.ucc": [
+          "A modification of a sales contract needs no consideration to bind.",
+          "A signed firm offer by a merchant is irrevocable without consideration."
+        ],
+        "us.louisiana.civil_code": [
+          "Consent with a lawful motive suffices to form a contract.",
+          "A donation inter vivos binds if made in authentic form."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "accept",
+        "rationale": "Commercial dispensations from consideration and civil-law cause relate to the same validity question."
+      },
+      "note": "Two axioms per framework: Rule 2 holds the evidence insufficient."
+    },
+    {
+      "id": "h-bar-frcp-cl",
+      "term": "bar",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.frcp": [
+          "A final judgment on the merits bars a later suit on the same claim.",
+          "Claim preclusion acts as a bar to relitigation.",
+          "A defense of bar must be raised in the answer."
+        ],
+        "us.common_law": [
+          "Admission to the bar requires passing the licensing examination.",
+          "Members of the bar owe duties of candor to the court.",
+          "The bar disciplines lawyers who violate ethical rules."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Preclusion and the legal profession share only a spelling; not a fork."
+      }
+    },
+    {
+      "id": "h-interest-ucc-cl",
+      "term": "interest",
+      "gold": "homonymy",
+      "senses": {
+        "us.ucc": [
+          "A security interest is a right in personal property that secures payment.",
+          "A security interest attaches when value is given and the debtor has rights in the collateral.",
+          "Perfection of a security interest gives priority over later creditors."
+        ],
+        "us.common_law": [
+          "Prejudgment interest compensates for the time value of money withheld.",
+          "Interest accrues at the legal rate absent a contractual rate.",
+          "Usury law caps the rate of interest a lender may charge."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A property right in collateral versus a charge for the use of money; homonyms."
+      }
+    },
+    {
+      "id": "h-execute-r2-frcp",
+      "term": "execute",
+      "gold": "homonymy",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A party executes a written contract by signing and delivering it.",
+          "An executed contract is one fully performed on both sides.",
+          "Execution of a deed requires the grantor's signature."
+        ],
+        "us.federal.frcp": [
+          "A money judgment is enforced by a writ of execution.",
+          "Execution proceedings follow the law of the state where the court sits.",
+          "Property levied on in execution may be sold to satisfy the judgment."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.restatement_2d.contracts",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Signing or performing a contract versus enforcing a judgment; homonyms."
+      }
+    },
+    {
+      "id": "h-serve-frcp-cl",
+      "term": "serve",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.frcp": [
+          "The plaintiff must serve the summons and complaint on each defendant.",
+          "Service may be made by delivering a copy to the individual personally.",
+          "Later papers are served on the party's attorney."
+        ],
+        "us.common_law": [
+          "A convicted defendant must serve the sentence imposed by the court.",
+          "Time served in pretrial custody is credited against the sentence.",
+          "A prisoner may serve concurrent terms."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Delivering process versus undergoing punishment; unrelated legal concepts."
+      }
+    },
+    {
+      "id": "h-cause-la-frcp",
+      "term": "cause",
+      "gold": "homonymy",
+      "senses": {
+        "us.louisiana.civil_code": [
+          "Cause is the reason why a party obligates himself.",
+          "An obligation cannot exist without a lawful cause.",
+          "The cause need not be expressed in the contract."
+        ],
+        "us.federal.frcp": [
+          "A deadline may be extended for good cause.",
+          "A scheduling order may be modified only for good cause and with the judge's consent.",
+          "Good cause requires diligence by the party seeking relief."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.louisiana.civil_code",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A validity element of obligations versus a showing for procedural relief; homonyms."
+      }
+    },
+    {
+      "id": "h-consideration-fre-cl",
+      "term": "consideration",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.fre": [
+          "The court may exclude relevant evidence if its probative value is substantially outweighed by unfair prejudice.",
+          "Judges weigh the danger of confusing the issues against probative value.",
+          "Expert testimony is admitted after the court considers the reliability of the method."
+        ],
+        "us.common_law": [
+          "A promise binds only when something is bargained for in return.",
+          "Past performance cannot serve as the price of a new promise.",
+          "Courts do not inquire into the adequacy of what was exchanged."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.fre",
+          "us.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Judicial weighing and bargained-for exchange share only the word; not a fork."
+      }
+    },
+    {
+      "id": "h-consideration-fre-r2",
+      "term": "consideration",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.fre": [
+          "Relevant evidence is evidence that makes a fact of consequence more or less probable.",
+          "The court weighs probative value against the risk of misleading the jury.",
+          "Needless presentation of cumulative evidence may be excluded."
+        ],
+        "us.restatement_2d.contracts": [
+          "A performance or return promise must be bargained for.",
+          "The exchange must induce the promise.",
+          "A gift promise is unenforceable without a substitute such as reliance."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.fre",
+          "us.restatement_2d.contracts"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Evidentiary weighing versus the bargain element; homonyms."
+      }
+    },
+    {
+      "id": "h-charge-frcp-ucc",
+      "term": "charge",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.frcp": [
+          "The judge's charge instructs the jury on the law it must apply.",
+          "A party must object to the charge before the jury retires.",
+          "An erroneous charge may require a new trial."
+        ],
+        "us.ucc": [
+          "A bank may charge a customer's account for a properly payable item.",
+          "An item is properly payable if authorized by the customer.",
+          "A bank that charges an account wrongly must recredit it."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.ucc"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Jury instructions versus debiting an account; homonyms."
+      }
+    },
+    {
+      "id": "h-draft-ucc-r2",
+      "term": "draft",
+      "gold": "homonymy",
+      "senses": {
+        "us.ucc": [
+          "A draft is an order by the drawer to the drawee to pay money.",
+          "A check is a draft drawn on a bank and payable on demand.",
+          "The drawee is not liable on a draft until it accepts."
+        ],
+        "us.restatement_2d.contracts": [
+          "A preliminary draft of an agreement may show the parties did not intend to be bound yet.",
+          "Exchanging drafts can be evidence of ongoing negotiation.",
+          "A party may intend to be bound only when a final draft is signed."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.restatement_2d.contracts"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A payment order versus a version of a document; homonyms."
+      }
+    },
+    {
+      "id": "h-attachment-frcp-ucc",
+      "term": "attachment",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.frcp": [
+          "Prejudgment attachment seizes property to secure a possible judgment.",
+          "State law governs the availability of attachment at the start of an action.",
+          "Attachment requires notice and an opportunity to be heard in most cases."
+        ],
+        "us.ucc": [
+          "A security interest attaches when it becomes enforceable against the debtor.",
+          "Attachment requires value, rights in the collateral and an authenticated agreement.",
+          "Attachment is distinct from perfection against third parties."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.ucc"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A judicial seizure remedy versus enforceability of a security interest; homonyms."
+      }
+    },
+    {
+      "id": "h-compensation-la-cl",
+      "term": "compensation",
+      "gold": "homonymy",
+      "senses": {
+        "us.louisiana.civil_code": [
+          "Compensation extinguishes two obligations owed reciprocally when both are liquidated and due.",
+          "Compensation takes place by operation of law.",
+          "Compensation cannot be invoked against a claim for return of a deposit."
+        ],
+        "us.common_law": [
+          "Workers receive compensation for injuries arising out of employment.",
+          "Just compensation is owed when the government takes property.",
+          "Compensatory damages restore the plaintiff's loss."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.louisiana.civil_code",
+          "us.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Mutual extinguishment of debts versus payment for loss; unrelated concepts."
+      }
+    },
+    {
+      "id": "h-note-ucc-frcp",
+      "term": "note",
+      "gold": "homonymy",
+      "senses": {
+        "us.ucc": [
+          "A note is a promise to pay a sum of money signed by the maker.",
+          "A negotiable note is payable to bearer or to order.",
+          "A holder in due course takes a note free of most defenses."
+        ],
+        "us.federal.frcp": [
+          "Advisory committee notes explain the purpose of an amendment to the rules.",
+          "Courts consult the notes when a rule is ambiguous.",
+          "The notes are not binding but are persuasive."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A negotiable promise to pay versus explanatory commentary; homonyms."
+      }
+    },
+    {
+      "id": "h-service-frcp-cl",
+      "term": "service",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.frcp": [
+          "Service of process gives the court personal jurisdiction over the defendant.",
+          "A defendant may waive formal service.",
+          "Proof of service must be filed with the court."
+        ],
+        "us.common_law": [
+          "A contract for personal services cannot be specifically enforced against the worker.",
+          "An employer is liable for torts committed in the course of service.",
+          "Services rendered without a promise of payment may support restitution."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.federal.frcp",
+          "us.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Delivering process versus labor performed for another; homonyms."
+      }
+    },
+    {
+      "id": "h-instrument-ucc-fre",
+      "term": "instrument",
+      "gold": "homonymy",
+      "senses": {
+        "us.ucc": [
+          "A negotiable instrument is an unconditional promise or order to pay a fixed amount.",
+          "An instrument must be payable on demand or at a definite time.",
+          "Transfer of an instrument vests the transferor's right to enforce it."
+        ],
+        "us.federal.fre": [
+          "A deadly instrument may be offered as real evidence after authentication.",
+          "A physical instrument used in the incident must be shown to be what the proponent claims.",
+          "Chain of custody supports the authentication of an instrument seized by police."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.federal.fre"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A payment writing versus a physical object in evidence; homonyms."
+      }
+    },
+    {
+      "id": "h-party-r2-frcp-seed",
+      "term": "party",
+      "gold": "homonymy",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A party to a contract is bound by the promises it makes.",
+          "A third party beneficiary may enforce a promise made for its benefit.",
+          "The parties may agree to modify their contract."
+        ],
+        "us.federal.frcp": [
+          "A party may join any claim it has against an opposing party.",
+          "A person whose absence prevents complete relief must be joined as a party.",
+          "A party may amend its pleading once as a matter of course."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.restatement_2d.contracts",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Labeled homonymy on the whitelist's reading: a contracting party and a litigant are distinct roles."
+      },
+      "note": "Debatable label (the whitelist treats party as a homonym); Rule 4 routes it to the LLM."
+    },
+    {
+      "id": "h-sentence-cl-frcp",
+      "term": "sentence",
+      "gold": "homonymy",
+      "senses": {
+        "us.common_law": [
+          "A sentence is the punishment a court imposes on a convicted defendant.",
+          "A sentence may be suspended on conditions.",
+          "Consecutive sentences run one after another."
+        ],
+        "us.federal.frcp": [
+          "A pleading must state each claim in numbered paragraphs, each limited to a single set of circumstances.",
+          "Each averment should be simple, concise and direct.",
+          "A court may strike a redundant sentence from a pleading."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Criminal punishment versus a unit of text in a pleading; homonyms."
+      }
+    },
+    {
+      "id": "h-title-ucc-frcp",
+      "term": "title",
+      "gold": "homonymy",
+      "senses": {
+        "us.ucc": [
+          "Title to goods passes when the seller completes delivery unless otherwise agreed.",
+          "A person with voidable title can transfer good title to a good faith purchaser.",
+          "Title cannot pass before the goods are identified to the contract."
+        ],
+        "us.federal.frcp": [
+          "The title of a pleading names the court and the parties.",
+          "The complaint's title must include the names of all parties.",
+          "Captions and titles do not control the substance of a pleading."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.ucc",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Ownership of goods versus a document heading; homonyms."
+      }
+    },
+    {
+      "id": "h-motion-frcp-cl-noseed",
+      "term": "motion",
+      "gold": "homonymy",
+      "senses": {
+        "us.federal.frcp": [
+          "A request for a court order must be made by motion.",
+          "A motion must state its grounds with particularity.",
+          "A motion to dismiss tests the legal sufficiency of the complaint."
+        ],
+        "us.common_law": [
+          "A moving vehicle's motion creates foreseeable risks to pedestrians.",
+          "Res ipsa loquitur may apply when an object in motion strikes the plaintiff.",
+          "The defendant set the object in motion and is responsible for its path."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A procedural request versus physical movement; homonyms."
+      },
+      "note": "No TBox seed: Rule 1 does not fire."
+    },
+    {
+      "id": "h-charge-cl-ucc-small",
+      "term": "charge",
+      "gold": "homonymy",
+      "senses": {
+        "us.common_law": [
+          "A criminal charge accuses a person of an offense.",
+          "The prosecution bears the burden of proving every element of the charge."
+        ],
+        "us.ucc": [
+          "A collecting bank may charge back a provisional credit.",
+          "The right to charge back ends when the settlement becomes final."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.ucc"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "An accusation versus reversing a credit; homonyms."
+      },
+      "note": "Two axioms per framework: Rule 2 holds the evidence insufficient."
+    },
+    {
+      "id": "u-consideration-cl-uk",
+      "term": "consideration",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "A promise binds only when something is bargained for in return.",
+          "Past performance does not support a later promise.",
+          "Courts do not weigh the adequacy of the exchange."
+        ],
+        "uk.england.common_law": [
+          "Consideration must move from the promisee.",
+          "Past consideration is no consideration.",
+          "Consideration must be sufficient but need not be adequate."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Both frameworks share the bargain sense; no fork."
+      }
+    },
+    {
+      "id": "u-consideration-r2-ucc",
+      "term": "consideration",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A performance or return promise must be bargained for.",
+          "The exchange must induce the promise.",
+          "Nominal consideration does not support an option unless it is recited in a signed writing."
+        ],
+        "us.ucc": [
+          "A sales contract requires the usual exchange of goods for a price.",
+          "A modification needs no new consideration, but the original contract still rests on exchange.",
+          "The price may be payable in money or otherwise."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The commercial code assumes the same bargain sense of consideration; no fork."
+      }
+    },
+    {
+      "id": "u-conversion-cl-ucc",
+      "term": "conversion",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "Conversion is an intentional exercise of dominion over another's chattel.",
+          "The converter is liable for the full value of the chattel.",
+          "A good faith purchaser from a thief can still be liable for conversion."
+        ],
+        "us.ucc": [
+          "An instrument is converted when it is taken by transfer from a person not entitled to enforce it.",
+          "The law of conversion of personal property applies to instruments.",
+          "A bank that pays on a forged indorsement may be liable in conversion."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The commercial code applies the common-law tort to instruments; one sense."
+      }
+    },
+    {
+      "id": "u-tender-ucc-cl",
+      "term": "tender",
+      "gold": "univocal",
+      "senses": {
+        "us.ucc": [
+          "Tender of delivery requires the seller to put conforming goods at the buyer's disposition.",
+          "Tender must be at a reasonable hour and the goods kept available for a reasonable time.",
+          "The buyer's duty to pay is conditioned on the seller's tender."
+        ],
+        "us.common_law": [
+          "Tender is an unconditional offer to perform an obligation.",
+          "A valid tender of payment stops the running of interest.",
+          "A refused tender excuses the tendering party from further performance."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "An offer of performance in both frameworks; one sense."
+      }
+    },
+    {
+      "id": "u-jurisdiction-frcp-uk",
+      "term": "jurisdiction",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.frcp": [
+          "A court must have subject-matter jurisdiction to decide a case.",
+          "Lack of personal jurisdiction is waived if not timely raised.",
+          "A court may examine its own jurisdiction at any time."
+        ],
+        "uk.england.common_law": [
+          "A court has jurisdiction when the law confers on it power to decide the dispute.",
+          "Jurisdiction over a defendant may rest on presence within the territory.",
+          "A judgment given without jurisdiction is a nullity."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Power to adjudicate in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-minor-cl-la",
+      "term": "minor",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "A minor is a person under the age of majority.",
+          "The age of majority is set by statute, usually eighteen.",
+          "A minor may sue through a guardian or next friend."
+        ],
+        "us.louisiana.civil_code": [
+          "A minor is a person who has not reached the age of eighteen years.",
+          "A minor may be emancipated by judgment or by marriage.",
+          "Parents administer the property of their minor children."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A person under the age of majority in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-fraud-cl-la",
+      "term": "fraud",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "Fraud is a knowing misrepresentation of a material fact intended to induce reliance.",
+          "The victim must justifiably rely on the misrepresentation.",
+          "A contract induced by fraud is voidable."
+        ],
+        "us.louisiana.civil_code": [
+          "Fraud is a misrepresentation or suppression of the truth made to obtain an unjust advantage.",
+          "Fraud vitiates consent when it concerns a circumstance that substantially influenced it.",
+          "Fraud may result from silence when there is a duty to speak."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Deceit inducing consent in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-duress-r2-la",
+      "term": "duress",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "Duress by improper threat that leaves no reasonable alternative makes a contract voidable.",
+          "A threat of crime or tort is improper.",
+          "Physical compulsion prevents assent altogether."
+        ],
+        "us.louisiana.civil_code": [
+          "Consent is vitiated when obtained by duress that would cause a reasonable fear of unjust injury.",
+          "Age, health and personality of the victim are considered.",
+          "A threat to do a lawful act is not duress."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Coerced consent in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-breach-r2-la",
+      "term": "breach",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A breach occurs when performance is due and not rendered.",
+          "Every breach gives rise to a claim for damages.",
+          "A total breach discharges the injured party's remaining duties."
+        ],
+        "us.louisiana.civil_code": [
+          "An obligor is liable for failure to perform an obligation.",
+          "Failure to perform may consist of nonperformance, defective performance or delay.",
+          "The obligee may demand dissolution when the obligor fails to perform."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Failure to render due performance in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-assignment-r2-la",
+      "term": "assignment",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "An assignment transfers a contractual right to the assignee.",
+          "Rights may be assigned unless assignment materially changes the obligor's duty.",
+          "The obligor may raise against the assignee defenses it had against the assignor."
+        ],
+        "us.louisiana.civil_code": [
+          "A right may be assigned to a third person unless it is strictly personal.",
+          "The assignee acquires the right with its accessories.",
+          "The assignment is effective against the debtor once the debtor has notice of it."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Transfer of a right to an assignee in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-novation-r2-la",
+      "term": "novation",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A novation substitutes a new obligation and discharges the original one.",
+          "A novation may substitute a new obligor with the obligee's assent.",
+          "Intent to discharge the old duty is required."
+        ],
+        "us.louisiana.civil_code": [
+          "Novation is the extinguishment of an existing obligation by the substitution of a new one.",
+          "The intent to novate may not be presumed.",
+          "Substitution of a new obligor requires the obligee's consent."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Extinguishment by substitution in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-mortgage-cl-la",
+      "term": "mortgage",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "A mortgage is a security interest in real property for a debt.",
+          "On default, the mortgagee may foreclose and sell the property.",
+          "The mortgagor keeps possession until foreclosure."
+        ],
+        "us.louisiana.civil_code": [
+          "A mortgage is a nonpossessory right created over property to secure an obligation.",
+          "The mortgagee may cause the property to be seized and sold on default.",
+          "A mortgage follows the property into the hands of a third possessor."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A nonpossessory security over property in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-witness-fre-uk",
+      "term": "witness",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.fre": [
+          "Every person is competent to be a witness unless a rule provides otherwise.",
+          "A witness may testify only to matters within personal knowledge.",
+          "A witness must give an oath or affirmation to testify truthfully."
+        ],
+        "uk.england.common_law": [
+          "A witness is a person who gives evidence of facts before a court.",
+          "A witness may be compelled to attend by a summons.",
+          "A witness may be cross-examined by the opposing party."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "One who testifies in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-expert-fre-uk",
+      "term": "expert witness",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.fre": [
+          "A qualified expert may give an opinion if it will help the trier of fact.",
+          "The opinion must rest on sufficient facts and reliable methods.",
+          "An expert may base an opinion on facts not admissible in evidence."
+        ],
+        "uk.england.common_law": [
+          "An expert gives opinion evidence on matters outside the court's knowledge.",
+          "An expert's duty is to the court, overriding any duty to the party paying.",
+          "An expert must state the facts and assumptions on which the opinion rests."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "An opinion-giving witness in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-relevance-fre-uk",
+      "term": "relevance",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.fre": [
+          "Evidence is relevant if it makes a fact of consequence more or less probable.",
+          "Irrelevant evidence is not admissible.",
+          "Relevance is a low threshold."
+        ],
+        "uk.england.common_law": [
+          "Evidence is relevant if it is logically probative of a fact in issue.",
+          "Only relevant evidence is admissible.",
+          "Relevance is a matter of logic and common sense."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Logical tendency to prove a fact in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-burden-fre-la",
+      "term": "burden of proof",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.fre": [
+          "A presumption shifts the burden of producing evidence to the opposing party.",
+          "The burden of persuasion stays with the party who bore it originally.",
+          "The party asserting a claim generally bears the burden of proving it."
+        ],
+        "us.louisiana.civil_code": [
+          "A party who demands performance of an obligation must prove its existence.",
+          "A party who asserts that an obligation is null must prove the facts of nullity.",
+          "The burden of proof rests on the party asserting the fact."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Allocation of the duty to prove in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-plaintiff-frcp-cl",
+      "term": "plaintiff",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.frcp": [
+          "The plaintiff commences an action by filing a complaint.",
+          "The plaintiff must serve each defendant.",
+          "A plaintiff may voluntarily dismiss before an answer is served."
+        ],
+        "us.common_law": [
+          "The plaintiff must prove every element of the tort.",
+          "A plaintiff who consents to a risk may be barred from recovery.",
+          "The plaintiff's damages must be proved with reasonable certainty."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The party who brings suit in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-judgment-frcp-uk",
+      "term": "judgment",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.frcp": [
+          "A judgment is any order from which an appeal lies.",
+          "A judgment must be set out in a separate document.",
+          "A court may relieve a party from a final judgment for mistake."
+        ],
+        "uk.england.common_law": [
+          "A judgment is the court's final decision determining the rights of the parties.",
+          "A judgment may be enforced by the successful party.",
+          "A judgment binds the parties on the issues decided."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The court's decision of the parties' rights in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-appeal-frcp-la",
+      "term": "appeal",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.frcp": [
+          "A party may appeal a final judgment to the court of appeals.",
+          "The notice of appeal must be filed within the time allowed.",
+          "Interlocutory orders are generally not appealable."
+        ],
+        "us.louisiana.civil_code": [
+          "An appeal is the exercise of the right of a party to have a judgment revised by a higher court.",
+          "An appeal may be devolutive or suspensive.",
+          "A suspensive appeal requires security."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Review by a higher court in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-goods-ucc-la",
+      "term": "goods",
+      "gold": "univocal",
+      "senses": {
+        "us.ucc": [
+          "Goods are things movable at the time of identification to the contract.",
+          "Money in which the price is payable is not goods.",
+          "Growing crops and unborn animals can be goods."
+        ],
+        "us.louisiana.civil_code": [
+          "Corporeal movables are things that can be moved from one place to another.",
+          "A sale of corporeal movables passes ownership on agreement.",
+          "Standing timber may be treated as a movable by anticipation."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Movable things in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-price-ucc-la",
+      "term": "price",
+      "gold": "univocal",
+      "senses": {
+        "us.ucc": [
+          "The price may be fixed later by the parties or a third person.",
+          "If the price is not settled, it is a reasonable price at delivery.",
+          "Payment of the price is due at the time and place the buyer receives the goods."
+        ],
+        "us.louisiana.civil_code": [
+          "The price must be fixed by the parties in a sum either certain or determinable.",
+          "The price must not be out of all proportion to the value of the thing.",
+          "The buyer is bound to pay the price at the time and place stipulated."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The money paid for the thing sold in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-delivery-ucc-la",
+      "term": "delivery",
+      "gold": "univocal",
+      "senses": {
+        "us.ucc": [
+          "The seller must transfer and deliver the goods in accordance with the contract.",
+          "Unless otherwise agreed, the place for delivery is the seller's place of business.",
+          "Delivery in installments is permitted only if agreed."
+        ],
+        "us.louisiana.civil_code": [
+          "Delivery of a movable takes place by handing it over to the buyer.",
+          "The seller must deliver the thing in the condition it was in at the time of sale.",
+          "Delivery of an immovable is deemed to take place on execution of the act of sale."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Handing over the thing sold in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-waiver-cl-ucc",
+      "term": "waiver",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "A waiver is the intentional relinquishment of a known right.",
+          "Waiver may be express or implied from conduct.",
+          "A waiver of a condition may be retracted unless the other party relied on it."
+        ],
+        "us.ucc": [
+          "A party who waives an executory portion may retract the waiver by reasonable notice.",
+          "A retraction is ineffective if it would be unjust because of a material change of position.",
+          "An attempted modification that fails may still operate as a waiver."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Relinquishment of a known right in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-agent-cl-la",
+      "term": "agent",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "An agent acts on behalf of a principal and subject to the principal's control.",
+          "An agent owes the principal duties of loyalty and obedience.",
+          "A principal is bound by an agent's acts within actual or apparent authority."
+        ],
+        "us.louisiana.civil_code": [
+          "A mandatary is authorized by a principal to transact affairs for the principal.",
+          "The mandatary must act prudently and in good faith for the principal.",
+          "The principal is bound by contracts the mandatary makes within the authority given."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "One who acts for a principal in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-will-cl-la",
+      "term": "will",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "A will disposes of property at death and is revocable during life.",
+          "A will must be signed and attested by witnesses.",
+          "A later will revokes an earlier inconsistent one."
+        ],
+        "us.louisiana.civil_code": [
+          "A testament disposes of property at death and may be revoked at any time.",
+          "An olographic testament must be entirely written, dated and signed by the testator.",
+          "A notarial testament is executed before a notary and two witnesses."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A revocable disposition at death in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-partition-cl-la",
+      "term": "partition",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "Co-owners may seek partition of land they hold together.",
+          "Partition in kind is preferred where practicable.",
+          "A court may order partition by sale when division is impractical."
+        ],
+        "us.louisiana.civil_code": [
+          "No one may be compelled to hold a thing in indivision with another.",
+          "Partition may be made by agreement or by judgment.",
+          "A thing that cannot be divided conveniently is partitioned by licitation."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Ending co-ownership by division or sale in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-relief-frcp-uk",
+      "term": "relief",
+      "gold": "univocal",
+      "senses": {
+        "us.federal.frcp": [
+          "A pleading must demand the relief sought.",
+          "A final judgment should grant the relief to which each party is entitled.",
+          "Relief in the alternative may be demanded."
+        ],
+        "uk.england.common_law": [
+          "A claim form must state the remedy the claimant seeks.",
+          "The court may grant any remedy to which the claimant is entitled.",
+          "Equitable remedies are discretionary."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The remedy a party seeks from the court in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-domicile-cl-la-seed",
+      "term": "domicile",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "Domicile is the place where a person resides with intent to remain indefinitely.",
+          "A person has only one domicile at a time.",
+          "A domicile continues until a new one is acquired."
+        ],
+        "us.louisiana.civil_code": [
+          "The domicile of a natural person is the place of habitual residence.",
+          "A person may change domicile by moving with the intent to make the new residence habitual.",
+          "Proof of intent to change domicile depends on the circumstances."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "us.louisiana.civil_code"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Residence with intent in both frameworks; the TBox seed over-asserts a conflict."
+      },
+      "note": "Over-asserted TBox seed: Rules 2-3 decide."
+    },
+    {
+      "id": "u-negligence-cl-uk-seed",
+      "term": "negligence",
+      "gold": "univocal",
+      "senses": {
+        "us.common_law": [
+          "Negligence requires a duty, breach, causation and damage.",
+          "The standard of care is that of a reasonably prudent person.",
+          "Foreseeability limits the scope of liability."
+        ],
+        "uk.england.common_law": [
+          "Negligence requires a duty of care, breach, causation and loss that is not too remote.",
+          "The standard of care is that of the reasonable person in the defendant's position.",
+          "Liability extends to reasonably foreseeable kinds of harm."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "us.common_law",
+          "uk.england.common_law"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The same tort elements in both frameworks; the TBox seed over-asserts a conflict."
+      },
+      "note": "Over-asserted TBox seed; a terms-of-art term (0.75 threshold)."
+    },
+    {
+      "id": "u-party-r2-frcp-noseed",
+      "term": "party",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A party to a contract is a person who makes or receives a promise in it.",
+          "The parties' intent governs interpretation.",
+          "A party may assign its rights."
+        ],
+        "us.federal.frcp": [
+          "A party is a person named in the action as plaintiff or defendant.",
+          "A party may serve interrogatories on another party.",
+          "Each party bears its own costs unless the court orders otherwise."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Read as one sense (a participant in a legal transaction or proceeding); no TBox conflict."
+      },
+      "note": "Contrast with h-party-r2-frcp-seed: the same term labeled from the univocal reading."
+    },
+    {
+      "id": "u-goodfaith-ucc-r2",
+      "term": "good faith",
+      "gold": "univocal",
+      "senses": {
+        "us.ucc": [
+          "Good faith means honesty in fact and the observance of reasonable commercial standards.",
+          "Every contract imposes an obligation of good faith in performance.",
+          "Good faith cannot be disclaimed by agreement."
+        ],
+        "us.restatement_2d.contracts": [
+          "Every contract imposes a duty of good faith and fair dealing in its performance.",
+          "Bad faith includes evasion of the spirit of the bargain.",
+          "Good faith excludes conduct that violates community standards of decency."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The same performance duty in both US frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-material-r2-ucc-small",
+      "term": "material",
+      "gold": "univocal",
+      "senses": {
+        "us.restatement_2d.contracts": [
+          "A misrepresentation is material if it would likely induce a reasonable person to assent.",
+          "A material misrepresentation can make a contract voidable."
+        ],
+        "us.ucc": [
+          "Additional terms that materially alter an offer do not become part of the contract.",
+          "A clause causing surprise or hardship materially alters the contract."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "A significance threshold in both frameworks; univocal."
+      },
+      "note": "Two axioms per framework."
+    },
+    {
+      "id": "u-seller-ucc-la",
+      "term": "seller",
+      "gold": "univocal",
+      "senses": {
+        "us.ucc": [
+          "A seller is a person who sells or contracts to sell goods.",
+          "The seller must tender conforming goods.",
+          "A seller may cure a nonconforming tender within the contract time."
+        ],
+        "us.louisiana.civil_code": [
+          "The seller is bound to deliver the thing sold and to warrant it.",
+          "The seller must clearly declare the extent of his obligations.",
+          "Any doubt about the seller's obligations is interpreted in favor of the buyer."
+        ]
+      },
+      "tbox_disjoint": [],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "The party who sells in both frameworks; univocal."
+      }
+    },
+    {
+      "id": "u-appeal-uk-frcp-seed",
+      "term": "appeal",
+      "gold": "univocal",
+      "senses": {
+        "uk.england.common_law": [
+          "An appeal lies from the High Court to the Court of Appeal with permission.",
+          "The appeal court will allow an appeal where the decision was wrong.",
+          "Permission to appeal is granted where there is a real prospect of success."
+        ],
+        "us.federal.frcp": [
+          "A notice of appeal designates the judgment appealed from.",
+          "An appeal as of right is taken by filing a notice with the district clerk.",
+          "The time to appeal runs from entry of the judgment."
+        ]
+      },
+      "tbox_disjoint": [
+        [
+          "uk.england.common_law",
+          "us.federal.frcp"
+        ]
+      ],
+      "disposition": {
+        "labeler": "agent",
+        "decision": "reject",
+        "rationale": "Review by a higher court in both frameworks; the TBox seed over-asserts a conflict."
+      },
+      "note": "Over-asserted TBox seed."
+    }
+  ]
+}

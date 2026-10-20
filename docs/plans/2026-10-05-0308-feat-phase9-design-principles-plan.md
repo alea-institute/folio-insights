@@ -264,6 +264,19 @@ Recommended overall order:
   - A reject without a rationale is refused.
   - A Wilson upper bound of 10% or less is computed on the labeled set. Until the set is certified, the gate reports `provisional`.
   - The separation guard test passes.
+- **As built (2026-10-20)** (branch `feat/phase9-u6-polysemy`; unit plan `docs/plans/2026-10-20-feat-phase9-u6-polysemy-plan.md`):
+  - **Measured FP gate: FAIL.** On the agent-authored labeled set (`tests/polysemy/fixtures/labeled_set.json`, N = 82: 29 polysemy, 19 homonymy, 34 univocal; 42 cases with `us.louisiana.civil_code`), the detector made 12 false positives: FP rate 14.6%, Wilson 95% interval 8.6%–23.9%. The upper bound, 23.9%, is above the 10% gate, so the status is `fail`. It would read `fail` even with a certification. Rule 4 (known homonyms) ran against a pessimistic fake that always answers `polysemy`. With an abstaining fake instead, the count is 9 FPs and the upper bound 19.6%, still `fail`. Of the 16 cases the detector flagged, 12 were wrong (false discovery rate 75%), and it missed 25 of the 29 polysemous cases. The fixtures were written before the detector ran and were not edited afterwards. `tests/polysemy/test_labeled_set.py::test_measured_gate_as_built` pins these numbers.
+  - **Finding:** Rule 3 treats a large centroid distance as evidence of polysemy. Homonyms (unrelated senses) sit further apart than analogous senses, so once Rule 1 passes, Rule 3 favours homonyms. Nine of the 12 FPs are homonyms outside the `HOMONYMS` whitelist. This is a detector-design question for a follow-up, not a threshold to tune here.
+  - **Gate honesty:** the gate reads the Wilson upper bound. An FP is a detector miscall: the detector said polysemy and the disposition rejects it with a rationale. A reject with an empty rationale is refused by the review CLI and `append_disposition`, and it is left out of N. The status is `pass` only with a human `certification` record bound to the cases' SHA-256. The shipped set has no certification. Who certifies is still Open Question 1.
+  - **Shipped:**
+    - `TERMS_OF_ART_THRESHOLD = 0.75` and a typed, empty `polysemy/thresholds.py`.
+    - `owl:disjointWith` seeds in `polysemy/tbox_seeds.ttl`. Rule 1 asks a `SubsumptionReasoner` (`reason/structural.py`). The spike's ASK was not joined to the term or the frameworks.
+    - `polysemy/candidates.py`, which reads P1 doctrinal clusters and the P2 registry.
+    - The PRD fork shape (`DistinguoFork`), with a configurable prime analogate. It is rendered only against a human disposition.
+    - The `polysemy gate` CLI.
+    - API route-table and CLI flag-absence tests.
+    - fp_audit with an injectable port client.
+  - **Vocabulary:** no new terms and no `VOCAB_VERSION` change. One existing mismatch is left alone: `fi:proportionalRelation` is declared as an `owl:ObjectProperty`, but the PRD and every emitter use a literal.
 
 ### U7. 9.P7 BFO classifier
 

@@ -5,6 +5,12 @@ The shared TBox is kept inside OWL 2 EL by a syntactic check
 this protocol, so an EL reasoner (ELK) can be added later without changing any
 caller. The HermiT adapter imports owlready2 only when it reasons, so this
 module is safe to import in the JVM-free web tier.
+
+Phase 9 U6 (KTD10) adds the class-level question surface: ``SubsumptionReasoner``
+answers subsumption and disjointness with a ``SubsumptionResult``. The
+pure-Python ``reason.structural.StructuralReasoner`` answers from told axioms
+(``rdfs:subClassOf`` closure plus ``owl:disjointWith``); a HermiT- or ELK-backed
+implementation can replace it without changing callers.
 """
 from __future__ import annotations
 
@@ -64,6 +70,40 @@ class HermitReasoner:
         )
 
 
+SubsumptionRelation = Literal["subclass_of", "disjoint_with"]
+
+
+@dataclass(frozen=True)
+class SubsumptionResult:
+    """A reasoner's answer to one class-level TBox question (KTD10).
+
+    Subsumption and disjointness are entailment questions, so they come from a
+    reasoner and nowhere else. Similarity has its own, unrelated result type
+    (``polysemy.similarity_query.SimilarityResult``); neither type derives from
+    the other, so one can never be passed where the other is expected.
+    """
+
+    relation: SubsumptionRelation
+    left: str
+    right: str
+    holds: bool
+    reasoner: str
+    # The told axioms the answer rests on, as (subject, predicate, object) IRIs.
+    evidence: tuple[tuple[str, str, str], ...] = field(default_factory=tuple)
+
+
+@runtime_checkable
+class SubsumptionReasoner(Protocol):
+    """Class subsumption and disjointness over a TBox (KTD10)."""
+
+    @property
+    def name(self) -> str: ...
+
+    def is_subclass_of(self, sub: str, sup: str) -> SubsumptionResult: ...
+
+    def are_disjoint(self, left: str, right: str) -> SubsumptionResult: ...
+
+
 def reasoner_for_profile(profile: TBoxProfile) -> Reasoner:
     """The reasoner for a TBox profile: HermiT for both today (KTD5, no ELK)."""
     if profile not in TBOX_PROFILES:
@@ -75,6 +115,9 @@ __all__ = [
     "HermitReasoner",
     "Reasoner",
     "ReasonerResult",
+    "SubsumptionReasoner",
+    "SubsumptionRelation",
+    "SubsumptionResult",
     "TBOX_PROFILES",
     "TBoxProfile",
     "reasoner_for_profile",

@@ -126,3 +126,19 @@ def test_rule4_homonym_flag() -> None:
     assert isinstance(v, LLMVerdict)
     assert v.decision == "homonymy"
     assert "R4-homonym-flag" in v.matched_rules
+
+
+def test_rule4_uses_an_injected_port_client() -> None:
+    """Phase 9 U6: the Rule 4 fallback accepts a port-shaped client (no provider)."""
+    from folio_insights.polysemy.detector import LLMVerdict
+    from folio_insights.polysemy.labeled_set import AlwaysPolysemyLLM
+
+    fake = AlwaysPolysemyLLM()
+    with patch(
+        "folio_insights.polysemy.detector.has_framework_conflicting_axiom", return_value=True,
+    ), patch("folio_insights.polysemy.detector._structured_call",
+             side_effect=AssertionError("provider path must not run")):
+        v = detect_polysemy(_cluster(term="bar", distance=0.9), store=None, llm=fake)
+    assert isinstance(v, LLMVerdict)
+    assert v.decision == "polysemy" and v.provider == "fake:always-polysemy"
+    assert fake.calls == 1

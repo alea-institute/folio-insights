@@ -8,7 +8,9 @@ reviewed_at_iso) and canned PolysemyVerdicts (polysemy_vs_homonymy_reasoning
 + rationale — never `.reason`).
 
 D-4 lock: the LLM audit pass emits DISAGREEMENTS ONLY.
-PRINCIPLE-06 lock: Wilson CI LOWER bound is the gate, not the point estimate.
+PRINCIPLE-06 lock (Phase 9 U6, KTD9): the Wilson CI UPPER bound is the gate,
+not the point estimate and not the lower bound; an FP is a detector miscall
+(detector said polysemy, reviewer rejected with a rationale).
 QUALITY-03 lock: wilson_score_interval is hand-coded — NO scipy import.
 """
 from __future__ import annotations
@@ -19,6 +21,13 @@ from unittest import mock
 
 import pytest
 
+from folio_insights.polysemy.detector import PolysemyVerdict
+from folio_insights.polysemy.dispositions import (
+    DispositionRecord,
+    ProposedFork,
+    append_disposition,
+)
+
 pytestmark = pytest.mark.polysemy_spike
 
 
@@ -26,13 +35,6 @@ pytestmark = pytest.mark.polysemy_spike
 # Canonical fixtures — field-perfect with 01-02 DispositionRecord + 01-03
 # PolysemyVerdict schemas. Do NOT drift (see plan <critical> block).
 # ---------------------------------------------------------------------------
-
-from folio_insights.polysemy.detector import PolysemyVerdict
-from folio_insights.polysemy.dispositions import (
-    DispositionRecord,
-    ProposedFork,
-    append_disposition,
-)
 
 
 def _sample_record(
@@ -114,63 +116,85 @@ def test_wilson_score_interval_no_scipy_import() -> None:
 # compute_fp_rate tests (3)
 # ---------------------------------------------------------------------------
 
-def test_compute_fp_rate_counts_reject_without_rationale(tmp_path: pathlib.Path) -> None:
-    """Only reject-with-EMPTY-rationale is tallied as FP (D-4 heuristic).
+def _append_raw(path: pathlib.Path, record: DispositionRecord) -> None:
+    """Write a record the way a Phase 1 log holds it, bypassing the write check
+    (``append_disposition`` now refuses a reject without a rationale)."""
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(record.model_dump_json() + "\n")
 
-    Canonical `rationale` is REQUIRED non-Optional; "without rationale" means
-    the stripped string is empty. Fixture mix: 3 accept + 2 reject-with-
-    rationale + 1 reject-without-rationale + 1 modify → 1/7 FP rate.
+
+def test_compute_fp_rate_counts_detector_miscalls_only(tmp_path: pathlib.Path) -> None:
+    """KTD9: an FP is a detector miscall — detector said polysemy, the reviewer
+    rejected it WITH a rationale. Rejects of a non-polysemy verdict agree with
+    the detector; an empty-rationale reject is invalid: not an FP, not in N.
+
+    Mix: 3 accept + 2 reject-with-rationale of a polysemy call (2 FPs) +
+    1 reject of a coincidence call (agreement) + 1 modify + 1 legacy
+    empty-rationale reject (invalid) -> 2 FPs over N = 7.
     """
     from folio_insights.polysemy.fp_audit import compute_fp_rate
 
-    records = [
+    path = _seed_jsonl(tmp_path, [
         _sample_record(decision="accept", rationale="ok1"),
         _sample_record(decision="accept", rationale="ok2"),
         _sample_record(decision="accept", rationale="ok3"),
-        _sample_record(decision="reject", rationale="framework conflict"),
-        _sample_record(decision="reject", rationale="axiom mismatch"),
-        _sample_record(decision="reject", rationale=""),  # ← FP
+        _sample_record(decision="reject", rationale="framework conflict"),       # FP
+        _sample_record(decision="reject", rationale="axiom mismatch"),           # FP
+        _sample_record(decision="reject", rationale="agrees: no fork",
+                       detector_decision="coincidence"),                        # not an FP
         _sample_record(decision="modify", rationale="distinguo override"),
-    ]
-    path = _seed_jsonl(tmp_path, records)
+    ])
+    _append_raw(path, _sample_record(decision="reject", rationale="  "))       # invalid
 
     result = compute_fp_rate(path)
     assert result["total"] == 7
-    assert result["false_positives"] == 1
-    assert abs(result["fp_rate"] - 1 / 7) < 1e-9
+    assert result["false_positives"] == 2
+    assert result["invalid_dispositions"] == 1
+    assert abs(result["fp_rate"] - 2 / 7) < 1e-9
+
+
+def test_empty_rationale_reject_is_never_an_fp(tmp_path: pathlib.Path) -> None:
+    """The Phase 1 definition counted exactly these; KTD9 counts none of them."""
+    from folio_insights.polysemy.fp_audit import compute_fp_rate
+
+    path = tmp_path / "dispositions.jsonl"
+    for _ in range(3):
+        _append_raw(path, _sample_record(decision="reject", rationale=""))
+    _append_raw(path, _sample_record(decision="accept"))
+    result = compute_fp_rate(path)
+    assert result["false_positives"] == 0
+    assert result["total"] == 1
+    assert result["invalid_dispositions"] == 3
 
 
 def test_compute_fp_rate_reports_wilson_ci(tmp_path: pathlib.Path) -> None:
-    """Returned dict MUST have keys {total, false_positives, fp_rate, ci_lower, ci_upper}."""
+    """Returned dict MUST have keys {total, false_positives, fp_rate, ci_lower, ci_upper, status}."""
     from folio_insights.polysemy.fp_audit import compute_fp_rate
 
     records = [_sample_record(decision="accept") for _ in range(5)] + [
-        _sample_record(decision="reject", rationale="")
+        _sample_record(decision="reject", rationale="miscall")
     ]
     path = _seed_jsonl(tmp_path, records)
 
     result = compute_fp_rate(path)
-    expected_keys = {"total", "false_positives", "fp_rate", "ci_lower", "ci_upper"}
+    expected_keys = {"total", "false_positives", "fp_rate", "ci_lower", "ci_upper", "status"}
     assert expected_keys.issubset(result.keys())
     assert 0.0 <= result["ci_lower"] <= result["fp_rate"] <= result["ci_upper"] <= 1.0
 
 
-def test_fp_rate_gate_against_lower_bound(tmp_path: pathlib.Path) -> None:
-    """Landmine demo: 1/20 point estimate = 5% but Wilson ci_upper > 10%."""
+def test_fp_rate_gate_reads_the_upper_bound(tmp_path: pathlib.Path) -> None:
+    """Landmine demo: 1/20 point estimate = 5% but Wilson ci_upper > 10%, so the gate fails."""
     from folio_insights.polysemy.fp_audit import compute_fp_rate
 
     records = [_sample_record(decision="accept") for _ in range(19)] + [
-        _sample_record(decision="reject", rationale="")
+        _sample_record(decision="reject", rationale="miscall")
     ]
     path = _seed_jsonl(tmp_path, records)
 
     result = compute_fp_rate(path)
-    # Point estimate is 5%, but Wilson upper bound extends well past 10%
     assert result["fp_rate"] < 0.10, f"point estimate should be <10%, got {result['fp_rate']}"
-    assert result["ci_upper"] > 0.10, (
-        f"landmine demo requires ci_upper > 10% to show point-estimate gating is misleading; "
-        f"got ci_upper={result['ci_upper']}"
-    )
+    assert result["ci_upper"] > 0.10, result["ci_upper"]
+    assert result["status"] == "fail"
 
 
 # ---------------------------------------------------------------------------
@@ -357,8 +381,6 @@ def test_no_stale_reason_attribute_regression() -> None:
 def test_single_llm_provider_flag_in_audit() -> None:
     """OQ-5 RESOLVED regression guard: audit subcommand has exactly ONE
     --llm-provider option and ZERO --llm-model occurrences."""
-    import importlib
-
     # Importing the polysemy package triggers cli registration.
     from folio_insights.polysemy.cli import polysemy as polysemy_group
 

@@ -1,10 +1,12 @@
 """Phase 1 polysemy detector — 4-rule gate + provider-agnostic LLM fallback.
 
 Rules (CONTEXT.md D-2, PITFALLS L647-653):
-  R1  SPARQL owl:disjointWith between term-scoped framework classes (OQ-1 lock).
-      Authoritative for axiom conflict. Embedding distance is NOT a fallback.
+  R1  owl:disjointWith between term-scoped framework classes (OQ-1 lock),
+      asked of a SubsumptionReasoner (polysemy.tbox; KTD10). Authoritative for
+      axiom conflict. Embedding distance is NOT a fallback.
   R2  N ≥ 3 shards per framework (PITFALLS L651). Otherwise insufficient-evidence.
-  R3  TERMS_OF_ART raise threshold to 0.8 (PITFALLS L652).
+  R3  Evidence threshold per framework pair (thresholds.ThresholdConfig):
+      TERMS_OF_ART 0.75 (Option B, KTD9), default 0.6; pair overrides ship empty.
   R4  HOMONYMS force LLM-fallback (CONTEXT.md D-2 Rule 4).
 
 Centroid cosine distance is an EVIDENCE SCORE surfaced on every verdict
@@ -21,21 +23,19 @@ confidence field (Pitfall A6: bands ≠ calibrated probabilities).
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
 
 from folio_insights.llm.schemas import PolysemyVerdict
-from folio_insights.polysemy.similarity_query import has_framework_conflicting_axiom
-from folio_insights.polysemy.whitelists import (
-    DEFAULT_DISTINGUO_THRESHOLD,
-    HOMONYMS,
-    TERMS_OF_ART,
-    TERMS_OF_ART_THRESHOLD,
-)
+from folio_insights.polysemy.fixture_loader import resolve_framework_id
+from folio_insights.polysemy.tbox import has_framework_conflicting_axiom
+from folio_insights.polysemy.thresholds import DEFAULT_THRESHOLDS, ThresholdConfig
+from folio_insights.polysemy.whitelists import HOMONYMS
 
 if TYPE_CHECKING:
     from folio_insights.polysemy.prototype_cluster import PrototypeCluster
+    from folio_insights.reason.reasoner import SubsumptionReasoner
     from folio_insights.store.pyoxigraph_store import PyoxigraphStore
 
 logger = logging.getLogger(__name__)
@@ -117,6 +117,7 @@ def _invoke_llm_fallback(
     llm_provider: str,
     matched_rules: list[str],
     extra_prompt: str = "",
+    llm: Any | None = None,
 ) -> LLMVerdict:
     """Provider-agnostic LLM-port call. OQ-5 per orchestrator lock.
 
@@ -160,12 +161,18 @@ def _invoke_llm_fallback(
         prompt = POLYSEMY_DETECTOR.render(
             term=cluster.term, axioms_block=axioms_block, extra_prompt=extra_prompt
         )
-        verdict = _structured_call(provider_family, model_for_family, prompt)
+        if llm is not None:  # an injected port-shaped client (tests, the labeled-set gate)
+            verdict = llm.structured_model_sync(
+                prompt, PolysemyVerdict, template=POLYSEMY_DETECTOR
+            )
+        else:
+            verdict = _structured_call(provider_family, model_for_family, prompt)
         return LLMVerdict(
             decision=verdict.decision,
             polysemy_vs_homonymy_reasoning=verdict.polysemy_vs_homonymy_reasoning,
             rationale=verdict.rationale,
-            provider=provider_family,
+            # An injected client names itself (a fake must not read as a provider).
+            provider=getattr(llm, "provider_label", provider_family),
             matched_rules=matched_rules,
             evidence_score=evidence_score,
         )
@@ -203,10 +210,12 @@ def _structured_call(provider_family: str, model: str, prompt: str) -> PolysemyV
 
 def detect_polysemy(
     cluster: "PrototypeCluster",
-    store: "PyoxigraphStore",
+    store: "PyoxigraphStore | SubsumptionReasoner",
     *,
     llm_provider: str = "claude-haiku-4-5",
     threshold_override: float | None = None,
+    thresholds: ThresholdConfig = DEFAULT_THRESHOLDS,
+    llm: Any | None = None,
 ) -> RuleVerdict | LLMVerdict:
     """Run the 4-rule gate on a PrototypeCluster. Return a discriminated-union
     verdict (RuleVerdict | LLMVerdict) — never a raw dict, never None, never
@@ -214,7 +223,9 @@ def detect_polysemy(
 
     Args:
         cluster: PrototypeCluster from prototype_cluster.build_prototype_cluster.
-        store: PyoxigraphStore hosting the shard TTL (used for Rule 1 SPARQL).
+        store: the Rule 1 TBox: a PyoxigraphStore whose shared TBox graph holds
+            the term-scoped classes and their disjointness seeds
+            (``tbox.load_tbox_seeds``), or any ``SubsumptionReasoner``.
             May be None when the caller patches has_framework_conflicting_axiom
             (test paths) — production paths MUST pass a live store.
         llm_provider: OQ-5 model string. One of:
@@ -224,9 +235,13 @@ def detect_polysemy(
         threshold_override: Force a specific evidence threshold (bypasses
             TERMS_OF_ART_THRESHOLD and DEFAULT_DISTINGUO_THRESHOLD). Used by
             the 01-06 FP-audit sweep to explore threshold sensitivity.
+        thresholds: the Rule 3 policy (whitelist thresholds plus per-pair
+            overrides; the shipped default has no overrides).
+        llm: an injected port-shaped client (``structured_model_sync``) for
+            the Rule 4 fallback; default is the LLM port's ``TaskLLM``.
 
     Rule ordering (short-circuits on first decisive result):
-        R1 — SPARQL owl:disjointWith.       NO conflict → 'coincidence'.
+        R1 — reasoner owl:disjointWith.     NO conflict → 'coincidence'.
         R2 — N ≥ 3 shards per framework.    Any < 3 → 'coincidence'.
         R3 — evidence ≥ threshold.          Below → 'coincidence'.
         R4 — term ∈ HOMONYMS.               Force LLM fallback.
@@ -258,18 +273,26 @@ def detect_polysemy(
                 evidence_score=evidence_score,
             )
 
-    # Rule 3 — terms-of-art threshold (raise to 0.8) — PITFALLS L652.
-    # threshold_override lets 01-06 FP-audit sweep thresholds without editing
-    # whitelists.py constants.
-    base_threshold = (
-        TERMS_OF_ART_THRESHOLD if cluster.term in TERMS_OF_ART
-        else DEFAULT_DISTINGUO_THRESHOLD
-    )
-    threshold = threshold_override if threshold_override is not None else base_threshold
-    if evidence_score < threshold:
+    # Rule 3 — evidence threshold per framework pair (KTD9 Option B: terms of
+    # art 0.75). threshold_override lets the FP-audit sweep thresholds without
+    # editing the config. A pair passes when its distance reaches its threshold;
+    # with no pair overrides every pair shares the whitelist threshold, so this
+    # is exactly "max distance >= threshold".
+    gaps: list[float] = []
+    for (fw_a, fw_b), distance in sorted(cluster.cross_framework_cosine_distance.items()):
+        if fw_a >= fw_b:
+            continue
+        threshold = (
+            threshold_override if threshold_override is not None
+            else thresholds.threshold_for(
+                cluster.term, resolve_framework_id(fw_a), resolve_framework_id(fw_b)
+            )
+        )
+        gaps.append(threshold - distance)
+    if not gaps or min(gaps) > 0:
         return RuleVerdict(
             decision="coincidence",
-            rule_confidence=max(0.0, threshold - evidence_score),
+            rule_confidence=max(0.0, min(gaps, default=0.0)),
             matched_rules=["R3-below-threshold"],
             evidence_score=evidence_score,
         )
@@ -287,6 +310,7 @@ def detect_polysemy(
                 "The token is on the known-homonym whitelist. Discriminate "
                 "polysemy vs homonymy explicitly."
             ),
+            llm=llm,
         )
 
     # All rules passed — tentative polysemy. rule_confidence mirrors

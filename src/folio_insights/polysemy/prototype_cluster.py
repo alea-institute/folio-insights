@@ -8,8 +8,9 @@ Per PITFALLS Pitfall 1: embeddings are computed over axiom_summary (hand-curated
 ground-truth axiom), NOT over extracted_text (which would reproduce the
 framework-conflicting-context footgun). The per-framework centroid is an
 EVIDENCE score surfaced on the verdict — never the final polysemy signal.
-Rule 1 (owl:disjointWith SPARQL) is the authoritative axiom-conflict check;
-see similarity_query.py and detector.py Rule 1.
+Rule 1 (owl:disjointWith, asked of a reasoner) is the authoritative
+axiom-conflict check; see tbox.py and detector.py Rule 1. Similarity queries
+over these centroids live in similarity_query.py (KTD10).
 """
 from __future__ import annotations
 
@@ -144,7 +145,7 @@ def centroid_distance_signal(
     """Cosine distance in [0, 2] between two framework centroids.
 
     EVIDENCE SCORE ONLY — never a final polysemy verdict (Pitfall 1).
-    Rule 1 (owl:disjointWith SPARQL) is the authoritative axiom-conflict
+    Rule 1 (owl:disjointWith, via a reasoner) is the authoritative axiom-conflict
     signal; this distance is only an ordering/reporting aid passed through
     on RuleVerdict.evidence_score and LLMVerdict.evidence_score.
 
