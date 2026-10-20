@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Folio Insights static Review UI study. All records are synthetic.">
+  <title>Inspect a shard · Folio Insights mockup</title>
+  <link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="shell">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">❖</span> folio insights</a>
+  <div class="corpus">
+    <label for="corpus">Corpus</label>
+    <select id="corpus" name="corpus"><option>Trial advocacy</option><option>Contract language</option></select>
+  </div>
+  <nav class="mode-switch" aria-label="Review mode">
+    <a href="01-read-mode.html">Read</a>
+    <a href="03-shard-page.html" aria-current="page">Inspect</a>
+    <a href="02-decide-inbox.html">Decide <span class="mono small">(12)</span></a>
+  </nav>
+  <div class="session" aria-label="Session status">
+    <span><b aria-hidden="true">✓</b> Operator token active</span>
+    <span><b aria-hidden="true">◇</b> LLM key present</span>
+  </div>
+</header>
+<main class="page" id="main">
+  <nav class="breadcrumb" aria-label="Shard route"><a href="index.html">Library</a><span aria-hidden="true">/</span><code>/shards/9f3a7c21d8e064b5</code></nav>
+  <header class="page-heading">
+    <div><h1>Purpose-bounded admission</h1><p class="muted">An assertion is only as useful as the grounds you can follow.</p></div>
+    <details class="citation">
+      <summary>Copy as citation</summary>
+      <div class="citation-menu" aria-label="Citation formats">
+        <button type="button">BibTeX</button><button type="button">Bluebook</button><button type="button">Hyperlink</button>
+      </div>
+    </details>
+  </header>
+  <div class="row">
+    <span class="badge valid">✓ Signature valid <span class="small">(synthetic)</span></span>
+    <span class="chip process">simple_assertion</span><span class="badge gold">◇ demonstrable</span>
+    <span class="badge">● Current · not contested</span>
+  </div>
+  <dl class="identity">
+    <div><dt>shard_iri</dt><dd><code>urn:folio:shard:9f3a7c21d8e064b5</code></dd></div>
+    <div><dt>provenance_hash</dt><dd><code>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</code></dd></div>
+    <div><dt>source_uri / source_span</dt><dd><code>urn:demo:trial-advocacy:chapter-4 / §4.2:p3:chars:124–165</code></dd></div>
+    <div><dt>extracted_at / first_extractor_did</dt><dd><code>2026-09-01T09:00:00Z / did:web:extractor.example.org</code></dd></div>
+  </dl>
+  <div class="inspect-layout">
+    <section class="stack" aria-label="Shard history and dependencies">
+      <div class="panel">
+        <div class="tabs" role="tablist" aria-label="Shard views">
+          <button type="button" role="tab" id="tab-fields" aria-controls="panel-fields" aria-selected="false" tabindex="-1">Fields</button>
+          <button type="button" role="tab" id="tab-timeline" aria-controls="panel-timeline" aria-selected="true" tabindex="0">Timeline</button>
+          <button type="button" role="tab" id="tab-graph" aria-controls="panel-graph" aria-selected="false" tabindex="-1">Graph</button>
+        </div>
+        <section id="panel-fields" role="tabpanel" aria-labelledby="tab-fields" tabindex="0" hidden>
+          <h2>A claim with its grounds</h2>
+          <blockquote>Admission may be bounded by the purpose for which an item is offered.</blockquote>
+          <p>The complete 15-group envelope inspector appears alongside this view, with the model’s field names preserved.</p>
+          <dl class="metadata">
+            <div><dt>schema_version</dt><dd>2</dd></div><div><dt>vocab_version</dt><dd>2026.05.0</dd></div>
+            <div><dt>supersedes</dt><dd>urn:folio:shard:71bbd3206a1e54c9</dd></div><div><dt>superseded_by</dt><dd>null</dd></div>
+          </dl>
+        </section>
+        <section id="panel-timeline" role="tabpanel" aria-labelledby="tab-timeline" tabindex="0">
+          <h2>A claim through time</h2>
+          <p class="muted small">Five versions · Each successor preserves the earlier record.</p>
+          <div class="time-controls">
+            <div><label for="as-of">As of (UTC)</label><input type="date" id="as-of" value="2026-10-20"></div>
+            <div><label class="toggle" for="bitemporal"><input type="checkbox" id="bitemporal" checked role="switch">Bitemporal view</label></div>
+          </div>
+          <ol class="ribbon" aria-label="Supersession chain of five versions">
+            <li><a href="#version-detail" aria-label="Version 1, superseded">v1</a><time datetime="2026-09-01">01 Sep</time><span>Superseded</span></li>
+            <li><a href="#version-detail" aria-label="Version 2, superseded">v2</a><time datetime="2026-09-10">10 Sep</time><span>Superseded</span></li>
+            <li><a href="#version-detail" aria-label="Version 3, superseded">v3</a><time datetime="2026-09-22">22 Sep</time><span>Superseded</span></li>
+            <li><a href="#version-detail" aria-label="Version 4, superseded">v4</a><time datetime="2026-10-08">08 Oct</time><span>Superseded</span></li>
+            <li class="current"><a href="#version-detail" aria-current="true" aria-label="Version 5, selected current version">v5 ✓</a><time datetime="2026-10-19">19 Oct</time><span>Current</span></li>
+          </ol>
+          <div class="time-detail" id="version-detail">
+            <h3>v5 · Clarified the permitted purpose</h3>
+            <p class="small muted">The current version separates the scope of admission from the instruction used to explain it.</p>
+            <dl class="metadata">
+              <div><dt>valid_time_start</dt><dd>2026-10-18T00:00:00Z</dd></div><div><dt>valid_time_end</dt><dd>null · unbounded</dd></div>
+              <div><dt>transaction_time</dt><dd>2026-10-19T14:32:00Z</dd></div><div><dt>Supersession event</dt><dd>v4 → v5 · signed</dd></div>
+            </dl>
+            <p class="small muted" style="margin-top:16px">Valid time: when the claim applies. Transaction time: when the record entered the ledger. Picker and toggle show a static as-of state.</p>
+          </div>
+        </section>
+        <section id="panel-graph" role="tabpanel" aria-labelledby="tab-graph" tabindex="0" hidden>
+          <h2>Grounds of the assertion</h2>
+          <p class="muted small">Bounded to three hops · 6 nodes · 5 edges</p>
+<svg class="graph" viewBox="0 0 590 325" role="img" aria-labelledby="graph-title-expanded graph-desc-expanded">
+  <title id="graph-title-expanded">Three-hop dependency graph</title>
+  <desc id="graph-desc-expanded">The selected shard depends on an admission definition, then a relevance axiom, then a kernel axiom. This three-edge kernel chain is highlighted in gilt. Dashed edges connect the selected shard to an instruction and a textual source.</desc>
+  <defs><marker id="arrow-expanded" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e3c27a"/></marker></defs>
+  <path class="kernel-edge" d="M 295 63 V 91" marker-end="url(#arrow-expanded)"/>
+  <path class="kernel-edge" d="M 295 141 V 177" marker-end="url(#arrow-expanded)"/>
+  <path class="kernel-edge" d="M 295 227 V 263" marker-end="url(#arrow-expanded)"/>
+  <path class="edge" d="M 200 40 H 100 V 96 M 390 40 H 491 V 177"/>
+  <rect class="kernel-node" x="200" y="15" width="190" height="48" rx="4"/>
+  <text x="295" y="44" text-anchor="middle">Purpose-bounded admission</text>
+  <rect class="kernel-node" x="210" y="92" width="170" height="49" rx="4"/>
+  <text x="295" y="122" text-anchor="middle">Definition of admission</text>
+  <rect class="kernel-node" x="210" y="178" width="170" height="49" rx="4"/>
+  <text x="295" y="208" text-anchor="middle">Relevance axiom</text>
+  <rect class="kernel-node" x="210" y="264" width="170" height="49" rx="4"/>
+  <text x="295" y="294" text-anchor="middle">K.1 · Claim has a ground</text>
+  <rect class="node" x="12" y="96" width="170" height="49" rx="4"/>
+  <text x="97" y="126" text-anchor="middle">Limiting instruction</text>
+  <rect class="node" x="410" y="178" width="168" height="49" rx="4"/>
+  <text x="494" y="208" text-anchor="middle">Source · § 4.2</text>
+  <text x="389" y="291" style="fill:#e3c27a;font-size:12px">hop 3 / kernel</text>
+</svg>
+          <p class="graph-caption">Solid gilt: kernel dependency chain. Dashed grey: supporting definition and source. Arrowheads point toward the ground.</p>
+        </section>
+      </div>
+      <figure class="panel kernel" style="margin:0">
+        <h2>Back to the axioms</h2>
+        <p class="small muted">Dependency preview · 3 hops</p>
+<svg class="graph" viewBox="0 0 590 325" role="img" aria-labelledby="graph-title-preview graph-desc-preview">
+  <title id="graph-title-preview">Three-hop dependency graph</title>
+  <desc id="graph-desc-preview">The selected shard depends on an admission definition, then a relevance axiom, then a kernel axiom. This three-edge kernel chain is highlighted in gilt. Dashed edges connect the selected shard to an instruction and a textual source.</desc>
+  <defs><marker id="arrow-preview" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e3c27a"/></marker></defs>
+  <path class="kernel-edge" d="M 295 63 V 91" marker-end="url(#arrow-preview)"/>
+  <path class="kernel-edge" d="M 295 141 V 177" marker-end="url(#arrow-preview)"/>
+  <path class="kernel-edge" d="M 295 227 V 263" marker-end="url(#arrow-preview)"/>
+  <path class="edge" d="M 200 40 H 100 V 96 M 390 40 H 491 V 177"/>
+  <rect class="kernel-node" x="200" y="15" width="190" height="48" rx="4"/>
+  <text x="295" y="44" text-anchor="middle">Purpose-bounded admission</text>
+  <rect class="kernel-node" x="210" y="92" width="170" height="49" rx="4"/>
+  <text x="295" y="122" text-anchor="middle">Definition of admission</text>
+  <rect class="kernel-node" x="210" y="178" width="170" height="49" rx="4"/>
+  <text x="295" y="208" text-anchor="middle">Relevance axiom</text>
+  <rect class="kernel-node" x="210" y="264" width="170" height="49" rx="4"/>
+  <text x="295" y="294" text-anchor="middle">K.1 · Claim has a ground</text>
+  <rect class="node" x="12" y="96" width="170" height="49" rx="4"/>
+  <text x="97" y="126" text-anchor="middle">Limiting instruction</text>
+  <rect class="node" x="410" y="178" width="168" height="49" rx="4"/>
+  <text x="494" y="208" text-anchor="middle">Source · § 4.2</text>
+  <text x="389" y="291" style="fill:#e3c27a;font-size:12px">hop 3 / kernel</text>
+</svg>
+        <figcaption class="graph-caption">◇ Solid gilt follows the kernel chain. Dashed edges show supporting material. <span class="gilt">K.1 › relevance › admission › this shard</span></figcaption>
+      </figure>
+      <div class="panel">
+        <h3>Evidence span</h3>
+        <blockquote>When the court admits the words <mark>for a bounded purpose</mark>, request a limiting instruction that tells the jury how the statement may be used.</blockquote>
+        <a href="01-read-mode.html#span-5">Read the source passage</a>
+      </div>
+    </section>
+    <aside class="panel" aria-labelledby="envelope-title">
+      <h2 id="envelope-title">The shard envelope</h2>
+      <p class="small muted">15 numbered groups from <code>ShardEnvelope</code> · Phase 2. Sense/reference, dependencies, and provenance are compound fields in the model; every underlying name is preserved below.</p>
+      <ol class="field-list">
+          <li><dl><dt>triple</dt><dd><code>subject: RdemoPurposeAdmission<br>predicate: rdfs:subClassOf<br>object: RdemoEvidenceAdmission<br>object_datatype: null</code></dd></dl></li>
+          <li><dl><dt>elaborates</dt><dd><code>[urn:folio:shard:0a71c2e49b6d803f]</code></dd></dl></li>
+          <li><dl><dt>sense / reference</dt><dd><code>sense</code>: Admission for a stated evidentiary purpose.<br><code>reference</code>: https://folio.openlegalstandard.org/RdemoPurposeAdmission</dd></dl></li>
+          <li><dl><dt>logical_form_imputed</dt><dd><code>∀e (boundedAdmission(e) → statedPurpose(e))</code><br><code>source_uri</code>: urn:demo:trial-advocacy:chapter-4<br><code>source_span</code>: §4.2:p3:chars:124–165</dd></dl></li>
+          <li><dl><dt>layer</dt><dd><code>L2_composed</code></dd></dl></li>
+          <li><dl><dt>shard_type</dt><dd><code>simple_assertion</code></dd></dl></li>
+          <li><dl><dt>predication_mode</dt><dd><code>per_se</code></dd></dl></li>
+          <li><dl><dt>fork</dt><dd><code>analytic</code></dd></dl></li>
+          <li><dl><dt>epistemic_status</dt><dd><code>demonstrable</code></dd></dl></li>
+          <li><dl><dt>verification_method</dt><dd><code>inferential_chain</code></dd></dl></li>
+          <li><dl><dt>depends_on_axioms / depends_on_definitions / depends_on_precedents / depends_on_shards</dt><dd><code>depends_on_axioms</code>: [urn:demo:relevance]<br><code>depends_on_definitions</code>: [urn:demo:admission]<br><code>depends_on_precedents</code>: []<br><code>depends_on_shards</code>: []</dd></dl></li>
+          <li><dl><dt>framework_id</dt><dd><code>CommonLaw</code></dd></dl></li>
+          <li><dl><dt>speech_act</dt><dd><code>treatise_statement</code></dd></dl></li>
+          <li><dl><dt>extractor_version / extraction_prompt_hash / extractor_model / signatures / content_edits / confidence</dt><dd><code>extractor_version</code>: demo-2.0<br><code>extraction_prompt_hash</code>: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd<br><code>extractor_model</code>: synthetic-extractor<br><code>signatures</code>: [{did: did:web:reviewer.example.org, action: content_edit, verified: true}]<br><code>content_edits</code>: []<br><code>confidence</code>: 0.92</dd></dl></li>
+          <li><dl><dt>bfo_category</dt><dd><code>occurrent_process</code></dd></dl></li>
+      </ol>
+      <p class="provenance">Synthetic fixture · Model: <code>src/folio_insights/shards/envelope.py</code></p>
+    </aside>
+  </div>
+</main>
+<script>
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  function selectTab(tab) {
+    tabs.forEach(item => {
+      const selected = item === tab;
+      item.setAttribute('aria-selected', String(selected));
+      item.tabIndex = selected ? 0 : -1;
+      document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+    });
+  }
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => selectTab(tab));
+    tab.addEventListener('keydown', event => {
+      let next;
+      if (event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+      if (event.key === 'ArrowLeft') next = tabs[(index + tabs.length - 1) % tabs.length];
+      if (event.key === 'Home') next = tabs[0];
+      if (event.key === 'End') next = tabs[tabs.length - 1];
+      if (next) { event.preventDefault(); selectTab(next); next.focus(); }
+    });
+  });
+</script>
+<footer class="footer">
+  <a href="index.html">Back to the mockup gallery</a>
+  <span>Folio Insights · Review design study · 20 October 2026</span>
+</footer>
+<div class="mockup-tag">MOCKUP · synthetic data</div>
+</body>
+</html>

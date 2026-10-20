@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Folio Insights Review UI design study. All content and records are synthetic.">
+  <title>Decide inbox · Folio Insights mockup</title>
+  <link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="shell">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">❖</span> folio insights</a>
+  <div class="corpus">
+    <label for="corpus">Corpus</label>
+    <select id="corpus" name="corpus"><option>Trial advocacy</option><option>Contract language</option></select>
+  </div>
+  <nav class="mode-switch" aria-label="Review mode">
+    <a href="01-read-mode.html">Read</a>
+    <a href="03-shard-page.html">Inspect</a>
+    <a href="02-decide-inbox.html" aria-current="page">Decide <span class="mono small">(12)</span></a>
+  </nav>
+  <div class="session" aria-label="Session status">
+    <span><b aria-hidden="true">✓</b> Operator token active</span>
+    <span><b aria-hidden="true">◇</b> LLM key present</span>
+  </div>
+</header>
+<main class="page" id="main">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Review</a><span aria-hidden="true">/</span><span>Decide inbox</span></nav>
+  <header class="page-heading">
+    <div><h1>Twelve claims need a reader.</h1><p class="muted">Trial advocacy · Review the evidence, then make the call.</p></div>
+    <span class="badge gold">○ 12 pending</span>
+  </header>
+  <div class="inbox-layout">
+    <nav class="queue-nav" aria-label="Review kinds">
+      <h2>Review inbox</h2>
+      <a href="#tag-cards" aria-current="location">Tag verdicts <span class="mono">7</span></a>
+      <a href="#proposal-card">Proposed classes <span class="mono">3</span></a>
+      <a href="04-polysemy-fork.html">Polysemy forks <span class="mono">1</span></a>
+      <a href="#contest-summary">Contests <span class="mono">1</span></a>
+      <p class="muted small">Within each kind:<br>lowest confidence first.</p>
+      <p class="muted small" id="contest-summary">Contest awaiting review:<br>“A ruling settles every later use of an exhibit.”</p>
+    </nav>
+    <section aria-label="Review cards" id="tag-cards">
+      <div class="keyboard" aria-label="Keyboard shortcut legend">
+        <span><kbd>j</kbd> / <kbd>k</kbd> next / previous</span><span><kbd>1</kbd>–<kbd>4</kbd> choose action</span>
+        <span><kbd>n</kbd> note</span><span><kbd>u</kbd> undo within 15 min</span>
+      </div>
+      <div class="stack">
+        <article class="review-card active" aria-labelledby="tag-one-title">
+          <header class="card-head"><span>Tag verdict · 1 of 7</span><span class="mono small">semantic / .48</span></header>
+          <div class="card-body">
+            <div class="row spread"><span class="chip actor">Actor branch</span><span class="status pending">○ Awaiting review</span></div>
+            <h2 class="claim" id="tag-one-title" style="margin-top:16px">Does “judgment” identify a Judge?</h2>
+            <code>https://folio.openlegalstandard.org/RdemoJudge48</code>
+            <blockquote>The advocate must exercise <mark>judgment</mark> about which disputes deserve the court’s time.</blockquote>
+            <p class="muted small">Chapter 4 · § 4.2 · paragraph 6 · <a href="01-read-mode.html#span-10">Read in context</a></p>
+            <div class="rationale"><strong class="gilt">Machine rationale</strong><p>The semantic matcher associated “judgment” with a judicial actor. The sentence appears to describe counsel’s discernment instead.</p></div>
+            <div class="actions" aria-label="Judge tag verdict actions">
+              <button type="button">✓ Correct <kbd>1</kbd></button><button type="button">≈ Weak <kbd>2</kbd></button><button type="button" aria-pressed="true">× Wrong <kbd>3</kbd></button>
+            </div>
+            <label for="note-one">Review note <kbd>n</kbd></label>
+            <textarea id="note-one" rows="2">Capacity of counsel, not the judicial officer. Wrong sense for this span.</textarea>
+            <div class="decision-save"><p class="provenance">× Wrong selected · Per-tag verdict with source span</p><button class="primary" type="button">Record verdict</button></div>
+          </div>
+        </article>
+        <article class="review-card" aria-labelledby="tag-two-title">
+          <header class="card-head"><span>Tag verdict · 2 of 7</span><span class="mono small">semantic / .74</span></header>
+          <div class="card-body">
+            <div class="row spread"><span class="chip evidence medium">Evidence branch</span><span class="status pending">○ Awaiting review</span></div>
+            <h2 class="claim" id="tag-two-title" style="margin-top:16px">Does this span concern a hearsay objection?</h2>
+            <blockquote>A <mark>hearsay objection</mark> cannot be assessed from the quoted words alone. Ask what proposition the speaker offers them to establish.</blockquote>
+            <p class="muted small">Chapter 4 · § 4.2 · paragraph 2 · <a href="01-read-mode.html#span-3">Read in context</a></p>
+            <div class="rationale"><strong class="gilt">Machine rationale</strong><p>The span explicitly names the objection and discusses the purpose of the offered statement. It does not claim that every quoted statement is inadmissible.</p></div>
+            <div class="actions" aria-label="Hearsay tag verdict actions">
+              <button type="button">✓ Correct <kbd>1</kbd></button><button type="button">≈ Weak <kbd>2</kbd></button><button type="button">× Wrong <kbd>3</kbd></button>
+            </div>
+            <label for="note-two">Review note</label><textarea id="note-two" rows="2" placeholder="Add context for this verdict"></textarea>
+            <p class="provenance">○ Awaiting verdict · Applies to the highlighted tag</p>
+          </div>
+        </article>
+        <article class="review-card" id="proposal-card" aria-labelledby="proposal-title">
+          <header class="card-head"><span>Proposed class · 1 of 3</span><span class="mono small">judge confidence / .82</span></header>
+          <div class="card-body">
+            <span class="badge gold">Proposed addition · Trial advocacy</span>
+            <h2 class="claim" id="proposal-title" style="margin-top:16px">Purpose-bounded admission</h2>
+            <p><strong>Draft definition.</strong> Admission of an evidentiary item for a stated purpose while restricting its use to establish a different proposition.</p>
+            <blockquote>When the court admits the words <mark>for a bounded purpose</mark>, request a limiting instruction that tells the jury how the statement may be used.</blockquote>
+            <p class="muted small">Chapter 4 · § 4.2 · paragraph 3 · <a href="01-read-mode.html#span-5">Read in context</a></p>
+            <div class="rationale"><span class="badge gold">Judge verdict: NOVEL</span><p>The nearest concept describes the instruction delivered to the jury. This proposal describes the scope of admission itself. The objects are related, but their definitions do not coincide.</p></div>
+            <table class="comparison">
+              <caption>Nearest-concept comparison</caption>
+              <thead><tr><th scope="col">Proposed class</th><th scope="col">Nearest existing concept · .71</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Purpose-bounded admission</strong></td><td><strong>Limiting instruction</strong><br><code>RdemoLimitingInstruction</code></td></tr>
+                <tr><td>Admission for one stated purpose with another use excluded.</td><td>A direction explaining the permitted use of evidence to the fact finder.</td></tr>
+              </tbody>
+            </table>
+            <p class="small gilt" style="margin-top:16px">Judge recommendation: Approve · selected for review</p>
+            <div class="actions" aria-label="Proposed-class decision actions">
+              <button type="button" aria-pressed="true">✓ Approve <kbd>1</kbd></button><button type="button" aria-pressed="false">× Reject <kbd>2</kbd></button>
+              <button type="button" aria-pressed="false">⑂ Merge <kbd>3</kbd></button><button type="button" aria-pressed="false">≈ Needs work <kbd>4</kbd></button>
+            </div>
+            <label for="proposal-note">Review note</label><textarea id="proposal-note" rows="2" placeholder="Explain the decision or suggest a narrower definition"></textarea>
+            <div class="decision-save"><p class="provenance">◇ On confirmation, writes to approval ledger · proposal demo-pc-003 · Reviewer attestation retained</p><button class="primary" type="button">Record approval</button></div>
+          </div>
+        </article>
+      </div>
+      <p class="muted small" style="margin-top:24px">Showing 3 example cards from 12 pending items. Selections above are drafts; this mockup records no decisions.</p>
+    </section>
+  </div>
+</main>
+<footer class="footer">
+  <a href="index.html">Back to the mockup gallery</a>
+  <span>Folio Insights · Review design study · 20 October 2026</span>
+</footer>
+<div class="mockup-tag">MOCKUP · synthetic data</div>
+</body>
+</html>
