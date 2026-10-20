@@ -44,7 +44,10 @@ per-corpus serialization.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import sqlite3
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -488,6 +491,26 @@ async def _latest_shard(
     return _row(tuple(rows[0])) if rows else None
 
 
+async def _switch_to_wal(conn: aiosqlite.Connection, timeout_s: float) -> None:
+    """``PRAGMA journal_mode = WAL``, retried while the file is locked, for up to *timeout_s*.
+
+    SQLite answers ``database is locked`` here without consulting the busy handler when another
+    connection is switching the same new file, so concurrent first opens of a new corpus need
+    their own wait. Every other error propagates at once.
+    """
+    deadline = time.monotonic() + timeout_s
+    delay = 0.005
+    while True:
+        try:
+            await conn.execute("PRAGMA journal_mode = WAL")
+            return
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc) or time.monotonic() >= deadline:
+                raise
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, 0.1)
+
+
 class Journal:
     """An open connection to ``<root>/journal.sqlite3``."""
 
@@ -518,7 +541,7 @@ class Journal:
         )
         try:
             await conn.execute(f"PRAGMA busy_timeout = {int(self._busy_timeout_s * 1000)}")
-            await conn.execute("PRAGMA journal_mode = WAL")
+            await _switch_to_wal(conn, self._busy_timeout_s)
             await conn.execute("PRAGMA synchronous = FULL")
             await conn.execute("BEGIN IMMEDIATE")
             try:

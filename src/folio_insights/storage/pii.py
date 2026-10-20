@@ -12,7 +12,11 @@ Defaults cover three US patterns:
 * ``aba_routing`` — a standalone nine-digit number that passes the ABA
   checksum and starts with a valid Federal Reserve prefix.
 * ``us_phone`` — a NANP number written with separators or a parenthesized
-  area code (``(212) 555-0142``, ``212-555-0142``, ``+1 212.555.0142``).
+  area code (``(212) 555-0142``, ``212-555-0142``, ``+1 212.555.0142``), or
+  written as ten bare digits (``2125550142``, ``+12125550142``) within 20
+  non-digit characters after a phone word (``phone``, ``tel``, ``call``,
+  ``fax``...). Bare digits without that context are not refused: ten-digit
+  epoch timestamps look the same.
 
 Scope: every string leaf of the record is scanned, and so is every integer
 leaf (as its decimal text; booleans are not integers here, and an integer too
@@ -81,11 +85,16 @@ ABA_ROUTING_PATTERN = PiiPattern(
     _aba_checksum_ok,
     min_digit_run=9,
 )
+# Words that make ten bare digits a phone number rather than, say, an epoch timestamp.
+_PHONE_CONTEXT = (
+    r"(?i:\b(?:phone|ph|tel|telephone|cell|cellphone|mobile|fax|call|text|sms|whatsapp)\b)"
+)
 US_PHONE_PATTERN = PiiPattern(
     "us_phone",
     re.compile(
         r"(?<![\w-])(?:\+?1[-.\s]?)?(?:\([2-9]\d{2}\)\s?|[2-9]\d{2}[-.\s])"
         r"[2-9]\d{2}[-.\s]\d{4}(?![\w-])"
+        rf"|{_PHONE_CONTEXT}[^\d\n]{{0,20}}(?:\+?1)?[2-9]\d{{2}}[2-9]\d{{6}}(?![\w-])"
     ),
     min_digit_run=3,
 )

@@ -1,12 +1,12 @@
 """folio-enrich bridge API (``/api/bridge/v1``): status read contract + optional ingest.
 
-* ``POST /status`` — corpus status for up to 500 shard IRIs (read-only,
-  unauthenticated like the rest of the insights API today; adding auth is a
-  documented follow-up).
+* ``POST /status`` — corpus status for up to 500 shard IRIs. A read: it opens
+  storage exactly as ``GET /health`` does and stays open like every API read.
 * ``GET /health`` — liveness plus the corpus shard count.
 * ``POST /ingest`` — enabled only while ``FOLIO_INSIGHTS_BRIDGE_TOKEN`` is
   non-empty (checked per request: unset answers 404 as if the route did not
-  exist); needs ``Authorization: Bearer <token>``. Idempotent per shard IRI:
+  exist); needs ``Authorization: Bearer <token>``. That service token, not an
+  operator token, guards the route (:func:`require_bridge_token`). Idempotent per shard IRI:
   re-pushing a record answers 200 with ``created == 0``. Accepts a JSON record
   (``application/json``) or the NDJSON form (``application/x-ndjson``,
   ``application/ndjson``, ``application/jsonl``, ``application/x-jsonlines``);
@@ -24,7 +24,7 @@ import hmac
 import os
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from folio_insights import __version__ as INSIGHTS_VERSION
@@ -136,7 +136,9 @@ def _max_body_bytes() -> int:
     return value if value > 0 else DEFAULT_MAX_BODY_BYTES
 
 
-def _check_token(request: Request) -> None:
+def require_bridge_token(request: Request) -> None:
+    """Route dependency for ``POST /ingest``: 404 while the bridge token is unset, else 401
+    unless the request presents it as a bearer token (constant-time comparison)."""
     token = os.environ.get(TOKEN_ENV, "")
     if not token.strip():
         raise HTTPException(status_code=404, detail="Not Found")
@@ -169,7 +171,7 @@ async def _read_body(request: Request, limit: int) -> bytes:
     return b"".join(chunks)
 
 
-@router.post("/ingest")
+@router.post("/ingest", dependencies=[Depends(require_bridge_token)])
 async def bridge_ingest(
     request: Request,
     corpus: str | None = Query(default=None),
@@ -182,7 +184,6 @@ async def bridge_ingest(
     from folio_insights.bridge_ingest.record import parse_record_text, record_from_mapping
     from folio_insights.storage.errors import StorageError
 
-    _check_token(request)
     body = await _read_body(request, _max_body_bytes())
     if not body.strip():
         raise HTTPException(status_code=422, detail="empty body")
@@ -209,4 +210,4 @@ async def bridge_ingest(
     return report.model_dump(mode="json")
 
 
-__all__ = ["router"]
+__all__ = ["require_bridge_token", "router"]

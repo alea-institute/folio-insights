@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Folio Insights Review UI design study. All content and records are synthetic.">
+  <title>Read mode · Folio Insights mockup</title>
+  <link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="shell">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">❖</span> folio insights</a>
+  <div class="corpus">
+    <label for="corpus">Corpus</label>
+    <select id="corpus" name="corpus"><option>Trial advocacy</option><option>Contract language</option></select>
+  </div>
+  <nav class="mode-switch" aria-label="Review mode">
+    <a href="01-read-mode.html" aria-current="page">Read</a>
+    <a href="03-shard-page.html">Inspect</a>
+    <a href="02-decide-inbox.html">Decide <span class="mono small">(12)</span></a>
+  </nav>
+  <div class="session" aria-label="Session status">
+    <span><b aria-hidden="true">✓</b> Operator token active</span>
+    <span><b aria-hidden="true">◇</b> LLM key present</span>
+  </div>
+</header>
+<main class="page" id="main">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a href="index.html">Library</a><span aria-hidden="true">/</span><span>Trial advocacy</span><span aria-hidden="true">/</span><span>Chapter 4</span></nav>
+  <div class="read-layout">
+    <article class="chapter" aria-labelledby="chapter-title">
+      <header class="chapter-head">
+        <p class="chapter-number">Chapter IV · § 4.2</p>
+        <h1 id="chapter-title">Before the first question</h1>
+        <p class="muted">An original practice chapter · Trial advocacy / Evidence</p>
+        <div class="branch-key" aria-label="Concept branch colours">
+          <span class="process">Process</span><span class="evidence">Evidence</span><span class="actor">Actor</span><span class="document">Document</span>
+        </div>
+        <p class="confidence-key">Confidence: solid = high ≥ .85 · dashed = medium .60–.84 · dotted = low &lt; .60. Each chip names its branch.</p>
+      </header>
+      <div class="prose">
+        <p class="dropcap">A trial begins long before a witness takes the stand. A careful advocate prepares a <span class="annotation process" id="span-1">motion in limine<button class="chip process tag-button" type="button" aria-label="Motion in limine, process branch, high confidence .97, verdict correct" style="--reveal-order:0">Process · In limine .97 ✓ Correct</button></span> to identify a disputed use of proof before the jury encounters it. The request should describe the precise evidence, its proposed purpose, and the boundary the advocate asks the court to draw. A broad wish to exclude “anything prejudicial” gives the court little to decide.</p>
+        <p>Consider a <span class="annotation actor" id="span-2">witness<button class="chip actor tag-button" type="button" aria-label="Witness, actor branch, high confidence .96, verdict correct" style="--reveal-order:1">Actor · Witness .96 ✓ Correct</button></span> who repeats a supplier’s assurance that a machine was safe. A <span class="annotation evidence" id="span-3">hearsay objection<button id="hearsay-trigger" class="chip evidence medium tag-button" type="button" aria-expanded="true" aria-controls="tag-verdict" aria-label="Review hearsay objection, evidence branch, medium confidence .74, pending verdict" style="--reveal-order:2">Evidence · Hearsay .74 ○ Pending</button></span> cannot be assessed from the quoted words alone. Ask what proposition the speaker offers them to establish. The same sentence may be offered to prove the machine’s condition or to explain why its buyer stopped investigating.</p>
+      </div>
+      <section class="verdict-popover" id="tag-verdict" aria-labelledby="verdict-title">
+        <div class="row spread"><span class="chip evidence">Evidence branch</span><button id="close-verdict" type="button" aria-label="Close hearsay verdict popover">Close ×</button></div>
+        <h3 id="verdict-title" style="margin-top:14px">Hearsay objection</h3>
+        <code>https://folio.openlegalstandard.org/RdemoHearsay74</code>
+        <p class="small muted" style="margin-top:12px">Judging the span: “hearsay objection” · § 4.2, paragraph 2</p>
+        <dl class="metadata">
+          <div><dt>extraction_path</dt><dd style="color:var(--path-semantic)">semantic</dd></div>
+          <div><dt>match_score</dt><dd>0.74 / medium confidence</dd></div>
+        </dl>
+        <p class="small muted">The passage asks whether an out-of-court statement is offered for its truth. The match is plausible; the objection has not yet been resolved.</p>
+        <div class="actions" aria-label="Verdict for the hearsay tag">
+          <button type="button"><span aria-hidden="true">✓</span> Correct <kbd>1</kbd></button>
+          <button type="button"><span aria-hidden="true">≈</span> Weak <kbd>2</kbd></button>
+          <button type="button"><span aria-hidden="true">×</span> Wrong <kbd>3</kbd></button>
+        </div>
+        <label for="tag-note">Review note <span class="muted small">(optional)</span></label>
+        <textarea id="tag-note" rows="2" placeholder="What makes this tag fit, or miss, the passage?"></textarea>
+        <p class="provenance">○ Awaiting verdict · Applies to this tag only</p>
+      </section>
+      <div class="prose">
+        <p>The advocate should separate the <span class="annotation evidence" id="span-4">purpose of the statement<button class="chip evidence medium tag-button" type="button" aria-label="Purpose of statement, evidence branch, medium confidence .81, verdict weak" style="--reveal-order:3">Evidence · Purpose .81 ≈ Weak</button></span> from the credibility of its speaker. If the purpose changes, the objection may change with it. When the court admits the words for a bounded purpose, request a <span class="annotation document" id="span-5">limiting instruction<button class="chip document tag-button" type="button" aria-label="Limiting instruction, document branch, high confidence .93, pending verdict" style="--reveal-order:4">Document · Instruction .93 ○ Pending</button></span> that tells the jury how the statement may be used. An instruction that merely repeats the word “limited” has not explained the limit.</p>
+        <p>Preparation also includes <span class="annotation process" id="span-6">preserving the objection: identify the ground, obtain a ruling, and, when necessary, make an <span class="annotation document nested" id="span-7">offer of proof<button class="chip document tag-button" type="button" aria-label="Offer of proof, nested document span, high confidence .91, verdict correct" style="--reveal-order:5">Document · Proffer .91 ✓ Correct</button></span><button class="chip process tag-button" type="button" aria-label="Preservation of objection, outer process span, high confidence .95, pending verdict" style="--reveal-order:6">Process · Preservation .95 ○ Pending</button></span>. The smaller proffer span sits within the broader preservation step; the two tags describe different claims about the same passage.</p>
+        <p>A <span class="annotation process" id="span-8">bench conference<button class="chip process medium tag-button" type="button" aria-label="Bench conference, process branch, medium confidence .78, pending verdict" style="--reveal-order:7">Process · Conference .78 ○ Pending</button></span> may help counsel state the issue without repeating disputed material before the jury. Bring a <span class="annotation document" id="span-9">written exhibit list<button class="chip document tag-button" type="button" aria-label="Exhibit list, document branch, high confidence .94, pending verdict" style="--reveal-order:8">Document · Exhibits .94 ○ Pending</button></span> so that the discussion refers to an identifiable item rather than to “that document from yesterday.”</p>
+        <p>Finally, the advocate must exercise <span class="annotation actor" id="span-10">judgment<button class="chip actor low tag-button" type="button" aria-label="Judge, actor branch, low confidence .48, verdict wrong" style="--reveal-order:9">Actor · Judge .48 × Wrong</button></span> about which disputes deserve the court’s time. Here “judgment” names a capacity of counsel, not a judicial officer. A confident reading of the chapter should allow an uncertain machine label to remain uncertain.</p>
+      </div>
+      <p class="muted small">End of § 4.2 · All chapter text was written for this mockup.</p>
+    </article>
+    <aside class="rail" aria-labelledby="rail-title">
+      <h2 id="rail-title">Tags in this section <span class="mono small">10</span></h2>
+      <p class="small muted">3 correct · 1 weak · 1 wrong<br>5 awaiting review</p>
+      <ol>
+        <li class="process"><a href="#span-1">Motion in limine</a><span class="status correct">✓ Correct</span></li>
+        <li class="actor"><a href="#span-2">Witness</a><span class="status correct">✓ Correct</span></li>
+        <li class="evidence"><a href="#span-3">Hearsay objection</a><span class="status pending">○ Awaiting review</span></li>
+        <li class="evidence"><a href="#span-4">Purpose of statement</a><span class="status weak">≈ Weak</span></li>
+        <li class="document"><a href="#span-5">Limiting instruction</a><span class="status pending">○ Awaiting review</span></li>
+        <li class="process"><a href="#span-6">Preservation of objection</a><span class="status pending">○ Awaiting review</span></li>
+        <li class="document"><a href="#span-7">Offer of proof <span class="muted small">↳ nested</span></a><span class="status correct">✓ Correct</span></li>
+        <li class="process"><a href="#span-8">Bench conference</a><span class="status pending">○ Awaiting review</span></li>
+        <li class="document"><a href="#span-9">Exhibit list</a><span class="status pending">○ Awaiting review</span></li>
+        <li class="actor"><a href="#span-10">Judge</a><span class="status wrong">× Wrong sense</span></li>
+      </ol>
+      <div class="panel kernel small"><span class="gilt">Source first.</span><br>Each decision belongs to a tag and its exact evidence span.</div>
+      <p class="small muted" style="margin-top:18px"><kbd>1</kbd> correct <kbd>2</kbd> weak <kbd>3</kbd> wrong<br><kbd>n</kbd> note · <kbd>u</kbd> undo within 15 min</p>
+    </aside>
+  </div>
+</main>
+<script>
+  const trigger = document.getElementById('hearsay-trigger');
+  const panel = document.getElementById('tag-verdict');
+  function toggleVerdict(open) {
+    panel.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    if (!open) trigger.focus();
+  }
+  trigger.addEventListener('click', () => toggleVerdict(panel.hidden));
+  document.getElementById('close-verdict').addEventListener('click', () => toggleVerdict(false));
+  panel.addEventListener('keydown', event => { if (event.key === 'Escape') toggleVerdict(false); });
+</script>
+<footer class="footer">
+  <a href="index.html">Back to the mockup gallery</a>
+  <span>Folio Insights · Review design study · 20 October 2026</span>
+</footer>
+<div class="mockup-tag">MOCKUP · synthetic data</div>
+</body>
+</html>

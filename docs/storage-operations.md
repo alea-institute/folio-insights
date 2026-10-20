@@ -227,7 +227,9 @@ These rules hold for every format:
   storage root and outside the served `output/` directory.
 - **Default exports contain no rejected PII.** Inputs that match the PII
   gate (SSN, ABA routing number, US phone by default) are refused before the
-  journal append. String leaves and integer leaves (as decimal text) are
+  journal append. A US phone written as ten bare digits counts only within
+  20 characters after a phone word (`phone`, `tel`, `call`, `fax`...), so
+  ten-digit epoch timestamps still pass. String leaves and integer leaves (as decimal text) are
   scanned; an integer too large to render is refused. They therefore never reach the journal, the projection, a
   dump, a snapshot or an export. Signature objects are scanned too (`did`,
   `signing_key_id`, cosigners); only a `signature` value shaped exactly like
@@ -567,7 +569,11 @@ So do four GETs that persist state: `GET /api/v1/corpus/{id}/export/owl`,
 Every other read (GET) stays open, as deployed, and writes nothing: `review.db`
 is opened read-only, and a corpus without one reads as empty rather than
 being created. `POST /validate` stays open too; it validates the candidate in
-its body and stores nothing. The viewer downloads exports through its API
+its body and stores nothing. The folio-enrich bridge keeps its own contract:
+`POST /api/bridge/v1/status` is a read and stays open, and
+`POST /api/bridge/v1/ingest` takes the bridge service token
+(`FOLIO_INSIGHTS_BRIDGE_TOKEN`) instead of an operator token and answers `404`
+while that token is unset ([bridge ingest](bridge-ingest.md)). The viewer downloads exports through its API
 client, so the operator token goes with them.
 
 **Corpus names.** Every route that takes a corpus name (the `{corpus_id}`

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Folio Insights static Review UI study. All records are synthetic.">
+  <title>Polysemy fork · Folio Insights mockup</title>
+  <link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="shell">
+  <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">❖</span> folio insights</a>
+  <div class="corpus">
+    <label for="corpus">Corpus</label>
+    <select id="corpus" name="corpus"><option>Trial advocacy</option><option>Contract language</option></select>
+  </div>
+  <nav class="mode-switch" aria-label="Review mode">
+    <a href="01-read-mode.html">Read</a>
+    <a href="03-shard-page.html">Inspect</a>
+    <a href="02-decide-inbox.html" aria-current="page">Decide <span class="mono small">(12)</span></a>
+  </nav>
+  <div class="session" aria-label="Session status">
+    <span><b aria-hidden="true">✓</b> Operator token active</span>
+    <span><b aria-hidden="true">◇</b> LLM key present</span>
+  </div>
+</header>
+<main class="page" id="main">
+  <nav class="breadcrumb" aria-label="Breadcrumb"><a href="02-decide-inbox.html">Decide inbox</a><span aria-hidden="true">/</span><span>Polysemy forks</span><span aria-hidden="true">/</span><span>consideration</span></nav>
+  <header class="page-heading">
+    <div><h1>One word. Two grounds.</h1><p class="muted">Separate the senses of “consideration” before assigning their claims.</p></div>
+    <span class="badge gold">Step 2 of 4 · Distinguish</span>
+  </header>
+  <ol class="steps" aria-label="Fork progress">
+    <li class="done"><span>01 ✓</span>Identify senses</li>
+    <li aria-current="step"><span>02 ◇</span>Distinguish</li>
+    <li><span>03</span>Review impact</li>
+    <li><span>04</span>Confirm fork</li>
+  </ol>
+  <div class="wizard-layout">
+    <section class="panel" aria-labelledby="distinguish-title">
+      <h2 id="distinguish-title">What connects these senses?</h2>
+      <p class="muted">Term under review: <strong class="gilt">consideration</strong></p>
+      <div class="sense-grid">
+        <article class="sense chosen">
+          <span class="badge gold">Sense A · proposed prime</span>
+          <h3 style="margin-top:14px">Contract consideration</h3>
+          <p>A bargained-for exchange supporting a promise.</p>
+          <blockquote style="margin-bottom:0;font-size:21px">The promised service supplies the <mark>consideration</mark> for the return promise.</blockquote>
+        </article>
+        <article class="sense">
+          <span class="badge">Sense B · related use</span>
+          <h3 style="margin-top:14px">Taking into consideration</h3>
+          <p>Giving a fact attention while forming a judgment.</p>
+          <blockquote style="margin-bottom:0;font-size:21px">Take the witness’s vantage point <mark>into consideration</mark> before weighing the account.</blockquote>
+        </article>
+      </div>
+      <div class="form-section">
+        <label for="prime">Prime analogate</label>
+        <select id="prime" aria-describedby="prime-help">
+          <option selected>Sense A — Contract consideration</option><option>Sense B — Taking into consideration</option>
+        </select>
+        <p id="prime-help">The focal sense for this proposed analogy. <code>fi:primeAnalogate</code> and <code>fi:analogousTo</code> will reference the same selected sense.</p>
+        <code>https://folio.openlegalstandard.org/RdemoContractConsideration</code>
+      </div>
+      <div class="form-section">
+        <label for="distinction">Distinction kind <code>fi:distinctionKind</code></label>
+        <select id="distinction" aria-describedby="distinction-help">
+          <option value="realis">realis</option>
+          <option value="rationis">rationis</option>
+          <option value="rationis_cum_fundamento_in_re">rationis_cum_fundamento_in_re</option>
+          <option value="analogica" selected>analogica</option>
+        </select>
+        <p id="distinction-help">The draft treats the senses as an analogy of grounds; confirm that reading against the evidence before accepting.</p>
+        <dl class="distinction-key small">
+          <div><dt><code>realis</code></dt><dd>A distinction in reality.</dd></div>
+          <div><dt><code>rationis</code></dt><dd>A distinction made by reason.</dd></div>
+          <div><dt><code>rationis_cum_fundamento_in_re</code></dt><dd>A distinction of reason grounded in reality.</dd></div>
+          <div><dt><code>analogica</code></dt><dd>A distinction between analogically related senses.</dd></div>
+        </dl>
+      </div>
+      <div class="form-section">
+        <label for="proportion">Proportional relation <code>fi:proportionalRelation</code></label>
+        <textarea id="proportion" rows="4" aria-describedby="proportion-help">Contract consideration : support for a promise :: taking a fact into consideration : support for a judgment.</textarea>
+        <p id="proportion-help">Write the relationship as a:b :: c:d, or explain it in prose. Shared spelling alone does not establish an analogy.</p>
+      </div>
+      <div class="form-section">
+        <label class="toggle" for="analogy"><input type="checkbox" id="analogy" checked>Include an analogical relation</label>
+        <p><code>fi:analogousTo</code> travels with <code>fi:primeAnalogate</code> and <code>fi:proportionalRelation</code>. The triad is recorded together. <code>fi:distinguishes</code> identifies the distinguishing concept.</p>
+      </div>
+      <div class="form-section">
+        <label for="fork-note">Review note</label>
+        <textarea id="fork-note" rows="2">Keep the two senses distinct. Check whether the proposed proportion is useful beyond the shared term.</textarea>
+      </div>
+    </section>
+    <aside class="stack" aria-label="Fork consequences">
+      <section class="panel kernel" aria-labelledby="impact-title">
+        <h2 id="impact-title">What would this fork affect?</h2>
+        <p><strong class="gilt">8 affected shards</strong><br><span class="small muted">5 contract sense · 3 evaluative sense</span></p>
+        <p class="small muted">Three examples from the impact preview. Each retains its original source anchor.</p>
+        <ul class="impact-list">
+          <li>
+            <a href="03-shard-page.html">e8b21d06c7a39f45</a>
+            <p>“The promised service supplies the consideration.”</p>
+            <span class="badge gold">Sense A · contract exchange</span>
+          </li>
+          <li>
+            <a href="03-shard-page.html">c492a1f60b7d38e5</a>
+            <p>“The return promise identifies the exchange.”</p>
+            <span class="badge gold">Sense A · contract exchange</span>
+          </li>
+          <li>
+            <a href="03-shard-page.html">7da4160f29bc83e5</a>
+            <p>“Take the witness’s vantage point into consideration.”</p>
+            <span class="badge">Sense B · evaluative attention</span>
+          </li>
+        </ul>
+        <p class="small muted">Links open the example shard inspector. A confirmed fork would add sense links and signed provenance; existing source text remains attached.</p>
+      </section>
+      <section class="panel">
+        <h3>Before you continue</h3>
+        <p class="small muted">Check that the prime sense and the proportion express your intended distinction. Step 3 reviews every affected shard; step 4 confirms the write.</p>
+        <p class="small"><span class="gilt">↶ 15-minute undo</span><br>After confirmation, <kbd>u</kbd> records a reversal within 15 minutes. The original action stays in the audit trail.</p>
+      </section>
+    </aside>
+  </div>
+  <div class="wizard-footer">
+    <button type="button">Back</button>
+    <p class="muted small" style="margin:8px 0">Draft fork · Nothing recorded yet</p>
+    <button type="button" class="primary">Continue to impact review</button>
+  </div>
+</main>
+<footer class="footer">
+  <a href="index.html">Back to the mockup gallery</a>
+  <span>Folio Insights · Review design study · 20 October 2026</span>
+</footer>
+<div class="mockup-tag">MOCKUP · synthetic data</div>
+</body>
+</html>
