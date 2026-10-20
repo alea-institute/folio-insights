@@ -308,12 +308,13 @@ Recommended overall order:
     Concepts are made-up leaves under the FOLIO namespace with a supplied ancestry. All text is placeholder text.
   - **Harness:** `bench/phase9_rollup.py` (`run_phase9_rollup`) runs every principle in one pass, through public APIs only. Shards are minted from the P2 and P7 answers, the way Phase 10's minter will mint them. The caller injects the NLI scorer and the framework, BFO and polysemy LLMs. The test uses deterministic fakes, and `AlwaysPolysemyLLM` for Rule 4. The polysemy embedding model loads offline from the local cache. Test: `tests/bench/test_phase9_rollup.py`, in the fast suite with a 180 s per-test timeout. Its no-HermiT variant forces the skip path on a smaller corpus.
   - **P5 deviation:** no writer emits `fi:closedUnder` yet (U5 as built). The closed answers therefore run on a snapshot of the corpus triples with the island's membership triples added. Over the store as written, every count stays open.
+  - **P6 seed:** after the U6 review fixes (PR #44), a candidate's `term` is the normalized label and its IRI is in `concept`. The roll-up finds the planted candidate by `concept` and seeds its term (`rsyn09poly`). The figures below were the same before and after that merge.
   - **Not repeated:** the 10K-shard DAG benchmark (U3's own test). The roll-up times the DAG at corpus scale.
   - **Unchanged:** `bench/corpus04.py` still reports cluster validation as `unavailable`, although U1 has since landed. Wiring it in is a follow-up.
 
 ## Execution Evidence
 
-**U8 roll-up, 2026-10-20.** Recorded hardware: Intel Xeon (4 logical CPUs), 15.7 GB RAM, x86_64, Linux 6.18, Python 3.12.3, OpenJDK 21 with owlready2, so HermiT ran for real.
+**U8 roll-up, 2026-10-20** (branch `feat/phase9-u8-rollup`, with master merged in after PR #44). Recorded hardware: Intel Xeon (4 logical CPUs), 15.7 GB RAM, x86_64, Linux 6.18, Python 3.12.3, OpenJDK 21 with owlready2, so HermiT ran for real.
 
 **Corpus:** seed 9, 8 units per source. Nine of the ten sources minted 94 shards across six frameworks; the rogue source failed the gate.
 
