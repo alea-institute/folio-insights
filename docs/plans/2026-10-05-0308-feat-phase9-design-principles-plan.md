@@ -297,6 +297,89 @@ Recommended overall order:
 - **Files:** `tests/bench/`, a synthetic multi-framework corpus generator extending `bench/generator.py`, and the plan's Execution Evidence section.
 - **Approach:** One end-to-end run: ingest a synthetic corpus, register frameworks, type BFO, build the DAG, check EL, run CWA queries, validate clusters and detect polysemy. Record hardware and timings.
 - **Test scenarios:** Every R4–R10 acceptance test passes in one run, and the full fast suite stays green.
+- **As built (2026-10-20)** (branch `feat/phase9-u8-rollup`, on top of `feat/phase9-u6-polysemy`):
+  - **Corpus:** `bench/multiframework.py` (`MultiFrameworkCorpusGenerator`) builds real shard envelopes, not N-Quads. It sits beside `bench/generator.py`, whose seeded output is unchanged (only its docstring points to the new module). Ten synthetic sources span six frameworks. Five come from the starter set, and `zz.synthetic.code` is registered by a signed corpus admin during the run. One source is a "rogue" source whose LLM answer is unregistered. Each source carries the metadata the P2 detector reads: explicit IDs, a v1 year-suffixed ID, invented citation forms, a title only the LLM stage can place, and statute dates. Planted features give each principle something to find:
+    - a cross-source contradiction and a cross-framework citation;
+    - a coverage gap and a formal disjointness clash;
+    - a retraction web with a successor, and a supersession across two statute versions;
+    - a contest, a dependency 3-cycle and a closed-world island;
+    - a polysemy term used by three shards in each of two frameworks, with a disjointness seed.
+
+    Concepts are made-up leaves under the FOLIO namespace with a supplied ancestry. All text is placeholder text.
+  - **Harness:** `bench/phase9_rollup.py` (`run_phase9_rollup`) runs every principle in one pass, through public APIs only. Shards are minted from the P2 and P7 answers, the way Phase 10's minter will mint them. The caller injects the NLI scorer and the framework, BFO and polysemy LLMs. The test uses deterministic fakes, and `AlwaysPolysemyLLM` for Rule 4. The polysemy embedding model loads offline from the local cache. Test: `tests/bench/test_phase9_rollup.py`, in the fast suite with a 180 s per-test timeout. Its no-HermiT variant forces the skip path on a smaller corpus.
+  - **P5 deviation:** no writer emits `fi:closedUnder` yet (U5 as built). The closed answers therefore run on a snapshot of the corpus triples with the island's membership triples added. Over the store as written, every count stays open.
+  - **Not repeated:** the 10K-shard DAG benchmark (U3's own test). The roll-up times the DAG at corpus scale.
+  - **Unchanged:** `bench/corpus04.py` still reports cluster validation as `unavailable`, although U1 has since landed. Wiring it in is a follow-up.
+
+## Execution Evidence
+
+**U8 roll-up, 2026-10-20.** Recorded hardware: Intel Xeon (4 logical CPUs), 15.7 GB RAM, x86_64, Linux 6.18, Python 3.12.3, OpenJDK 21 with owlready2, so HermiT ran for real.
+
+**Corpus:** seed 9, 8 units per source. Nine of the ten sources minted 94 shards across six frameworks; the rogue source failed the gate.
+
+**Timings:** one quiet run took 11.8 s end to end. A run under concurrent load took 24.7 s, and the variance is almost all in the polysemy steps.
+
+| Step | Seconds |
+|---|---|
+| P2 register | 0.18 |
+| P2 detect | <0.01 |
+| P7 classify | <0.01 |
+| Ingest (94 shards, SHACL local tier) | 0.19 |
+| P7 record + report | 0.09 |
+| P2 "rule at T" query | 0.07 |
+| P3 DAG build | 0.03 |
+| P3 governance events (supersede, contest ×2, resolve, retraction preview + commit) | 0.77 |
+| P3 effective states | 0.03 |
+| P4 export, EL | 0.32 |
+| P4 export, expressive | 0.28 |
+| P4 HermiT over the DL TBox | 0.52 |
+| P5 closed-world counts | 0.18 |
+| P1 cluster validation (43 clusters) | 1.44 |
+| P6 detection over 25 candidates (includes the embedding-model load) | 4.35 |
+| P6 FP gate over the labeled set | 3.11 |
+
+**Outcomes:**
+
+- **P2 (R5): met.**
+  - Every source detected as expected through the metadata, citation and LLM stages.
+  - The v1 ID `us.louisiana.civil_code.2024` was migrated with a warning.
+  - The rogue LLM answer was rejected and its source failed the gate, so it minted nothing.
+  - Detection was identical on a re-run.
+  - An unregistered framework write was refused.
+  - The "rule at T" query picked the 2011 version for 2012-06-01, the 2023 version for 2024-06-01, and nothing for 1999-01-01.
+- **P7 (R10): met.**
+  - Coverage is 97.9% (89 rule, 3 LLM, 2 default, 0 unrecorded).
+  - Strict mode refused both default subjects.
+  - Every shard projects `fi:subjectBfoClass`.
+  - A per-source report covers all nine sources.
+- **P3 (R6): met.**
+  - The DAG has 94 nodes and 49 edges, is acyclic, and built in 0.03 s.
+  - The planted 3-cycle was refused by the storage cycle guard with the journal unchanged. `DependencyGraph.cycles()` reports it.
+  - Retraction under `prefer_latest` with a successor: 2 direct dependents read `auto_rederive`, and the depth-2 dependent reads `review_needed`.
+  - Supersession: the old shard reads `superseded`, with its end aligned to 2023-12-01.
+  - Contest: one shard reads `contested`, and one reads `resolved` by distinguo.
+- **P4 (R7): met.**
+  - The default export is EL and conformant, and the shipped TBox has 0 EL violations.
+  - The expressive export is DL and carries 1 warning.
+  - A planted `owl:InverseFunctionalProperty` axiom is named with the rule `inverse-functional-property`.
+  - HermiT finds the DL TBox consistent.
+- **P5 (R8): met, with the overlay noted above.**
+  - Over the store as written, the count is open: `count` is `None` and the result carries the incompleteness note.
+  - Inside the island it is closed: 5 of the 10 island shards lack `fi:dependsOnShard`.
+- **P1 (R4): met.**
+  - The planted contradiction was flagged by NLI with 2 clusters of context and reconciliation proposals.
+  - The cross-framework citation was flagged by crossref.
+  - The coverage gap reads `task-gap`.
+  - HermiT flagged the formal clash.
+  - Nothing was applied, and the journal is unchanged.
+- **P6 (R9): NOT met. The FP gate fails, and the roll-up reports that as computed.**
+  - Of 25 candidates from the P1 clusters and P2 registry, the seeded term passed Rules 1–3 and read `polysemy`. The other 24 read `coincidence` (no seed, so Rule 1 found no conflict).
+  - The FP gate gives N = 82, 12 false positives, an FP rate of 14.6% and a Wilson upper bound of 23.9%, above the 10% threshold. The status is `fail`, uncertified. The test asserts that the roll-up's status and figures match what `polysemy gate` prints.
+  - No fork was applied, and the journal is unchanged.
+- **R1:** all 49 `fi:` terms the corpus projection uses are declared.
+- **R2:** stored shard bytes did not change across the run.
+
+**Skipped:** nothing on this machine. With `use_hermit=False`, or with no JRE, the report lists both HermiT steps as skipped with the reason, and P1 falls back to NLI. The no-HermiT test covers that path.
 
 ## Verification Contract
 
