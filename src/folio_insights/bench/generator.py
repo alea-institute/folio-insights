@@ -26,6 +26,11 @@ Phase 0 implementation note:
   `real_extraction=True` path routed through v1 extraction. For Gate 1-5
   measurement the synthesized RDF pattern is sufficient — the gates test
   syntax, perf, image, and digest, not extraction fidelity.
+
+Phase 9 U8 extends the bench with ``bench.multiframework``: a synthetic
+multi-framework corpus of real shard envelopes for the Phase 9 roll-up
+(``bench.phase9_rollup``). It lives in its own module so this generator's
+seeded N-Quads output stays byte-identical.
 """
 from __future__ import annotations
 
