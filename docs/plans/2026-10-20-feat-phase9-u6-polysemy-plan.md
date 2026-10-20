@@ -65,6 +65,18 @@ bound 23.9% (19.6% with an abstaining Rule 4 fake), status `fail`. See the
 As-built note under U6 in the Phase 9 plan for the full figures and the Rule 3
 finding.
 
+## PR #44 review fixes (2026-10-20)
+
+`tests/polysemy/test_review_fixes.py` holds one regression test per item:
+
+- **Fork release:** a fork is released only by a disposition whose `proposed_fork` is that exact fork (`DistinguoFork.to_proposed_fork()`), and only if the same record is in the dispositions log.
+- **FP gate inputs:** `fp_gate` takes the `LabeledSet`, computes its digest itself, and requires one matching record per case. It no longer accepts a caller-supplied certification or digest.
+- **Certifier:** certifiers naming an agent token are refused. The reviewed sample must cover at least 20% of the cases and every gold label. The record is documented as self-asserted until signing exists.
+- **Seeds on the P1 path:** P1 candidates key on the concept's normalized label, so the shipped seeds fire on that path.
+- **`seed_dispositions.py`:** it no longer writes empty-rationale rejects.
+- **Turtle hardening:** IRIs and terms in hand-built Turtle are checked or escaped.
+- **Fork triples:** the triple builder is private.
+
 ## Files
 
 - `src/folio_insights/polysemy/{whitelists,thresholds,tbox,candidates,labeled_set,detector,distinguo,dispositions,similarity_query,fp_audit,fixture_loader,cli}.py`

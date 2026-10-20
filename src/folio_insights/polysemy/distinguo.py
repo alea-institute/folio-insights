@@ -51,15 +51,20 @@ which is what ``shapes/ttl/distinguo.shacl.ttl`` validates.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
+from urllib.parse import quote
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from folio_insights.polysemy.dispositions import (
+    LOG_PATH,
     DispositionRecord,
     ProposedFork,
     check_disposition,
+    read_dispositions,
 )
+from folio_insights.polysemy.fixture_loader import check_iri
 
 if TYPE_CHECKING:
     from folio_insights.models.framework import FrameworkRegistry
@@ -101,6 +106,13 @@ class ForkProposal(BaseModel):
     source_frameworks: tuple[str, ...]        # e.g. ("CommonLaw", "Restatement2d")
     reviewer_did: str                         # from reviewer.ensure_reviewer_did()
     created_at_iso: str                       # ISO-8601 UTC
+
+    @field_validator("prime_analogate", "reviewer_did")
+    @classmethod
+    def _iri(cls, value: str | None) -> str | None:
+        # Both are written inside <...> by emit_fork_ttl; the prime analogate
+        # is typed by a reviewer at the CLI prompt.
+        return None if value is None else check_iri(value)
 
     @model_validator(mode="after")
     def _analogia_atomic_triad(self) -> "ForkProposal":
@@ -154,6 +166,9 @@ def validate_fork_proposal_shape(fork: ForkProposal) -> None:
                 "ForkProposal uses_analogousTo=True but proportional_relation is empty "
                 "(Pitfall 5 defense-in-depth — bypassed pydantic validator)"
             )
+    if fork.uses_analogousTo:
+        check_iri(fork.prime_analogate)
+    check_iri(fork.reviewer_did)
     allowed = {"realis", "rationis", "rationis_cum_fundamento_in_re", "analogica"}
     if fork.distinction_kind not in allowed:
         raise ValueError(
@@ -197,8 +212,11 @@ def emit_fork_ttl(fork: ForkProposal) -> str:
     # Subject IRI = the term-sense node for the FIRST framework in
     # source_frameworks. This mirrors 01-RESEARCH.md §Pattern 2 line 335:
     # ``<urn:folio:term/consideration#commonlaw>``.
+    # Term and framework are percent-encoded: a term such as "good faith"
+    # must not break out of the IRI.
     subject_iri = (
-        f"urn:folio:term/{fork.term}#{fork.source_frameworks[0].lower()}"
+        f"urn:folio:term/{quote(fork.term, safe='')}"
+        f"#{quote(fork.source_frameworks[0].lower(), safe='')}"
     )
 
     lines: list[str] = [
@@ -299,6 +317,25 @@ class DistinguoFork(BaseModel):
     def sense(self, framework_id: str) -> SenseClass:
         return next(s for s in self.senses if s.framework_id == framework_id)
 
+    def to_proposed_fork(self) -> ProposedFork:
+        """The ``ProposedFork`` a disposition of exactly this fork records.
+
+        ``check_fork_release`` compares a disposition's ``proposed_fork`` with
+        this, so a disposition of one fork cannot release another (other
+        frameworks, kind, prime analogate or relation).
+        """
+        prime_iri = self.sense(self.prime_analogate).iri if self.prime_analogate else None
+        return ProposedFork(
+            cluster_id=self.cluster_id,
+            term=self.term,
+            frameworks=[s.framework_id for s in self.senses],
+            uses_analogousTo=prime_iri is not None,
+            prime_analogate=prime_iri,
+            proportional_relation=self.proportional_relation if prime_iri else None,
+            distinction_kind=self.distinction_kind,
+            suggested_child_iris=[s.iri for s in self.senses],
+        )
+
 
 def build_distinguo_fork(
     *,
@@ -354,14 +391,24 @@ def build_distinguo_fork(
     )
 
 
-def check_fork_release(fork: DistinguoFork, disposition: DispositionRecord) -> None:
+def check_fork_release(
+    fork: DistinguoFork,
+    disposition: DispositionRecord,
+    *,
+    dispositions_path: Path = LOG_PATH,
+) -> None:
     """Raise ``ForkNotReleased`` unless ``disposition`` is a human accept/modify
-    of this fork's cluster and term, by the fork's reviewer."""
+    of THIS fork (its ``proposed_fork`` equals ``fork.to_proposed_fork()``), by
+    the fork's reviewer, and the same record is in the dispositions log at
+    ``dispositions_path``: a caller-built record that was never logged
+    releases nothing."""
     try:
         check_disposition(disposition)
     except ValueError as exc:
         raise ForkNotReleased(str(exc)) from exc
     problems = []
+    if disposition.proposed_fork != fork.to_proposed_fork():
+        problems.append("the disposition's proposed fork is not this fork")
     if disposition.labeler != "human":
         problems.append(f"labeler is {disposition.labeler!r}, not 'human'")
     if disposition.decision not in ("accept", "modify"):
@@ -372,6 +419,8 @@ def check_fork_release(fork: DistinguoFork, disposition: DispositionRecord) -> N
         problems.append("disposition is for another term")
     if disposition.reviewer_did != fork.reviewer_did:
         problems.append("disposition reviewer is not the fork's proposer")
+    if not problems and not _logged(disposition, dispositions_path):
+        problems.append(f"the disposition is not in the dispositions log {dispositions_path}")
     if problems:
         raise ForkNotReleased(
             "a fork is released only by a recorded human accept/modify disposition: "
@@ -379,9 +428,19 @@ def check_fork_release(fork: DistinguoFork, disposition: DispositionRecord) -> N
         )
 
 
-def distinguo_fork_triples(fork: DistinguoFork) -> list[tuple[str, str, object]]:
+def _logged(disposition: DispositionRecord, path: Path) -> bool:
+    """Whether an identical record is in the dispositions log at ``path``."""
+    if not path.exists():
+        return False
+    return any(record == disposition for record in read_dispositions(path))
+
+
+def _distinguo_fork_triples(fork: DistinguoFork) -> list[tuple[str, str, object]]:
     """``(subject, predicate, object)``: IRIs as ``str``, literals as
-    ``("literal", text)`` or ``("typed", text, datatype)``."""
+    ``("literal", text)`` or ``("typed", text, datatype)``.
+
+    Private: the only caller is ``emit_distinguo_fork_ttl``, after the release
+    check (``tests/polysemy/test_no_auto_apply.py`` pins that)."""
     fi = FI_VOCAB
     g = fork.grouping_iri
     out: list[tuple[str, str, object]] = [
@@ -413,14 +472,20 @@ def distinguo_fork_triples(fork: DistinguoFork) -> list[tuple[str, str, object]]
     return out
 
 
-def emit_distinguo_fork_ttl(fork: DistinguoFork, disposition: DispositionRecord) -> str:
-    """The fork as Turtle, released by a human ``disposition`` (``ForkNotReleased``
-    otherwise). The caller loads it into ``urn:folio:proposal/<cluster_id>``;
-    entering a TBox is a further governed step outside this package."""
+def emit_distinguo_fork_ttl(
+    fork: DistinguoFork,
+    disposition: DispositionRecord,
+    *,
+    dispositions_path: Path = LOG_PATH,
+) -> str:
+    """The fork as Turtle, released by a logged human ``disposition`` of this
+    exact fork (``check_fork_release``; ``ForkNotReleased`` otherwise). The
+    caller loads it into ``urn:folio:proposal/<cluster_id>``; entering a TBox
+    is a further governed step outside this package."""
     from pyoxigraph import Literal as OxLiteral
     from pyoxigraph import NamedNode, RdfFormat, Triple, serialize
 
-    check_fork_release(fork, disposition)
+    check_fork_release(fork, disposition, dispositions_path=dispositions_path)
 
     def term_of(o: object) -> NamedNode | OxLiteral:
         if isinstance(o, tuple) and o[0] == "literal":
@@ -430,7 +495,7 @@ def emit_distinguo_fork_ttl(fork: DistinguoFork, disposition: DispositionRecord)
         return NamedNode(str(o))
 
     triples = [
-        Triple(NamedNode(s), NamedNode(p), term_of(o)) for s, p, o in distinguo_fork_triples(fork)
+        Triple(NamedNode(s), NamedNode(p), term_of(o)) for s, p, o in _distinguo_fork_triples(fork)
     ]
     return serialize(
         triples,
@@ -449,7 +514,7 @@ __all__ = [
     "SenseClass",
     "build_distinguo_fork",
     "check_fork_release",
-    "distinguo_fork_triples",
+    "check_iri",
     "emit_distinguo_fork_ttl",
     "emit_fork_ttl",
     "validate_fork_proposal_shape",

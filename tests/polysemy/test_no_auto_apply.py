@@ -88,14 +88,27 @@ def test_no_api_module_reaches_the_polysemy_package() -> None:
 
 def test_fork_emission_is_only_reachable_through_its_gate() -> None:
     """``emit_distinguo_fork_ttl`` is the one renderer of TBox-bound fork
-    triples; it checks the disposition first, and nothing else in ``src``
-    renders ``distinguo_fork_triples``."""
-    src = REPO / "src" / "folio_insights"
-    users = sorted(
-        str(p.relative_to(src)) for p in src.rglob("*.py")
-        if "distinguo_fork_triples" in p.read_text(encoding="utf-8")
-    )
-    assert users == ["polysemy/distinguo.py"]
+    triples; it checks the disposition first. The private triple builder
+    ``_distinguo_fork_triples`` is used nowhere else in ``src``, ``api`` or
+    ``scripts``, and no API or script module calls the gated renderer."""
+    def users(name: str) -> list[str]:
+        """Modules whose code (not docstrings) names ``name``."""
+        out = []
+        for root in ("src", "api", "scripts"):
+            for p in (REPO / root).rglob("*.py"):
+                tree = ast.parse(p.read_text(encoding="utf-8"))
+                for node in ast.walk(tree):
+                    named = (isinstance(node, ast.Name) and node.id == name) or (
+                        isinstance(node, ast.Attribute) and node.attr == name) or (
+                        isinstance(node, ast.alias) and node.name == name) or (
+                        isinstance(node, ast.FunctionDef) and node.name == name)
+                    if named:
+                        out.append(str(p.relative_to(REPO)))
+                        break
+        return sorted(out)
+
+    assert users("_distinguo_fork_triples") == ["src/folio_insights/polysemy/distinguo.py"]
+    assert users("emit_distinguo_fork_ttl") == ["src/folio_insights/polysemy/distinguo.py"]
     from folio_insights.polysemy import distinguo
 
     body = ast.parse(pathlib.Path(distinguo.__file__).read_text(encoding="utf-8"))
@@ -103,4 +116,4 @@ def test_fork_emission_is_only_reachable_through_its_gate() -> None:
                 if isinstance(n, ast.FunctionDef) and n.name == "emit_distinguo_fork_ttl")
     calls = [n.func.id for n in ast.walk(emit)
              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
-    assert calls.index("check_fork_release") < calls.index("distinguo_fork_triples")
+    assert calls.index("check_fork_release") < calls.index("_distinguo_fork_triples")

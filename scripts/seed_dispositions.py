@@ -111,7 +111,7 @@ def seed(path: Path) -> int:
     # Per-shard disposition templates. Mix:
     # - 12 accept (detector said polysemy, reviewer confirmed)
     # - 4 reject-with-rationale (reviewer says context-specific, not polysemy)
-    # - 2 reject-with-empty-rationale (FP candidates)
+    # - 2 reject-with-rationale of a detector polysemy call (the KTD9 FPs)
     # - 2 modify (reviewer overrides with distinguo-triad override)
     # Plus 2 extra synthetic modify records to land at 22 >= 20.
     #
@@ -119,9 +119,9 @@ def seed(path: Path) -> int:
     # in FRE shards (doctrinally orthogonal; real "should not fork" signal).
 
     # Keys map to actual fixture filename stems (lowercased).
-    # Distribution: 13 accept + 4 reject-with-rationale + 2 reject-with-empty-rationale (FP candidates) + 1 modify
-    # = 17 detector-said-polysemy, 3 detector-said-homonymy; reviewer rejected 6 of 20.
-    # The 2 reject-with-empty-rationale records are the LATENT FP signal for compute_fp_rate.
+    # Distribution: 13 accept + 4 reject-with-rationale + 2 detector miscalls (rejects with a
+    # rationale of a detector polysemy call) + 1 modify; reviewer rejected 6 of 20.
+    # The 2 miscalls are the FP signal compute_fp_rate counts (KTD9).
     templates = {
         # CommonLaw: 7 shards, all accepts (strong intra-CL consistency)
         "commonlaw-hamer-sidway": ("accept", "forbearance axiom applies across CL jurisdictions"),
@@ -141,8 +141,11 @@ def seed(path: Path) -> int:
         "restatement-2d-90": ("reject", "Promissory estoppel substitutes for consideration — NOT polysemy"),
         # FRE: 3 shards — all rejects (doctrinally distinct from contract formation)
         "fre-401-relevance-consideration": ("reject", "FRE 401 'consideration' = relevance weighing; homonymy, not polysemy"),
-        "fre-403-balancing-consideration": ("reject", ""),  # FP candidate: reject without rationale
-        "fre-702-expert-consideration": ("reject", ""),     # FP candidate: reject without rationale
+        # The two detector miscalls (KTD9 FPs): the detector said polysemy and the
+        # reviewer rejects it WITH a rationale. Phase 1 seeded these as
+        # empty-rationale rejects, which append_disposition now refuses.
+        "fre-403-balancing-consideration": ("reject", "FRE 403 balancing is judicial weighing; detector miscall, not polysemy"),
+        "fre-702-expert-consideration": ("reject", "FRE 702 reliability weighing is not contract consideration; detector miscall"),
         # UCC: 3 shards — 1 accept, 1 reject-with-rationale, 1 accept
         "ucc-2-205-firm-offer": ("accept", "UCC firm-offer polysemous with CL option-contract"),
         "ucc-2-209-modification": ("reject", "UCC §2-209 explicitly WAIVES consideration — not polysemous"),
@@ -150,18 +153,19 @@ def seed(path: Path) -> int:
     }
 
     # Detector verdict distribution: accepts + modifies = detector='polysemy';
-    # rejects with rationale = detector='homonymy'; rejects with empty rationale
-    # = detector='polysemy' (the FP case — detector said fork, reviewer rejected).
-    def _verdict_for(decision: str, rationale: str) -> tuple[str, list[str], float]:
+    # rejects = detector='homonymy', except the MISCALLS, where the detector
+    # said 'polysemy' and the reviewer rejected it (the KTD9 FP case).
+    miscalls = {"fre-403-balancing-consideration", "fre-702-expert-consideration"}
+
+    def _verdict_for(decision: str, rationale: str, key: str) -> tuple[str, list[str], float]:
         if decision == "accept":
             return "polysemy", ["R1-R2-R3-pass"], 0.67
         if decision == "modify":
             return "polysemy", ["R1-R2-R3-pass"], 0.71
         # reject
-        if rationale.strip():
-            return "homonymy", ["R4-homonym-flag"], 0.55
-        # reject-without-rationale = the FP landmine
-        return "polysemy", ["R1-R2-R3-pass"], 0.64
+        if key in miscalls:
+            return "polysemy", ["R1-R2-R3-pass"], 0.64
+        return "homonymy", ["R4-homonym-flag"], 0.55
 
     count = 0
     for fpath in fixture_files:
@@ -178,7 +182,7 @@ def seed(path: Path) -> int:
             decision, rationale = "accept", "auto-seeded; reviewer should refine"
         else:
             decision, rationale = templates[key]
-        det_decision, matched_rules, evidence = _verdict_for(decision, rationale)
+        det_decision, matched_rules, evidence = _verdict_for(decision, rationale, key)
         kwargs = {
             "shard_iri": shard_iri,
             "framework": framework,
