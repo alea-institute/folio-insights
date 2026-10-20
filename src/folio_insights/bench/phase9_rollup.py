@@ -699,16 +699,21 @@ async def _p6(data: SyntheticCorpus, clock: _Clock, principles: dict[str, Any],
         clusters = ClusterBuilder(registry=registry, folio_resolver=resolver).build(shards)
         found = polysemy_candidates(shards, clusters, registry)
         store = PyoxigraphStore(path=None)
-        load_tbox_seeds(store, disjointness_seed_ttl(p.polysemy_term, [p.polysemy_frameworks]))
+        # The seed names the candidate's term key (the normalized label Rule 1
+        # reads), not the concept IRI the shards carry.
+        planted_term = next(
+            (c.term for c in found.candidates if c.concept == p.polysemy_concept), None)
+        if planted_term is not None:
+            load_tbox_seeds(store, disjointness_seed_ttl(planted_term, [p.polysemy_frameworks]))
         verdicts = {}
         for candidate in found.candidates:
             verdict = detect_polysemy(build_prototype_cluster(list(candidate.shards)), store,
                                       llm=fakes.polysemy_llm)
-            verdicts[candidate.term] = verdict
-        return {"candidates": found, "verdicts": verdicts}
+            verdicts[candidate.concept] = verdict
+        return {"candidates": found, "verdicts": verdicts, "term": planted_term}
 
     detected = await clock.step("p6_detect_corpus", _async(detect))
-    planted = detected["verdicts"].get(p.polysemy_term)
+    planted = detected["verdicts"].get(p.polysemy_concept)
     evaluation = await clock.step(
         "p6_fp_gate", _async(lambda: evaluate_labeled_set(load_labeled_set(labeled_set))))
     gate = evaluation.report
@@ -717,6 +722,7 @@ async def _p6(data: SyntheticCorpus, clock: _Clock, principles: dict[str, Any],
         "candidates": len(detected["candidates"].candidates),
         "decisions": _counts(v.decision for v in detected["verdicts"].values()),
         "planted_term": None if planted is None else {
+            "term": detected["term"],
             "decision": planted.decision, "matched_rules": list(planted.matched_rules),
             "evidence_score": round(planted.evidence_score, 4),
         },

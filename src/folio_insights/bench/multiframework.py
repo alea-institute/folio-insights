@@ -120,7 +120,7 @@ class PlantedFeatures:
     cycle: tuple[SyntheticUnit, ...]                   # never ingestable
     cycle_source: str                                  # source key the cycle claims
     closed_source: str                                 # source key of the island
-    polysemy_term: str
+    polysemy_concept: str                              # concept IRI of the planted term
     polysemy_frameworks: tuple[str, str]
 
 
@@ -402,7 +402,7 @@ class MultiFrameworkCorpusGenerator:
                 cycle=cycle,
                 cycle_source="cl-a",
                 closed_source="frcp",
-                polysemy_term=term,
+                polysemy_concept=term,
                 polysemy_frameworks=("us.common_law", "us.louisiana.civil_code"),
             ),
         )
