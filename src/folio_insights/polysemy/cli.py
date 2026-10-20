@@ -24,6 +24,15 @@ Commands
   dispositions log via ``append_disposition()``.
 * ``folio-insights polysemy audit`` — prints a count summary of recorded
   dispositions (no record mutation).
+* ``folio-insights polysemy gate`` — runs the detector over a labeled set and
+  reports the PRINCIPLE-06 FP gate (Wilson upper bound; ``provisional`` until
+  a human certifies the set). Read-only.
+
+Phase 9 U6: Rule 1 reads the TBox disjointness seeds (``tbox_seeds.ttl``); a
+``reject`` needs a non-empty rationale (KTD9) and is refused otherwise; every
+review records ``labeler: "human"``. No command renders or applies a TBox fork:
+``distinguo.emit_distinguo_fork_ttl`` needs a human disposition, and nothing
+here calls it.
 
 The dispositions log (default
 ``.planning/phases/01-polysemy-distinguo-spike/dispositions.jsonl``) is
@@ -60,6 +69,7 @@ from folio_insights.polysemy.fixture_loader import (
 )
 from folio_insights.polysemy.prototype_cluster import build_prototype_cluster
 from folio_insights.polysemy.reviewer import ensure_reviewer_did
+from folio_insights.polysemy.tbox import load_tbox_seeds
 from folio_insights.store.pyoxigraph_store import PyoxigraphStore
 
 _DISPOSITIONS_PATH = pathlib.Path(
@@ -76,6 +86,17 @@ _DISTINCTION_KINDS = [
 ]
 
 console = Console()
+
+
+def _spike_store(shards: list) -> PyoxigraphStore:
+    """The fixtures' shard TTL plus the Rule 1 TBox seeds (``tbox_seeds.ttl``)."""
+    store = PyoxigraphStore(path=None)
+    store.store.bulk_load(
+        consideration_fixtures_to_ttl(shards).encode("utf-8"),
+        RdfFormat.TURTLE,
+    )
+    load_tbox_seeds(store)
+    return store
 
 
 @click.group("polysemy")
@@ -121,11 +142,7 @@ def detect_cmd(
 ) -> None:
     """Run the 4-rule detector on a fixture directory (no disposition writes)."""
     shards = load_consideration_fixtures(fixtures)
-    store = PyoxigraphStore(path=None)
-    store.store.bulk_load(
-        consideration_fixtures_to_ttl(shards).encode("utf-8"),
-        RdfFormat.TURTLE,
-    )
+    store = _spike_store(shards)
     cluster = build_prototype_cluster(shards)  # positional; B5 signature
     verdict = detect_polysemy(cluster, store, llm_provider=llm_provider)
 
@@ -173,11 +190,7 @@ def review_cmd(
     """
     reviewer_did = ensure_reviewer_did()
     shards = load_consideration_fixtures(fixtures)
-    store = PyoxigraphStore(path=None)
-    store.store.bulk_load(
-        consideration_fixtures_to_ttl(shards).encode("utf-8"),
-        RdfFormat.TURTLE,
-    )
+    store = _spike_store(shards)
     cluster = build_prototype_cluster(shards)  # positional; B5 signature
     verdict = detect_polysemy(cluster, store, llm_provider=llm_provider)
 
@@ -253,7 +266,17 @@ def review_cmd(
             return
         proposed_fork = fork.to_proposed_fork()
 
-    rationale = Prompt.ask("Rationale (press enter for empty)", default="")
+    if decision == "reject":
+        # KTD9: a reject is the false-positive signal, so it must say why the
+        # detector's call is wrong. No default: an empty answer is refused and
+        # nothing is recorded.
+        rationale = Prompt.ask("Rationale (required for reject: why is the detector wrong?)")
+        if not rationale.strip():
+            raise click.ClickException(
+                "a reject needs a rationale; nothing was recorded (re-run review to dispose)"
+            )
+    else:
+        rationale = Prompt.ask("Rationale (press enter for empty)", default="")
 
     record = DispositionRecord(
         cluster_id=cluster.cluster_id,
@@ -264,6 +287,7 @@ def review_cmd(
         reviewer_did=reviewer_did,
         reviewed_at_iso=_dt.datetime.now(_dt.UTC).isoformat(),
         detector_verdict=verdict.model_dump(),  # full snapshot (B6)
+        labeler="human",  # a keystroke at this prompt; the only human-labeler path
     )
     dispositions_path.parent.mkdir(parents=True, exist_ok=True)
     append_disposition(record, dispositions_path)
@@ -349,8 +373,10 @@ def audit_cmd(
         )
         fp = compute_fp_rate(dispositions_path)
         console.print(
-            f"FP rate: {fp['fp_rate']:.1%} "
-            f"(Wilson 95% CI: {fp['ci_lower']:.1%} - {fp['ci_upper']:.1%}); "
+            f"FP rate: {fp['fp_rate']:.1%} over {fp['total']} valid dispositions "
+            f"(Wilson 95% CI: {fp['ci_lower']:.1%} - {fp['ci_upper']:.1%}; the gate reads "
+            f"the upper bound); gate status: {fp['status']}; "
+            f"invalid (reject without rationale): {fp['invalid_dispositions']}; "
             f"kappa={fp['kappa']:.3f} (signal-only; {fp['kappa_caveat']})"
         )
         result = run_llm_audit_pass(
@@ -362,6 +388,48 @@ def audit_cmd(
             f"Audit wrote {result['disagreements']} disagreements "
             f"(of {result['total']}) to {report_path}"
         )
+
+
+# --------------------------- gate ---------------------------
+_LABELED_SET_PATH = pathlib.Path("tests/polysemy/fixtures/labeled_set.json")
+
+
+@polysemy.command("gate")
+@click.option(
+    "--labeled-set",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+    default=_LABELED_SET_PATH,
+    show_default=True,
+    help="Labeled-set JSON (format folio-insights/polysemy-labeled-set/v1).",
+)
+def gate_cmd(labeled_set: pathlib.Path) -> None:
+    """Run the detector over a labeled set and report the PRINCIPLE-06 FP gate.
+
+    Read-only: it records no disposition and applies nothing. Rule 4 (known
+    homonyms) runs against a pessimistic fake that always answers polysemy, so
+    no provider is called and the bound does not depend on a live model. The
+    status is ``pass`` only with a human certification of this exact set.
+    """
+    from folio_insights.polysemy.labeled_set import evaluate_labeled_set, load_labeled_set
+
+    evaluation = evaluate_labeled_set(load_labeled_set(labeled_set))
+    report = evaluation.report
+    table = Table(title=f"Polysemy FP gate ({labeled_set.name})")
+    table.add_column("Figure")
+    table.add_column("Value")
+    table.add_row("N (valid dispositions)", str(report.n))
+    table.add_row("false positives", str(report.false_positives))
+    table.add_row("FP rate", f"{report.fp_rate:.1%}")
+    table.add_row("Wilson 95% upper bound (gate)", f"{report.ci_upper:.1%}")
+    table.add_row("threshold", f"{report.threshold:.0%}")
+    table.add_row("status", report.status)
+    table.add_row("certification", "valid" if report.certified else str(report.certification_problem))
+    table.add_row("detector positives", str(report.detector_positives))
+    table.add_row("false discovery rate", f"{report.false_discovery_rate:.1%}")
+    table.add_row("false negatives", str(evaluation.false_negatives))
+    table.add_row("Rule 4 LLM", evaluation.llm_label)
+    table.add_row("cases sha256", evaluation.cases_sha256)
+    console.print(table)
 
 
 __all__ = ["polysemy"]

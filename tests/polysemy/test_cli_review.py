@@ -176,6 +176,34 @@ def test_review_reject_path(tmp_dispositions, tmp_path, canned_verdict):
     assert rec["proposed_fork"]["uses_analogousTo"] is False
 
 
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_reject_without_rationale_is_refused(tmp_dispositions, tmp_path, canned_verdict, blank):
+    """KTD9: a reject must say why the detector is wrong; nothing is recorded otherwise."""
+    fixtures_dir = _seed_minimal_fixtures(tmp_path)
+    with patch(
+        "folio_insights.polysemy.cli.detect_polysemy", return_value=canned_verdict,
+    ), patch(
+        "folio_insights.polysemy.cli.ensure_reviewer_did", return_value="did:key:zFake123",
+    ):
+        result = CliRunner().invoke(
+            polysemy,
+            ["review", "--fixtures", str(fixtures_dir), "--dispositions-path", str(tmp_dispositions)],
+            input=f"reject\n{blank}\n",
+        )
+    assert result.exit_code != 0
+    assert "needs a rationale" in result.output
+    assert not tmp_dispositions.exists()
+
+
+def test_review_records_a_human_labeler(tmp_dispositions, tmp_path, canned_verdict):
+    fixtures_dir = _seed_minimal_fixtures(tmp_path)
+    result = _invoke_review(
+        CliRunner(), "accept\n\n", tmp_dispositions, fixtures_dir, canned_verdict,
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(tmp_dispositions.read_text().splitlines()[0])["labeler"] == "human"
+
+
 def test_review_modify_path(tmp_dispositions, tmp_path, canned_verdict):
     fixtures_dir = _seed_minimal_fixtures(tmp_path)
     runner = CliRunner()
@@ -314,3 +342,30 @@ def test_audit_command_counts_dispositions(tmp_path):
     assert result.exit_code == 0, result.output
     assert "accept" in result.output
     assert "2" in result.output
+
+
+def test_gate_command_reports_without_recording(tmp_path):
+    """``polysemy gate`` evaluates a labeled set read-only and reports the upper bound."""
+    from folio_insights.polysemy.labeled_set import LABELED_SET_FORMAT
+
+    cases = [
+        {
+            "id": f"t-{n}",
+            "term": "lease",
+            "gold": "univocal",
+            "senses": {
+                "us.common_law": ["A lease grants use of land for a term."],
+                "us.louisiana.civil_code": ["A lease grants use of a thing for a term."],
+            },
+            "disposition": {"labeler": "agent", "decision": "reject", "rationale": "one sense"},
+        }
+        for n in range(2)
+    ]
+    path = tmp_path / "set.json"
+    path.write_text(json.dumps({"format": LABELED_SET_FORMAT, "cases": cases}))
+    result = CliRunner().invoke(polysemy, ["gate", "--labeled-set", str(path)],
+                                catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    assert "upper bound" in result.output
+    assert "fail" in result.output  # N = 2 cannot bring the upper bound under 10%
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["set.json"]
