@@ -126,8 +126,10 @@ async def test_p1_3_unreported_attempts_are_booked_only_when_they_may_be_billed(
 
 async def test_p1_3_in_flight_calls_survive_a_crash_and_cancellation_is_booked(tmp_path) -> None:
     gate = asyncio.Event()
+    sent = asyncio.Event()
 
     async def hang(req):
+        sent.set()
         await gate.wait()
         return httpx.Response(200, json=_ok({"prompt_tokens": 5, "completion_tokens": 1}))
 
@@ -141,11 +143,10 @@ async def test_p1_3_in_flight_calls_survive_a_crash_and_cancellation_is_booked(t
             await _port(hang).structured("distiller", Out, [{"role": "user", "content": "hi"}])
 
     task = asyncio.create_task(call())
-    for _ in range(200):
-        rows = ledger.rows("job-1")
-        if rows:
-            break
-        await asyncio.sleep(0.01)
+    # Cancel only once the request is really on the wire: the in-flight row is written while the
+    # attempt's worst case is reserved, a moment before the request is sent.
+    await asyncio.wait_for(sent.wait(), timeout=5)
+    rows = ledger.rows("job-1")
     assert rows and rows[0]["status"] == IN_FLIGHT and Decimal(rows[0]["cost_usd"]) > 0
     # A process that died here leaves the bound on the books: a new meter starts from it.
     assert CostMeter(run_id="job-1", ledger=ledger).spent == Decimal(rows[0]["cost_usd"])
