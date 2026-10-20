@@ -145,3 +145,35 @@ def test_integer_leaves_are_scanned() -> None:
     with pytest.raises(PiiRejected, match="unscannable_integer"):
         gate.check({"n": 1 << 20_000})
     gate.check({"signature": "A" * 86, "payload_hash": "a" * 64})
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Call 2125550142 for details.",
+        "tel:+12125550142",
+        "Phone no.: 2125550142",
+        "Mobile 12125550142",
+        "FAX (office) 2125550142",
+    ],
+)
+def test_bare_ten_digit_phone_after_a_phone_word_is_refused(text: str) -> None:
+    assert US_PHONE_PATTERN.matches(text)
+    with pytest.raises(PiiRejected, match="us_phone") as err:
+        PiiGate().check({"sense": text})
+    assert "2125550142" not in str(err.value)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Created at 1760918400 (epoch seconds).",  # an epoch timestamp, no phone word
+        "Telephone 1760918400123 is too long to be NANP.",
+        "Call 0125550142 is not NANP (area code starts with 0).",
+        "Phonetics 2125550142",  # 'phone' must be a whole word
+        "Call it what you like; the record 2125550142 sits far beyond twenty characters.",
+    ],
+)
+def test_bare_ten_digits_without_phone_context_pass(text: str) -> None:
+    assert not US_PHONE_PATTERN.matches(text)
+    PiiGate().check({"sense": text})

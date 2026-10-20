@@ -227,7 +227,9 @@ These rules hold for every format:
   storage root and outside the served `output/` directory.
 - **Default exports contain no rejected PII.** Inputs that match the PII
   gate (SSN, ABA routing number, US phone by default) are refused before the
-  journal append. String leaves and integer leaves (as decimal text) are
+  journal append. A US phone written as ten bare digits counts only within
+  20 characters after a phone word (`phone`, `tel`, `call`, `fax`...), so
+  ten-digit epoch timestamps still pass. String leaves and integer leaves (as decimal text) are
   scanned; an integer too large to render is refused. They therefore never reach the journal, the projection, a
   dump, a snapshot or an export. Signature objects are scanned too (`did`,
   `signing_key_id`, cosigners); only a `signature` value shaped exactly like
