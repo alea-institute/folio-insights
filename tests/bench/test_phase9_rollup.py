@@ -107,10 +107,12 @@ async def _rollup(tmp_path: Path, **kw):  # noqa: ANN003, ANN202
 
 
 def test_corpus_generator_is_deterministic_and_seeded() -> None:
-    a = MultiFrameworkCorpusGenerator(seed=9).generate()
+    generator = MultiFrameworkCorpusGenerator(seed=9)
+    a = generator.generate()
     b = MultiFrameworkCorpusGenerator(seed=9).generate()
     c = MultiFrameworkCorpusGenerator(seed=10).generate()
     assert a == b
+    assert generator.generate() == a  # a second call on one generator yields the same corpus
     assert a != c
     assert [s.key for s in a.sources] == [s.key for s in c.sources]  # only values vary
     keys = [u.key for _, u in a.units()]
@@ -236,6 +238,7 @@ async def test_phase9_rollup_all_principles_on_one_corpus(tmp_path: Path, offlin
     p6 = p["P6"]
     assert p6["candidates"] >= 1 and p6["journal_unchanged"] and p6["fork_applied"] is False
     assert "R1-no-conflict" not in p6["planted_term"]["matched_rules"]
+    assert p6["planted_term"]["decision"] == "polysemy"  # passed Rules 1-3, as the plan records
     gate = p6["fp_gate"]
     assert gate["status"] in {"pass", "provisional", "fail"}
     assert (gate["status"] == "fail") == (gate["wilson_upper"] > gate["threshold"])

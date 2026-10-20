@@ -32,7 +32,7 @@ sorted iteration; Pitfall 7).
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -238,15 +238,13 @@ class MultiFrameworkCorpusGenerator:
 
     seed: int = 9
     units_per_source: int = 8
-    _rng: random.Random = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.units_per_source < 6:
             raise ValueError("units_per_source must be at least 6")
-        self._rng = random.Random(self.seed)
 
     def generate(self) -> SyntheticCorpus:
-        rng = self._rng
+        rng = random.Random(self.seed)  # per call, so every call yields the same corpus
         branches = len(FOLIO_BRANCH_SPINE)
         parents: dict[str, tuple[str, ...]] = {}
         for b, branch in enumerate(FOLIO_BRANCH_SPINE):
