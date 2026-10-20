@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 from api import auth
 from api import main as api_main
 from api.main import app
+from api.routes import bridge as bridge_mod
 from api.routes import discovery as discovery_mod
 from api.routes import processing as processing_mod
 from api.services.job_manager import get_runtime
@@ -38,6 +39,16 @@ GUARDS = (auth.require_operator, auth.require_operator_for_writes)
 READ_ONLY_POSTS = {
     # Validates the candidate in the body against the SHACL suite and stores nothing.
     ("POST", "/validate"),
+    # folio-enrich's status read contract: opens the corpus exactly as GET /api/bridge/v1/health
+    # does and returns shard status; nothing is stored.
+    ("POST", "/api/bridge/v1/status"),
+}
+#: Mutating routes guarded by their own service credential instead of an operator token, mapped
+#: to that guard. Each needs a reason; the test fails if the route loses the named guard.
+SERVICE_TOKEN_ROUTES = {
+    # folio-enrich pushes propositions with FOLIO_INSIGHTS_BRIDGE_TOKEN; the route answers 404
+    # while that token is unset (tests/bridge_ingest/test_bridge_api.py covers 404/401/200).
+    ("POST", "/api/bridge/v1/ingest"): bridge_mod.require_bridge_token,
 }
 #: GET routes that change state, so they need an operator like any write. Each needs a reason;
 #: the enumeration test fails on a GET that requires an operator but is not listed here, and on
@@ -173,6 +184,9 @@ def unguarded_mutating_routes(application: FastAPI) -> list[tuple[str, str]]:
         for method in sorted(methods & MUTATING_METHODS):
             if (method, path) in READ_ONLY_POSTS:
                 continue
+            service_guard = SERVICE_TOKEN_ROUTES.get((method, path))
+            if service_guard is not None and service_guard in calls:
+                continue
             if not any(guard in calls for guard in GUARDS):
                 missing.append((method, path))
     return missing
@@ -183,7 +197,7 @@ def _mutating_routes() -> list[tuple[str, str]]:
         (method, path)
         for path, methods, _ in _api_routes(app)
         for method in methods & MUTATING_METHODS
-        if (method, path) not in READ_ONLY_POSTS
+        if (method, path) not in READ_ONLY_POSTS and (method, path) not in SERVICE_TOKEN_ROUTES
     )
 
 
@@ -227,6 +241,17 @@ def test_every_mutating_route_has_the_operator_dependency() -> None:
 def test_read_only_post_allowlist_is_not_stale() -> None:
     present = {(m, path) for path, methods, _ in _api_routes(app) for m in methods}
     assert READ_ONLY_POSTS <= present
+    assert set(SERVICE_TOKEN_ROUTES) <= present
+
+
+def test_a_service_token_route_without_its_guard_is_detected() -> None:
+    rogue = FastAPI()
+
+    @rogue.post("/api/bridge/v1/ingest")
+    def unguarded_ingest() -> dict:  # pragma: no cover - never called
+        return {}
+
+    assert unguarded_mutating_routes(rogue) == [("POST", "/api/bridge/v1/ingest")]
 
 
 def test_a_new_route_without_the_dependency_is_detected() -> None:
