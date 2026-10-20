@@ -50,11 +50,14 @@ import re
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from folio_insights.polysemy.dispositions import DispositionRecord, read_dispositions
+
+if TYPE_CHECKING:  # labeled_set imports this module; no runtime cycle
+    from folio_insights.polysemy.labeled_set import LabeledSet
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +70,15 @@ KAPPA_CAVEAT = (
 # R9: the Wilson 95% upper bound of the FP rate must be at most 10%.
 FP_GATE_THRESHOLD = 0.10
 GateStatus = Literal["provisional", "pass", "fail"]
-# Labels that name an agent, not a human; a certification by one is refused.
-_AGENT_HANDLES = re.compile(r"^(agent|claude|llm|gpt|model|bot)\b", re.IGNORECASE)
+# The reviewer ID agent-written (first-pass) dispositions carry.
+AGENT_LABELER_ID = "urn:folio-insights:labeler:agent"
+# A certifier naming any of these tokens (case-insensitive) names an agent, not
+# a human; a certification by one is refused.
+_AGENT_TOKENS = frozenset({"agent", "assistant", "ai", "llm", "claude", "gpt", "bot", "model"})
+_TOKEN = re.compile(r"[A-Za-z0-9]+")
+# A certification counts only when its reviewed sample covers at least this
+# share of the cases (rounded up) and at least one case of every gold label.
+MIN_SAMPLE_SHARE = 0.20
 
 
 def wilson_score_interval(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -101,11 +111,27 @@ def is_false_positive(record: DispositionRecord) -> bool:
     return _detector_flagged(record) and record.decision == "reject" and record.has_rationale
 
 
+def _names_an_agent(value: str) -> bool:
+    text = value.strip()
+    if not text or text == AGENT_LABELER_ID:
+        return True
+    tokens = {t.lower() for t in _TOKEN.findall(text)}
+    return bool(tokens & _AGENT_TOKENS)
+
+
 class Certification(BaseModel):
     """A human's certification of one labeled set (Open Question 1 hook).
 
     Agents never write this record. It binds to the labeled cases by digest,
-    so editing a case after certification voids it.
+    so editing a case after certification voids it, and ``fp_gate`` honours it
+    only when the reviewed sample is meaningful (``MIN_SAMPLE_SHARE`` of the
+    cases and at least one case of every gold label).
+
+    SELF-ASSERTED: ``certified_by`` is whatever the writer typed. The checks
+    here refuse a certifier that names an agent (``AGENT_LABELER_ID`` or a
+    token such as agent, assistant, ai, llm, claude, gpt, bot, model), but
+    nothing proves a human wrote the record until dispositions and
+    certifications are signed. Treat a ``pass`` as the certifier's claim.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -119,7 +145,7 @@ class Certification(BaseModel):
     @field_validator("certified_by")
     @classmethod
     def _human(cls, value: str) -> str:
-        if not value.strip() or _AGENT_HANDLES.match(value.strip()):
+        if _names_an_agent(value):
             raise ValueError(f"certified_by {value!r} does not name a human reviewer")
         return value
 
@@ -148,17 +174,55 @@ class FpGateReport:
         return asdict(self)
 
 
+def _records_match_cases(records: list[DispositionRecord], labeled: LabeledSet) -> bool:
+    """Exactly one record per case (``audit_label`` = case ID) carrying that
+    case's term, decision and rationale."""
+    by_case: dict[str, DispositionRecord] = {}
+    for record in records:
+        if record.audit_label is None or record.audit_label in by_case:
+            return False
+        by_case[record.audit_label] = record
+    if set(by_case) != {c.id for c in labeled.cases}:
+        return False
+    return all(
+        by_case[c.id].term == c.term
+        and by_case[c.id].decision == c.disposition.decision
+        and by_case[c.id].rationale == c.disposition.rationale
+        for c in labeled.cases
+    )
+
+
+def _certification_problem(records: list[DispositionRecord], labeled: LabeledSet | None) -> str | None:
+    if labeled is None or labeled.certification is None:
+        return "no certification record (status stays provisional; Open Question 1)"
+    certification = labeled.certification
+    if certification.cases_sha256 != labeled.cases_sha256():
+        return "the certification does not cover these labeled cases (digest mismatch)"
+    if not _records_match_cases(records, labeled):
+        return "the records do not match the labeled cases (one record per case, same disposition)"
+    sample = set(certification.sample_reviewed)
+    needed = math.ceil(MIN_SAMPLE_SHARE * len(labeled.cases))
+    if len(sample) < needed:
+        return f"the reviewed sample has {len(sample)} cases; at least {needed} are needed"
+    sampled_labels = {c.gold for c in labeled.cases if c.id in sample}
+    missing = sorted({c.gold for c in labeled.cases} - sampled_labels)
+    if missing:
+        return f"the reviewed sample has no case of gold label(s) {missing}"
+    return None
+
+
 def fp_gate(
     records: Iterable[DispositionRecord],
     *,
-    certification: Certification | None = None,
-    cases_sha256: str | None = None,
+    labeled: LabeledSet | None = None,
     threshold: float = FP_GATE_THRESHOLD,
 ) -> FpGateReport:
     """The PRINCIPLE-06 gate over ``records`` (see the module docstring).
 
-    ``cases_sha256`` is the digest of the labeled cases the records come from;
-    a certification counts only when it names that digest.
+    The certification, if any, comes from ``labeled`` (never from the caller),
+    and it counts only when the gate itself finds that it names the digest of
+    ``labeled``'s cases, that ``records`` are exactly those cases'
+    dispositions, and that the reviewed sample is meaningful.
     """
     all_records = list(records)
     valid = [r for r in all_records if is_valid_disposition(r)]
@@ -168,11 +232,7 @@ def fp_gate(
     ci_lower, ci_upper = wilson_score_interval(fps, n)
     _, fdr_upper = wilson_score_interval(fps, positives)
 
-    problem: str | None = None
-    if certification is None:
-        problem = "no certification record (status stays provisional; Open Question 1)"
-    elif cases_sha256 is None or certification.cases_sha256 != cases_sha256:
-        problem = "the certification does not cover these labeled cases (digest mismatch)"
+    problem = _certification_problem(all_records, labeled)
     certified = problem is None
 
     if ci_upper > threshold:  # includes n == 0, whose interval is (0, 1)
@@ -401,7 +461,9 @@ def _emit_audit_report(
 
 
 __all__ = [
+    "AGENT_LABELER_ID",
     "Certification",
+    "MIN_SAMPLE_SHARE",
     "FP_GATE_THRESHOLD",
     "FpGateReport",
     "GateStatus",

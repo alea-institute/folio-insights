@@ -33,13 +33,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from folio_insights.models.framework import FrameworkRegistry, check_framework_id
 from folio_insights.polysemy.dispositions import DispositionRecord, ProposedFork
 from folio_insights.polysemy.fixture_loader import ShardFixture
-from folio_insights.polysemy.fp_audit import Certification, FpGateReport, fp_gate
+from folio_insights.polysemy.fp_audit import (
+    AGENT_LABELER_ID,
+    Certification,
+    FpGateReport,
+    fp_gate,
+)
 
 if TYPE_CHECKING:
     from folio_insights.polysemy.detector import LLMVerdict, RuleVerdict
 
 LABELED_SET_FORMAT = "folio-insights/polysemy-labeled-set/v1"
-AGENT_LABELER_ID = "urn:folio-insights:labeler:agent"
 # Fixed so that evaluation is reproducible byte for byte.
 EVALUATED_AT = "2026-10-20T00:00:00+00:00"
 
@@ -257,7 +261,7 @@ def evaluate_labeled_set(
             false_positive=is_false_positive(record),
         ))
     digest = labeled.cases_sha256()
-    report = fp_gate(records, certification=labeled.certification, cases_sha256=digest)
+    report = fp_gate(records, labeled=labeled)
     return LabeledSetEvaluation(
         report=report,
         outcomes=tuple(outcomes),
