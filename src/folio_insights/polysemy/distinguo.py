@@ -20,14 +20,49 @@ Consumer contracts locked by this module:
 
 The named-graph target for emitted triples is ``urn:folio:proposal/<cluster_id>``
 so Phase 15 can ingest per-proposal provenance (D-3 lock).
+
+Phase 9 U6 adds the PRD §8 P6 fork shape (R9):
+
+* `DistinguoFork` / `build_distinguo_fork` — a term forked into
+  jurisdiction-scoped classes (one per registered framework) under a shared
+  SKOS grouping, with a configurable prime analogate (default: the common-law
+  sense, per the PRD acceptance test).
+* `emit_distinguo_fork_ttl(fork, disposition)` — renders it, and ONLY against a
+  recorded human disposition (accept or modify, ``labeler == "human"``, same
+  cluster, term and reviewer). Nothing in the package writes a fork into a
+  TBox; this is the one path that produces TBox-bound fork triples, so no CLI
+  or API path can release a fork without a human disposition (PRINCIPLE-06).
+
+Output (existing vocabulary terms only; SKOS for the grouping)::
+
+    <urn:folio:term/consideration> a skos:Concept ; skos:prefLabel "consideration" ;
+        skos:narrower <...#us.common_law>, <...#us.louisiana.civil_code> ;
+        fi:distinguishes <...#us.common_law>, <...#us.louisiana.civil_code> ;
+        fi:distinctionKind "analogica" ; fi:proposedBy <did> ; fi:proposedAt "..." .
+    <...#us.louisiana.civil_code> a owl:Class, skos:Concept ; rdfs:label "..." ;
+        skos:broader <urn:folio:term/consideration> ;
+        fi:framework <framework/us.louisiana.civil_code> ; fi:jurisdiction "us.louisiana" ;
+        fi:analogousTo <...#us.common_law> ; fi:primeAnalogate <...#us.common_law> ;
+        fi:proportionalRelation "..." .
+
+The non-prime senses carry the analogia triad (Pitfall 5: all three or none),
+which is what ``shapes/ttl/distinguo.shacl.ttl`` validates.
 """
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from folio_insights.polysemy.dispositions import ProposedFork
+from folio_insights.polysemy.dispositions import (
+    DispositionRecord,
+    ProposedFork,
+    check_disposition,
+)
+
+if TYPE_CHECKING:
+    from folio_insights.models.framework import FrameworkRegistry
 
 # Canonical folio-insights vocabulary IRI (PRD §7.1, VOCAB-02).
 FI_VOCAB = "https://folio-insights.aleainstitute.ai/vocab/"
@@ -194,10 +229,228 @@ def emit_fork_ttl(fork: ForkProposal) -> str:
     return "\n".join(lines) + "\n"
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 9 U6 — the PRD §8 P6 fork shape
+# ──────────────────────────────────────────────────────────────────────────
+
+SKOS = "http://www.w3.org/2004/02/skos/core#"
+OWL = "http://www.w3.org/2002/07/owl#"
+RDFS = "http://www.w3.org/2000/01/rdf-schema#"
+RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+XSD_DATETIME = "http://www.w3.org/2001/XMLSchema#dateTime"
+
+# PRD §8 P6 acceptance: "fi:primeAnalogate pointing to the common-law sense
+# (configurable)". The first of these present in a fork is the default prime;
+# a caller names another with ``prime_analogate=``.
+DEFAULT_PRIME_ANALOGATE_PREFERENCE: tuple[str, ...] = ("us.common_law", "uk.england.common_law")
+
+
+class ForkNotReleased(PermissionError):
+    """A fork was asked for without a recorded human disposition releasing it."""
+
+
+class SenseClass(BaseModel):
+    """One jurisdiction-scoped class of a forked term."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    iri: str
+    framework_id: str
+    framework_iri: str
+    framework_label: str
+    jurisdiction: str
+
+
+class DistinguoFork(BaseModel):
+    """A term forked into framework-scoped classes under a SKOS grouping."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    term: str = Field(min_length=1)
+    cluster_id: str
+    grouping_iri: str
+    senses: tuple[SenseClass, ...]
+    distinction_kind: DistinctionKind
+    prime_analogate: str | None = None          # a sense's framework_id
+    proportional_relation: str | None = None
+    reviewer_did: str = Field(min_length=1)
+    created_at_iso: str
+
+    @model_validator(mode="after")
+    def _shape(self) -> "DistinguoFork":
+        frameworks = [s.framework_id for s in self.senses]
+        if len(frameworks) < 2 or len(set(frameworks)) != len(frameworks):
+            raise ValueError("a fork has at least two senses, one per distinct framework")
+        has_prime = bool(self.prime_analogate)
+        has_relation = bool(self.proportional_relation and self.proportional_relation.strip())
+        if has_prime != has_relation:
+            raise ValueError(
+                "prime_analogate and proportional_relation come together "
+                "(Pitfall 5: analogia is atomic — no sub-property may be omitted)"
+            )
+        if self.distinction_kind == "analogica" and not has_prime:
+            raise ValueError("an analogica fork needs a prime analogate and a proportional relation")
+        if has_prime and self.prime_analogate not in frameworks:
+            raise ValueError(
+                f"prime analogate {self.prime_analogate!r} is not one of the fork's frameworks"
+            )
+        return self
+
+    def sense(self, framework_id: str) -> SenseClass:
+        return next(s for s in self.senses if s.framework_id == framework_id)
+
+
+def build_distinguo_fork(
+    *,
+    term: str,
+    cluster_id: str,
+    framework_ids: Iterable[str],
+    registry: "FrameworkRegistry",
+    reviewer_did: str,
+    created_at_iso: str,
+    distinction_kind: DistinctionKind = "analogica",
+    proportional_relation: str | None = None,
+    prime_analogate: str | None = None,
+) -> DistinguoFork:
+    """Fork ``term`` into one class per registered framework.
+
+    Every framework must be registered (``UnregisteredFramework`` if not): the
+    jurisdiction of each class comes from the registry. For an ``analogica``
+    fork the prime analogate defaults to the first framework of
+    ``DEFAULT_PRIME_ANALOGATE_PREFERENCE`` present; with none present the
+    caller must name one.
+    """
+    from folio_insights.polysemy.tbox import term_class_iri, term_grouping_iri
+
+    senses = []
+    for framework_id in sorted(set(framework_ids)):
+        framework = registry.resolve(framework_id)
+        senses.append(SenseClass(
+            iri=term_class_iri(term, framework.id),
+            framework_id=framework.id,
+            framework_iri=framework.iri,
+            framework_label=framework.label,
+            jurisdiction=framework.jurisdiction,
+        ))
+    if prime_analogate is None and distinction_kind == "analogica":
+        present = {s.framework_id for s in senses}
+        prime_analogate = next(
+            (fw for fw in DEFAULT_PRIME_ANALOGATE_PREFERENCE if fw in present), None
+        )
+        if prime_analogate is None:
+            raise ValueError(
+                "no common-law sense in this fork; name the prime analogate explicitly"
+            )
+    return DistinguoFork(
+        term=term,
+        cluster_id=cluster_id,
+        grouping_iri=term_grouping_iri(term),
+        senses=tuple(senses),
+        distinction_kind=distinction_kind,
+        prime_analogate=prime_analogate,
+        proportional_relation=proportional_relation,
+        reviewer_did=reviewer_did,
+        created_at_iso=created_at_iso,
+    )
+
+
+def check_fork_release(fork: DistinguoFork, disposition: DispositionRecord) -> None:
+    """Raise ``ForkNotReleased`` unless ``disposition`` is a human accept/modify
+    of this fork's cluster and term, by the fork's reviewer."""
+    try:
+        check_disposition(disposition)
+    except ValueError as exc:
+        raise ForkNotReleased(str(exc)) from exc
+    problems = []
+    if disposition.labeler != "human":
+        problems.append(f"labeler is {disposition.labeler!r}, not 'human'")
+    if disposition.decision not in ("accept", "modify"):
+        problems.append(f"decision is {disposition.decision!r}")
+    if disposition.cluster_id != fork.cluster_id:
+        problems.append("disposition is for another cluster")
+    if disposition.term != fork.term:
+        problems.append("disposition is for another term")
+    if disposition.reviewer_did != fork.reviewer_did:
+        problems.append("disposition reviewer is not the fork's proposer")
+    if problems:
+        raise ForkNotReleased(
+            "a fork is released only by a recorded human accept/modify disposition: "
+            + "; ".join(problems)
+        )
+
+
+def distinguo_fork_triples(fork: DistinguoFork) -> list[tuple[str, str, object]]:
+    """``(subject, predicate, object)``: IRIs as ``str``, literals as
+    ``("literal", text)`` or ``("typed", text, datatype)``."""
+    fi = FI_VOCAB
+    g = fork.grouping_iri
+    out: list[tuple[str, str, object]] = [
+        (g, RDF_TYPE, f"{SKOS}Concept"),
+        (g, f"{SKOS}prefLabel", ("literal", fork.term)),
+        (g, f"{fi}distinctionKind", ("literal", fork.distinction_kind)),
+        (g, f"{fi}proposedBy", fork.reviewer_did),
+        (g, f"{fi}proposedAt", ("typed", fork.created_at_iso, XSD_DATETIME)),
+    ]
+    prime_iri = fork.sense(fork.prime_analogate).iri if fork.prime_analogate else None
+    for sense in fork.senses:
+        out += [
+            (g, f"{SKOS}narrower", sense.iri),
+            (g, f"{fi}distinguishes", sense.iri),
+            (sense.iri, RDF_TYPE, f"{OWL}Class"),
+            (sense.iri, RDF_TYPE, f"{SKOS}Concept"),
+            (sense.iri, f"{RDFS}label", ("literal", f"{fork.term} ({sense.framework_label})")),
+            (sense.iri, f"{SKOS}broader", g),
+            (sense.iri, f"{fi}framework", sense.framework_iri),
+            (sense.iri, f"{fi}jurisdiction", ("literal", sense.jurisdiction)),
+        ]
+        if prime_iri is not None and sense.iri != prime_iri:
+            assert fork.proportional_relation is not None  # the model validator's triad
+            out += [
+                (sense.iri, f"{fi}analogousTo", prime_iri),
+                (sense.iri, f"{fi}primeAnalogate", prime_iri),
+                (sense.iri, f"{fi}proportionalRelation", ("literal", fork.proportional_relation)),
+            ]
+    return out
+
+
+def emit_distinguo_fork_ttl(fork: DistinguoFork, disposition: DispositionRecord) -> str:
+    """The fork as Turtle, released by a human ``disposition`` (``ForkNotReleased``
+    otherwise). The caller loads it into ``urn:folio:proposal/<cluster_id>``;
+    entering a TBox is a further governed step outside this package."""
+    from pyoxigraph import Literal as OxLiteral
+    from pyoxigraph import NamedNode, RdfFormat, Triple, serialize
+
+    check_fork_release(fork, disposition)
+
+    def term_of(o: object) -> NamedNode | OxLiteral:
+        if isinstance(o, tuple) and o[0] == "literal":
+            return OxLiteral(o[1])
+        if isinstance(o, tuple) and o[0] == "typed":
+            return OxLiteral(o[1], datatype=NamedNode(o[2]))
+        return NamedNode(str(o))
+
+    triples = [
+        Triple(NamedNode(s), NamedNode(p), term_of(o)) for s, p, o in distinguo_fork_triples(fork)
+    ]
+    return serialize(
+        triples,
+        format=RdfFormat.TURTLE,
+        prefixes={"fi": FI_VOCAB, "skos": SKOS, "owl": OWL, "rdfs": RDFS},
+    ).decode("utf-8")
+
+
 __all__ = [
+    "DEFAULT_PRIME_ANALOGATE_PREFERENCE",
     "FI_VOCAB",
     "DistinctionKind",
+    "DistinguoFork",
+    "ForkNotReleased",
     "ForkProposal",
+    "SenseClass",
+    "build_distinguo_fork",
+    "check_fork_release",
+    "distinguo_fork_triples",
+    "emit_distinguo_fork_ttl",
     "emit_fork_ttl",
     "validate_fork_proposal_shape",
 ]
