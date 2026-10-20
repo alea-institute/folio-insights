@@ -1,4 +1,12 @@
-"""Phase 1 polysemy-distinguo spike (PRINCIPLE-06 scoping + VOCAB-02 first-use)."""
+"""Polysemy and distinguo (PRINCIPLE-06; Phase 1 spike, productionized in Phase 9 U6).
+
+Detector inputs come from P1 clusters and P2 frameworks (``candidates``); Rule 1
+asks a reasoner about TBox disjointness (``tbox``); similarity stays in
+``similarity_query`` (KTD10); thresholds live in ``whitelists`` and the typed,
+empty-by-default ``thresholds``; forks render only against a human disposition
+(``distinguo``); the FP gate reads the Wilson upper bound (``fp_audit``,
+``labeled_set``).
+"""
 from folio_insights.polysemy.cli import polysemy as polysemy_cli_group
 from folio_insights.polysemy.dispositions import (
     DispositionRecord,

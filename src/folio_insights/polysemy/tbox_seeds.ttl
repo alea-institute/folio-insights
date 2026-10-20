@@ -1,0 +1,48 @@
+# Polysemy Rule 1 TBox seeds (Phase 9 U6, decision 7).
+#
+# Term-scoped classes for the starter frameworks (frameworks/default_frameworks.json)
+# and the owl:disjointWith axioms between them that state a framework-conflicting
+# axiom (OQ-1 lock). Each class IRI is polysemy.tbox.term_class_iri(term, framework_id):
+# urn:folio:term/<term>#<framework_id>. The seeds load into the shared TBox graph.
+#
+# Only told axioms live here: owl:Class declarations, rdfs:label and
+# owl:disjointWith, all inside OWL 2 EL (KTD5). A seed records that the TBox
+# treats two framework senses as incompatible; it does not say the term is
+# polysemous (homonyms have disjoint senses too). The detector's other rules and
+# a human disposition decide that.
+#
+# "consideration": the bargain-based sense shared by US and English common law,
+# the Restatement and the UCC conflicts with the Louisiana Civil Code's cause-based
+# sense (a gratuitous promise with a lawful cause binds without a bargain), and the
+# evidentiary sense (a factor a court weighs under the Federal Rules of Evidence)
+# conflicts with both. The bargain-based senses are not stated disjoint from one
+# another.
+
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<urn:folio:term/consideration#us.common_law> a owl:Class ;
+    rdfs:label "consideration (United States common law)" .
+<urn:folio:term/consideration#uk.england.common_law> a owl:Class ;
+    rdfs:label "consideration (common law of England and Wales)" .
+<urn:folio:term/consideration#us.restatement_2d.contracts> a owl:Class ;
+    rdfs:label "consideration (Restatement (Second) of Contracts)" .
+<urn:folio:term/consideration#us.ucc> a owl:Class ;
+    rdfs:label "consideration (Uniform Commercial Code)" .
+<urn:folio:term/consideration#us.louisiana.civil_code> a owl:Class ;
+    rdfs:label "consideration (Louisiana Civil Code)" .
+<urn:folio:term/consideration#us.federal.fre> a owl:Class ;
+    rdfs:label "consideration (Federal Rules of Evidence)" .
+
+<urn:folio:term/consideration#us.louisiana.civil_code>
+    owl:disjointWith <urn:folio:term/consideration#us.common_law> ,
+        <urn:folio:term/consideration#uk.england.common_law> ,
+        <urn:folio:term/consideration#us.restatement_2d.contracts> ,
+        <urn:folio:term/consideration#us.ucc> .
+
+<urn:folio:term/consideration#us.federal.fre>
+    owl:disjointWith <urn:folio:term/consideration#us.common_law> ,
+        <urn:folio:term/consideration#uk.england.common_law> ,
+        <urn:folio:term/consideration#us.restatement_2d.contracts> ,
+        <urn:folio:term/consideration#us.ucc> ,
+        <urn:folio:term/consideration#us.louisiana.civil_code> .

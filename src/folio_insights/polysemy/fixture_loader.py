@@ -13,10 +13,13 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 CONSIDERATION_NAMED_GRAPH = "urn:folio:corpus/consideration-spike"
 
+# The Phase 1 spike's framework labels. Phase 9 U6 fixtures (and shards read
+# from P1 clusters) name registered framework IDs instead; ``ShardFixture``
+# accepts either, and every consumer resolves through ``resolve_framework_id``.
 Framework = Literal["CommonLaw", "CivilLaw", "Restatement", "FRE", "UCC"]
 
 # Phase 9 U0/U2: fi:inFramework is an ObjectProperty, so a fixture's framework
@@ -31,16 +34,31 @@ FIXTURE_FRAMEWORK_IDS: dict[str, str] = {
 }
 
 
+def resolve_framework_id(framework: str) -> str:
+    """The registered-framework ID for a spike label or a framework ID.
+
+    A spike label maps through ``FIXTURE_FRAMEWORK_IDS``; anything else must
+    already match the framework ID pattern (``MalformedFrameworkId`` if not).
+    Registration itself is the caller's check (``candidates`` and the labeled
+    set resolve against the corpus ``FrameworkRegistry``).
+    """
+    from folio_insights.models.framework import check_framework_id
+
+    return check_framework_id(FIXTURE_FRAMEWORK_IDS.get(framework, framework))
+
+
 def fixture_framework_iri(framework: str) -> str:
-    """The framework IRI for a fixture framework tag (``KeyError`` if unknown)."""
+    """The framework IRI for a fixture framework tag or framework ID."""
     from folio_insights.vocab._constants import framework_iri
 
-    return framework_iri(FIXTURE_FRAMEWORK_IDS[framework])
+    return framework_iri(resolve_framework_id(framework))
 
 
 class ShardFixture(BaseModel):
     iri: str
-    framework: Framework
+    framework: str = Field(
+        description="A spike label (``Framework``) or a registered framework ID.",
+    )
     source_doc: str = Field(min_length=1)
     extracted_text: str = Field(min_length=1)
     axiom_summary: str = Field(
@@ -53,6 +71,16 @@ class ShardFixture(BaseModel):
     prime_analogate_hint: str | None = None
     proportional_relation_hint: str | None = None
     term: str = Field(default="consideration")
+
+    @field_validator("framework")
+    @classmethod
+    def _known_framework(cls, value: str) -> str:
+        resolve_framework_id(value)  # a spike label or a pattern-valid framework ID
+        return value
+
+    @property
+    def framework_id(self) -> str:
+        return resolve_framework_id(self.framework)
 
 
 def load_consideration_fixtures(fixture_dir: Path) -> list[ShardFixture]:

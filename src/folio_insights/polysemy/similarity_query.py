@@ -1,94 +1,76 @@
-"""SPARQL-based axiom-disjointness check (OQ-1 per orchestrator lock).
+"""Similarity queries over prototype clusters — and nothing else (Phase 9 U6, KTD10).
 
-Rule 1 authoritative signal: 'framework-conflicting axiom' at Phase 1 =
-owl:disjointWith assertion in the TBox between framework-scoped classes
-attached to shards carrying the same termOfArt.
+PRD §8 P6 separation invariant: "Subsumption queries go through the reasoner.
+Similarity queries go through the prototype cluster. The API must not let the
+caller confuse them." This module is the similarity half. It answers how far
+apart two framework senses' prototype centroids are, as a ``SimilarityResult``.
 
-If no such assertion exists (common case at Phase 1 — TBox is sparse / not
-yet populated in fixtures), return False (treated as 'insufficient-evidence',
-NOT as 'maybe polysemous'). Orchestrator OQ-1 lock: we DO NOT fall through
-to embeddings for this signal in Phase 1; embeddings remain reporting-only
-evidence scores (prototype_cluster.centroid_distance_signal).
+It never answers subsumption or disjointness: those are entailment questions,
+answered by a ``reason.reasoner.SubsumptionReasoner`` as a ``SubsumptionResult``
+(the Rule 1 call lives in ``polysemy.tbox``). The Phase 1 version of this
+module held only the Rule 1 disjointness SPARQL, the opposite of its name; that
+moved to ``polysemy.tbox``. ``tests/polysemy/test_similarity_subsumption_guard.py``
+keeps this module free of SPARQL, OWL axioms and reasoner imports.
 
-SEC-01 discipline: all SPARQL goes through PyoxigraphStore.query_rdf12 (SERVICE
-preflight) — raw pyoxigraph.Store access is forbidden per Phase 0 wrapper.
+A distance is an EVIDENCE score (Pitfall 1), never a polysemy verdict.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pyoxigraph import NamedNode
-
 if TYPE_CHECKING:
-    from folio_insights.store.pyoxigraph_store import PyoxigraphStore
-
-CONSIDERATION_NAMED_GRAPH = "urn:folio:corpus/consideration-spike"
+    from folio_insights.polysemy.prototype_cluster import PrototypeCluster
 
 
-# NOTE — T-01-07 disposition: .format() interpolation is acceptable here
-# because:
-#   - `graph` is a module-level constant or caller-supplied named-graph URN
-#   - `term` comes from hand-curated ShardFixture JSON (not user input)
-#   - `fw_a`, `fw_b` are framework IRIs built by `fixture_framework_iri` from
-#     the locked Framework Literal enum (fixture_loader.Framework = CommonLaw |
-#     CivilLaw | Restatement | FRE | UCC) and serialized as pyoxigraph NamedNodes
-# Phase 16 will parametrize this via pyoxigraph initBindings once we ship a
-# public SPARQL surface.
-_DISJOINT_ASK = """
-PREFIX fi: <https://folio-insights.aleainstitute.ai/vocab/>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
+@dataclass(frozen=True)
+class SimilarityResult:
+    """Centroid cosine distance between two framework senses of one term.
 
-ASK {{
-  GRAPH <{graph}> {{
-    ?shard_a fi:termOfArt "{term}" ; fi:inFramework {fw_a} .
-    ?shard_b fi:termOfArt "{term}" ; fi:inFramework {fw_b} .
-    ?class_a owl:disjointWith ?class_b .
-    FILTER (?shard_a != ?shard_b)
-  }}
-}}
-"""
-
-
-def has_framework_conflicting_axiom(
-    store: "PyoxigraphStore",
-    term: str,
-    frameworks: list[str],
-    named_graph: str = CONSIDERATION_NAMED_GRAPH,
-) -> bool:
-    """Return True iff ANY pair of frameworks has an owl:disjointWith TBox
-    assertion between their term-scoped classes in `named_graph`.
-
-    Queries via PyoxigraphStore.query_rdf12 so SEC-01 SERVICE preflight
-    is inherited (raw pyoxigraph.Store is forbidden per Phase 0 wrapper
-    and by T-01-10 in the threat register).
-
-    At Phase 1 the TBox is typically empty → returns False → detector Rule 1
-    short-circuits to 'coincidence' with matched_rules=['R1-no-conflict'].
-    This is the intended default (OQ-1 orchestrator lock): absence of an
-    explicit axiom-conflict assertion means we do NOT treat cosine distance
-    as enough evidence.
-
-    Iterates all ordered pairs (sorted for determinism) and short-circuits
-    on first True. Each ASK is a cheap graph pattern; a handful of framework
-    pairs is acceptable at Phase 1 (O(n^2) with n ≤ 5 Frameworks).
+    ``distance`` is in [0, 2] (1 - cosine similarity of L2-normalized
+    centroids); ``similarity`` is ``1 - distance``. Not a subsumption answer
+    and not a ``SubsumptionResult`` (KTD10).
     """
-    from folio_insights.polysemy.fixture_loader import fixture_framework_iri
 
-    sorted_fw = sorted(frameworks)
-    for i, fw_a in enumerate(sorted_fw):
-        for fw_b in sorted_fw[i + 1:]:
-            sparql = _DISJOINT_ASK.format(
-                graph=named_graph,
-                term=term,
-                fw_a=NamedNode(fixture_framework_iri(fw_a)),
-                fw_b=NamedNode(fixture_framework_iri(fw_b)),
-            )
-            result = store.query_rdf12(
-                sparql, named_graphs=[NamedNode(named_graph)],
-            )
-            # pyoxigraph ASK returns a QueryBoolean (truthy). Normalize to
-            # bool so the return type is a clean Python bool regardless of
-            # pyoxigraph version.
-            if bool(result):
-                return True
-    return False
+    term: str
+    framework_a: str
+    framework_b: str
+    distance: float
+
+    @property
+    def similarity(self) -> float:
+        return 1.0 - self.distance
+
+
+def framework_similarity(
+    cluster: PrototypeCluster, framework_a: str, framework_b: str
+) -> SimilarityResult | None:
+    """The similarity of two frameworks' senses in ``cluster`` (None if either
+    framework has no centroid in it)."""
+    distance = cluster.cross_framework_cosine_distance.get((framework_a, framework_b))
+    if distance is None:
+        return None
+    return SimilarityResult(cluster.term, framework_a, framework_b, distance)
+
+
+def pairwise_similarities(cluster: PrototypeCluster) -> list[SimilarityResult]:
+    """Every unordered framework pair's similarity, sorted by framework pair."""
+    return [
+        SimilarityResult(cluster.term, a, b, distance)
+        for (a, b), distance in sorted(cluster.cross_framework_cosine_distance.items())
+        if a < b
+    ]
+
+
+def strongest_divergence(cluster: PrototypeCluster) -> SimilarityResult | None:
+    """The least similar framework pair (on a tie, the first in pair order)."""
+    pairs = pairwise_similarities(cluster)
+    return max(pairs, key=lambda r: r.distance) if pairs else None
+
+
+__all__ = [
+    "SimilarityResult",
+    "framework_similarity",
+    "pairwise_similarities",
+    "strongest_divergence",
+]
