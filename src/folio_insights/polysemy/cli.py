@@ -30,9 +30,12 @@ Commands
 
 Phase 9 U6: Rule 1 reads the TBox disjointness seeds (``tbox_seeds.ttl``); a
 ``reject`` needs a non-empty rationale (KTD9) and is refused otherwise; every
-review records ``labeler: "human"``. No command renders or applies a TBox fork:
-``distinguo.emit_distinguo_fork_ttl`` needs a human disposition, and nothing
-here calls it.
+review records ``labeler: "human"``. The ``modify`` path renders a Pattern-2
+PREVIEW of the reviewer's analogia triad (``distinguo.emit_fork_ttl``) to the
+terminal before asking for confirmation; it writes it to no graph. No command
+renders the TBox-bound PRD fork (``distinguo.emit_distinguo_fork_ttl``, which
+needs a logged human disposition of that exact fork) or applies any fork to a
+TBox.
 
 The dispositions log (default
 ``.planning/phases/01-polysemy-distinguo-spike/dispositions.jsonl``) is
@@ -237,17 +240,22 @@ def review_cmd(
             choices=_DISTINCTION_KINDS,
             show_choices=True,
         )
-        fork = ForkProposal(
-            term=term,
-            cluster_id=cluster.cluster_id,
-            uses_analogousTo=True,
-            prime_analogate=prime,
-            proportional_relation=proportional,
-            distinction_kind=dkind,
-            source_frameworks=tuple(frameworks),
-            reviewer_did=reviewer_did,
-            created_at_iso=_dt.datetime.now(_dt.UTC).isoformat(),
-        )
+        try:
+            fork = ForkProposal(
+                term=term,
+                cluster_id=cluster.cluster_id,
+                uses_analogousTo=True,
+                prime_analogate=prime,
+                proportional_relation=proportional,
+                distinction_kind=dkind,
+                source_frameworks=tuple(frameworks),
+                reviewer_did=reviewer_did,
+                created_at_iso=_dt.datetime.now(_dt.UTC).isoformat(),
+            )
+        except ValueError as exc:  # pydantic ValidationError is a ValueError
+            raise click.ClickException(
+                f"invalid modification (nothing was recorded): {exc}"
+            ) from exc
         # Pitfall 5 defense-in-depth (T-01-05-08): explicitly re-validate
         # before we commit or render, in case a future refactor replaces
         # the pydantic validator with a weaker construction path.

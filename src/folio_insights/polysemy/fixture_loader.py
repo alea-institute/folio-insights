@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -32,6 +33,28 @@ FIXTURE_FRAMEWORK_IDS: dict[str, str] = {
     "FRE": "us.federal.fre",
     "UCC": "us.ucc",
 }
+
+
+# Characters Turtle/SPARQL IRIREF forbids between ``<`` and ``>`` (RDF 1.1 Turtle §6.5).
+_IRIREF_ILLEGAL = re.compile(r'[\x00-\x20<>"{}|^`\\]')
+# A scheme (RFC 3987): an absolute IRI is needed in hand-built Turtle.
+_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
+
+
+def check_iri(value: object) -> str:
+    """Return ``value`` if it can sit inside ``<...>`` in Turtle, else raise
+    ``ValueError``: it must be an absolute IRI with none of the characters
+    IRIREF forbids, so it can never close the IRI and inject triples."""
+    if not isinstance(value, str) or not _SCHEME.match(value) or _IRIREF_ILLEGAL.search(value):
+        raise ValueError(f"{value!r} is not an absolute IRI usable in Turtle (IRIREF)")
+    return value
+
+
+def _turtle_literal(text: str) -> str:
+    """Escape ``text`` for a ``"..."`` Turtle literal (ECHAR)."""
+    return (
+        text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
+    )
 
 
 def resolve_framework_id(framework: str) -> str:
@@ -117,13 +140,13 @@ def consideration_fixtures_to_ttl(shards: list[ShardFixture]) -> str:
     )
     lines = [header]
     for s in shards:
-        axiom = s.axiom_summary.replace("\\", "\\\\").replace('"', '\\"')
-        src = s.source_doc.replace("\\", "\\\\").replace('"', '\\"')
+        # Every interpolated value is escaped (literals) or checked (IRIs), so
+        # fixture text can never close a literal or an IRI and inject triples.
         lines.append(
-            f"<{s.iri}> a fi:ShardFixture ;\n"
-            f'    fi:termOfArt "{s.term}" ;\n'
-            f"    fi:inFramework <{fixture_framework_iri(s.framework)}> ;\n"
-            f'    fi:sourceDoc "{src}" ;\n'
-            f'    fi:axiomSummary "{axiom}" .\n\n'
+            f"<{check_iri(s.iri)}> a fi:ShardFixture ;\n"
+            f'    fi:termOfArt "{_turtle_literal(s.term)}" ;\n'
+            f"    fi:inFramework <{check_iri(fixture_framework_iri(s.framework))}> ;\n"
+            f'    fi:sourceDoc "{_turtle_literal(s.source_doc)}" ;\n'
+            f'    fi:axiomSummary "{_turtle_literal(s.axiom_summary)}" .\n\n'
         )
     return "".join(lines)

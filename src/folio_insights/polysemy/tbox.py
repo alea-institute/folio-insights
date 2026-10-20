@@ -38,11 +38,22 @@ TERM_NS = "urn:folio:term/"
 SEEDS_RESOURCE = "tbox_seeds.ttl"
 
 
+def normalize_term(term: str) -> str:
+    """The key a term's classes are minted under: lowercase, single spaces.
+
+    Seeds, fixtures and the P1 candidate path (``candidates.concept_term``)
+    all go through this, so "Consideration", "consideration" and
+    " consideration " name the same term-scoped classes.
+    """
+    return " ".join(term.lower().split())
+
+
 def term_grouping_iri(term: str) -> str:
     """The IRI of a term's cross-framework grouping (the SKOS concept)."""
-    if not term:
+    key = normalize_term(term)
+    if not key:
         raise ValueError("an empty term has no grouping IRI")
-    return TERM_NS + quote(term, safe="")
+    return TERM_NS + quote(key, safe="")
 
 
 def term_class_iri(term: str, framework: str) -> str:
@@ -131,6 +142,7 @@ __all__ = [
     "framework_conflicts",
     "has_framework_conflicting_axiom",
     "load_tbox_seeds",
+    "normalize_term",
     "seed_ttl",
     "term_class_iri",
     "term_grouping_iri",

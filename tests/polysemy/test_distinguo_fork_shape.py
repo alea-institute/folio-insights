@@ -7,12 +7,14 @@ linking them and fi:primeAnalogate pointing to the common-law sense
 """
 from __future__ import annotations
 
+import sys
+
 import pytest
 from pydantic import ValidationError
 from pyoxigraph import NamedNode, RdfFormat, Store
 
 from folio_insights.models.framework import FrameworkRegistry, UnregisteredFramework
-from folio_insights.polysemy.dispositions import DispositionRecord, ProposedFork
+from folio_insights.polysemy.dispositions import DispositionRecord, append_disposition
 from folio_insights.polysemy.distinguo import (
     ForkNotReleased,
     build_distinguo_fork,
@@ -52,7 +54,7 @@ def _disposition(fork, **overrides) -> DispositionRecord:  # noqa: ANN001
     fields = dict(
         cluster_id=fork.cluster_id,
         term=fork.term,
-        proposed_fork=ProposedFork(cluster_id=fork.cluster_id, term=fork.term),
+        proposed_fork=fork.to_proposed_fork(),
         decision="accept",
         rationale="analogous senses; common-law prime",
         reviewer_did=fork.reviewer_did,
@@ -62,6 +64,22 @@ def _disposition(fork, **overrides) -> DispositionRecord:  # noqa: ANN001
     )
     fields.update(overrides)
     return DispositionRecord(**fields)
+
+
+@pytest.fixture(autouse=True)
+def _log(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: ANN001
+    """Each test logs its dispositions in its own dispositions log."""
+    monkeypatch.setattr(sys.modules[__name__], "LOG", tmp_path / "dispositions.jsonl")
+
+
+LOG = None  # set per test by ``_log``
+
+
+def _released(fork, **overrides) -> str:  # noqa: ANN001
+    """Log a human disposition of ``fork`` (with ``overrides``) and render the fork."""
+    record = _disposition(fork, **overrides)
+    append_disposition(record, LOG)
+    return emit_distinguo_fork_ttl(fork, record, dispositions_path=LOG)
 
 
 def _graph(ttl: str) -> Store:
@@ -76,7 +94,7 @@ def _objects(store: Store, s: str, p: str) -> set[str]:
 
 def test_canonical_fork_shape() -> None:
     fork = _fork()
-    store = _graph(emit_distinguo_fork_ttl(fork, _disposition(fork)))
+    store = _graph(_released(fork))
     rdf_type = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
     # Shared SKOS grouping that distinguishes both senses.
     assert f"{SKOS}Concept" in _objects(store, GROUPING, rdf_type)
@@ -98,7 +116,7 @@ def test_canonical_fork_shape() -> None:
 
 def test_prime_analogate_is_configurable() -> None:
     fork = _fork(prime_analogate=LA)
-    store = _graph(emit_distinguo_fork_ttl(fork, _disposition(fork)))
+    store = _graph(_released(fork))
     assert _objects(store, CL_SENSE, f"{FI}primeAnalogate") == {LA_SENSE}
     assert _objects(store, LA_SENSE, f"{FI}primeAnalogate") == set()
 
@@ -122,7 +140,7 @@ def test_fork_needs_registered_frameworks_and_the_triad() -> None:
 
 def test_fork_conforms_to_the_distinguo_shapes() -> None:
     fork = _fork()
-    report = pyshacl_adapter.validate(turtle_graph(emit_distinguo_fork_ttl(fork, _disposition(fork))),
+    report = pyshacl_adapter.validate(turtle_graph(_released(fork)),
                                       SUITE_PATHS)
     assert report.conforms, report.text
 
@@ -130,7 +148,7 @@ def test_fork_conforms_to_the_distinguo_shapes() -> None:
 def test_prd_appendix_c_analogical_pairs_query() -> None:
     """PRD Appendix C: 'all analogical pairs across common-law and civil-law frameworks'."""
     fork = _fork()
-    store = _graph(emit_distinguo_fork_ttl(fork, _disposition(fork)))
+    store = _graph(_released(fork))
     rows = list(store.query(f"""
         PREFIX fi: <{FI}>
         SELECT ?classA ?classB ?proportion WHERE {{
@@ -153,11 +171,9 @@ def test_prd_appendix_c_analogical_pairs_query() -> None:
 def test_fork_is_released_only_by_a_human_disposition(overrides: dict, reason: str) -> None:
     fork = _fork()
     with pytest.raises(ForkNotReleased, match=reason):
-        emit_distinguo_fork_ttl(fork, _disposition(fork, **overrides))
+        _released(fork, **overrides)
 
 
 def test_modify_releases_too() -> None:
     fork = _fork()
-    assert "fi:distinguishes" in emit_distinguo_fork_ttl(
-        fork, _disposition(fork, decision="modify")
-    )
+    assert "fi:distinguishes" in _released(fork, decision="modify")

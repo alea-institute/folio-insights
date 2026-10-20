@@ -47,7 +47,7 @@ def test_candidates_come_from_clusters_and_registry() -> None:
     clusters = ClusterBuilder(registry=registry).build(shards)
     found = polysemy_candidates(shards, clusters, registry)
 
-    assert [c.term for c in found.candidates] == [CONCEPT]
+    assert [(c.term, c.concept) for c in found.candidates] == [("consideration", CONCEPT)]
     candidate = found.candidates[0]
     assert candidate.frameworks == (CL, LA)
     assert [s.iri for s in candidate.shards] == [shards[0].shard_iri, shards[1].shard_iri,
@@ -56,6 +56,24 @@ def test_candidates_come_from_clusters_and_registry() -> None:
                for s, s0 in zip(candidate.shards, shards[:3]))
     assert all(c.startswith("doctrinal:") for c in candidate.clusters)
     assert found.unregistered_frameworks == {"us.unregistered_body": [shards[3].shard_iri]}
+
+
+def test_concept_term_keys() -> None:
+    from folio_insights.polysemy.candidates import concept_term
+
+    assert concept_term(folio("Consideration")) == "consideration"
+    assert concept_term("urn:x:vocab#GoodFaith") == "good faith"
+    assert concept_term("urn:x:vocab/marital_property/") == "marital property"
+
+
+def test_concept_label_overrides_the_local_name() -> None:
+    registry = FrameworkRegistry.with_defaults()
+    shards = [_about(1, CL, "a"), _about(2, LA, "b")]
+    clusters = ClusterBuilder(registry=registry).build(shards)
+    found = polysemy_candidates(shards, clusters, registry,
+                                concept_label=lambda iri: "  Bargained  Consideration ")
+    assert [c.term for c in found.candidates] == ["bargained consideration"]
+    assert {s.term for s in found.candidates[0].shards} == {"bargained consideration"}
 
 
 def test_single_framework_concept_is_not_a_candidate() -> None:
