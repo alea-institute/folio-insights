@@ -291,6 +291,46 @@ async def test_distiller_skips_non_substantive_units_without_a_model_call():
     assert unit.lineage[-1].action == "distill_skipped"
 
 
+async def test_atomic_distiller_drops_heading_inputs_without_a_model_call(monkeypatch):
+    from folio_insights.pipeline.stages.distiller import DistillerStage
+
+    def no_model(self, task):
+        raise AssertionError("heading input must never reach the model")
+
+    monkeypatch.setattr("folio_insights.services.bridge.llm_bridge.LLMBridge.get_llm_for_task",
+                        no_model)
+    job = _job(NOT_SUBSTANTIVE)
+    offset = 0
+    for text in NOT_SUBSTANTIVE:
+        job.units.append(KnowledgeUnit(
+            text=text, source_file="synthetic.md", unit_type=KnowledgeType.ADVICE,
+            original_span=Span(start=offset, end=offset + len(text), source_file="synthetic.md"),
+        ))
+        offset += len(text) + 2
+    await DistillerStage(atomic_extraction=True).execute(job)
+    assert not job.units
+    assert len(job.metadata["atomic_extraction"]["diagnostics"]) == len(NOT_SUBSTANTIVE)
+
+
+async def test_atomic_distiller_requires_canonical_source_without_inheriting_anchor(monkeypatch):
+    from folio_insights.pipeline.stages.distiller import DistillerStage
+
+    def no_model(self, task):
+        raise AssertionError("no canonical source must never reach the model")
+
+    monkeypatch.setattr("folio_insights.services.bridge.llm_bridge.LLMBridge.get_llm_for_task",
+                        no_model)
+    unit = KnowledgeUnit(
+        text=SUBSTANTIVE[0], source_file="absent.txt", unit_type=KnowledgeType.ADVICE,
+        original_span=Span(start=0, end=100, source_file="absent.txt"),
+        anchor_verified=True, anchor_score=1.0,
+    )
+    job = InsightsJob(corpus_name="synthetic", source_dir="/nonexistent", units=[unit])
+    await DistillerStage(atomic_extraction=True).execute(job)
+    assert not job.units
+    assert job.metadata["atomic_extraction"]["diagnostics"][0]["reason"] == "missing_source"
+
+
 # ---------- ingestion: elementless bridge output on a binary container ----------
 
 

@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from folio_insights.models.knowledge_unit import LocalPropositionId, PropositionKind, PropositionLink
 
 
 class DistilledOutput(BaseModel):
@@ -19,6 +21,27 @@ class DistilledOutput(BaseModel):
 
     distilled_text: str
     preserved_nuances: list[str] = Field(default_factory=list)
+
+
+class AtomicProposition(BaseModel):
+    """Model selections only; source offsets, identity and support belong to code."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: LocalPropositionId
+    text: str = Field(min_length=1)
+    kind: PropositionKind
+    support_ids: list[LocalPropositionId] = Field(min_length=1)
+    links: list[PropositionLink] = Field(default_factory=list)
+    citations: list[str] = Field(default_factory=list)
+
+
+class AtomicDistilledOutput(BaseModel):
+    """Atomic statements and document-local relationships, without model-minted IRIs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    propositions: list[AtomicProposition]
 
 
 class ClassificationOutput(BaseModel):

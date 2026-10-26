@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     # contents entry, attribution); the distiller additionally skips text shorter than this.
     min_substantive_chars: int = 20
 
+    # U38 remains inactive until the held-out gate accepts this extraction configuration.
+    # Env: FOLIO_INSIGHTS_ATOMIC_EXTRACTION.
+    atomic_extraction: bool = False
+
     # Abandoned paused jobs (R18, KTD13): a needs_credentials / budget_exhausted job nobody
     # resumed within this many seconds is cancelled as "expired", so it stops blocking its
     # corpus. 0 or negative disables the sweep; non-finite values are rejected.

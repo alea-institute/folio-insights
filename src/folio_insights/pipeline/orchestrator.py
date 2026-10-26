@@ -193,7 +193,7 @@ class PipelineOrchestrator:
             IngestionStage(self.settings),
             StructureParserStage(),
             BoundaryDetectionStage(),
-            DistillerStage(),
+            DistillerStage(atomic_extraction=self.settings.atomic_extraction),
             KnowledgeClassifierStage(),
             FolioTaggerStage(),
             DeduplicatorStage(),
@@ -277,6 +277,14 @@ class PipelineOrchestrator:
             if resume and PipelineCheckpoint.has_checkpoint(stage_name, corpus_dir, checkpoint_dir):
                 restored = PipelineCheckpoint.load(stage_name, corpus_dir, checkpoint_dir)
                 if restored is not None:
+                    if stage_name in {"distiller", "knowledge_classifier", "folio_tagger",
+                                      "deduplicator"}:
+                        atomic = restored.metadata.get("atomic_extraction", {}).get("enabled", False)
+                        if atomic != self.settings.atomic_extraction:
+                            raise ValueError(
+                                "atomic_extraction differs from checkpoint; use resume=False "
+                                "or a separate checkpoint directory"
+                            )
                     job = restored
                     # Template identities of stages run before the resume stay in the record.
                     current_context().merge_templates(job.metadata.get("llm_templates"))
