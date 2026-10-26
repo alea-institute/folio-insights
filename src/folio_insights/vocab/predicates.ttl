@@ -640,3 +640,270 @@ fi:closedUnder a owl:ObjectProperty ;
 fi:ClosedWorldScope: inside that scope a negation-as-failure answer is complete.
 A new term, deliberately separate from fi:closureMarker, whose Russellian
 unit-boundary meaning is unchanged (Phase 9 KTD8).""" .
+
+# U35: full validation-view fields, including atomic tags, links and identity.
+# These declarations do not turn typed proposition links into dependencies.
+
+fi:triple a owl:ObjectProperty ;
+    rdfs:label "triple" ;
+    rdfs:comment "SimpleAssertionShard.triple in the full record validation view." .
+
+fi:logicalFormImputed a owl:DatatypeProperty ;
+    rdfs:label "logical form imputed" ;
+    rdfs:comment "SimpleAssertionShard.logical_form_imputed in the full record validation view." .
+
+fi:layer a owl:DatatypeProperty ;
+    rdfs:label "layer" ;
+    rdfs:comment "SimpleAssertionShard.layer in the full record validation view." .
+
+fi:fork a owl:DatatypeProperty ;
+    rdfs:label "fork" ;
+    rdfs:comment "SimpleAssertionShard.fork in the full record validation view." .
+
+fi:verificationMethod a owl:DatatypeProperty ;
+    rdfs:label "verification method" ;
+    rdfs:comment "SimpleAssertionShard.verification_method in the full record validation view." .
+
+fi:extractorVersion a owl:DatatypeProperty ;
+    rdfs:label "extractor version" ;
+    rdfs:comment "SimpleAssertionShard.extractor_version in the full record validation view." .
+
+fi:extractionPromptHash a owl:DatatypeProperty ;
+    rdfs:label "extraction prompt hash" ;
+    rdfs:comment "SimpleAssertionShard.extraction_prompt_hash in the full record validation view." .
+
+fi:signatures a owl:ObjectProperty ;
+    rdfs:label "signatures" ;
+    rdfs:comment "SimpleAssertionShard.signatures in the full record validation view." .
+
+fi:contestVotes a owl:ObjectProperty ;
+    rdfs:label "contest votes" ;
+    rdfs:comment "SimpleAssertionShard.contest_votes in the full record validation view." .
+
+fi:utrum a owl:DatatypeProperty ;
+    rdfs:label "utrum" ;
+    rdfs:comment "DisputedPropositionShard.utrum in the full record validation view." .
+
+fi:objections a owl:ObjectProperty ;
+    rdfs:label "objections" ;
+    rdfs:comment "DisputedPropositionShard.objections in the full record validation view." .
+
+fi:sedContra a owl:ObjectProperty ;
+    rdfs:label "sed contra" ;
+    rdfs:comment "DisputedPropositionShard.sed_contra in the full record validation view." .
+
+fi:respondeo a owl:DatatypeProperty ;
+    rdfs:label "respondeo" ;
+    rdfs:comment "DisputedPropositionShard.respondeo in the full record validation view." .
+
+fi:usesDistinctions a owl:DatatypeProperty ;
+    rdfs:label "uses distinctions" ;
+    rdfs:comment "DisputedPropositionShard.uses_distinctions in the full record validation view." .
+
+fi:replies a owl:ObjectProperty ;
+    rdfs:label "replies" ;
+    rdfs:comment "DisputedPropositionShard.replies in the full record validation view." .
+
+fi:sic a owl:ObjectProperty ;
+    rdfs:label "sic" ;
+    rdfs:comment "ConflictingAuthoritiesShard.sic in the full record validation view." .
+
+fi:non a owl:ObjectProperty ;
+    rdfs:label "non" ;
+    rdfs:comment "ConflictingAuthoritiesShard.non in the full record validation view." .
+
+fi:reconciliationNote a owl:DatatypeProperty ;
+    rdfs:label "reconciliation note" ;
+    rdfs:comment "ConflictingAuthoritiesShard.reconciliation_note in the full record validation view." .
+
+fi:glosses a owl:DatatypeProperty ;
+    rdfs:label "glosses" ;
+    rdfs:comment "GlossShard.glosses in the full record validation view." .
+
+fi:glossKind a owl:DatatypeProperty ;
+    rdfs:label "gloss kind" ;
+    rdfs:comment "GlossShard.gloss_kind in the full record validation view." .
+
+fi:glossText a owl:DatatypeProperty ;
+    rdfs:label "gloss text" ;
+    rdfs:comment "GlossShard.gloss_text in the full record validation view." .
+
+fi:generationMethod a owl:DatatypeProperty ;
+    rdfs:label "generation method" ;
+    rdfs:comment "HypothesisShard.generation_method in the full record validation view." .
+
+fi:promotionRequirements a owl:DatatypeProperty ;
+    rdfs:label "promotion requirements" ;
+    rdfs:comment "HypothesisShard.promotion_requirements in the full record validation view." .
+
+fi:ttlDays a owl:DatatypeProperty ;
+    rdfs:label "ttl days" ;
+    rdfs:comment "HypothesisShard.ttl_days in the full record validation view." .
+
+fi:citationRequired a owl:DatatypeProperty ;
+    rdfs:label "citation required" ;
+    rdfs:comment "HypothesisShard.citation_required in the full record validation view." .
+
+fi:identityRecipe a owl:DatatypeProperty ;
+    rdfs:label "identity recipe" ;
+    rdfs:comment "Explicit legacy-v1 or atomic-v1 shard identity recipe; never inferred from tags or links." .
+
+fi:propositionKey a owl:DatatypeProperty ;
+    rdfs:label "proposition key" ;
+    rdfs:comment "Frozen digest of atomic text, source offsets and snapshot digest, under atomic-v1." .
+
+fi:atomicIdentity a owl:ObjectProperty ;
+    rdfs:label "atomic identity" ;
+    rdfs:comment "Frozen extraction-time basis of an atomic proposition key, retained through reviewed edits." .
+
+fi:folioTags a owl:ObjectProperty ;
+    rdfs:label "folio tags" ;
+    rdfs:comment "Complete resolved tags with branch and selection provenance, without selecting a primary tag." .
+
+fi:links a owl:ObjectProperty ;
+    rdfs:label "links" ;
+    rdfs:comment "Typed proposition references, distinct from logical dependsOn* edges and their DAG rules." .
+
+fi:legacyHierarchy a owl:ObjectProperty ;
+    rdfs:label "legacy hierarchy" ;
+    rdfs:comment "Historical compatibility archive; never active proposition links or navigation." .
+
+fi:subject a owl:DatatypeProperty ;
+    rdfs:label "subject" ;
+    rdfs:comment "Triple.subject in the full record validation view." .
+
+fi:predicate a owl:DatatypeProperty ;
+    rdfs:label "predicate" ;
+    rdfs:comment "Triple.predicate in the full record validation view." .
+
+fi:object a owl:DatatypeProperty ;
+    rdfs:label "object" ;
+    rdfs:comment "Triple.object in the full record validation view." .
+
+fi:objectDatatype a owl:DatatypeProperty ;
+    rdfs:label "object datatype" ;
+    rdfs:comment "Triple.object_datatype in the full record validation view." .
+
+fi:signature a owl:DatatypeProperty ;
+    rdfs:label "signature" ;
+    rdfs:comment "AttestedSignature.signature in the full record validation view." .
+
+fi:didDocSnapshotAt a owl:DatatypeProperty ;
+    rdfs:label "did doc snapshot at" ;
+    rdfs:comment "AttestedSignature.did_doc_snapshot_at in the full record validation view." .
+
+fi:verified a owl:DatatypeProperty ;
+    rdfs:label "verified" ;
+    rdfs:comment "AttestedSignature.verified in the full record validation view." .
+
+fi:cosigners a owl:ObjectProperty ;
+    rdfs:label "cosigners" ;
+    rdfs:comment "AttestedSignature.cosigners in the full record validation view." .
+
+fi:oldValue a owl:DatatypeProperty ;
+    rdfs:label "old value" ;
+    rdfs:comment "ContentEdit.old_value in the full record validation view." .
+
+fi:newValue a owl:DatatypeProperty ;
+    rdfs:label "new value" ;
+    rdfs:comment "ContentEdit.new_value in the full record validation view." .
+
+fi:editorDid a owl:DatatypeProperty ;
+    rdfs:label "editor did" ;
+    rdfs:comment "ContentEdit.editor_did in the full record validation view." .
+
+fi:cites a owl:DatatypeProperty ;
+    rdfs:label "cites" ;
+    rdfs:comment "Objection.cites in the full record validation view." .
+
+fi:argues a owl:DatatypeProperty ;
+    rdfs:label "argues" ;
+    rdfs:comment "Objection.argues in the full record validation view." .
+
+fi:strength a owl:DatatypeProperty ;
+    rdfs:label "strength" ;
+    rdfs:comment "Objection.strength in the full record validation view." .
+
+fi:objectionIndex a owl:DatatypeProperty ;
+    rdfs:label "objection index" ;
+    rdfs:comment "Reply.objection_index in the full record validation view." .
+
+fi:repliesVia a owl:DatatypeProperty ;
+    rdfs:label "replies via" ;
+    rdfs:comment "Reply.replies_via in the full record validation view." .
+
+fi:argument a owl:DatatypeProperty ;
+    rdfs:label "argument" ;
+    rdfs:comment "Reply.argument in the full record validation view." .
+
+fi:authorityIri a owl:DatatypeProperty ;
+    rdfs:label "authority iri" ;
+    rdfs:comment "AuthorityPosition.authority_iri in the full record validation view." .
+
+fi:weight a owl:DatatypeProperty ;
+    rdfs:label "weight" ;
+    rdfs:comment "AuthorityPosition.weight in the full record validation view." .
+
+fi:text a owl:DatatypeProperty ;
+    rdfs:label "text" ;
+    rdfs:comment "AtomicIdentity.text in the full record validation view." .
+
+fi:start a owl:DatatypeProperty ;
+    rdfs:label "start" ;
+    rdfs:comment "AtomicIdentity.start in the full record validation view." .
+
+fi:end a owl:DatatypeProperty ;
+    rdfs:label "end" ;
+    rdfs:comment "AtomicIdentity.end in the full record validation view." .
+
+fi:sourceSnapshotDigest a owl:DatatypeProperty ;
+    rdfs:label "source snapshot digest" ;
+    rdfs:comment "AtomicIdentity.source_snapshot_digest in the full record validation view." .
+
+fi:iri a owl:DatatypeProperty ;
+    rdfs:label "iri" ;
+    rdfs:comment "ShardTag.iri in the full record validation view." .
+
+fi:label a owl:DatatypeProperty ;
+    rdfs:label "label" ;
+    rdfs:comment "ShardTag.label in the full record validation view." .
+
+fi:extractionPath a owl:DatatypeProperty ;
+    rdfs:label "extraction path" ;
+    rdfs:comment "ShardTag.extraction_path in the full record validation view." .
+
+fi:branch a owl:DatatypeProperty ;
+    rdfs:label "branch" ;
+    rdfs:comment "ShardTag.branch in the full record validation view." .
+
+fi:judgeStatus a owl:DatatypeProperty ;
+    rdfs:label "judge status" ;
+    rdfs:comment "ShardTag.judge_status in the full record validation view." .
+
+fi:relation a owl:DatatypeProperty ;
+    rdfs:label "relation" ;
+    rdfs:comment "One of exception-to, penalty-for, condition-of, cites or contradicts; not a logical dependency." .
+
+fi:targetIri a owl:DatatypeProperty ;
+    rdfs:label "target iri" ;
+    rdfs:comment "PropositionLink.target_iri in the full record validation view." .
+
+fi:citation a owl:DatatypeProperty ;
+    rdfs:label "citation" ;
+    rdfs:comment "PropositionLink.citation in the full record validation view." .
+
+fi:historicalElaborates a owl:DatatypeProperty ;
+    rdfs:label "historical elaborates" ;
+    rdfs:comment "Archived legacy parent identifiers as recorded; neither fi:elaborates edges nor inferred condition-of links." .
+
+fi:entryKey a owl:DatatypeProperty ;
+    rdfs:label "entryKey" ;
+    rdfs:comment "String key of a record map entry." .
+
+fi:entryValue a owl:DatatypeProperty ;
+    rdfs:label "entryValue" ;
+    rdfs:comment "Scalar value of a record map entry." .
+
+fi:listIndex a owl:DatatypeProperty ;
+    rdfs:label "listIndex" ;
+    rdfs:comment "Position of a nested record in its list." .

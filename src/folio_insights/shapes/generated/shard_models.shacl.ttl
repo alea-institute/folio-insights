@@ -1667,6 +1667,1841 @@ fis:gen-HypothesisShard a sh:NodeShape ;
         sh:message "HypothesisShard.citation_required must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
     ] .
 
+fis:gen-AtomicSimpleAssertionShard a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.records.AtomicSimpleAssertionShard." ;
+    sh:targetClass fi:AtomicSimpleAssertionShard ;
+    sh:closed true ;
+    sh:message "AtomicSimpleAssertionShard is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:name "shard_iri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.shard_iri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:provenanceHash ;
+        sh:name "provenance_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.provenance_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceUri ;
+        sh:name "source_uri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.source_uri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceSpan ;
+        sh:name "source_span" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.source_span must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractedAt ;
+        sh:name "extracted_at" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicSimpleAssertionShard.extracted_at must be required, single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:firstExtractorDid ;
+        sh:name "first_extractor_did" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.first_extractor_did must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:schemaVersion ;
+        sh:name "schema_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "AtomicSimpleAssertionShard.schema_version must be single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:shardType ;
+        sh:name "shard_type" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "simple_assertion" ) ;
+        sh:message "AtomicSimpleAssertionShard.shard_type must be single-valued, one of simple_assertion (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:triple ;
+        sh:name "triple" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-Triple ;
+        sh:message "AtomicSimpleAssertionShard.triple must be required, single-valued, a Triple (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sense ;
+        sh:name "sense" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.sense must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reference ;
+        sh:name "reference" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.reference must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:logicalFormImputed ;
+        sh:name "logical_form_imputed" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.logical_form_imputed must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:layer ;
+        sh:name "layer" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "L0_primitive" "L1_definitional" "L2_composed" "L3_jurisdictional" ) ;
+        sh:message "AtomicSimpleAssertionShard.layer must be required, single-valued, one of L0_primitive, L1_definitional, L2_composed, L3_jurisdictional (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:predicationMode ;
+        sh:name "predication_mode" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se" "per_accidens" ) ;
+        sh:message "AtomicSimpleAssertionShard.predication_mode must be required, single-valued, one of per_se, per_accidens (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:fork ;
+        sh:name "fork" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "analytic" "synthetic_a_posteriori" "synthetic_a_priori" ) ;
+        sh:message "AtomicSimpleAssertionShard.fork must be required, single-valued, one of analytic, synthetic_a_posteriori, synthetic_a_priori (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:epistemicStatus ;
+        sh:name "epistemic_status" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se_nota_quoad_se" "per_se_nota_quoad_nos" "demonstrable" "authority_only" "aporetic" "hypothesis" "contested" "superseded" ) ;
+        sh:message "AtomicSimpleAssertionShard.epistemic_status must be required, single-valued, one of per_se_nota_quoad_se, per_se_nota_quoad_nos, demonstrable, authority_only, aporetic, hypothesis, contested, superseded (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:verificationMethod ;
+        sh:name "verification_method" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "textual_citation" "definitional_derivation" "inferential_chain" "extractor_assertion" "reviewer_attested" ) ;
+        sh:message "AtomicSimpleAssertionShard.verification_method must be required, single-valued, one of textual_citation, definitional_derivation, inferential_chain, extractor_assertion, reviewer_attested (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnAxiom ;
+        sh:name "depends_on_axioms" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.depends_on_axioms must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnDefinition ;
+        sh:name "depends_on_definitions" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.depends_on_definitions must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnPrecedent ;
+        sh:name "depends_on_precedents" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.depends_on_precedents must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnShard ;
+        sh:name "depends_on_shards" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.depends_on_shards must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:frameworkId ;
+        sh:name "framework_id" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.framework_id must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:speechAct ;
+        sh:name "speech_act" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "holding" "dictum" "statutory_text" "statutory_definition" "regulatory_text" "pleading_argument" "contract_term" "treatise_statement" "restatement_black_letter" "practitioner_advice" "administrative_interpretation" ) ;
+        sh:message "AtomicSimpleAssertionShard.speech_act must be required, single-valued, one of holding, dictum, statutory_text, statutory_definition, regulatory_text, pleading_argument, contract_term, treatise_statement, restatement_black_letter, practitioner_advice, administrative_interpretation (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorVersion ;
+        sh:name "extractor_version" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.extractor_version must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractionPromptHash ;
+        sh:name "extraction_prompt_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.extraction_prompt_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorModel ;
+        sh:name "extractor_model" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.extractor_model must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:signatures ;
+        sh:name "signatures" ;
+        sh:node fis:gen-AttestedSignature ;
+        sh:message "AtomicSimpleAssertionShard.signatures must be list, a AttestedSignature (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contentEdits ;
+        sh:name "content_edits" ;
+        sh:node fis:gen-ContentEdit ;
+        sh:message "AtomicSimpleAssertionShard.content_edits must be list, a ContentEdit (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:confidence ;
+        sh:name "confidence" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:double ;
+        sh:minInclusive "0.0"^^xsd:double ;
+        sh:maxInclusive "1.0"^^xsd:double ;
+        sh:message "AtomicSimpleAssertionShard.confidence must be required, single-valued, xsd:double, in [0.0, 1.0] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:bfoCategory ;
+        sh:name "bfo_category" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "continuant_independent" "continuant_dependent" "occurrent_process" "occurrent_event" ) ;
+        sh:message "AtomicSimpleAssertionShard.bfo_category must be required, single-valued, one of continuant_independent, continuant_dependent, occurrent_process, occurrent_event (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeStart ;
+        sh:name "valid_time_start" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicSimpleAssertionShard.valid_time_start must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeEnd ;
+        sh:name "valid_time_end" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicSimpleAssertionShard.valid_time_end must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:transactionTime ;
+        sh:name "transaction_time" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicSimpleAssertionShard.transaction_time must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:vocabVersion ;
+        sh:name "vocab_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.vocab_version must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersedes ;
+        sh:name "supersedes" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.supersedes must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersededBy ;
+        sh:name "superseded_by" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicSimpleAssertionShard.superseded_by must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contested ;
+        sh:name "contested" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+        sh:message "AtomicSimpleAssertionShard.contested must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contestVotes ;
+        sh:name "contest_votes" ;
+        sh:node fis:gen-MapEntry-string ;
+        sh:message "AtomicSimpleAssertionShard.contest_votes must be a string-keyed map (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:identityRecipe ;
+        sh:name "identity_recipe" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "legacy-v1" "atomic-v1" ) ;
+        sh:message "AtomicSimpleAssertionShard.identity_recipe must be required, single-valued, one of legacy-v1, atomic-v1 (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:propositionKey ;
+        sh:name "proposition_key" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:message "AtomicSimpleAssertionShard.proposition_key must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:atomicIdentity ;
+        sh:name "atomic_identity" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-AtomicIdentity ;
+        sh:message "AtomicSimpleAssertionShard.atomic_identity must be single-valued, a AtomicIdentity (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:folioTags ;
+        sh:name "folio_tags" ;
+        sh:node fis:gen-ShardTag ;
+        sh:message "AtomicSimpleAssertionShard.folio_tags must be list, a ShardTag (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:links ;
+        sh:name "links" ;
+        sh:node fis:gen-PropositionLink ;
+        sh:message "AtomicSimpleAssertionShard.links must be list, a PropositionLink (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:legacyHierarchy ;
+        sh:name "legacy_hierarchy" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-LegacyHierarchy ;
+        sh:message "AtomicSimpleAssertionShard.legacy_hierarchy must be single-valued, a LegacyHierarchy (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [ sh:path fi:schemaVersion ; sh:hasValue 3 ; ] .
+
+fis:gen-AtomicDisputedPropositionShard a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.records.AtomicDisputedPropositionShard." ;
+    sh:targetClass fi:AtomicDisputedPropositionShard ;
+    sh:closed true ;
+    sh:message "AtomicDisputedPropositionShard is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:name "shard_iri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.shard_iri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:provenanceHash ;
+        sh:name "provenance_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.provenance_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceUri ;
+        sh:name "source_uri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.source_uri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceSpan ;
+        sh:name "source_span" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.source_span must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractedAt ;
+        sh:name "extracted_at" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicDisputedPropositionShard.extracted_at must be required, single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:firstExtractorDid ;
+        sh:name "first_extractor_did" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.first_extractor_did must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:schemaVersion ;
+        sh:name "schema_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "AtomicDisputedPropositionShard.schema_version must be single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:shardType ;
+        sh:name "shard_type" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "disputed_proposition" ) ;
+        sh:message "AtomicDisputedPropositionShard.shard_type must be single-valued, one of disputed_proposition (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:triple ;
+        sh:name "triple" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-Triple ;
+        sh:message "AtomicDisputedPropositionShard.triple must be required, single-valued, a Triple (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sense ;
+        sh:name "sense" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.sense must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reference ;
+        sh:name "reference" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.reference must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:logicalFormImputed ;
+        sh:name "logical_form_imputed" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.logical_form_imputed must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:layer ;
+        sh:name "layer" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "L0_primitive" "L1_definitional" "L2_composed" "L3_jurisdictional" ) ;
+        sh:message "AtomicDisputedPropositionShard.layer must be required, single-valued, one of L0_primitive, L1_definitional, L2_composed, L3_jurisdictional (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:predicationMode ;
+        sh:name "predication_mode" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se" "per_accidens" ) ;
+        sh:message "AtomicDisputedPropositionShard.predication_mode must be required, single-valued, one of per_se, per_accidens (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:fork ;
+        sh:name "fork" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "analytic" "synthetic_a_posteriori" "synthetic_a_priori" ) ;
+        sh:message "AtomicDisputedPropositionShard.fork must be required, single-valued, one of analytic, synthetic_a_posteriori, synthetic_a_priori (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:epistemicStatus ;
+        sh:name "epistemic_status" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se_nota_quoad_se" "per_se_nota_quoad_nos" "demonstrable" "authority_only" "aporetic" "hypothesis" "contested" "superseded" ) ;
+        sh:message "AtomicDisputedPropositionShard.epistemic_status must be required, single-valued, one of per_se_nota_quoad_se, per_se_nota_quoad_nos, demonstrable, authority_only, aporetic, hypothesis, contested, superseded (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:verificationMethod ;
+        sh:name "verification_method" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "textual_citation" "definitional_derivation" "inferential_chain" "extractor_assertion" "reviewer_attested" ) ;
+        sh:message "AtomicDisputedPropositionShard.verification_method must be required, single-valued, one of textual_citation, definitional_derivation, inferential_chain, extractor_assertion, reviewer_attested (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnAxiom ;
+        sh:name "depends_on_axioms" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.depends_on_axioms must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnDefinition ;
+        sh:name "depends_on_definitions" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.depends_on_definitions must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnPrecedent ;
+        sh:name "depends_on_precedents" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.depends_on_precedents must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnShard ;
+        sh:name "depends_on_shards" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.depends_on_shards must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:frameworkId ;
+        sh:name "framework_id" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.framework_id must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:speechAct ;
+        sh:name "speech_act" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "holding" "dictum" "statutory_text" "statutory_definition" "regulatory_text" "pleading_argument" "contract_term" "treatise_statement" "restatement_black_letter" "practitioner_advice" "administrative_interpretation" ) ;
+        sh:message "AtomicDisputedPropositionShard.speech_act must be required, single-valued, one of holding, dictum, statutory_text, statutory_definition, regulatory_text, pleading_argument, contract_term, treatise_statement, restatement_black_letter, practitioner_advice, administrative_interpretation (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorVersion ;
+        sh:name "extractor_version" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.extractor_version must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractionPromptHash ;
+        sh:name "extraction_prompt_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.extraction_prompt_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorModel ;
+        sh:name "extractor_model" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.extractor_model must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:signatures ;
+        sh:name "signatures" ;
+        sh:node fis:gen-AttestedSignature ;
+        sh:message "AtomicDisputedPropositionShard.signatures must be list, a AttestedSignature (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contentEdits ;
+        sh:name "content_edits" ;
+        sh:node fis:gen-ContentEdit ;
+        sh:message "AtomicDisputedPropositionShard.content_edits must be list, a ContentEdit (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:confidence ;
+        sh:name "confidence" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:double ;
+        sh:minInclusive "0.0"^^xsd:double ;
+        sh:maxInclusive "1.0"^^xsd:double ;
+        sh:message "AtomicDisputedPropositionShard.confidence must be required, single-valued, xsd:double, in [0.0, 1.0] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:bfoCategory ;
+        sh:name "bfo_category" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "continuant_independent" "continuant_dependent" "occurrent_process" "occurrent_event" ) ;
+        sh:message "AtomicDisputedPropositionShard.bfo_category must be required, single-valued, one of continuant_independent, continuant_dependent, occurrent_process, occurrent_event (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeStart ;
+        sh:name "valid_time_start" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicDisputedPropositionShard.valid_time_start must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeEnd ;
+        sh:name "valid_time_end" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicDisputedPropositionShard.valid_time_end must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:transactionTime ;
+        sh:name "transaction_time" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicDisputedPropositionShard.transaction_time must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:vocabVersion ;
+        sh:name "vocab_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.vocab_version must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersedes ;
+        sh:name "supersedes" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.supersedes must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersededBy ;
+        sh:name "superseded_by" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.superseded_by must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contested ;
+        sh:name "contested" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+        sh:message "AtomicDisputedPropositionShard.contested must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contestVotes ;
+        sh:name "contest_votes" ;
+        sh:node fis:gen-MapEntry-string ;
+        sh:message "AtomicDisputedPropositionShard.contest_votes must be a string-keyed map (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:utrum ;
+        sh:name "utrum" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.utrum must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:objections ;
+        sh:name "objections" ;
+        sh:node fis:gen-Objection ;
+        sh:message "AtomicDisputedPropositionShard.objections must be list, a Objection (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sedContra ;
+        sh:name "sed_contra" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-Objection ;
+        sh:message "AtomicDisputedPropositionShard.sed_contra must be required, single-valued, a Objection (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:respondeo ;
+        sh:name "respondeo" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.respondeo must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:usesDistinctions ;
+        sh:name "uses_distinctions" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicDisputedPropositionShard.uses_distinctions must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:replies ;
+        sh:name "replies" ;
+        sh:node fis:gen-Reply ;
+        sh:message "AtomicDisputedPropositionShard.replies must be list, a Reply (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:identityRecipe ;
+        sh:name "identity_recipe" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "legacy-v1" "atomic-v1" ) ;
+        sh:message "AtomicDisputedPropositionShard.identity_recipe must be required, single-valued, one of legacy-v1, atomic-v1 (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:propositionKey ;
+        sh:name "proposition_key" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:message "AtomicDisputedPropositionShard.proposition_key must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:atomicIdentity ;
+        sh:name "atomic_identity" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-AtomicIdentity ;
+        sh:message "AtomicDisputedPropositionShard.atomic_identity must be single-valued, a AtomicIdentity (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:folioTags ;
+        sh:name "folio_tags" ;
+        sh:node fis:gen-ShardTag ;
+        sh:message "AtomicDisputedPropositionShard.folio_tags must be list, a ShardTag (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:links ;
+        sh:name "links" ;
+        sh:node fis:gen-PropositionLink ;
+        sh:message "AtomicDisputedPropositionShard.links must be list, a PropositionLink (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:legacyHierarchy ;
+        sh:name "legacy_hierarchy" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-LegacyHierarchy ;
+        sh:message "AtomicDisputedPropositionShard.legacy_hierarchy must be single-valued, a LegacyHierarchy (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [ sh:path fi:schemaVersion ; sh:hasValue 3 ; ] .
+
+fis:gen-AtomicConflictingAuthoritiesShard a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.records.AtomicConflictingAuthoritiesShard." ;
+    sh:targetClass fi:AtomicConflictingAuthoritiesShard ;
+    sh:closed true ;
+    sh:message "AtomicConflictingAuthoritiesShard is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:name "shard_iri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.shard_iri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:provenanceHash ;
+        sh:name "provenance_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.provenance_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceUri ;
+        sh:name "source_uri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.source_uri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceSpan ;
+        sh:name "source_span" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.source_span must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractedAt ;
+        sh:name "extracted_at" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicConflictingAuthoritiesShard.extracted_at must be required, single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:firstExtractorDid ;
+        sh:name "first_extractor_did" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.first_extractor_did must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:schemaVersion ;
+        sh:name "schema_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "AtomicConflictingAuthoritiesShard.schema_version must be single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:shardType ;
+        sh:name "shard_type" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "conflicting_authorities" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.shard_type must be single-valued, one of conflicting_authorities (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:triple ;
+        sh:name "triple" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-Triple ;
+        sh:message "AtomicConflictingAuthoritiesShard.triple must be required, single-valued, a Triple (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sense ;
+        sh:name "sense" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.sense must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reference ;
+        sh:name "reference" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.reference must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:logicalFormImputed ;
+        sh:name "logical_form_imputed" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.logical_form_imputed must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:layer ;
+        sh:name "layer" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "L0_primitive" "L1_definitional" "L2_composed" "L3_jurisdictional" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.layer must be required, single-valued, one of L0_primitive, L1_definitional, L2_composed, L3_jurisdictional (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:predicationMode ;
+        sh:name "predication_mode" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se" "per_accidens" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.predication_mode must be required, single-valued, one of per_se, per_accidens (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:fork ;
+        sh:name "fork" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "analytic" "synthetic_a_posteriori" "synthetic_a_priori" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.fork must be required, single-valued, one of analytic, synthetic_a_posteriori, synthetic_a_priori (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:epistemicStatus ;
+        sh:name "epistemic_status" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se_nota_quoad_se" "per_se_nota_quoad_nos" "demonstrable" "authority_only" "aporetic" "hypothesis" "contested" "superseded" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.epistemic_status must be required, single-valued, one of per_se_nota_quoad_se, per_se_nota_quoad_nos, demonstrable, authority_only, aporetic, hypothesis, contested, superseded (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:verificationMethod ;
+        sh:name "verification_method" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "textual_citation" "definitional_derivation" "inferential_chain" "extractor_assertion" "reviewer_attested" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.verification_method must be required, single-valued, one of textual_citation, definitional_derivation, inferential_chain, extractor_assertion, reviewer_attested (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnAxiom ;
+        sh:name "depends_on_axioms" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.depends_on_axioms must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnDefinition ;
+        sh:name "depends_on_definitions" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.depends_on_definitions must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnPrecedent ;
+        sh:name "depends_on_precedents" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.depends_on_precedents must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnShard ;
+        sh:name "depends_on_shards" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.depends_on_shards must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:frameworkId ;
+        sh:name "framework_id" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.framework_id must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:speechAct ;
+        sh:name "speech_act" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "holding" "dictum" "statutory_text" "statutory_definition" "regulatory_text" "pleading_argument" "contract_term" "treatise_statement" "restatement_black_letter" "practitioner_advice" "administrative_interpretation" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.speech_act must be required, single-valued, one of holding, dictum, statutory_text, statutory_definition, regulatory_text, pleading_argument, contract_term, treatise_statement, restatement_black_letter, practitioner_advice, administrative_interpretation (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorVersion ;
+        sh:name "extractor_version" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.extractor_version must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractionPromptHash ;
+        sh:name "extraction_prompt_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.extraction_prompt_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorModel ;
+        sh:name "extractor_model" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.extractor_model must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:signatures ;
+        sh:name "signatures" ;
+        sh:node fis:gen-AttestedSignature ;
+        sh:message "AtomicConflictingAuthoritiesShard.signatures must be list, a AttestedSignature (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contentEdits ;
+        sh:name "content_edits" ;
+        sh:node fis:gen-ContentEdit ;
+        sh:message "AtomicConflictingAuthoritiesShard.content_edits must be list, a ContentEdit (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:confidence ;
+        sh:name "confidence" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:double ;
+        sh:minInclusive "0.0"^^xsd:double ;
+        sh:maxInclusive "1.0"^^xsd:double ;
+        sh:message "AtomicConflictingAuthoritiesShard.confidence must be required, single-valued, xsd:double, in [0.0, 1.0] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:bfoCategory ;
+        sh:name "bfo_category" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "continuant_independent" "continuant_dependent" "occurrent_process" "occurrent_event" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.bfo_category must be required, single-valued, one of continuant_independent, continuant_dependent, occurrent_process, occurrent_event (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeStart ;
+        sh:name "valid_time_start" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicConflictingAuthoritiesShard.valid_time_start must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeEnd ;
+        sh:name "valid_time_end" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicConflictingAuthoritiesShard.valid_time_end must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:transactionTime ;
+        sh:name "transaction_time" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicConflictingAuthoritiesShard.transaction_time must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:vocabVersion ;
+        sh:name "vocab_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.vocab_version must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersedes ;
+        sh:name "supersedes" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.supersedes must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersededBy ;
+        sh:name "superseded_by" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.superseded_by must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contested ;
+        sh:name "contested" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+        sh:message "AtomicConflictingAuthoritiesShard.contested must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contestVotes ;
+        sh:name "contest_votes" ;
+        sh:node fis:gen-MapEntry-string ;
+        sh:message "AtomicConflictingAuthoritiesShard.contest_votes must be a string-keyed map (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sic ;
+        sh:name "sic" ;
+        sh:node fis:gen-AuthorityPosition ;
+        sh:message "AtomicConflictingAuthoritiesShard.sic must be list, a AuthorityPosition (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:non ;
+        sh:name "non" ;
+        sh:node fis:gen-AuthorityPosition ;
+        sh:message "AtomicConflictingAuthoritiesShard.non must be list, a AuthorityPosition (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reconciliationStrategy ;
+        sh:name "reconciliation_strategy" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "sense_distinction" "contextual_limitation" "voice_attribution" "textual_correction" "retraction_later" "subsequent_overruling" "jurisdictional_scoping" "unreconciled" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.reconciliation_strategy must be required, single-valued, one of sense_distinction, contextual_limitation, voice_attribution, textual_correction, retraction_later, subsequent_overruling, jurisdictional_scoping, unreconciled (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reconciliationNote ;
+        sh:name "reconciliation_note" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicConflictingAuthoritiesShard.reconciliation_note must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:identityRecipe ;
+        sh:name "identity_recipe" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "legacy-v1" "atomic-v1" ) ;
+        sh:message "AtomicConflictingAuthoritiesShard.identity_recipe must be required, single-valued, one of legacy-v1, atomic-v1 (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:propositionKey ;
+        sh:name "proposition_key" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:message "AtomicConflictingAuthoritiesShard.proposition_key must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:atomicIdentity ;
+        sh:name "atomic_identity" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-AtomicIdentity ;
+        sh:message "AtomicConflictingAuthoritiesShard.atomic_identity must be single-valued, a AtomicIdentity (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:folioTags ;
+        sh:name "folio_tags" ;
+        sh:node fis:gen-ShardTag ;
+        sh:message "AtomicConflictingAuthoritiesShard.folio_tags must be list, a ShardTag (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:links ;
+        sh:name "links" ;
+        sh:node fis:gen-PropositionLink ;
+        sh:message "AtomicConflictingAuthoritiesShard.links must be list, a PropositionLink (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:legacyHierarchy ;
+        sh:name "legacy_hierarchy" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-LegacyHierarchy ;
+        sh:message "AtomicConflictingAuthoritiesShard.legacy_hierarchy must be single-valued, a LegacyHierarchy (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [ sh:path fi:schemaVersion ; sh:hasValue 3 ; ] .
+
+fis:gen-AtomicGlossShard a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.records.AtomicGlossShard." ;
+    sh:targetClass fi:AtomicGlossShard ;
+    sh:closed true ;
+    sh:message "AtomicGlossShard is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:name "shard_iri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.shard_iri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:provenanceHash ;
+        sh:name "provenance_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.provenance_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceUri ;
+        sh:name "source_uri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.source_uri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceSpan ;
+        sh:name "source_span" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.source_span must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractedAt ;
+        sh:name "extracted_at" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicGlossShard.extracted_at must be required, single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:firstExtractorDid ;
+        sh:name "first_extractor_did" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.first_extractor_did must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:schemaVersion ;
+        sh:name "schema_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "AtomicGlossShard.schema_version must be single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:shardType ;
+        sh:name "shard_type" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "gloss" ) ;
+        sh:message "AtomicGlossShard.shard_type must be single-valued, one of gloss (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:triple ;
+        sh:name "triple" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-Triple ;
+        sh:message "AtomicGlossShard.triple must be required, single-valued, a Triple (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sense ;
+        sh:name "sense" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.sense must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reference ;
+        sh:name "reference" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.reference must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:logicalFormImputed ;
+        sh:name "logical_form_imputed" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.logical_form_imputed must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:layer ;
+        sh:name "layer" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "L0_primitive" "L1_definitional" "L2_composed" "L3_jurisdictional" ) ;
+        sh:message "AtomicGlossShard.layer must be required, single-valued, one of L0_primitive, L1_definitional, L2_composed, L3_jurisdictional (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:predicationMode ;
+        sh:name "predication_mode" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se" "per_accidens" ) ;
+        sh:message "AtomicGlossShard.predication_mode must be required, single-valued, one of per_se, per_accidens (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:fork ;
+        sh:name "fork" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "analytic" "synthetic_a_posteriori" "synthetic_a_priori" ) ;
+        sh:message "AtomicGlossShard.fork must be required, single-valued, one of analytic, synthetic_a_posteriori, synthetic_a_priori (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:epistemicStatus ;
+        sh:name "epistemic_status" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se_nota_quoad_se" "per_se_nota_quoad_nos" "demonstrable" "authority_only" "aporetic" "hypothesis" "contested" "superseded" ) ;
+        sh:message "AtomicGlossShard.epistemic_status must be required, single-valued, one of per_se_nota_quoad_se, per_se_nota_quoad_nos, demonstrable, authority_only, aporetic, hypothesis, contested, superseded (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:verificationMethod ;
+        sh:name "verification_method" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "textual_citation" "definitional_derivation" "inferential_chain" "extractor_assertion" "reviewer_attested" ) ;
+        sh:message "AtomicGlossShard.verification_method must be required, single-valued, one of textual_citation, definitional_derivation, inferential_chain, extractor_assertion, reviewer_attested (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnAxiom ;
+        sh:name "depends_on_axioms" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.depends_on_axioms must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnDefinition ;
+        sh:name "depends_on_definitions" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.depends_on_definitions must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnPrecedent ;
+        sh:name "depends_on_precedents" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.depends_on_precedents must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnShard ;
+        sh:name "depends_on_shards" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.depends_on_shards must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:frameworkId ;
+        sh:name "framework_id" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.framework_id must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:speechAct ;
+        sh:name "speech_act" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "holding" "dictum" "statutory_text" "statutory_definition" "regulatory_text" "pleading_argument" "contract_term" "treatise_statement" "restatement_black_letter" "practitioner_advice" "administrative_interpretation" ) ;
+        sh:message "AtomicGlossShard.speech_act must be required, single-valued, one of holding, dictum, statutory_text, statutory_definition, regulatory_text, pleading_argument, contract_term, treatise_statement, restatement_black_letter, practitioner_advice, administrative_interpretation (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorVersion ;
+        sh:name "extractor_version" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.extractor_version must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractionPromptHash ;
+        sh:name "extraction_prompt_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.extraction_prompt_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorModel ;
+        sh:name "extractor_model" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.extractor_model must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:signatures ;
+        sh:name "signatures" ;
+        sh:node fis:gen-AttestedSignature ;
+        sh:message "AtomicGlossShard.signatures must be list, a AttestedSignature (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contentEdits ;
+        sh:name "content_edits" ;
+        sh:node fis:gen-ContentEdit ;
+        sh:message "AtomicGlossShard.content_edits must be list, a ContentEdit (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:confidence ;
+        sh:name "confidence" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:double ;
+        sh:minInclusive "0.0"^^xsd:double ;
+        sh:maxInclusive "1.0"^^xsd:double ;
+        sh:message "AtomicGlossShard.confidence must be required, single-valued, xsd:double, in [0.0, 1.0] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:bfoCategory ;
+        sh:name "bfo_category" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "continuant_independent" "continuant_dependent" "occurrent_process" "occurrent_event" ) ;
+        sh:message "AtomicGlossShard.bfo_category must be required, single-valued, one of continuant_independent, continuant_dependent, occurrent_process, occurrent_event (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeStart ;
+        sh:name "valid_time_start" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicGlossShard.valid_time_start must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeEnd ;
+        sh:name "valid_time_end" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicGlossShard.valid_time_end must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:transactionTime ;
+        sh:name "transaction_time" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicGlossShard.transaction_time must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:vocabVersion ;
+        sh:name "vocab_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.vocab_version must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersedes ;
+        sh:name "supersedes" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.supersedes must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersededBy ;
+        sh:name "superseded_by" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.superseded_by must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contested ;
+        sh:name "contested" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+        sh:message "AtomicGlossShard.contested must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contestVotes ;
+        sh:name "contest_votes" ;
+        sh:node fis:gen-MapEntry-string ;
+        sh:message "AtomicGlossShard.contest_votes must be a string-keyed map (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:glosses ;
+        sh:name "glosses" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.glosses must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:glossKind ;
+        sh:name "gloss_kind" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "clarificatoria" "extensiva" "restrictiva" "dissentiens" "historica" ) ;
+        sh:message "AtomicGlossShard.gloss_kind must be required, single-valued, one of clarificatoria, extensiva, restrictiva, dissentiens, historica (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:glossText ;
+        sh:name "gloss_text" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicGlossShard.gloss_text must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:identityRecipe ;
+        sh:name "identity_recipe" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "legacy-v1" "atomic-v1" ) ;
+        sh:message "AtomicGlossShard.identity_recipe must be required, single-valued, one of legacy-v1, atomic-v1 (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:propositionKey ;
+        sh:name "proposition_key" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:message "AtomicGlossShard.proposition_key must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:atomicIdentity ;
+        sh:name "atomic_identity" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-AtomicIdentity ;
+        sh:message "AtomicGlossShard.atomic_identity must be single-valued, a AtomicIdentity (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:folioTags ;
+        sh:name "folio_tags" ;
+        sh:node fis:gen-ShardTag ;
+        sh:message "AtomicGlossShard.folio_tags must be list, a ShardTag (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:links ;
+        sh:name "links" ;
+        sh:node fis:gen-PropositionLink ;
+        sh:message "AtomicGlossShard.links must be list, a PropositionLink (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:legacyHierarchy ;
+        sh:name "legacy_hierarchy" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-LegacyHierarchy ;
+        sh:message "AtomicGlossShard.legacy_hierarchy must be single-valued, a LegacyHierarchy (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [ sh:path fi:schemaVersion ; sh:hasValue 3 ; ] .
+
+fis:gen-AtomicHypothesisShard a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.records.AtomicHypothesisShard." ;
+    sh:targetClass fi:AtomicHypothesisShard ;
+    sh:closed true ;
+    sh:message "AtomicHypothesisShard is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:shardIri ;
+        sh:name "shard_iri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.shard_iri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:provenanceHash ;
+        sh:name "provenance_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.provenance_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceUri ;
+        sh:name "source_uri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.source_uri must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceSpan ;
+        sh:name "source_span" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.source_span must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractedAt ;
+        sh:name "extracted_at" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicHypothesisShard.extracted_at must be required, single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:firstExtractorDid ;
+        sh:name "first_extractor_did" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.first_extractor_did must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:schemaVersion ;
+        sh:name "schema_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "AtomicHypothesisShard.schema_version must be single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:shardType ;
+        sh:name "shard_type" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "hypothesis" ) ;
+        sh:message "AtomicHypothesisShard.shard_type must be single-valued, one of hypothesis (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:triple ;
+        sh:name "triple" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-Triple ;
+        sh:message "AtomicHypothesisShard.triple must be required, single-valued, a Triple (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sense ;
+        sh:name "sense" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.sense must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:reference ;
+        sh:name "reference" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.reference must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:logicalFormImputed ;
+        sh:name "logical_form_imputed" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.logical_form_imputed must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:layer ;
+        sh:name "layer" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "L0_primitive" "L1_definitional" "L2_composed" "L3_jurisdictional" ) ;
+        sh:message "AtomicHypothesisShard.layer must be required, single-valued, one of L0_primitive, L1_definitional, L2_composed, L3_jurisdictional (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:predicationMode ;
+        sh:name "predication_mode" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se" "per_accidens" ) ;
+        sh:message "AtomicHypothesisShard.predication_mode must be required, single-valued, one of per_se, per_accidens (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:fork ;
+        sh:name "fork" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "analytic" "synthetic_a_posteriori" "synthetic_a_priori" ) ;
+        sh:message "AtomicHypothesisShard.fork must be required, single-valued, one of analytic, synthetic_a_posteriori, synthetic_a_priori (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:epistemicStatus ;
+        sh:name "epistemic_status" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "per_se_nota_quoad_se" "per_se_nota_quoad_nos" "demonstrable" "authority_only" "aporetic" "hypothesis" "contested" "superseded" ) ;
+        sh:message "AtomicHypothesisShard.epistemic_status must be required, single-valued, one of per_se_nota_quoad_se, per_se_nota_quoad_nos, demonstrable, authority_only, aporetic, hypothesis, contested, superseded (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:verificationMethod ;
+        sh:name "verification_method" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "textual_citation" "definitional_derivation" "inferential_chain" "extractor_assertion" "reviewer_attested" ) ;
+        sh:message "AtomicHypothesisShard.verification_method must be required, single-valued, one of textual_citation, definitional_derivation, inferential_chain, extractor_assertion, reviewer_attested (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnAxiom ;
+        sh:name "depends_on_axioms" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.depends_on_axioms must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnDefinition ;
+        sh:name "depends_on_definitions" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.depends_on_definitions must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnPrecedent ;
+        sh:name "depends_on_precedents" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.depends_on_precedents must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:dependsOnShard ;
+        sh:name "depends_on_shards" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.depends_on_shards must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:frameworkId ;
+        sh:name "framework_id" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.framework_id must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:speechAct ;
+        sh:name "speech_act" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "holding" "dictum" "statutory_text" "statutory_definition" "regulatory_text" "pleading_argument" "contract_term" "treatise_statement" "restatement_black_letter" "practitioner_advice" "administrative_interpretation" ) ;
+        sh:message "AtomicHypothesisShard.speech_act must be required, single-valued, one of holding, dictum, statutory_text, statutory_definition, regulatory_text, pleading_argument, contract_term, treatise_statement, restatement_black_letter, practitioner_advice, administrative_interpretation (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorVersion ;
+        sh:name "extractor_version" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.extractor_version must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractionPromptHash ;
+        sh:name "extraction_prompt_hash" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.extraction_prompt_hash must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractorModel ;
+        sh:name "extractor_model" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.extractor_model must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:signatures ;
+        sh:name "signatures" ;
+        sh:node fis:gen-AttestedSignature ;
+        sh:message "AtomicHypothesisShard.signatures must be list, a AttestedSignature (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contentEdits ;
+        sh:name "content_edits" ;
+        sh:node fis:gen-ContentEdit ;
+        sh:message "AtomicHypothesisShard.content_edits must be list, a ContentEdit (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:confidence ;
+        sh:name "confidence" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:double ;
+        sh:minInclusive "0.0"^^xsd:double ;
+        sh:maxInclusive "1.0"^^xsd:double ;
+        sh:message "AtomicHypothesisShard.confidence must be required, single-valued, xsd:double, in [0.0, 1.0] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:bfoCategory ;
+        sh:name "bfo_category" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "continuant_independent" "continuant_dependent" "occurrent_process" "occurrent_event" ) ;
+        sh:message "AtomicHypothesisShard.bfo_category must be required, single-valued, one of continuant_independent, continuant_dependent, occurrent_process, occurrent_event (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeStart ;
+        sh:name "valid_time_start" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicHypothesisShard.valid_time_start must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:validTimeEnd ;
+        sh:name "valid_time_end" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicHypothesisShard.valid_time_end must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:transactionTime ;
+        sh:name "transaction_time" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:dateTime ;
+        sh:message "AtomicHypothesisShard.transaction_time must be single-valued, xsd:dateTime (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:vocabVersion ;
+        sh:name "vocab_version" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.vocab_version must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersedes ;
+        sh:name "supersedes" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.supersedes must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:supersededBy ;
+        sh:name "superseded_by" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.superseded_by must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contested ;
+        sh:name "contested" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+        sh:message "AtomicHypothesisShard.contested must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:contestVotes ;
+        sh:name "contest_votes" ;
+        sh:node fis:gen-MapEntry-string ;
+        sh:message "AtomicHypothesisShard.contest_votes must be a string-keyed map (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:generationMethod ;
+        sh:name "generation_method" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "combinatorial" "inductive" "analogical" ) ;
+        sh:message "AtomicHypothesisShard.generation_method must be required, single-valued, one of combinatorial, inductive, analogical (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:promotionRequirements ;
+        sh:name "promotion_requirements" ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicHypothesisShard.promotion_requirements must be list, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:ttlDays ;
+        sh:name "ttl_days" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "AtomicHypothesisShard.ttl_days must be single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:citationRequired ;
+        sh:name "citation_required" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:boolean ;
+        sh:message "AtomicHypothesisShard.citation_required must be single-valued, xsd:boolean (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:identityRecipe ;
+        sh:name "identity_recipe" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "legacy-v1" "atomic-v1" ) ;
+        sh:message "AtomicHypothesisShard.identity_recipe must be required, single-valued, one of legacy-v1, atomic-v1 (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:propositionKey ;
+        sh:name "proposition_key" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:message "AtomicHypothesisShard.proposition_key must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:atomicIdentity ;
+        sh:name "atomic_identity" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-AtomicIdentity ;
+        sh:message "AtomicHypothesisShard.atomic_identity must be single-valued, a AtomicIdentity (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:folioTags ;
+        sh:name "folio_tags" ;
+        sh:node fis:gen-ShardTag ;
+        sh:message "AtomicHypothesisShard.folio_tags must be list, a ShardTag (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:links ;
+        sh:name "links" ;
+        sh:node fis:gen-PropositionLink ;
+        sh:message "AtomicHypothesisShard.links must be list, a PropositionLink (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:legacyHierarchy ;
+        sh:name "legacy_hierarchy" ;
+        sh:maxCount 1 ;
+        sh:node fis:gen-LegacyHierarchy ;
+        sh:message "AtomicHypothesisShard.legacy_hierarchy must be single-valued, a LegacyHierarchy (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [ sh:path fi:schemaVersion ; sh:hasValue 3 ; ] .
+
 fis:gen-Triple a sh:NodeShape ;
     rdfs:comment "Generated from folio_insights.shards.envelope.Triple (reached through sh:node)." ;
     sh:closed true ;
@@ -1943,6 +3778,145 @@ fis:gen-AuthorityPosition a sh:NodeShape ;
         sh:message "AuthorityPosition.weight must be required, single-valued, one of binding, persuasive, minority, majority (generated from the Pydantic model)" ;
     ] .
 
+fis:gen-AtomicIdentity a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.envelope.AtomicIdentity (reached through sh:node)." ;
+    sh:closed true ;
+    sh:message "AtomicIdentity is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:text ;
+        sh:name "text" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "AtomicIdentity.text must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:start ;
+        sh:name "start" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minInclusive "0"^^xsd:integer ;
+        sh:message "AtomicIdentity.start must be required, single-valued, xsd:integer, in [0, None] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:end ;
+        sh:name "end" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:minExclusive "0"^^xsd:integer ;
+        sh:message "AtomicIdentity.end must be required, single-valued, xsd:integer (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:sourceSnapshotDigest ;
+        sh:name "source_snapshot_digest" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9a-f]{64}$" ;
+        sh:message "AtomicIdentity.source_snapshot_digest must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] .
+
+fis:gen-ShardTag a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.envelope.ShardTag (reached through sh:node)." ;
+    sh:closed true ;
+    sh:message "ShardTag is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:iri ;
+        sh:name "iri" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 1 ;
+        sh:message "ShardTag.iri must be required, single-valued, xsd:string, at least 1 character(s) (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:label ;
+        sh:name "label" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "ShardTag.label must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:confidence ;
+        sh:name "confidence" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:double ;
+        sh:minInclusive "0.0"^^xsd:double ;
+        sh:maxInclusive "1.0"^^xsd:double ;
+        sh:message "ShardTag.confidence must be required, single-valued, xsd:double, in [0.0, 1.0] (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:extractionPath ;
+        sh:name "extraction_path" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "ShardTag.extraction_path must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:branch ;
+        sh:name "branch" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "ShardTag.branch must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:judgeStatus ;
+        sh:name "judge_status" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "ShardTag.judge_status must be single-valued, xsd:string (generated from the Pydantic model)" ;
+    ] .
+
+fis:gen-PropositionLink a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.envelope.PropositionLink (reached through sh:node)." ;
+    sh:closed true ;
+    sh:message "PropositionLink is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:relation ;
+        sh:name "relation" ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:in ( "exception-to" "penalty-for" "condition-of" "cites" "contradicts" ) ;
+        sh:message "PropositionLink.relation must be required, single-valued, one of exception-to, penalty-for, condition-of, cites, contradicts (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:targetIri ;
+        sh:name "target_iri" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 1 ;
+        sh:message "PropositionLink.target_iri must be single-valued, xsd:string, at least 1 character(s) (generated from the Pydantic model)" ;
+    ] ;
+    sh:property [
+        sh:path fi:citation ;
+        sh:name "citation" ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 1 ;
+        sh:message "PropositionLink.citation must be single-valued, xsd:string, at least 1 character(s) (generated from the Pydantic model)" ;
+    ] .
+
+fis:gen-LegacyHierarchy a sh:NodeShape ;
+    rdfs:comment "Generated from folio_insights.shards.envelope.LegacyHierarchy (reached through sh:node)." ;
+    sh:closed true ;
+    sh:message "LegacyHierarchy is closed: undeclared field (mirrors extra=forbid; generated)" ;
+    sh:ignoredProperties ( rdf:type fi:listIndex ) ;
+    sh:property [
+        sh:path fi:historicalElaborates ;
+        sh:name "elaborates" ;
+        sh:datatype xsd:string ;
+        sh:message "LegacyHierarchy.elaborates must be list, xsd:string (generated from the Pydantic model)" ;
+    ] .
+
 fis:gen-MapEntry-string a sh:NodeShape ;
     rdfs:comment "A fi:MapEntry of a string-keyed map with xsd:string values." ;
     sh:closed true ;
@@ -1950,3 +3924,38 @@ fis:gen-MapEntry-string a sh:NodeShape ;
     sh:ignoredProperties ( rdf:type fi:listIndex ) ;
     sh:property [ sh:path fi:entryKey ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:message "map entry needs exactly one string key (generated)" ; ] ;
     sh:property [ sh:path fi:entryValue ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:message "map entry needs exactly one xsd:string value (generated)" ; ] .
+
+fis:AtomicRecipeShape sh:targetClass fi:AtomicSimpleAssertionShard .
+
+fis:DisputedPropositionInvariantsShape sh:targetClass fi:AtomicDisputedPropositionShard .
+
+fis:AtomicRecipeShape sh:targetClass fi:AtomicDisputedPropositionShard .
+
+fis:ConflictingAuthoritiesInvariantsShape sh:targetClass fi:AtomicConflictingAuthoritiesShard .
+
+fis:AtomicRecipeShape sh:targetClass fi:AtomicConflictingAuthoritiesShard .
+
+fis:GlossInvariantsShape sh:targetClass fi:AtomicGlossShard .
+
+fis:AtomicRecipeShape sh:targetClass fi:AtomicGlossShard .
+
+fis:HypothesisInvariantsShape sh:targetClass fi:AtomicHypothesisShard .
+
+fis:AtomicRecipeShape sh:targetClass fi:AtomicHypothesisShard .
+
+fis:AtomicRecipeShape a sh:NodeShape ;
+    sh:message "atomic-v1 needs its frozen key/basis; legacy-v1 cannot carry either" ;
+    sh:or (
+        [ sh:property [ sh:path fi:identityRecipe ; sh:hasValue "atomic-v1" ] ;
+          sh:property [ sh:path fi:propositionKey ; sh:minCount 1 ] ;
+          sh:property [ sh:path fi:atomicIdentity ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path fi:identityRecipe ; sh:hasValue "legacy-v1" ] ;
+          sh:property [ sh:path fi:propositionKey ; sh:maxCount 0 ] ;
+          sh:property [ sh:path fi:atomicIdentity ; sh:maxCount 0 ] ]
+    ) .
+
+fis:gen-PropositionLink sh:or (
+    [ sh:property [ sh:path fi:targetIri ; sh:minCount 1 ] ]
+    [ sh:property [ sh:path fi:relation ; sh:hasValue "cites" ] ;
+      sh:property [ sh:path fi:citation ; sh:minCount 1 ] ]
+) ; sh:message "A link needs a target or an explicit unresolved citation" .

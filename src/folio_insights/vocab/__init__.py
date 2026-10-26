@@ -42,17 +42,20 @@ from __future__ import annotations
 from importlib.resources import files
 from typing import TYPE_CHECKING
 
-from rdflib import Graph
-
-# Lightweight constants live in _constants.py so callers needing only the
-# version pin (shards/envelope.py, bench/generator.py) can import without
-# forcing a pyoxigraph import (WR-01). Combined with the lazy pyoxigraph
-# import inside load_pyoxigraph_store, this means importing
-# ``folio_insights.vocab._constants`` only pulls rdflib + stdlib.
-from folio_insights.vocab._constants import FI_PREFIX, NAMESPACES, VOCAB_VERSION
+# Constants used by the model/SHACL core must remain RDF-library-free.
+from folio_insights.vocab._constants import FI_PREFIX, VOCAB_VERSION
 
 if TYPE_CHECKING:
     from pyoxigraph import Store
+    from rdflib import Graph
+
+
+def __getattr__(name: str):
+    if name == "NAMESPACES":
+        from folio_insights.vocab._constants import NAMESPACES
+
+        return NAMESPACES
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # D-08 TTL file inventory. Order matters for deterministic parse — predicates
 # first (most referenced), then classes, spine, opt-in mapping, shapes last
@@ -93,6 +96,8 @@ def load_graph(
     (Phase 9 KTD5): shipped axioms outside OWL 2 EL, such as the D-10
     ``owl:inverseOf`` pair. The default graph is the EL TBox.
     """
+    from rdflib import Graph
+
     g = Graph()
     pkg = files("folio_insights.vocab")
     for name in _CORE_TTL_FILES:
