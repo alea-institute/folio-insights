@@ -41,7 +41,9 @@ lookups) is pinned by ``tests/test_bridge_retirement_parity.py``.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -189,6 +191,59 @@ class LabelInfo:
     matched_label: str  # The actual label text that matched
 
 
+def is_concept_selection(value: Any) -> bool:
+    """Models select opaque IDs or labels, never URI/IRI strings."""
+    return isinstance(value, str) and bool(value.strip()) and not re.search(
+        r"[a-z][a-z0-9+.-]*:\S", value, re.IGNORECASE
+    )
+
+
+@dataclass(frozen=True)
+class OntologyCandidate:
+    id: str
+    iri: str
+    label: str
+    aliases: tuple[str, ...]
+    definition: str
+    branch: str
+
+
+@dataclass(frozen=True)
+class CandidateCatalog:
+    """Immutable resolver-owned snapshot. Only ``model_candidates`` crosses to a model."""
+
+    ontology_digest: str
+    digest: str
+    candidates: tuple[OntologyCandidate, ...]
+
+    def model_candidates(self) -> list[dict[str, str]]:
+        return [dict(id=c.id, label=c.label, definition=c.definition, branch=c.branch)
+                for c in self.candidates]
+
+
+@dataclass(frozen=True)
+class SemanticSelectionVerdict:
+    """A semantic judgment bound to a selection, catalog and source, separate from lookup.
+
+    The caller owns judge execution and prompt lineage. Existence/ancestry alone never
+    constructs this judgment; later implicit taggers must supply their independent verdict.
+    """
+
+    selection: str
+    catalog_digest: str
+    source_digest: str
+    verdict: str
+    reason: str
+
+    @classmethod
+    def for_source(
+        cls, selection: str, catalog: CandidateCatalog, source_text: str, *,
+        verdict: str, reason: str,
+    ) -> SemanticSelectionVerdict:
+        return cls(selection, catalog.digest, hashlib.sha256(source_text.encode()).hexdigest(),
+                   verdict, reason)
+
+
 class FolioLoadUnavailableError(RuntimeError):
     """The FOLIO ontology failed to load recently; retry is suppressed until the cooldown ends."""
 
@@ -230,6 +285,9 @@ class FolioOntologyService:
         self._labels_cache: dict[str, LabelInfo] | None = None
         self._branch_map: dict[str, str] | None = None
         self._lemma_map: dict[str, str] | None = None
+        self._ontology_digest: str | None = None
+        self._candidate_catalogs: dict[tuple[str, ...], CandidateCatalog] = {}
+        self._ancestor_cache: dict[str, tuple[str, ...]] = {}
         if folio is not None:
             self._build_branch_map()
 
@@ -322,6 +380,116 @@ class FolioOntologyService:
         return ""
 
     # ---- search / lookup ------------------------------------------------------------------
+
+    @property
+    def ontology_digest(self) -> str:
+        """Content identity of the loaded snapshot, not the on-disk download cache.
+
+        Reloads go through ``replace_ontology`` so an in-flight catalog stays pinned to
+        its original snapshot even when folio-python's download cache changes.
+        """
+        folio = self._get_folio()
+        if self._ontology_digest is None:
+            fields = (
+                "iri", "label", "preferred_label", "alternative_labels", "hidden_label",
+                "definition", "description", "sub_class_of", "deprecated",
+            )
+            records = [{name: getattr(c, name, None) for name in fields} for c in folio.classes]
+            payload = sorted(records, key=lambda c: c["iri"] or "")
+            self._ontology_digest = hashlib.sha256(
+                json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
+            ).hexdigest()
+        return self._ontology_digest
+
+    def replace_ontology(self, folio: Any) -> None:
+        """Install a newly loaded snapshot and invalidate every derived cache."""
+        with self._load_lock:
+            self._folio = folio
+            self._labels_cache = None
+            self._lemma_map = None
+            self._ontology_digest = None
+            self._candidate_catalogs.clear()
+            self._ancestor_cache.clear()
+            self._build_branch_map()
+
+    def ancestor_branches(self, iri: str) -> tuple[str, ...]:
+        """Actual named branch ancestors, nearest first, including Deontic Specification.
+
+        folio-python's branch membership map flattens sub-branches. Walk the real parent
+        edges instead; root branch names come from the ontology's own labels.
+        """
+        folio = self._get_folio()
+        if iri in self._ancestor_cache:
+            return self._ancestor_cache[iri]
+        from folio import FOLIO_TYPE_IRIS
+
+        root_iris = set(FOLIO_TYPE_IRIS.values())
+        pending = [iri]
+        seen: set[str] = set()
+        branches: list[str] = []
+        while pending:
+            current = pending.pop(0)
+            if current in seen:
+                continue
+            seen.add(current)
+            try:
+                raw = folio[current]
+            except (KeyError, TypeError):
+                continue
+            parents = list(getattr(raw, "sub_class_of", []) or [])
+            label = getattr(raw, "label", "") or getattr(raw, "preferred_label", "") or ""
+            # get_folio_branches() returns descendants and omits the branch root itself.
+            is_root = current in root_iris or (not parents and label in _BRANCH_DISPLAY_NAMES.values())
+            if label and (label == "Deontic Specification" or is_root) and label not in branches:
+                branches.append(label)
+            pending.extend(parents)
+        self._ancestor_cache[iri] = tuple(branches)
+        return self._ancestor_cache[iri]
+
+    def candidate_catalog(self, iris: list[str] | None = None) -> CandidateCatalog:
+        """Pin deterministic candidates; excluded concepts never enter the selection pool."""
+        folio = self._get_folio()
+        key = tuple(sorted(set(iris if iris is not None else [c.iri for c in folio.classes])))
+        if key in self._candidate_catalogs:
+            return self._candidate_catalogs[key]
+        digest = hashlib.sha256(json.dumps([self.ontology_digest, key]).encode()).hexdigest()
+        candidates = []
+        for iri in key:
+            fc = self.get_concept(iri)
+            if fc is None or self._is_excluded_concept(fc):
+                continue
+            branches = self.ancestor_branches(iri)
+            aliases = tuple(dict.fromkeys([
+                fc.preferred_label, fc.folio_pref_label, *fc.alternative_labels, fc.hidden_label,
+            ]))
+            candidates.append(OntologyCandidate(
+                id="c_" + hashlib.sha256(f"{digest}:{iri}".encode()).hexdigest()[:20],
+                iri=iri, label=fc.preferred_label, aliases=aliases,
+                definition=fc.definition, branch=branches[0] if branches else "",
+            ))
+        catalog = CandidateCatalog(self.ontology_digest, digest, tuple(candidates))
+        self._candidate_catalogs[key] = catalog
+        return catalog
+
+    def resolve_candidate(self, selection: Any, catalog: CandidateCatalog) -> FOLIOConcept | None:
+        """Resolve only a unique ID/label in this service's still-current pinned catalog.
+
+        The returned concept has no semantic verdict. A successful lookup proves identity,
+        eligibility and ancestry only.
+        """
+        if not is_concept_selection(selection) or catalog.ontology_digest != self.ontology_digest:
+            return None
+        if not any(catalog is c for c in self._candidate_catalogs.values()):
+            return None
+        matches = [c for c in catalog.candidates if selection == c.id or
+                   selection.strip().casefold() in {a.casefold() for a in c.aliases if a}]
+        if len(matches) != 1:
+            return None
+        fc = self.get_concept(matches[0].iri)
+        if fc is None or self._is_excluded_concept(fc):
+            return None
+        fc.branch = matches[0].branch
+        return fc
 
     def search_by_label(self, label: str, top_k: int = 5) -> list[tuple[FOLIOConcept, float]]:
         folio = self._get_folio()
