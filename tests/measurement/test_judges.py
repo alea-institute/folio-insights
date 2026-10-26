@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -97,6 +98,10 @@ def fake_cli(tmp_path, monkeypatch):
         shutil.copyfile(FIXTURES / "cli.py", root / name)
         (root / name).chmod(0o755)
     monkeypatch.setenv("PATH", str(root) + ":/usr/bin:/bin")
+    home = tmp_path / "home"
+    home.mkdir()
+    for name in ("HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME"):
+        monkeypatch.setenv(name, str(home))
 
     def configure(data, **changes):
         values = {name: {"response": response(data)} for name in ("codex", "claude")}
@@ -112,6 +117,174 @@ def calls(root):
     return [
         json.loads(line) for line in (root / "calls.jsonl").read_text().splitlines()
     ]
+
+
+@pytest.mark.parametrize(
+    "adapter,provider,auth_status,auth_exit,allowed",
+    [
+        (CodexJudge, "codex", "Logged in using API key", 0, False),
+        (CodexJudge, "codex", "Logged in using ChatGPT", 0, True),
+        (CodexJudge, "codex", "Unknown login method", 0, False),
+        (CodexJudge, "codex", "Logged in using ChatGPT", 1, False),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "api_key",
+                    "apiKeySource": "/login managed key",
+                }
+            ),
+            0,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "claude.ai",
+                    "apiProvider": "firstParty",
+                    "subscriptionType": "max",
+                }
+            ),
+            0,
+            True,
+        ),
+        (ClaudeJudge, "claude", "unknown status", 0, False),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "claude.ai",
+                    "apiProvider": "firstParty",
+                    "subscriptionType": "max",
+                }
+            ),
+            1,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "api_key_helper",
+                    "apiKeySource": "apiKeyHelper",
+                }
+            ),
+            0,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "claude.ai",
+                    "apiProvider": "firstParty",
+                    "subscriptionType": "max",
+                    "apiKeySource": "apiKeyHelper",
+                }
+            ),
+            0,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "api_key",
+                    "apiKeySource": "ANTHROPIC_API_KEY",
+                }
+            ),
+            0,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "third_party",
+                    "apiProvider": "bedrock",
+                }
+            ),
+            0,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": False,
+                    "authMethod": "claude.ai",
+                    "subscriptionType": "max",
+                }
+            ),
+            0,
+            False,
+        ),
+        (
+            ClaudeJudge,
+            "claude",
+            json.dumps(
+                {
+                    "loggedIn": True,
+                    "authMethod": "claude.ai",
+                    "apiProvider": "firstParty",
+                    "subscriptionType": None,
+                }
+            ),
+            0,
+            False,
+        ),
+    ],
+)
+def test_saved_auth_must_explicitly_identify_subscription(
+    fake_cli, adapter, provider, auth_status, auth_exit, allowed
+):
+    data = packet(1)
+    root = fake_cli(
+        data, **{provider: {"auth_status": auth_status, "auth_exit": auth_exit}}
+    )
+    result = adapter(model="recorded-model").judge(data)
+    assert result.status == ("complete" if allowed else "incomplete")
+    if allowed:
+        assert len(calls(root)) == 1
+    else:
+        assert result.error == "subscription-auth-required"
+        assert result.missing_item_ids == (data.items[0].item_id,)
+        assert not (root / "calls.jsonl").exists()
+    probes = [
+        json.loads(line) for line in (root / "probes.jsonl").read_text().splitlines()
+    ]
+    assert {
+        "provider": provider,
+        "args": ["login", "status"]
+        if provider == "codex"
+        else ["auth", "status", "--json"],
+    } in probes
+
+
+@pytest.mark.parametrize("capability", ["auth_help", "status_help"])
+def test_claude_without_offline_auth_introspection_is_refused(fake_cli, capability):
+    data = packet(1)
+    root = fake_cli(data, claude={capability: "unsupported"})
+    result = ClaudeJudge(model="recorded-model").judge(data)
+    assert result.status == "incomplete"
+    assert result.error == "subscription-auth-unverifiable"
+    assert not (root / "calls.jsonl").exists()
 
 
 @pytest.mark.parametrize(
@@ -405,6 +578,87 @@ def test_cancellation_is_incomplete(fake_cli):
     cancelled.set()
     result = CodexJudge(model="recorded-model").judge(data, cancelled=cancelled)
     assert result.error == "cancelled" and result.status == "incomplete"
+    assert not (root / "calls.jsonl").exists()
+
+
+@pytest.mark.parametrize(
+    "adapter,provider", [(CodexJudge, "codex"), (ClaudeJudge, "claude")]
+)
+@pytest.mark.parametrize("leader_exits", [True, False])
+@pytest.mark.parametrize("reason", ["timeout", "cancelled"])
+def test_descendant_holding_stdout_cannot_delay_cleanup(
+    fake_cli, adapter, provider, leader_exits, reason
+):
+    data = packet(1)
+    root = fake_cli(
+        data,
+        **{provider: {"descendant": True, "leader_exits": leader_exits, "sleep": 2}},
+    )
+    cancelled = threading.Event()
+
+    def cancel_when_descendant_is_ready():
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            if (root / "descendant.pid").exists():
+                if leader_exits:
+                    # Let the leader exit and communicate() observe it before
+                    # cancellation; otherwise this only exercises a live leader.
+                    time.sleep(0.1)
+                cancelled.set()
+                return
+            time.sleep(0.005)
+
+    watcher = threading.Thread(target=cancel_when_descendant_is_ready)
+    if reason == "cancelled":
+        watcher.start()
+    started = time.monotonic()
+    try:
+        result = adapter(model="recorded-model", timeout=0.25).judge(
+            data, cancelled=cancelled
+        )
+        elapsed = time.monotonic() - started
+    finally:
+        if reason == "cancelled":
+            watcher.join(timeout=3)
+    assert result.status == "incomplete" and result.error == reason
+    assert result.missing_item_ids == (data.items[0].item_id,)
+    assert elapsed < 1.25, f"cleanup took {elapsed:.2f}s for a 0.25s timeout"
+    assert (root / "descendant.term").exists()
+    # Linux may retain an orphan as a zombie until its reaper runs. It must no
+    # longer execute or hold a pipe, even if the original leader already exited.
+    pid = (root / "descendant.pid").read_text()
+    proc = Path(f"/proc/{pid}/stat")
+    reaped_by = time.monotonic() + 0.1
+    try:
+        while proc.read_text().split()[2] != "Z" and time.monotonic() < reaped_by:
+            time.sleep(0.005)
+        assert proc.read_text().split()[2] == "Z"
+    except FileNotFoundError:
+        pass
+
+
+@pytest.mark.parametrize(
+    "adapter,provider", [(CodexJudge, "codex"), (ClaudeJudge, "claude")]
+)
+@pytest.mark.parametrize("stage", ["version", "auth"])
+def test_local_probe_descendants_also_have_bounded_cleanup(
+    fake_cli, adapter, provider, stage
+):
+    probe = (
+        ["--version"]
+        if stage == "version"
+        else (
+            ["login", "status"] if provider == "codex" else ["auth", "status", "--json"]
+        )
+    )
+    data = packet(1)
+    root = fake_cli(data, **{provider: {"hang_probe": probe, "leader_exits": True}})
+    started = time.monotonic()
+    result = adapter(model="recorded-model", timeout=0.25).judge(data)
+    elapsed = time.monotonic() - started
+    assert result.status == "incomplete" and result.error == "timeout"
+    assert elapsed < 1.25, f"probe cleanup took {elapsed:.2f}s"
+    assert (root / "descendant.term").exists()
     assert not (root / "calls.jsonl").exists()
 
 

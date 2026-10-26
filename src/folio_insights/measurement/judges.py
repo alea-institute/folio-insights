@@ -221,33 +221,75 @@ class _SubscriptionJudge:
         self.executable = executable or self.provider
         self.timeout = timeout
 
-    def _probe(self, cwd: str, env: dict[str, str]) -> str:
+    def _probe(
+        self, cwd: str, env: dict[str, str], cancelled: threading.Event | None
+    ) -> str:
         prefix = [self.executable] + (["exec"] if self.provider == "codex" else [])
         for args, is_help in (
             ([*prefix, "--help"], True),
             ([self.executable, "--version"], False),
         ):
-            completed = subprocess.run(
-                args,
-                cwd=cwd,
-                env=env,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                timeout=self.timeout,
-                check=False,
+            stdout = self._invoke(
+                args, "", cwd, env, cancelled, failure_code="cli-unavailable"
             )
-            if completed.returncode:
-                raise _CLIUnavailable("cli-unavailable")
             if is_help:
-                if any(flag not in completed.stdout for flag in self.required_flags):
+                if any(flag not in stdout for flag in self.required_flags):
                     raise _CLIUnavailable("unsupported-cli")
             else:
-                version = completed.stdout.strip()
+                version = stdout.strip()
                 if not version:
                     raise _CLIUnavailable("unsupported-cli")
         return version
+
+    def _require_subscription(
+        self, cwd: str, env: dict[str, str], cancelled: threading.Event | None
+    ) -> None:
+        def local_status(
+            args: list[str], failure_code: str = "subscription-auth-required"
+        ) -> str:
+            # Status is local introspection, never a model request. Do not surface
+            # its raw output (which may include account metadata) in result errors.
+            return self._invoke(
+                [self.executable, *args],
+                "",
+                cwd,
+                env,
+                cancelled,
+                failure_code=failure_code,
+                capture_stderr=True,
+            )
+
+        if self.provider == "codex":
+            status = local_status(["login", "status"])
+            # Codex normally writes login status to stderr. Accept only the
+            # known subscription response, never a substring of unknown output.
+            allowed = status.strip() == "Logged in using ChatGPT"
+        else:
+            for args, flag in (
+                (["auth", "--help"], "status"),
+                (["auth", "status", "--help"], "--json"),
+            ):
+                help_result = local_status(args, "subscription-auth-unverifiable")
+                if flag not in help_result:
+                    raise _CLIUnavailable("subscription-auth-unverifiable")
+            status = local_status(["auth", "status", "--json"])
+            try:
+                auth = json.loads(status)
+            except ValueError:
+                auth = None
+            # The local CLI reports persisted managed keys and apiKeyHelper as
+            # apiKeySource, even if subscription OAuth is also present. Refuse
+            # both without opening credential files or executing any helper here.
+            allowed = (
+                isinstance(auth, dict)
+                and auth.get("loggedIn") is True
+                and auth.get("authMethod") == "claude.ai"
+                and auth.get("apiProvider") == "firstParty"
+                and auth.get("subscriptionType") in ("pro", "max", "team", "enterprise")
+                and auth.get("apiKeySource") in (None, "none")
+            )
+        if not allowed:
+            raise _CLIUnavailable("subscription-auth-required")
 
     def _invoke(
         self,
@@ -256,6 +298,9 @@ class _SubscriptionJudge:
         cwd: str,
         env: dict[str, str],
         cancelled: threading.Event | None,
+        *,
+        failure_code: str = "nonzero-exit",
+        capture_stderr: bool = False,
     ) -> str:
         process = subprocess.Popen(
             args,
@@ -263,12 +308,13 @@ class _SubscriptionJudge:
             env=env,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT if capture_stderr else subprocess.DEVNULL,
             text=True,
             start_new_session=True,
         )
         deadline = time.monotonic() + self.timeout
         initial = prompt
+        finished = False
         try:
             while True:
                 if cancelled is not None and cancelled.is_set():
@@ -281,14 +327,33 @@ class _SubscriptionJudge:
                         initial, timeout=min(0.05, remaining)
                     )
                     if process.returncode:
-                        raise _CLIUnavailable("nonzero-exit")
+                        raise _CLIUnavailable(failure_code)
+                    finished = True
                     return stdout
                 except subprocess.TimeoutExpired:
                     initial = None
         finally:
-            if process.poll() is None:
-                os.killpg(process.pid, signal.SIGKILL)
-            process.communicate()
+            if not finished:
+                # The leader may already be reaped while a descendant holds
+                # stdout open. Signal the session's group regardless of poll().
+                for sig in (signal.SIGTERM, signal.SIGKILL):
+                    try:
+                        os.killpg(process.pid, sig)
+                    except ProcessLookupError:
+                        pass
+                    try:
+                        process.communicate(timeout=0.2)
+                    except subprocess.TimeoutExpired:
+                        pass
+                # Even a descendant that escaped the group cannot make the
+                # drain unbounded. Closing our pipe ends releases local handles.
+                for pipe in (process.stdin, process.stdout):
+                    if pipe is not None:
+                        pipe.close()
+                try:
+                    process.wait(timeout=0.2)
+                except subprocess.TimeoutExpired:
+                    pass
 
     def judge(
         self, packet: JudgePacket, *, cancelled: threading.Event | None = None
@@ -306,7 +371,8 @@ class _SubscriptionJudge:
                 raise _CLIUnavailable("cancelled")
             with tempfile.TemporaryDirectory(prefix="folio-judge-") as cwd:
                 env = _subscription_env()
-                version = self._probe(cwd, env)
+                version = self._probe(cwd, env, cancelled)
+                self._require_subscription(cwd, env, cancelled)
                 if not packet.items:
                     return JudgeResult(
                         **result,
