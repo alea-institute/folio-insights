@@ -8,6 +8,8 @@ resolved within its source snapshot.
 
 from __future__ import annotations
 
+import heapq
+import json
 import logging
 import unicodedata
 
@@ -23,6 +25,7 @@ from folio_insights.pipeline.stages.base import (
 logger = logging.getLogger(__name__)
 
 _NEAR_DEDUP_THRESHOLD = 0.85
+_SIMILARITY_NEIGHBOR_LIMIT = 3
 
 
 def _document_key(unit: KnowledgeUnit) -> tuple[str, str, str]:
@@ -141,6 +144,8 @@ class DeduplicatorStage(InsightsPipelineStage):
         if len(units) < 2:
             return units, 0
 
+        atomic_groups = self._record_atomic_groups(units)
+
         try:
             embeddings = self._encode_units(units)
         except Exception:
@@ -152,25 +157,23 @@ class DeduplicatorStage(InsightsPipelineStage):
 
         # Compute pairwise similarities
         # Embeddings are normalized, so dot product = cosine similarity
-        sim_matrix = embeddings @ embeddings.T
+        # Preserve the legacy matrix path exactly. Atomic/mixed corpora use one
+        # O(n) row at a time, plus O(n*d) embeddings and O(n*K) diagnostics.
+        # Exact nearest-neighbor comparisons still take O(n²*d) time.
+        sim_matrix = None if atomic_groups else embeddings @ embeddings.T
 
         # Find pairs above threshold (upper triangle only)
         remove_indices: set[int] = set()
         removed_count = 0
 
         for i in range(len(units)):
-            if i in remove_indices:
+            if i in remove_indices or i in atomic_groups:
                 continue
+            similarities = embeddings[i] @ embeddings.T if sim_matrix is None else sim_matrix[i]
             for j in range(i + 1, len(units)):
-                if j in remove_indices:
+                if j in remove_indices or j in atomic_groups:
                     continue
-                if sim_matrix[i, j] > _NEAR_DEDUP_THRESHOLD:
-                    if units[i].provenance is not None or units[j].provenance is not None:
-                        record_lineage(
-                            units[i], stage="deduplicator", action="similar",
-                            detail=f"similar_to={units[j].id};cosine={sim_matrix[i, j]:.6f}",
-                        )
-                        continue
+                if similarities[j] > _NEAR_DEDUP_THRESHOLD:
                     # Keep higher confidence as canonical
                     if units[i].confidence >= units[j].confidence:
                         canonical_idx, dup_idx = i, j
@@ -189,8 +192,55 @@ class DeduplicatorStage(InsightsPipelineStage):
                     remove_indices.add(dup_idx)
                     removed_count += 1
 
+        if atomic_groups:
+            self._record_atomic_neighbors(units, embeddings, atomic_groups, remove_indices)
+
         deduped = [u for i, u in enumerate(units) if i not in remove_indices]
         return deduped, removed_count
+
+    def _record_atomic_groups(self, units: list[KnowledgeUnit]) -> dict[int, int]:
+        """Summarize identical statements in a snapshot; return each member's group."""
+        groups: dict[tuple, list[int]] = {}
+        for i, unit in enumerate(units):
+            if unit.provenance is not None:
+                key = (_document_key(unit), unicodedata.normalize("NFC", unit.text))
+                groups.setdefault(key, []).append(i)
+
+        for members in groups.values():
+            if len(members) > 1:
+                sample = [units[i].id for i in members[:_SIMILARITY_NEIGHBOR_LIMIT]]
+                record_lineage(
+                    units[members[0]], stage="deduplicator", action="similar_group",
+                    detail=f"group_size={len(members)};sample_ids={json.dumps(sample)}",
+                )
+        return {i: members[0] for members in groups.values() for i in members}
+
+    def _record_atomic_neighbors(
+        self, units: list[KnowledgeUnit], embeddings: np.ndarray,
+        groups: dict[int, int], removed: set[int],
+    ) -> None:
+        """Keep K highest-scoring neighbors per atomic unit, with input-order ties.
+
+        Within-group similarities are already represented by one aggregate event.
+        Each row uses O(n) similarity storage and an O(K) selection heap; no full
+        matrix or list of all qualifying pairs is built for atomic/mixed input.
+        """
+        for i, group in groups.items():
+            similarities = embeddings[i] @ embeddings.T
+            candidates = (
+                j for j in range(len(units))
+                if j not in removed and groups.get(j) != group
+                and similarities[j] > _NEAR_DEDUP_THRESHOLD
+            )
+            neighbors = heapq.nlargest(
+                _SIMILARITY_NEIGHBOR_LIMIT, candidates,
+                key=lambda j: (similarities[j], -j),
+            )
+            for j in neighbors:
+                record_lineage(
+                    units[i], stage="deduplicator", action="similar",
+                    detail=f"similar_to={units[j].id};cosine={similarities[j]:.6f}",
+                )
 
     # Design choice: Uses standalone sentence-transformers (all-MiniLM-L6-v2)
     # instead of the folio_bridge embedding service. This is intentional:

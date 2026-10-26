@@ -222,3 +222,115 @@ async def test_legacy_read_behavior_is_separate_from_atomic_occurrences(similar_
     assert [u.id for u in result] == ["atomic", "legacy"]
     assert "parent_id" not in legacy.model_dump()
     assert legacy.links == []
+
+
+@pytest.mark.parametrize("encoding_available", [True, False])
+async def test_300_identical_occurrences_have_one_bounded_group(monkeypatch, encoding_available):
+    monkeypatch.setattr(
+        DeduplicatorStage, "_encode_units",
+        lambda self, units: np.ones((len(units), 1)) if encoding_available else None,
+    )
+    source = (SOURCE + "\n") * 300
+    units = [atomic_unit(
+        f"occurrence-{i}", source=source, start=i * (len(SOURCE) + 1),
+        end=i * (len(SOURCE) + 1) + len(SOURCE),
+    ) for i in range(300)]
+
+    result = await dedup(units)
+
+    assert len(result) == 300
+    diagnostics = [e for u in result for e in u.lineage]
+    assert len(diagnostics) <= 300 * 3 + 1
+    assert [(u.id, e.action, e.detail) for u in result for e in u.lineage] == [
+        ("occurrence-0", "similar_group",
+         'group_size=300;sample_ids=["occurrence-0", "occurrence-1", "occurrence-2"]'),
+    ]
+
+
+async def test_mixed_similarity_diagnostics_rank_neighbors_deterministically(monkeypatch):
+    # Equal scores for left/right must use input order, regardless of the IDs.
+    angles = np.array([0.0, 0.1, -0.1, 0.2, 0.3, 0.0, 0.0])
+    embeddings = np.column_stack((np.cos(angles), np.sin(angles)))
+    monkeypatch.setattr(DeduplicatorStage, "_encode_units", lambda self, units: embeddings)
+
+    def corpus():
+        units = [atomic_unit(unit_id, text=text) for unit_id, text in [
+            ("center", "A café must give notice."), ("z-left", "Left claim."),
+            ("a-right", "Right claim."), ("farther", "Farther claim."),
+            ("farthest", "Farthest claim."),
+        ]]
+        units.append(atomic_unit("repeat", text="A cafe\u0301 must give notice.", start=1))
+        units.append(atomic_unit("other-doc", source_file="other.txt",
+                                 text="A café must give notice."))
+        units[4] = KnowledgeUnit.model_validate({
+            **units[4].model_dump(), "provenance": None, "proposition_kind": None,
+        })
+        return units
+
+    runs = [await dedup(corpus()) for _ in range(3)]
+    diagnostics = [[(u.id, e.stage, e.action, e.detail) for u in run for e in u.lineage]
+                   for run in runs]
+    assert diagnostics[0] == diagnostics[1] == diagnostics[2]
+    for unit in runs[0]:
+        assert sum(e.action == "similar" for e in unit.lineage) <= 3
+    assert [e.detail.split(";")[0] for e in runs[0][0].lineage if e.action == "similar"] == [
+        "similar_to=other-doc", "similar_to=z-left", "similar_to=a-right",
+    ]
+    assert [(u.id, e.detail) for u in runs[0] for e in u.lineage
+            if e.action == "similar_group"] == [
+        ("center", 'group_size=2;sample_ids=["center", "repeat"]'),
+    ]
+    assert not runs[0][4].lineage  # Legacy units receive no new diagnostic events.
+
+
+@pytest.mark.parametrize("neighbor_limit", [1, 3, 5])
+async def test_distinct_statements_bound_diagnostics_and_similarity_storage(monkeypatch, neighbor_limit):
+    from folio_insights.pipeline.stages import deduplicator
+
+    class BoundedEmbeddings(np.ndarray):
+        def __matmul__(self, other):
+            # Reject an allocation of all n² pair scores, while allowing rows.
+            assert self.ndim == 1 or other.ndim == 1, "quadratic similarity allocation"
+            return super().__matmul__(other)
+
+    monkeypatch.setattr(deduplicator, "_SIMILARITY_NEIGHBOR_LIMIT", neighbor_limit)
+    monkeypatch.setattr(DeduplicatorStage, "_encode_units",
+                        lambda self, units: np.ones((len(units), 1)).view(BoundedEmbeddings))
+    units = [atomic_unit(f"claim-{i}", text=f"Distinct claim {i}.") for i in range(300)]
+
+    result = await dedup(units)
+
+    assert len(result) == 300
+    assert sum(len(u.lineage) for u in result) == 300 * neighbor_limit
+    for i, unit in enumerate(result):
+        assert [e.detail for e in unit.lineage] == [
+            f"similar_to=claim-{j};cosine=1.000000"
+            for j in [j for j in range(neighbor_limit + 1) if j != i][:neighbor_limit]
+        ]
+
+
+async def test_legacy_similarity_output_is_unchanged(monkeypatch):
+    monkeypatch.setattr(DeduplicatorStage, "_encode_units",
+                        lambda self, units: np.ones((len(units), 1)))
+    units = [KnowledgeUnit.model_validate({
+        **atomic_unit(f"legacy-{i}", text=f"Legacy claim {i}.", confidence=confidence).model_dump(),
+        "provenance": None, "proposition_kind": None,
+    }) for i, confidence in enumerate([0.4, 0.9, 0.7, 0.6])]
+    expected = units[1].model_dump(mode="json")
+    expected["cross_references"] = ["legacy-0", "legacy-2", "legacy-3"]
+
+    result = await dedup(units)
+
+    assert [u.id for u in result] == ["legacy-1"]
+    serialized = result[0].model_dump(mode="json")
+    events = serialized.pop("lineage")
+    expected.pop("lineage")
+    assert serialized == expected
+    # Timestamps are the sole nondeterministic field in the legacy StageEvents.
+    for event in events:
+        assert event.pop("timestamp")
+    assert events == [
+        {"stage": "deduplicator", "action": "merge", "detail": f"merged_from=legacy-{i}",
+         "confidence": None, "template_id": None, "template_hash": None}
+        for i in [0, 2, 3]
+    ]
