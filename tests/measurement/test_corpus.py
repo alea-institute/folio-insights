@@ -271,26 +271,34 @@ def test_sequential_fetchers_share_throttle_state(tmp_path, window, seconds):
         "requests": [stamp for stamp in sent if stamp > sent[-1] - 86400], "retry_at": None}}
 
 
-@pytest.mark.parametrize("retry", ["120", "Fri, 15 Jan 2027 08:02:00 GMT"])
-def test_retry_after_persists_across_fetchers(tmp_path, retry):
+@pytest.mark.parametrize("status", [429, 503])
+@pytest.mark.parametrize("retry,cooldown", [
+    ("600", 600),
+    ("Fri, 15 Jan 2027 08:10:00 GMT", 600),
+    (None, 60),
+    ("172800", 86400),
+    ("Sun, 17 Jan 2027 08:00:00 GMT", 86400),
+], ids=["seconds", "http-date", "missing", "capped-seconds", "capped-http-date"])
+def test_retry_after_persists_across_fetchers(tmp_path, status, retry, cooldown):
     clock = ThrottleClock()
     state_path = tmp_path / "throttle-state.json"
     sent = []
 
     def serve(request):
         sent.append(clock())
-        return httpx.Response(429 if len(sent) == 1 else 200,
-                              headers={"Retry-After": retry}, content=b"ok")
+        return httpx.Response(status if len(sent) == 1 else 200,
+                              headers={} if retry is None else {"Retry-After": retry}, content=b"ok")
 
     with httpx.Client(transport=httpx.MockTransport(serve)) as client:
         first = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
                             clock=clock, sleep=clock.sleep)
-        with pytest.raises(CorpusError, match="HTTP 429"):
+        with pytest.raises(CorpusError, match=f"HTTP {status}"):
             first.fetch(requests()[0], policy().sources[0], 100)
+        assert json.loads(state_path.read_bytes())["court.example"]["retry_at"] == clock() + cooldown
         second = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
                              clock=clock, sleep=clock.sleep)
         second.fetch(requests()[0], policy().sources[0], 100)
-    assert sent == [1_800_000_000, 1_800_000_120]
+    assert sent == [1_800_000_000, 1_800_000_000 + cooldown]
     assert json.loads(state_path.read_bytes())["court.example"]["retry_at"] is None
 
 
@@ -599,15 +607,17 @@ def test_rate_limit_bounds_access_and_auth_is_read_only_at_fetch(tmp_path, acqui
     assert "COURT_FIXTURE_TOKEN" in (tmp_path / "manifest.json").read_text()
 
 
-@pytest.mark.parametrize("status", [403, 429, 302])
+@pytest.mark.parametrize("status", [403, 429, 503, 302])
 def test_access_denial_and_retry_after_leave_gaps(tmp_path, acquisition, status):
     server, fetcher, sleeps = acquisition
     server.status = status
     server.headers = {"Retry-After": "120", "Location": "https://other.example/"}
     manifest = collect(requests()[:2], policy(), tmp_path, fetcher)
     assert not manifest.documents and len(manifest.gaps) == 2
+    assert [gap.document_id for gap in manifest.gaps] == ["doc-0", "doc-1"]
+    assert all(f"HTTP {status}" in gap.reason for gap in manifest.gaps)
     assert not list((tmp_path / "raw").glob("*"))
-    if status == 429:
+    if status in (429, 503):
         assert sum(sleeps) >= 120
 
 

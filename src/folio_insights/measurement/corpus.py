@@ -39,6 +39,7 @@ Jurisdiction = Literal["federal", "MN", "TX", "CA", "NY", "FL", "IL"]
 EnvironmentName = Annotated[str, StringConstraints(pattern=r"^[A-Z][A-Z0-9_]*$")]
 DEFAULT_ROOT = Path("output/measurement/sealed")
 DEFAULT_THROTTLE_STATE = Path("output/measurement/corpus/throttle-state.json")
+MAX_RETRY_AFTER_SECONDS = 86400
 SCORE_LABEL = "judge agreement, unanchored"
 
 
@@ -405,7 +406,7 @@ class HttpFetcher:
         try:
             with self.client.stream("GET", url, headers=headers,
                                     follow_redirects=False, timeout=30) as response:
-                if response.status_code == 429:
+                if response.status_code in (429, 503):
                     retry = response.headers.get("Retry-After", "60")
                     try:
                         delay = float(retry)
@@ -416,7 +417,7 @@ class HttpFetcher:
                             delay = 60
                     if not math.isfinite(delay):
                         delay = 60
-                    entry["retry_at"] = self.clock() + max(0, delay)
+                    entry["retry_at"] = self.clock() + min(MAX_RETRY_AFTER_SECONDS, max(0, delay))
                 if response.status_code != 200:
                     raise CorpusError(f"source HTTP {response.status_code}; no access bypass attempted")
                 body = bytearray()
