@@ -1645,6 +1645,13 @@ def _check_identity(prior: ShardEnvelope, shard: ShardEnvelope) -> None:
                 if getattr(model, "atomic_identity", None) is not None else None
             ),
         )
+        if shard.schema_version >= 3:
+            # An upgrade must archive exactly the prior legacy hierarchy.
+            record["legacy_hierarchy"] = (
+                model.legacy_hierarchy.model_dump(mode="json")
+                if hasattr(model, "legacy_hierarchy")
+                else {"elaborates": list(model.elaborates)}
+            )
     if before != after:
         changed = sorted(k for k in before if before.get(k) != after.get(k))
         raise ShardIdentityViolation(

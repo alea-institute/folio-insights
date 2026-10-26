@@ -124,19 +124,79 @@ async def test_mixed_journal_rebuild_preserves_records_tags_links(storage_root):
                    for iri, value in originals.items())
 
 
-async def test_atomic_revision_replaces_owned_nodes_without_orphans(storage_root):
+@pytest.mark.parametrize("write_api", ["put", "ingest"])
+async def test_atomic_revision_replaces_owned_nodes_without_orphans(storage_root, write_api):
     async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
-        original = atomic_record()
+        data = atomic_record().model_dump(mode="json")
+        data["legacy_hierarchy"] = {"elaborates": [shard(2).shard_iri]}
+        original = load_shard_record(data, target_schema_version=3).shard
         await ctx.shards.put(original.shard_iri, original)
         revised = original.model_copy(deep=True)
         revised.folio_tags = revised.folio_tags[:1]
         revised.links = []
-        await ctx.shards.put(revised.shard_iri, revised, op_id="revision")
+        if write_api == "put":
+            await ctx.shards.put(revised.shard_iri, revised, op_id="revision")
+        else:
+            await ctx.ingest_shards([revised], op_id="revision")
+        stored = await ctx.shards.get(original.shard_iri)
+        assert stored.legacy_hierarchy == original.legacy_hierarchy
+        assert stored.folio_tags == revised.folio_tags and stored.links == []
         first = canonical_quads((await build_export_dataset(ctx)).quads())
         assert not await ctx.query(f"ASK {{ ?s <{FI}relation> ?relation }}")
         assert not await ctx.query(f'ASK {{ ?s <{FI}branch> "Area of Law" }}')
         await ctx.rebuild_projection()
         assert canonical_quads((await build_export_dataset(ctx)).quads()) == first
+
+
+@pytest.mark.parametrize("write_api", ["put", "ingest"])
+@pytest.mark.parametrize("prior_version", [2, 3])
+@pytest.mark.parametrize("change", ["replace", "erase", "omit"])
+async def test_revision_refuses_changed_legacy_hierarchy(
+    storage_root, write_api, prior_version, change,
+):
+    original = shard(1, elaborates=[shard(2).shard_iri])
+    data = load_shard_record(dump_shard_record(original), target_schema_version=3).shard.model_dump(
+        mode="json"
+    )
+    if prior_version == 3:
+        original = load_shard_record(data, target_schema_version=3).shard
+    if change == "omit":
+        data.pop("legacy_hierarchy")
+    else:
+        data["legacy_hierarchy"] = {
+            "elaborates": [shard(3).shard_iri] if change == "replace" else []
+        }
+    # Construct a valid new envelope rather than assigning to a frozen field.
+    replacement = load_shard_record(data, target_schema_version=3).shard
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        await ctx.shards.put(original.shard_iri, original)
+        before = journal_rows(storage_root)
+        projection = canonical_quads((await build_export_dataset(ctx)).quads())
+        with pytest.raises(ShardIdentityViolation, match="legacy_hierarchy"):
+            if write_api == "put":
+                await ctx.shards.put(replacement.shard_iri, replacement)
+            else:
+                await ctx.ingest_shards([replacement])
+        assert journal_rows(storage_root) == before
+        assert dump_shard_record(await ctx.shards.get(original.shard_iri)) == dump_shard_record(original)
+        assert canonical_quads((await build_export_dataset(ctx)).quads()) == projection
+
+
+@pytest.mark.parametrize("write_api", ["put", "ingest"])
+@pytest.mark.parametrize("parents", [[], [shard(2).shard_iri, shard(3).shard_iri]])
+async def test_v2_to_v3_revision_preserves_normalized_legacy_hierarchy(storage_root, write_api, parents):
+    original = shard(1, elaborates=parents)
+    upgraded = load_shard_record(dump_shard_record(original), target_schema_version=3).shard
+    async with await CorpusStorageContext.open(storage_root, "corpus-a") as ctx:
+        await ctx.shards.put(original.shard_iri, original)
+        if write_api == "put":
+            await ctx.shards.put(upgraded.shard_iri, upgraded, op_id="upgrade")
+        else:
+            await ctx.ingest_shards([upgraded], op_id="upgrade")
+        stored = await ctx.shards.get(original.shard_iri)
+        assert stored.schema_version == 3
+        assert stored.legacy_hierarchy.elaborates == tuple(parents)
+        assert len(journal_rows(storage_root)) == 2
 
 
 @pytest.mark.parametrize("version", [2, 3])
