@@ -49,6 +49,8 @@ def discovery():
             found.append(path.read_text())
     auth = config / "auth.json"
     return {
+        "HOME_mode": home.stat().st_mode & 0o777,
+        "CODEX_HOME_mode": config.stat().st_mode & 0o777 if config.is_dir() else None,
         "instructions": found,
         "config_entries": sorted(p.name for p in config.iterdir())
         if config.is_dir()

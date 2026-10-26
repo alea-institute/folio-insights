@@ -289,7 +289,10 @@ class _SubscriptionJudge:
             status = local_status(["login", "status"])
             # Codex normally writes login status to stderr. Accept only the
             # known subscription response, never a substring of unknown output.
-            allowed = status.strip() == "Logged in using ChatGPT"
+            lines = [
+                line for line in status.splitlines() if not line.startswith("WARNING: ")
+            ]
+            allowed = lines == ["Logged in using ChatGPT"]
         else:
             for args, flag in (
                 (["auth", "--help"], "status"),
@@ -396,7 +399,9 @@ class _SubscriptionJudge:
         try:
             if cancelled is not None and cancelled.is_set():
                 raise _CLIUnavailable("cancelled")
-            with tempfile.TemporaryDirectory(prefix="folio-judge-") as cwd:
+            with tempfile.TemporaryDirectory(
+                prefix="folio-judge-", dir=self._directory_base()
+            ) as cwd:
                 env = self._environment(Path(cwd))
                 version = self._probe(cwd, env, cancelled)
                 self._require_subscription(cwd, env, cancelled)
@@ -472,6 +477,9 @@ class _SubscriptionJudge:
             else None,
         )
 
+    def _directory_base(self) -> Path | None:
+        return None
+
     def _environment(self, cwd: Path) -> dict[str, str]:
         return _subscription_env()
 
@@ -486,12 +494,23 @@ class CodexJudge(_SubscriptionJudge):
     provider = "codex"
     isolation = (
         "codex-auth-symlink-only-v1",
-        "temporary-home-and-cwd-v1",
+        "private-cache-home-and-cwd-v1",
         "project_doc_max_bytes=0",
         "cli_auth_credentials_store=file",
         "ignore-user-config-and-rules",
         "read-only-ephemeral-no-tools",
     )
+
+    def _directory_base(self) -> Path:
+        cache = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+        base = (cache.expanduser() / "folio-insights" / "judge-homes").resolve()
+        # Codex refuses to create PATH helpers beneath /tmp, even with an
+        # otherwise valid subscription. Never run its probes from such a home.
+        if base.is_relative_to("/tmp"):
+            raise OSError("Codex judge cache must be outside /tmp")
+        base.mkdir(mode=0o700, parents=True, exist_ok=True)
+        base.chmod(0o700)
+        return base
 
     def _environment(self, cwd: Path) -> dict[str, str]:
         env = _subscription_env()
@@ -505,10 +524,10 @@ class CodexJudge(_SubscriptionJudge):
             .absolute()
         )
         isolated = cwd / "codex-home"
-        isolated.mkdir()
+        isolated.mkdir(mode=0o700)
         (isolated / "auth.json").symlink_to(auth_home / "auth.json")
         home = cwd / "home"
-        home.mkdir()
+        home.mkdir(mode=0o700)
         env["HOME"] = str(home)
         env["CODEX_HOME"] = str(isolated)
         for name in ("CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME"):
@@ -736,13 +755,16 @@ class AnchorRevision(JudgeModel):
 
     Persist this canonical manifest's sha256 as AnchorVerification.anchor_sha256.
     Hash each complete JudgeItem as sorted, ensure_ascii=False JSON (the same
-    encoding as JudgePacket.sha256). Callers must load the verified manifest,
-    never regenerate it from the items being evaluated after verification.
+    encoding as JudgePacket.sha256), and freeze the complete packet's sha256 to
+    bind source, prediction and catalog context. Callers must load the verified
+    manifest, never regenerate it from the packet after verification. Legacy
+    manifests without packet_sha256 remain unanchored.
     """
 
     anchor_set_id: Nonempty
     gold_revision: Nonempty
     item_sha256: dict[Nonempty, Sha256]
+    packet_sha256: Sha256 | None = None
 
     @property
     def sha256(self) -> str:
@@ -808,6 +830,10 @@ def anchor_accuracy(
         or anchor.gold_revision != gold_revision
     ):
         return unanchored("gold-revision-mismatch")
+    if anchor.packet_sha256 is None:
+        return unanchored("missing-anchor-packet-context")
+    if anchor.packet_sha256 != packet.sha256:
+        return unanchored("anchor-packet-context-mismatch")
     by_id = {a.annotation_id: a for a in labels}
     if len(by_id) != len(labels) or len(set(verification.annotation_ids)) != len(
         verification.annotation_ids

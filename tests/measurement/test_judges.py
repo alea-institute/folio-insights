@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shutil
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -31,6 +32,11 @@ from folio_insights.measurement.judges import (
 from folio_insights.measurement.schema import SourceSnapshot
 
 FIXTURES = Path(__file__).parent / "fixtures" / "fake_judges"
+CODEX_TEMP_WARNING = (
+    "WARNING: proceeding, even though we could not create PATH aliases: "
+    'Refusing to create helper binaries under temporary dir "/tmp" '
+    "(codex_home: /tmp/folio-judge-example/codex-home)"
+)
 
 
 def packet(count=10, *, kind="prediction", source_id="source-1", genre="opinions"):
@@ -110,7 +116,11 @@ def fake_cli(tmp_path, monkeypatch):
         (root / "control.json").write_text(json.dumps(values))
         return root
 
-    return configure
+    # Codex refuses helper binaries beneath /tmp. Keep the fake operator's cache
+    # in the allowed fixture tree, isolated and automatically cleaned per test.
+    with tempfile.TemporaryDirectory(prefix=".judge-cache-", dir=FIXTURES) as cache:
+        monkeypatch.setenv("XDG_CACHE_HOME", cache)
+        yield configure
 
 
 def calls(root):
@@ -126,6 +136,38 @@ def calls(root):
         (CodexJudge, "codex", "Logged in using ChatGPT", 0, True),
         (CodexJudge, "codex", "Unknown login method", 0, False),
         (CodexJudge, "codex", "Logged in using ChatGPT", 1, False),
+        pytest.param(
+            CodexJudge,
+            "codex",
+            CODEX_TEMP_WARNING + "\nLogged in using ChatGPT",
+            0,
+            True,
+            id="codex-warning-subscription",
+        ),
+        pytest.param(
+            CodexJudge,
+            "codex",
+            CODEX_TEMP_WARNING + "\nLogged in using API key",
+            0,
+            False,
+            id="codex-warning-api-key",
+        ),
+        pytest.param(
+            CodexJudge,
+            "codex",
+            "Unknown extra line\nLogged in using ChatGPT",
+            0,
+            False,
+            id="codex-unknown-extra-line",
+        ),
+        pytest.param(
+            CodexJudge,
+            "codex",
+            "Logged in using ChatGPT\nLogged in using ChatGPT",
+            0,
+            False,
+            id="codex-duplicate-status",
+        ),
         (
             ClaudeJudge,
             "claude",
@@ -710,6 +752,7 @@ def anchor_revision(data):
     return AnchorRevision(
         anchor_set_id="anchor-1",
         gold_revision="gold-v1",
+        packet_sha256=data.sha256,
         item_sha256={
             i.item_id: hashlib.sha256(
                 json.dumps(
@@ -919,6 +962,31 @@ def test_global_instructions_and_memory_are_isolated(fake_cli, adapter, provider
     assert json.loads(call["stdin"])["isolation"] == list(result.isolation)
 
 
+@pytest.mark.parametrize("location", ["xdg", "default"])
+def test_codex_home_is_private_outside_tmp_and_removed(fake_cli, monkeypatch, location):
+    data = packet(1)
+    root = fake_cli(data)
+    cache = Path(os.environ["XDG_CACHE_HOME"])
+    if location == "default":
+        home = cache / "operator-home"
+        home.mkdir()
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.delenv("XDG_CACHE_HOME")
+        cache = home / ".cache"
+    result = CodexJudge(model="recorded-model").judge(data)
+    assert result.status == "complete"
+    (call,) = calls(root)
+    base = cache / "folio-insights" / "judge-homes"
+    for key in ("HOME", "CODEX_HOME"):
+        isolated = Path(call["env"][key])
+        assert not isolated.is_relative_to("/tmp")
+        assert isolated.is_relative_to(base)
+        assert call["discovery"][key + "_mode"] == 0o700
+        assert not isolated.exists()
+    assert base.stat().st_mode & 0o777 == 0o700
+    assert list(base.iterdir()) == []
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -931,11 +999,21 @@ def test_global_instructions_and_memory_are_isolated(fake_cli, adapter, provider
         "missing_anchor",
         "source_sha256",
         "missing_gold_revision",
+        "covering_prediction_gold",
+        "covering_prediction_omission",
+        "catalog_label",
+        "catalog_branch",
+        "missing_packet_sha256",
         "unchanged",
     ],
 )
 def test_changed_item_cannot_reuse_human_anchor(fake_cli, change):
-    data = packet(1)
+    kind = (
+        change.removeprefix("covering_prediction_")
+        if change.startswith("covering_prediction_")
+        else "prediction"
+    )
+    data = packet(1, kind=kind)
     fake_cli(data)
     revision = anchor_revision(data)
     labels = (
@@ -997,6 +1075,23 @@ def test_changed_item_cannot_reuse_human_anchor(fake_cli, change):
         verification = verification.model_copy(
             update={"anchor_sha256": revision.sha256}
         )
+    elif change.startswith("covering_prediction_"):
+        assert data.predictions == ()
+        covering = data.items[0].model_copy(
+            update={"item_id": "covering-prediction", "kind": "prediction"}
+        )
+        data = data.model_copy(update={"predictions": (covering,)})
+    elif change in ("catalog_label", "catalog_branch"):
+        field = change.removeprefix("catalog_")
+        concept = data.catalog[0].model_copy(update={field: "Changed meaning"})
+        data = data.model_copy(update={"catalog": (concept,)})
+    elif change == "missing_packet_sha256":
+        revision = type(revision).model_validate(
+            revision.model_dump(exclude={"packet_sha256"})
+        )
+        verification = verification.model_copy(
+            update={"anchor_sha256": revision.sha256}
+        )
     result = CodexJudge(model="recorded-model").judge(data)
     accuracy = anchor_accuracy(
         data,
@@ -1018,6 +1113,10 @@ def test_changed_item_cannot_reuse_human_anchor(fake_cli, change):
     assert accuracy.label == "judge agreement, unanchored"
     assert accuracy.accuracy is None
     assert accuracy.reason
+    if change.startswith("covering_prediction_") or change.startswith("catalog_"):
+        assert accuracy.reason == "anchor-packet-context-mismatch"
+    elif change == "missing_packet_sha256":
+        assert accuracy.reason == "missing-anchor-packet-context"
 
 
 @pytest.mark.parametrize("adapter", [CodexJudge, ClaudeJudge])
