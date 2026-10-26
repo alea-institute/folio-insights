@@ -51,7 +51,7 @@ FOLIO's [Deontic Specification](https://folio.openlegalstandard.org/RClhbl4E1TJp
   "text": "A business that discovers a data breach must notify each affected resident within 45 days after discovery.",
   "source_file": "nland-stat-325X04.txt",
   "original_span": {"source_file": "nland-stat-325X04.txt", "start": 4, "end": 110},
-  "source_snippet": "A business that discovers a data breach shall notify each affected resident within 45 days after discovery",
+  "source_snippet": "…",
   "anchor_verified": true,
   "anchor_score": 1.0,
   "confidence": 0.93,
@@ -66,7 +66,7 @@ FOLIO's [Deontic Specification](https://folio.openlegalstandard.org/RClhbl4E1TJp
 }
 ```
 
-The unit may paraphrase, but `source_snippet` holds the exact source substring at `original_span`, and `anchor_verified` records whether the match cleared the 0.85 threshold. A deterministic resolver turns tag labels into FOLIO IRIs; no model ever writes an IRI.
+The unit may paraphrase, but `source_snippet` holds the exact source substring at `original_span` (elided here; the repository's exclusion scanner keeps excerpt values out of tracked files), and `anchor_verified` records whether the match cleared the 0.85 threshold. A deterministic resolver turns tag labels into FOLIO IRIs; no model ever writes an IRI.
 
 ## Examples by source type
 
