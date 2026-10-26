@@ -12,10 +12,17 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
+import unicodedata
 from collections import Counter
+from dataclasses import dataclass
 from uuid import NAMESPACE_URL, uuid5
 
+from pydantic import Field
+from pydantic_settings import BaseSettings
+
 from folio_insights.config import get_settings
+from folio_insights.llm.errors import RunHalted
 from folio_insights.llm.schemas import AtomicDistilledOutput, AtomicProposition, DistilledOutput
 from folio_insights.llm.templates import ATOMIC_DISTILL, DISTILL
 from folio_insights.minting.support import check_support
@@ -46,6 +53,65 @@ _BATCH_SIZE = 15
 __all__ = ["DistilledOutput", "DistillerStage"]
 
 
+class AtomicExtractionSettings(BaseSettings):
+    """Atomic-only sizing, loaded only when enabled; legacy settings stay untouched.
+
+    Env: FOLIO_INSIGHTS_ATOMIC_INPUT_TOKEN_BUDGET / OUTPUT_TOKEN_BUDGET.
+    Input includes the prompt, schema and framing; output also caps generation.
+    """
+
+    input_token_budget: int = Field(default=32768, gt=0)
+    output_token_budget: int = Field(default=16384, gt=0)
+
+    model_config = {"env_prefix": "FOLIO_INSIGHTS_ATOMIC_", "env_file": ".env", "extra": "ignore"}
+
+
+@dataclass(frozen=True)
+class _AtomicBlock:
+    id: str
+    parent: KnowledgeUnit
+    start: int
+    end: int
+
+
+def _atomic_admitted(text: str) -> bool:
+    """Relax only the legacy one/two-word shortcut for terminated statements."""
+    if not text:
+        return False
+    if not is_structural(text):
+        return True
+    words = re.findall(r"[^\W\d_]+", text, re.UNICODE)
+    if not 1 <= len(words) <= 2 or not re.search(r"[.!?][\"')\]]*$", text):
+        return False
+    return not re.search(r"\.{4,}", text) and not re.match(
+        r"^(?:[—–-]|[\d]+|[IVXLCDM]+[.)]|[A-Za-z][.)]|"
+        r"(?:section|chapter|part|article|appendix|title|clause|subsection|rule)\b)",
+        text, re.IGNORECASE,
+    )
+
+
+def _atomic_prompt(group: list[_AtomicBlock], source: str) -> str:
+    return ATOMIC_DISTILL.render(blocks=json.dumps([
+        {"id": b.id, "text": source[b.start:b.end], "section_path": b.parent.source_section}
+        for b in group
+    ], ensure_ascii=False))
+
+
+def _split_atomic_group(group: list[_AtomicBlock]) -> list[list[_AtomicBlock]]:
+    """Strictly smaller groups, with overlapping context where size permits."""
+    if len(group) > 1:
+        middle = len(group) // 2
+        return [group[:middle + (len(group) > 2)], group[middle:]]
+    block = group[0]
+    if block.end - block.start <= 1:
+        return []
+    middle = (block.start + block.end) // 2
+    overlap = min(128, (block.end - block.start) // 8)
+    return [[_AtomicBlock(f"{block.id}.{start}-{end}", block.parent, start, end)]
+            for start, end in [(block.start, middle + overlap),
+                               (middle - overlap, block.end)]]
+
+
 class DistillerStage(InsightsPipelineStage):
     """Distill knowledge unit text to its core insight.
 
@@ -54,8 +120,56 @@ class DistillerStage(InsightsPipelineStage):
     content_hash with hash of distilled text.
     """
 
-    def __init__(self, *, atomic_extraction: bool = False) -> None:
+    def __init__(
+        self, *, atomic_extraction: bool = False,
+        input_token_budget: int | None = None, output_token_budget: int | None = None,
+    ) -> None:
         self.atomic_extraction = atomic_extraction
+        if atomic_extraction:
+            overrides = {key: value for key, value in {
+                "input_token_budget": input_token_budget,
+                "output_token_budget": output_token_budget,
+            }.items() if value is not None}
+            settings = AtomicExtractionSettings(**overrides)
+            self.input_token_budget = settings.input_token_budget
+            self.output_token_budget = settings.output_token_budget
+
+    def _atomic_group_fits(self, group: list[_AtomicBlock], source: str) -> bool:
+        # Match llm.cost's conservative byte-per-token bound and framing allowance.
+        prompt_bytes = len(_atomic_prompt(group, source).encode("utf-8"))
+        schema_bytes = len(json.dumps(AtomicDistilledOutput.model_json_schema()).encode("utf-8"))
+        input_bound = prompt_bytes + schema_bytes + 1024
+        # Allow expansion for rules, elements, links and JSON keys. Provider length
+        # failures still trigger smaller groups: this is an estimate, not a proof.
+        output_bound = 128 + sum(6 * len(source[b.start:b.end].encode("utf-8")) + 256
+                                 for b in group)
+        return input_bound <= self.input_token_budget and output_bound <= self.output_token_budget
+
+    def _atomic_groups(self, blocks: list[_AtomicBlock], source: str) -> list[list[_AtomicBlock]]:
+        pieces: list[_AtomicBlock] = []
+
+        def fit(block: _AtomicBlock) -> None:
+            if self._atomic_group_fits([block], source):
+                pieces.append(block)
+                return
+            smaller = _split_atomic_group([block])
+            if not smaller:
+                raise ValueError("Atomic token budgets cannot fit prompt/schema and one source character")
+            for group in smaller:
+                fit(group[0])
+
+        for block in blocks:
+            fit(block)
+        groups: list[list[_AtomicBlock]] = []
+        group: list[_AtomicBlock] = []
+        for block in pieces:
+            if group and not self._atomic_group_fits([*group, block], source):
+                groups.append(group)
+                group = [group[-1]] if self._atomic_group_fits([group[-1], block], source) else []
+            group.append(block)
+        if group:
+            groups.append(group)
+        return groups
 
     @property
     def name(self) -> str:
@@ -92,8 +206,8 @@ class DistillerStage(InsightsPipelineStage):
     async def _extract_atomic(self, job: InsightsJob) -> InsightsJob:
         """Extract lists over document-local blocks, then resolve all endpoints together.
 
-        Boundary checks still control admission. Seeing all admitted blocks together lets
-        the model retain rules split at 600 characters and links across subdivisions.
+        Boundary shape checks control admission. Overlapping bounded groups retain
+        adjacent context; grounded children and links reconcile at document scope.
         """
         from folio_insights.services.bridge.llm_bridge import LLMBridge
 
@@ -141,7 +255,7 @@ class DistillerStage(InsightsPipelineStage):
         used: set[tuple[int, int]] = set()
         for index, parent in enumerate(parents):
             text = parent.text.strip()
-            if not is_substantive(text, get_settings().min_substantive_chars):
+            if not _atomic_admitted(text):
                 diagnostic(parent.id, "non_substantive")
                 continue
             span = parent.original_span
@@ -158,9 +272,7 @@ class DistillerStage(InsightsPipelineStage):
                 if position >= 0:
                     offset = position
                     anchor = resolve_anchor(text, source[position:position + len(text)])
-            if anchor is None or not anchor.verified or not is_substantive(
-                anchor.snippet, get_settings().min_substantive_chars,
-            ):
+            if anchor is None or not anchor.verified or not _atomic_admitted(anchor.snippet):
                 diagnostic(parent.id, "unverified_input")
                 continue
             start, end = offset + anchor.start, offset + anchor.end
@@ -169,23 +281,45 @@ class DistillerStage(InsightsPipelineStage):
         if not blocks:
             return [], diagnostics
 
-        ordered_blocks = sorted(blocks.items(), key=lambda item: (item[1][1], item[1][2]))
-        prompt = ATOMIC_DISTILL.render(blocks=json.dumps([
-            {"id": id, "text": source[start:end], "section_path": parent.source_section}
-            for id, (parent, start, end) in ordered_blocks
-        ], ensure_ascii=False))
-        tracker.attempt()
-        try:
-            provider = bridge.get_llm_for_task("distiller")  # type: ignore[union-attr]
-            result = await provider.structured(
-                prompt, schema=AtomicDistilledOutput, template=ATOMIC_DISTILL, temperature=0,
-            )
-            output = AtomicDistilledOutput.model_validate(result)
-        except Exception as exc:
-            tracker.failure(file, exc)
-            diagnostic(file, "llm_failed")
-            logger.warning("Atomic extraction failed for %s", file, exc_info=True)
-            return [], diagnostics
+        ordered_blocks = [_AtomicBlock(id, parent, start, end)
+                          for id, (parent, start, end) in sorted(
+                              blocks.items(), key=lambda item: (item[1][1], item[1][2]))]
+        outputs: list[tuple[AtomicDistilledOutput, dict[str, tuple[KnowledgeUnit, int, int]]]] = []
+        provider = bridge.get_llm_for_task("distiller")  # type: ignore[union-attr]
+
+        async def extract_group(group: list[_AtomicBlock]) -> None:
+            tracker.attempt()
+            try:
+                result = await provider.structured(
+                    _atomic_prompt(group, source), schema=AtomicDistilledOutput,
+                    template=ATOMIC_DISTILL, temperature=0, max_tokens=self.output_token_budget,
+                )
+                output = AtomicDistilledOutput.model_validate(result)
+            except RunHalted:
+                raise
+            except Exception as exc:
+                # Size rejections and truncated completions cannot succeed as-is.
+                # The port does not retry these errors; retry strictly smaller groups.
+                message = str(exc).lower()
+                oversized = any(term in message for term in (
+                    "context length", "context_length", "context window", "max_tokens",
+                    "max tokens", "token limit", "too many tokens", "request too large",
+                    "incompleteoutputexception",
+                )) or getattr(exc, "status_code", None) == 413
+                smaller = _split_atomic_group(group) if oversized else []
+                if smaller:
+                    diagnostic(group[0].id, "oversized_group_split", block_ids=[b.id for b in group])
+                    for child_group in smaller:
+                        await extract_group(child_group)
+                    return
+                tracker.failure(file, exc)
+                diagnostic(group[0].id, "llm_failed", block_ids=[b.id for b in group])
+                logger.warning("Atomic extraction group failed for %s", file, exc_info=True)
+                return
+            outputs.append((output, {b.id: (b.parent, b.start, b.end) for b in group}))
+
+        for group in self._atomic_groups(ordered_blocks, source):
+            await extract_group(group)
 
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
         provenance = SourceProvenance(
@@ -194,10 +328,18 @@ class DistillerStage(InsightsPipelineStage):
             genre=data.get("genre") or job.metadata.get("genre", "know-how"),
             subgenre=data.get("subgenre", ""),
         )
-        counts = Counter(p.id for p in output.propositions)
-        accepted: list[tuple[AtomicProposition, KnowledgeUnit]] = []
-        resolved: dict[str, str] = {}
-        for index, candidate in enumerate(output.propositions):
+        counts = {group: Counter(p.id for p in output.propositions)
+                  for group, (output, _) in enumerate(outputs)}
+        ambiguous_aliases = {id for counter in counts.values()
+                             for id, count in counter.items() if count > 1}
+        candidates = [(group, candidate, support_blocks)
+                      for group, (output, support_blocks) in enumerate(outputs)
+                      for candidate in output.propositions]
+        accepted: list[tuple[int, AtomicProposition, KnowledgeUnit]] = []
+        resolved: dict[tuple[int, str], str] = {}
+        aliases: dict[str, set[str]] = {}
+        unique: dict[tuple[int, int, str], KnowledgeUnit] = {}
+        for group, candidate, blocks in candidates:
             if any(id not in blocks for id in candidate.support_ids):
                 diagnostic(candidate.id, "missing_support", support_ids=candidate.support_ids)
                 continue
@@ -206,7 +348,7 @@ class DistillerStage(InsightsPipelineStage):
             end = max(s[2] for s in supports)
             evidence = source[start:end]
             text = candidate.text.strip()
-            if not text or (candidate.kind not in {"element", "citation"} and is_structural(text)):
+            if not text or (candidate.kind not in {"element", "citation"} and not _atomic_admitted(text)):
                 diagnostic(candidate.id, "non_substantive")
                 continue
             support = check_support(text, evidence)
@@ -234,7 +376,9 @@ class DistillerStage(InsightsPipelineStage):
                                                                  "penalty"} else
                          KnowledgeType.PRINCIPLE)
             unit = KnowledgeUnit(
-                id=str(uuid5(NAMESPACE_URL, json.dumps([file, digest, index, text]))),
+                id=str(uuid5(NAMESPACE_URL, json.dumps([
+                    file, digest, start, end, unicodedata.normalize("NFC", text),
+                ]))),
                 text=text, original_span=Span(start=start, end=end, source_file=file),
                 source_snippet=evidence, anchor_verified=True, anchor_score=exact.score,
                 source_file=file, source_section=list(supports[0][0].source_section),
@@ -253,23 +397,41 @@ class DistillerStage(InsightsPipelineStage):
                         unit.unresolved_citations.append(item)
                 else:
                     diagnostic(candidate.id, "unsupported_citation")
-            accepted.append((candidate, unit))
-            if counts[candidate.id] == 1:
-                resolved[candidate.id] = unit.id
+            key = (start, end, unicodedata.normalize("NFC", text))
+            if key in unique:
+                existing = unique[key]
+                for citation in unit.unresolved_citations:
+                    if citation not in existing.unresolved_citations:
+                        existing.unresolved_citations.append(citation)
+                unit = existing
+            else:
+                unique[key] = unit
+            accepted.append((group, candidate, unit))
+            if counts[group][candidate.id] == 1:
+                resolved[group, candidate.id] = unit.id
+                aliases.setdefault(candidate.id, set()).add(unit.id)
 
         # Resolve only after all children have stable IDs and independent grounding.
-        for candidate, unit in accepted:
+        for group, candidate, unit in accepted:
             for link in candidate.links:
-                reason = ("self_endpoint" if link.target_id == candidate.id else
-                          "ambiguous_endpoint" if counts[link.target_id] > 1 else
-                          "missing_endpoint" if link.target_id not in resolved else "")
+                targets = aliases.get(link.target_id, set())
+                target = resolved.get((group, link.target_id))
+                cross_group = counts[group][link.target_id] == 0
+                if (cross_group and link.target_id not in ambiguous_aliases
+                        and len(targets) == 1):
+                    target = next(iter(targets))
+                reason = ("self_endpoint" if link.target_id == candidate.id or target == unit.id else
+                          "ambiguous_endpoint" if counts[group][link.target_id] > 1 or
+                          (cross_group and (len(targets) > 1 or
+                                            link.target_id in ambiguous_aliases)) else
+                          "missing_endpoint" if target is None else "")
                 if reason:
                     diagnostic(candidate.id, reason, relation=link.relation, target_id=link.target_id)
                     continue
-                resolved_link = PropositionLink(relation=link.relation, target_id=resolved[link.target_id])
+                resolved_link = PropositionLink(relation=link.relation, target_id=target)
                 if resolved_link not in unit.links:
                     unit.links.append(resolved_link)
-        units = finalize_document([unit for _, unit in accepted], source_text=source,
+        units = finalize_document(list(unique.values()), source_text=source,
                                   source_snapshot_id=provenance.source_snapshot_id)
         return units, diagnostics
 

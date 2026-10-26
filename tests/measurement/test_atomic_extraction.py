@@ -287,3 +287,219 @@ def test_model_cannot_supply_identifiers_offsets_or_verification(extra):
         AtomicDistilledOutput.model_validate({"propositions": [
             {**proposition("p", DUTY), **extra},
         ]})
+
+
+def echo_blocks(offline_port, monkeypatch, *, oversized=None, link_targets=None):
+    """Answer the actual port request, with optional provider-size rejection."""
+    import httpx
+
+    router, _ = offline_port
+    original_handler = router.handler
+    groups = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        prompt = body["messages"][-1]["content"]
+        blocks = json.loads(prompt.split("Source blocks (JSON):\n", 1)[1])
+        groups.append(blocks)
+        if oversized == "context" and len(blocks) > 2:
+            router.requests.append(body)
+            return httpx.Response(400, json={"error": {
+                "message": "maximum context length exceeded", "type": "invalid_request_error",
+                "code": "context_length_exceeded",
+            }})
+        router.payloads["AtomicDistilledOutput"] = {"propositions": [
+            proposition(block["id"] + "-claim", block["text"], supports=[block["id"]],
+                        links=(link_targets or {}).get(block["id"], []))
+            for block in blocks
+        ]}
+        response = original_handler(request)
+        if oversized == "output" and len(blocks) > 2:
+            reply = response.json()
+            reply["choices"][0]["finish_reason"] = "length"
+            return httpx.Response(200, json=reply)
+        return response
+
+    monkeypatch.setattr(router, "handler", handler)
+    return groups
+
+
+async def test_long_document_uses_bounded_overlapping_groups_without_loss(
+    offline_port, monkeypatch,
+):
+    groups = echo_blocks(offline_port, monkeypatch)
+    blocks = [f"The business must give written notice to resident number {i} before the hearing."
+              for i in range(30)]
+    stage = DistillerStage(atomic_extraction=True, input_token_budget=6500,
+                          output_token_budget=4000)
+    job = await stage.execute(job_for(*blocks))
+    assert len(groups) > 1
+    assert any(set(b["id"] for b in left) & set(b["id"] for b in right)
+               for left, right in zip(groups, groups[1:]))
+    assert [u.text for u in job.units] == blocks
+    assert len({u.id for u in job.units}) == len(blocks)
+    for request in offline_port[0].requests:
+        # Same byte-per-token upper bound used by the repo's cost estimator, plus framing.
+        prompt_bytes = sum(len(m["content"].encode()) for m in request["messages"])
+        schema_bytes = len(json.dumps(request["tools"][0]["function"]["parameters"]).encode())
+        assert prompt_bytes + schema_bytes + 1024 <= 6500
+        assert request.get("max_completion_tokens", request.get("max_tokens")) == 4000
+    assert_grounded(job)
+
+
+async def test_cross_group_links_resolve_at_document_scope(offline_port, monkeypatch):
+    groups = echo_blocks(offline_port, monkeypatch, link_targets={"b11": [
+        {"relation": "exception-to", "target_id": "b0-claim"},
+        {"relation": "condition-of", "target_id": "unseen-claim"},
+    ]})
+    blocks = [f"The business must notify resident number {i} before the hearing."
+              for i in range(12)]
+    job = await DistillerStage(atomic_extraction=True, input_token_budget=6500,
+                              output_token_budget=3000).execute(job_for(*blocks))
+    assert not any({"b0", "b11"} <= {b["id"] for b in group} for group in groups)
+    assert [(link.relation, link.target_id) for link in job.units[-1].links] == [
+        ("exception-to", job.units[0].id),
+    ]
+    assert any(d["reason"] == "missing_endpoint" and d["target_id"] == "unseen-claim"
+               for d in job.metadata["atomic_extraction"]["diagnostics"])
+    assert_grounded(job)
+
+
+@pytest.mark.parametrize("oversized", ["context", "output"])
+async def test_oversized_requests_split_before_retry(oversized, offline_port, monkeypatch):
+    groups = echo_blocks(offline_port, monkeypatch, oversized=oversized)
+    blocks = [f"The business must give resident number {i} written notice before the hearing."
+              for i in range(6)]
+    job = await DistillerStage(atomic_extraction=True).execute(job_for(*blocks))
+    assert len(groups[0]) > 2
+    failed_groups = [tuple(b["id"] for b in g) for g in groups if len(g) > 2]
+    assert len(failed_groups) == len(set(failed_groups))
+    assert [u.text for u in job.units] == blocks
+    assert any(d["reason"] == "oversized_group_split"
+               for d in job.metadata["atomic_extraction"]["diagnostics"])
+    assert_grounded(job)
+
+
+async def test_short_substantive_input_is_never_silently_deleted(offline_port):
+    text = "Give prompt notice."
+    job = await extract(job_for(text), [proposition("notice", text, kind="advice")], offline_port)
+    assert [u.text for u in job.units] == [text]
+    assert job.units[0].source_snippet == text
+    assert (job.units[0].original_span.start, job.units[0].original_span.end) == (0, len(text))
+    assert_grounded(job)
+
+
+async def test_short_outcome_survives_while_headings_are_rejected(offline_port):
+    source = "The court considered the motion. Motion denied.\nII. Background\nFacts"
+    payload = [proposition("outcome", "Motion denied.", kind="outcome"),
+               proposition("section", "II. Background", kind="fact"),
+               proposition("heading", "Facts", kind="fact")]
+    job = await extract(job_for(source), payload, offline_port)
+    assert [(u.text, u.proposition_kind) for u in job.units] == [("Motion denied.", "outcome")]
+    assert_grounded(job)
+
+
+def test_atomic_budget_environment_reaches_default_pipeline(monkeypatch):
+    monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_INPUT_TOKEN_BUDGET", "9000")
+    monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_OUTPUT_TOKEN_BUDGET", "5000")
+    stage = next(s for s in PipelineOrchestrator(
+        Settings(_env_file=None, atomic_extraction=True),
+    ).stages if s.name == "distiller")
+    assert stage.input_token_budget == 9000
+    assert stage.output_token_budget == 5000
+    # An invalid atomic budget cannot change the default-off path.
+    monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_OUTPUT_TOKEN_BUDGET", "0")
+    assert DistillerStage().atomic_extraction is False
+    with pytest.raises(ValidationError):
+        DistillerStage(atomic_extraction=True)
+
+
+@pytest.mark.parametrize("retry", [False, True])
+async def test_single_long_boundary_is_bounded_without_losing_sentences(
+    retry, offline_port, monkeypatch,
+):
+    import httpx
+
+    router, _ = offline_port
+    original_handler = router.handler
+    sentences = [f"The business must notify resident number {i} in writing." for i in range(40)]
+    seen = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        prompt = body["messages"][0]["content"]
+        blocks = json.loads(prompt.split("Source blocks (JSON):\n", 1)[1])
+        seen.append(tuple((b["id"], b["text"]) for b in blocks))
+        if retry and sum(len(b["text"]) for b in blocks) > 300:
+            router.requests.append(body)
+            return httpx.Response(413, json={"error": {
+                "message": "request too large", "type": "invalid_request_error",
+            }})
+        payload = []
+        for i, sentence in enumerate(sentences):
+            support = next((b for b in blocks if sentence in b["text"]), None)
+            if support:
+                payload.append(proposition(f"sentence-{i}", sentence, supports=[support["id"]]))
+        router.payloads["AtomicDistilledOutput"] = {"propositions": payload}
+        return original_handler(request)
+
+    monkeypatch.setattr(router, "handler", handler)
+    job = await DistillerStage(atomic_extraction=True, input_token_budget=6500,
+                              output_token_budget=4000).execute(job_for(" ".join(sentences)))
+    assert len(seen) > 1
+    assert len(seen) == len(set(seen))
+    assert [u.text for u in job.units] == sentences
+    assert_grounded(job)
+
+
+async def test_same_span_nfc_duplicates_merge_links_and_citations(offline_port):
+    import unicodedata
+
+    source = "A café must give notice under Rule 42."
+    payload = [proposition("first", source),
+               proposition("second", unicodedata.normalize("NFD", source), citations=["Rule 42"],
+                           links=[{"relation": "condition-of", "target_id": "duty"}]),
+               proposition("duty", DUTY, supports=["b1"])]
+    job = await extract(job_for(source, DUTY), payload, offline_port)
+    assert len(job.units) == 2
+    assert len(job.units[0].unresolved_citations) == 1
+    assert job.units[0].links[0].target_id == job.units[1].id
+    assert_grounded(job)
+
+
+@pytest.mark.parametrize("local_rejected", [False, True])
+async def test_cross_group_alias_never_overrides_ambiguous_or_rejected_endpoint(
+    local_rejected, offline_port, monkeypatch,
+):
+    router, _ = offline_port
+    original_handler = router.handler
+    calls = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        blocks = json.loads(body["messages"][0]["content"].split("Source blocks (JSON):\n", 1)[1])
+        calls.append(blocks)
+        payload = []
+        for block in blocks:
+            id = block["id"]
+            payload.append(proposition(id + "-claim", block["text"], supports=[id]))
+            if id == "b0" or (id == "b3" and not local_rejected):
+                payload.append(proposition("shared", block["text"], supports=[id]))
+            if id == "b11":
+                payload[-1]["links"] = [{"relation": "condition-of", "target_id": "shared"}]
+                if local_rejected:
+                    payload.append(proposition("shared", "A pilot may land a glider on a runway.",
+                                               supports=[id]))
+        router.payloads["AtomicDistilledOutput"] = {"propositions": payload}
+        return original_handler(request)
+
+    monkeypatch.setattr(router, "handler", handler)
+    blocks = [f"The business must notify resident number {i} before the hearing."
+              for i in range(12)]
+    job = await DistillerStage(atomic_extraction=True, input_token_budget=6500,
+                              output_token_budget=3000).execute(job_for(*blocks))
+    assert len(calls) > 1
+    assert not job.units[-1].links
+    assert any(d["target_id"] == "shared" for d in
+               job.metadata["atomic_extraction"]["diagnostics"] if "target_id" in d)
+    assert_grounded(job)

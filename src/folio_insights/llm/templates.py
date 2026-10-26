@@ -195,7 +195,7 @@ DISTILL = register(PromptTemplate(
 ))
 
 ATOMIC_DISTILL = register(PromptTemplate(
-    id="distiller.atomic", version="1", task="distiller",
+    id="distiller.atomic", version="2", task="distiller",
     user=ATOMIC_DISTILLATION_PROMPT, output_schema=schemas.AtomicDistilledOutput,
     max_tokens=16384,
 ), default_for_task=False)
