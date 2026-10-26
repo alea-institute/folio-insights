@@ -1,0 +1,960 @@
+{
+  "format": 1,
+  "suite_id": "synthetic-evaluation-v1",
+  "gold_revision": "synthetic-v1",
+  "ontology_sha256": "b6ed82e6d17b7cb1d468453e4111ec08ca091d72a6849be2b58dd37692cb6ef9",
+  "ontology_slice_sha256": "41ab91659f771fd7879a7cf461a6445a60c3abbe65e86e512ae7b61cb8bf2505",
+  "adjudication_status": "draft",
+  "documents": [
+    {
+      "source": {
+        "source_id": "evaluation-opinions-01",
+        "group_id": "synthetic-evaluation-opinions-01",
+        "title": "evaluation-opinions-01 (invented evaluation document)",
+        "genre": "opinions",
+        "subgenre": "judicial-opinion",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease. The landlord returned none of the deposit. Judgment is entered for the tenant.",
+        "sha256": "b06232f13c40cd85a3e1e5d6de622852b69253efdc4f2736097bcf207592fd2e"
+      },
+      "propositions": [
+        {
+          "item_id": "deposit-rule",
+          "kind": "rule",
+          "text": "A tenant seeking return of a security deposit must establish payment and expiration of the lease.",
+          "span": {
+            "start": 0,
+            "end": 133,
+            "quote": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Lease",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "deposit-paid",
+          "kind": "element",
+          "text": "The tenant must establish payment of the security deposit.",
+          "span": {
+            "start": 0,
+            "end": 133,
+            "quote": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Lease",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "deposit-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "lease-ended",
+          "kind": "element",
+          "text": "The tenant must establish expiration of the lease.",
+          "span": {
+            "start": 0,
+            "end": 133,
+            "quote": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Lease",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "deposit-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "deposit-not-returned",
+          "kind": "fact",
+          "text": "The landlord returned none of the security deposit.",
+          "span": {
+            "start": 134,
+            "end": 176,
+            "quote": "The landlord returned none of the deposit."
+          },
+          "tags": [
+            {
+              "label": "Lease",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "tenant-judgment",
+          "kind": "outcome",
+          "text": "Judgment is entered for the tenant.",
+          "span": {
+            "start": 177,
+            "end": 212,
+            "quote": "Judgment is entered for the tenant."
+          },
+          "tags": [
+            {
+              "label": "Judicial Opinion",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-opinions-02",
+        "group_id": "synthetic-evaluation-opinions-02",
+        "title": "evaluation-opinions-02 (invented evaluation document)",
+        "genre": "opinions",
+        "subgenre": "judicial-opinion",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "The court concludes that an unsigned draft is not an enforceable contract. A party may nevertheless recover the reasonable value of services actually accepted. Because the purchaser accepted the repairs, the court awards their reasonable value.",
+        "sha256": "23901854133953e86e278545e429794c5e3c5aabf08dc6dd1dceffe1d995cb77"
+      },
+      "propositions": [
+        {
+          "item_id": "unsigned-draft",
+          "kind": "rule",
+          "text": "An unsigned draft is not an enforceable contract.",
+          "span": {
+            "start": 0,
+            "end": 74,
+            "quote": "The court concludes that an unsigned draft is not an enforceable contract."
+          },
+          "tags": [
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Judicial Opinion",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "services-recovery",
+          "kind": "rule",
+          "text": "A party may nevertheless recover the reasonable value of services actually accepted.",
+          "span": {
+            "start": 75,
+            "end": 159,
+            "quote": "A party may nevertheless recover the reasonable value of services actually accepted."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "accepted-repairs",
+          "kind": "fact",
+          "text": "The purchaser accepted the repairs.",
+          "span": {
+            "start": 160,
+            "end": 244,
+            "quote": "Because the purchaser accepted the repairs, the court awards their reasonable value."
+          },
+          "tags": [
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "value-award",
+          "kind": "outcome",
+          "text": "The court awards the reasonable value of the accepted repairs.",
+          "span": {
+            "start": 160,
+            "end": 244,
+            "quote": "Because the purchaser accepted the repairs, the court awards their reasonable value."
+          },
+          "tags": [
+            {
+              "label": "Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Judicial Opinion",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-statutes-01",
+        "group_id": "synthetic-evaluation-statutes-01",
+        "title": "evaluation-statutes-01 (invented evaluation document)",
+        "genre": "statutes-regulations",
+        "subgenre": "statute",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "(1) A permit holder must file an annual report by June 1. (2) The report must identify the facility and list its discharges. (3) A holder may omit a report for a year in which the permit was inactive. (4) Failure to file a required report carries a civil fine of $80.",
+        "sha256": "8647fd8638bd227934c0029c646785a1b0d2570eb89ac49eabc9466b2ce2d497"
+      },
+      "propositions": [
+        {
+          "item_id": "report-duty",
+          "kind": "rule",
+          "text": "A permit holder must file an annual report by June 1.",
+          "span": {
+            "start": 0,
+            "end": 57,
+            "quote": "(1) A permit holder must file an annual report by June 1."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "report-content",
+          "kind": "rule",
+          "text": "The annual report must identify the facility and list its discharges.",
+          "span": {
+            "start": 58,
+            "end": 124,
+            "quote": "(2) The report must identify the facility and list its discharges."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "facility-element",
+          "kind": "element",
+          "text": "The annual report must identify the facility.",
+          "span": {
+            "start": 58,
+            "end": 124,
+            "quote": "(2) The report must identify the facility and list its discharges."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ]
+        },
+        {
+          "item_id": "discharges-element",
+          "kind": "element",
+          "text": "The annual report must list its discharges.",
+          "span": {
+            "start": 58,
+            "end": 124,
+            "quote": "(2) The report must identify the facility and list its discharges."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ]
+        },
+        {
+          "item_id": "inactive-exception",
+          "kind": "exception",
+          "text": "A permit holder may omit the annual report for a year in which the permit was inactive.",
+          "span": {
+            "start": 125,
+            "end": 200,
+            "quote": "(3) A holder may omit a report for a year in which the permit was inactive."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "report-duty"
+            }
+          ]
+        },
+        {
+          "item_id": "report-fine",
+          "kind": "penalty",
+          "text": "Failure to file a required annual report carries a civil fine of $80.",
+          "span": {
+            "start": 201,
+            "end": 267,
+            "quote": "(4) Failure to file a required report carries a civil fine of $80."
+          },
+          "tags": [
+            {
+              "label": "Regulatory Penalty",
+              "branch": "Regulatory Objectives"
+            },
+            {
+              "label": "Violation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "penalty-for",
+              "target_id": "report-duty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-regulations-02",
+        "group_id": "synthetic-evaluation-regulations-02",
+        "title": "evaluation-regulations-02 (invented evaluation document)",
+        "genre": "statutes-regulations",
+        "subgenre": "regulation",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "Section 12. An operator must retain inspection records for four years. An operator must not alter a completed inspection record. A correction may be appended if the original entry remains readable. Each unlawful alteration is subject to a $200 administrative penalty.",
+        "sha256": "5389b79531ffef8f14befed3fd40633142b2da08c6eba48dff478f2f09c01c01"
+      },
+      "propositions": [
+        {
+          "item_id": "retain-records",
+          "kind": "rule",
+          "text": "An operator must retain inspection records for four years.",
+          "span": {
+            "start": 12,
+            "end": 70,
+            "quote": "An operator must retain inspection records for four years."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-alteration",
+          "kind": "rule",
+          "text": "An operator must not alter a completed inspection record.",
+          "span": {
+            "start": 71,
+            "end": 128,
+            "quote": "An operator must not alter a completed inspection record."
+          },
+          "tags": [
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "append-correction",
+          "kind": "exception",
+          "text": "A correction may be appended if the original inspection entry remains readable.",
+          "span": {
+            "start": 129,
+            "end": 197,
+            "quote": "A correction may be appended if the original entry remains readable."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "no-alteration"
+            }
+          ]
+        },
+        {
+          "item_id": "alteration-penalty",
+          "kind": "penalty",
+          "text": "Each unlawful alteration is subject to a $200 administrative penalty.",
+          "span": {
+            "start": 198,
+            "end": 267,
+            "quote": "Each unlawful alteration is subject to a $200 administrative penalty."
+          },
+          "tags": [
+            {
+              "label": "Regulatory Penalty",
+              "branch": "Regulatory Objectives"
+            },
+            {
+              "label": "Violation",
+              "branch": "Deontic Specification"
+            }
+          ],
+          "links": [
+            {
+              "relation": "penalty-for",
+              "target_id": "no-alteration"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-briefs-01",
+        "group_id": "synthetic-evaluation-briefs-01",
+        "title": "evaluation-briefs-01 (invented evaluation document)",
+        "genre": "briefs",
+        "subgenre": "motion-memorandum",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "The moving party requests exclusion of the unsigned laboratory report. The report identifies no author and describes no testing method. Without testimony supplying that foundation, the report cannot establish the concentration of the sample.",
+        "sha256": "7ed74ae8c96b68feeda6ad9f50b1701a17873a0fbe017e6cde3d9758de2e9c7c"
+      },
+      "propositions": [
+        {
+          "item_id": "exclusion-request",
+          "kind": "fact",
+          "text": "The moving party requests exclusion of the unsigned laboratory report.",
+          "span": {
+            "start": 0,
+            "end": 70,
+            "quote": "The moving party requests exclusion of the unsigned laboratory report."
+          },
+          "tags": [
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Brief / Memorandum of Law",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "missing-author",
+          "kind": "fact",
+          "text": "The laboratory report identifies no author.",
+          "span": {
+            "start": 71,
+            "end": 135,
+            "quote": "The report identifies no author and describes no testing method."
+          },
+          "tags": [
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "missing-method",
+          "kind": "fact",
+          "text": "The laboratory report describes no testing method.",
+          "span": {
+            "start": 71,
+            "end": 135,
+            "quote": "The report identifies no author and describes no testing method."
+          },
+          "tags": [
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "foundation-rule",
+          "kind": "rule",
+          "text": "Without testimony supplying a foundation, the report cannot establish the concentration of the sample.",
+          "span": {
+            "start": 136,
+            "end": 241,
+            "quote": "Without testimony supplying that foundation, the report cannot establish the concentration of the sample."
+          },
+          "tags": [
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-briefs-02",
+        "group_id": "synthetic-evaluation-briefs-02",
+        "title": "evaluation-briefs-02 (invented evaluation document)",
+        "genre": "briefs",
+        "subgenre": "pleading",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "The complaint alleges that Rowan promised to deliver a replacement engine on April 3. The engine never arrived. The buyer paid $900 to rent a substitute and seeks that amount as damages for breach of contract.",
+        "sha256": "f883b7af221f8dde5e904bcf4bacb4b06fa1c09d20c9193644b61515c80a3661"
+      },
+      "propositions": [
+        {
+          "item_id": "delivery-promise",
+          "kind": "fact",
+          "text": "The complaint alleges that Rowan promised delivery of a replacement engine on April 3.",
+          "span": {
+            "start": 0,
+            "end": 85,
+            "quote": "The complaint alleges that Rowan promised to deliver a replacement engine on April 3."
+          },
+          "tags": [
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "non-delivery",
+          "kind": "fact",
+          "text": "The complaint alleges the engine never arrived.",
+          "span": {
+            "start": 86,
+            "end": 111,
+            "quote": "The engine never arrived."
+          },
+          "tags": [
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "rental-expense",
+          "kind": "fact",
+          "text": "The buyer paid $900 to rent a substitute engine.",
+          "span": {
+            "start": 112,
+            "end": 209,
+            "quote": "The buyer paid $900 to rent a substitute and seeks that amount as damages for breach of contract."
+          },
+          "tags": [
+            {
+              "label": "Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "damages-request",
+          "kind": "fact",
+          "text": "The buyer seeks $900 as damages for breach of contract.",
+          "span": {
+            "start": 112,
+            "end": 209,
+            "quote": "The buyer paid $900 to rent a substitute and seeks that amount as damages for breach of contract."
+          },
+          "tags": [
+            {
+              "label": "Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-know-how-01",
+        "group_id": "synthetic-evaluation-know-how-01",
+        "title": "evaluation-know-how-01 (invented evaluation document)",
+        "genre": "know-how",
+        "subgenre": "practice-checklist",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "Before producing a witness statement, check its date and the identity of the signer. Keep a copy of the version delivered. Do not annotate the delivered original.",
+        "sha256": "05f4879f396ad9bd2271bd5f2609857586502dc252983c9be97444f9c1e1945b"
+      },
+      "propositions": [
+        {
+          "item_id": "check-statement",
+          "kind": "advice",
+          "text": "Before producing a witness statement, check its date and the identity of the signer.",
+          "span": {
+            "start": 0,
+            "end": 84,
+            "quote": "Before producing a witness statement, check its date and the identity of the signer."
+          },
+          "tags": [
+            {
+              "label": "Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "check-date",
+          "kind": "element",
+          "text": "Before producing a witness statement, check its date.",
+          "span": {
+            "start": 0,
+            "end": 84,
+            "quote": "Before producing a witness statement, check its date and the identity of the signer."
+          },
+          "tags": [
+            {
+              "label": "Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "check-statement"
+            }
+          ]
+        },
+        {
+          "item_id": "check-signer",
+          "kind": "element",
+          "text": "Before producing a witness statement, check the identity of the signer.",
+          "span": {
+            "start": 0,
+            "end": 84,
+            "quote": "Before producing a witness statement, check its date and the identity of the signer."
+          },
+          "tags": [
+            {
+              "label": "Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "check-statement"
+            }
+          ]
+        },
+        {
+          "item_id": "keep-copy",
+          "kind": "advice",
+          "text": "Keep a copy of the witness statement version delivered.",
+          "span": {
+            "start": 85,
+            "end": 122,
+            "quote": "Keep a copy of the version delivered."
+          },
+          "tags": [
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-annotation",
+          "kind": "advice",
+          "text": "Do not annotate the delivered original witness statement.",
+          "span": {
+            "start": 123,
+            "end": 162,
+            "quote": "Do not annotate the delivered original."
+          },
+          "tags": [
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "evaluation-know-how-02",
+        "group_id": "synthetic-evaluation-know-how-02",
+        "title": "evaluation-know-how-02 (invented evaluation document)",
+        "genre": "know-how",
+        "subgenre": "interview-checklist",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "evaluation-candidate",
+        "example_id": null,
+        "text": "Ask the witness when the alarm sounded. Record the answer. Ask the witness who disabled the alarm. Record the answer.",
+        "sha256": "c0ada67de9a1c1d7b0aa3c2d3ca10ffe348502ce51508aaaa78589600f53b52a"
+      },
+      "propositions": [
+        {
+          "item_id": "ask-time",
+          "kind": "advice",
+          "text": "Ask the witness when the alarm sounded.",
+          "span": {
+            "start": 0,
+            "end": 39,
+            "quote": "Ask the witness when the alarm sounded."
+          },
+          "tags": [
+            {
+              "label": "Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "record-time",
+          "kind": "advice",
+          "text": "Record the answer.",
+          "span": {
+            "start": 40,
+            "end": 58,
+            "quote": "Record the answer."
+          },
+          "tags": [
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "ask-actor",
+          "kind": "advice",
+          "text": "Ask the witness who disabled the alarm.",
+          "span": {
+            "start": 59,
+            "end": 98,
+            "quote": "Ask the witness who disabled the alarm."
+          },
+          "tags": [
+            {
+              "label": "Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "record-actor",
+          "kind": "advice",
+          "text": "Record the answer.",
+          "span": {
+            "start": 99,
+            "end": 117,
+            "quote": "Record the answer."
+          },
+          "tags": [
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        }
+      ]
+    }
+  ]
+}

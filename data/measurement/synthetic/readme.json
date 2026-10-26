@@ -1,0 +1,2640 @@
+{
+  "format": 1,
+  "suite_id": "synthetic-readme-v1",
+  "gold_revision": "synthetic-v1",
+  "ontology_sha256": "b6ed82e6d17b7cb1d468453e4111ec08ca091d72a6849be2b58dd37692cb6ef9",
+  "ontology_slice_sha256": "41ab91659f771fd7879a7cf461a6445a60c3abbe65e86e512ae7b61cb8bf2505",
+  "adjudication_status": "draft",
+  "documents": [
+    {
+      "source": {
+        "source_id": "readme-01",
+        "group_id": "synthetic-readme-01",
+        "title": "*Harlow v. Brightwater Logistics, Inc.*, No. 27-CV-24-0117 (Minn. Dist. Ct. 2025) (synthetic)",
+        "genre": "opinions",
+        "subgenre": "judicial-opinion",
+        "jurisdiction": "Minnesota (fictional case)",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 1,
+        "text": "To prevail on a breach-of-contract claim, a plaintiff must prove (1) the formation of a contract, (2) the plaintiff's performance of any conditions precedent, and (3) the defendant's breach. A plaintiff must prove damages to recover more than nominal damages, but nominal damages remain available for any proven breach. Summary judgment is appropriate only when no genuine dispute of material fact exists and the movant is entitled to judgment as a matter of law. A written contract that bars oral modification ordinarily controls, except where the party seeking enforcement has waived the bar by its own conduct. Here, Brightwater accepted late deliveries for eight months without objection, so a jury could find waiver. The motion is DENIED.",
+        "sha256": "cbbb62e8814ec48f39e4e62515428b13f8b47673f68894bf824189f7d46be5bf"
+      },
+      "propositions": [
+        {
+          "item_id": "contract-rule",
+          "kind": "rule",
+          "text": "To prevail on breach of contract, a plaintiff must prove formation, its performance of conditions precedent, and breach by the defendant.",
+          "span": {
+            "start": 0,
+            "end": 190,
+            "quote": "To prevail on a breach-of-contract claim, a plaintiff must prove (1) the formation of a contract, (2) the plaintiff's performance of any conditions precedent, and (3) the defendant's breach."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "contract-formation",
+          "kind": "element",
+          "text": "The plaintiff must prove the formation of a contract.",
+          "span": {
+            "start": 0,
+            "end": 190,
+            "quote": "To prevail on a breach-of-contract claim, a plaintiff must prove (1) the formation of a contract, (2) the plaintiff's performance of any conditions precedent, and (3) the defendant's breach."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "contract-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "contract-performance",
+          "kind": "element",
+          "text": "The plaintiff must prove its performance of any conditions precedent.",
+          "span": {
+            "start": 0,
+            "end": 190,
+            "quote": "To prevail on a breach-of-contract claim, a plaintiff must prove (1) the formation of a contract, (2) the plaintiff's performance of any conditions precedent, and (3) the defendant's breach."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "contract-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "contract-breach",
+          "kind": "element",
+          "text": "The plaintiff must prove the defendant's breach.",
+          "span": {
+            "start": 0,
+            "end": 190,
+            "quote": "To prevail on a breach-of-contract claim, a plaintiff must prove (1) the formation of a contract, (2) the plaintiff's performance of any conditions precedent, and (3) the defendant's breach."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "contract-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "damages-proof",
+          "kind": "rule",
+          "text": "A plaintiff must prove damages to recover more than nominal damages.",
+          "span": {
+            "start": 191,
+            "end": 319,
+            "quote": "A plaintiff must prove damages to recover more than nominal damages, but nominal damages remain available for any proven breach."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Nominal Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "nominal-damages",
+          "kind": "rule",
+          "text": "Nominal damages remain available for any proven breach.",
+          "span": {
+            "start": 191,
+            "end": 319,
+            "quote": "A plaintiff must prove damages to recover more than nominal damages, but nominal damages remain available for any proven breach."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Nominal Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "summary-rule",
+          "kind": "rule",
+          "text": "Summary judgment requires no genuine dispute of material fact and entitlement to judgment as a matter of law.",
+          "span": {
+            "start": 320,
+            "end": 463,
+            "quote": "Summary judgment is appropriate only when no genuine dispute of material fact exists and the movant is entitled to judgment as a matter of law."
+          },
+          "tags": [
+            {
+              "label": "Summary Judgment",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Judicial Opinion",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "summary-facts",
+          "kind": "element",
+          "text": "Summary judgment requires no genuine dispute of material fact.",
+          "span": {
+            "start": 320,
+            "end": 463,
+            "quote": "Summary judgment is appropriate only when no genuine dispute of material fact exists and the movant is entitled to judgment as a matter of law."
+          },
+          "tags": [
+            {
+              "label": "Summary Judgment",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "summary-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "summary-law",
+          "kind": "element",
+          "text": "Summary judgment requires the movant to be entitled to judgment as a matter of law.",
+          "span": {
+            "start": 320,
+            "end": 463,
+            "quote": "Summary judgment is appropriate only when no genuine dispute of material fact exists and the movant is entitled to judgment as a matter of law."
+          },
+          "tags": [
+            {
+              "label": "Summary Judgment",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "summary-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "modification-rule",
+          "kind": "rule",
+          "text": "A written contract barring oral modification ordinarily controls.",
+          "span": {
+            "start": 464,
+            "end": 613,
+            "quote": "A written contract that bars oral modification ordinarily controls, except where the party seeking enforcement has waived the bar by its own conduct."
+          },
+          "tags": [
+            {
+              "label": "Modification of Agreement Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Oral Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "modification-exception",
+          "kind": "exception",
+          "text": "The bar on oral modification does not control where the party seeking enforcement waived it by its conduct.",
+          "span": {
+            "start": 464,
+            "end": 613,
+            "quote": "A written contract that bars oral modification ordinarily controls, except where the party seeking enforcement has waived the bar by its own conduct."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Waiver",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Modification of Agreement Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Oral Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "modification-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "late-deliveries",
+          "kind": "fact",
+          "text": "Brightwater accepted late deliveries for eight months without objection.",
+          "span": {
+            "start": 614,
+            "end": 721,
+            "quote": "Here, Brightwater accepted late deliveries for eight months without objection, so a jury could find waiver."
+          },
+          "tags": [
+            {
+              "label": "Breach of Contract",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "waiver-finding",
+          "kind": "fact",
+          "text": "A jury could find waiver from Brightwater accepting late deliveries for eight months without objection.",
+          "span": {
+            "start": 614,
+            "end": 721,
+            "quote": "Here, Brightwater accepted late deliveries for eight months without objection, so a jury could find waiver."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Waiver",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Jury",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "modification-exception"
+            }
+          ]
+        },
+        {
+          "item_id": "motion-denied",
+          "kind": "outcome",
+          "text": "The motion is denied.",
+          "span": {
+            "start": 722,
+            "end": 743,
+            "quote": "The motion is DENIED."
+          },
+          "tags": [
+            {
+              "label": "Judicial Opinion",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-02",
+        "group_id": "synthetic-readme-02",
+        "title": "Defendant's Memorandum in Support of Motion to Dismiss, *Osterberg Outdoor Supply Co. v. Quillfeather Ceramics GmbH*, No. 25-cv-2290 (D. Minn.) (synthetic)",
+        "genre": "briefs",
+        "subgenre": "motion-memorandum",
+        "jurisdiction": "Minnesota (fictional case)",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 2,
+        "text": "Plaintiff bears the burden of making a prima facie showing of personal jurisdiction over each defendant. Quillfeather has no office, employees, or bank accounts in Minnesota, and it shipped no product here; a distributor resold the mugs without Quillfeather's direction. The mere foreseeability that a product may reach the forum state does not establish purposeful availment. *Ostrander v. Pell Manufacturing Co.*, No. 22-cv-0940 (D. Minn. 2023). Quillfeather supports this motion with a sworn declaration, which shifts the burden to Plaintiff to come forward with evidence, not allegations.",
+        "sha256": "10af6546d669be4944646b7de809ffa46dfb6ace655cf1411739e4b9cb0f5846"
+      },
+      "propositions": [
+        {
+          "item_id": "jurisdiction-burden",
+          "kind": "rule",
+          "text": "Plaintiff bears the burden of making a prima facie showing of personal jurisdiction over each defendant.",
+          "span": {
+            "start": 0,
+            "end": 104,
+            "quote": "Plaintiff bears the burden of making a prima facie showing of personal jurisdiction over each defendant."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-office",
+          "kind": "fact",
+          "text": "Quillfeather has no office in Minnesota.",
+          "span": {
+            "start": 105,
+            "end": 270,
+            "quote": "Quillfeather has no office, employees, or bank accounts in Minnesota, and it shipped no product here; a distributor resold the mugs without Quillfeather's direction."
+          },
+          "tags": [
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Minnesota",
+              "branch": "Location"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-employees",
+          "kind": "fact",
+          "text": "Quillfeather has no employees in Minnesota.",
+          "span": {
+            "start": 105,
+            "end": 270,
+            "quote": "Quillfeather has no office, employees, or bank accounts in Minnesota, and it shipped no product here; a distributor resold the mugs without Quillfeather's direction."
+          },
+          "tags": [
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Minnesota",
+              "branch": "Location"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-accounts",
+          "kind": "fact",
+          "text": "Quillfeather has no bank accounts in Minnesota.",
+          "span": {
+            "start": 105,
+            "end": 270,
+            "quote": "Quillfeather has no office, employees, or bank accounts in Minnesota, and it shipped no product here; a distributor resold the mugs without Quillfeather's direction."
+          },
+          "tags": [
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Minnesota",
+              "branch": "Location"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-shipping",
+          "kind": "fact",
+          "text": "Quillfeather shipped no product to Minnesota.",
+          "span": {
+            "start": 105,
+            "end": 270,
+            "quote": "Quillfeather has no office, employees, or bank accounts in Minnesota, and it shipped no product here; a distributor resold the mugs without Quillfeather's direction."
+          },
+          "tags": [
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Minnesota",
+              "branch": "Location"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "distributor-resale",
+          "kind": "fact",
+          "text": "A distributor resold the mugs without Quillfeather's direction.",
+          "span": {
+            "start": 105,
+            "end": 270,
+            "quote": "Quillfeather has no office, employees, or bank accounts in Minnesota, and it shipped no product here; a distributor resold the mugs without Quillfeather's direction."
+          },
+          "tags": [
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Minnesota",
+              "branch": "Location"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "foreseeability",
+          "kind": "rule",
+          "text": "Mere foreseeability that a product may reach the forum does not establish purposeful availment.",
+          "span": {
+            "start": 271,
+            "end": 376,
+            "quote": "The mere foreseeability that a product may reach the forum state does not establish purposeful availment."
+          },
+          "tags": [
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": [
+            {
+              "relation": "cites",
+              "target_id": "ostrander-citation"
+            }
+          ]
+        },
+        {
+          "item_id": "ostrander-citation",
+          "kind": "citation",
+          "text": "The brief cites Ostrander v. Pell Manufacturing Co., No. 22-cv-0940 (D. Minn. 2023).",
+          "span": {
+            "start": 377,
+            "end": 447,
+            "quote": "*Ostrander v. Pell Manufacturing Co.*, No. 22-cv-0940 (D. Minn. 2023)."
+          },
+          "tags": [
+            {
+              "label": "Citation to Caselaw",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Brief / Memorandum of Law",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "sworn-declaration",
+          "kind": "fact",
+          "text": "Quillfeather supports the motion with a sworn declaration.",
+          "span": {
+            "start": 448,
+            "end": 592,
+            "quote": "Quillfeather supports this motion with a sworn declaration, which shifts the burden to Plaintiff to come forward with evidence, not allegations."
+          },
+          "tags": [
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Motion to Dismiss",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "evidence-burden",
+          "kind": "rule",
+          "text": "The sworn declaration shifts the burden to Plaintiff to come forward with evidence rather than allegations.",
+          "span": {
+            "start": 448,
+            "end": 592,
+            "quote": "Quillfeather supports this motion with a sworn declaration, which shifts the burden to Plaintiff to come forward with evidence, not allegations."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Litigation Burdens of Proof",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Personal Jurisdiction",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-03",
+        "group_id": "synthetic-readme-03",
+        "title": "*Trial Practice Field Guide*, ch. 7, \"Expert Witnesses\" (Lindqvist & Ober LLP internal know-how, 2025) (synthetic)",
+        "genre": "know-how",
+        "subgenre": "law-firm-practice-guide",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 3,
+        "text": "On direct, ask open-ended questions and let your expert teach; jurors trust the witness, not the lawyer. The rules of evidence generally prohibit leading questions on direct but permit them on cross. At the opposing expert's deposition, lock in every opinion she plans to offer and every document she relied on. Do not argue with the expert at deposition; you will only educate her for trial. Close each topic by asking, \"Have you now told me all the bases for that opinion?\"",
+        "sha256": "c8270b926be26bf5c4aabe695ba92cb39c030fd94b6e24d80ed7fb52fd0256ba"
+      },
+      "propositions": [
+        {
+          "item_id": "open-questions",
+          "kind": "advice",
+          "text": "Ask open-ended questions on direct examination.",
+          "span": {
+            "start": 0,
+            "end": 104,
+            "quote": "On direct, ask open-ended questions and let your expert teach; jurors trust the witness, not the lawyer."
+          },
+          "tags": [
+            {
+              "label": "Direct-Examination of Witness",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "expert-teaches",
+          "kind": "advice",
+          "text": "Let the expert teach on direct examination.",
+          "span": {
+            "start": 0,
+            "end": 104,
+            "quote": "On direct, ask open-ended questions and let your expert teach; jurors trust the witness, not the lawyer."
+          },
+          "tags": [
+            {
+              "label": "Direct-Examination of Witness",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Jury",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "juror-trust",
+          "kind": "fact",
+          "text": "Jurors trust the witness rather than the lawyer.",
+          "span": {
+            "start": 0,
+            "end": 104,
+            "quote": "On direct, ask open-ended questions and let your expert teach; jurors trust the witness, not the lawyer."
+          },
+          "tags": [
+            {
+              "label": "Jury",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "leading-direct",
+          "kind": "rule",
+          "text": "The rules of evidence generally prohibit leading questions on direct examination.",
+          "span": {
+            "start": 105,
+            "end": 199,
+            "quote": "The rules of evidence generally prohibit leading questions on direct but permit them on cross."
+          },
+          "tags": [
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Direct-Examination of Witness",
+              "branch": "Event"
+            },
+            {
+              "label": "Leading Objection",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "leading-cross",
+          "kind": "exception",
+          "text": "The rules of evidence permit leading questions on cross-examination.",
+          "span": {
+            "start": 105,
+            "end": 199,
+            "quote": "The rules of evidence generally prohibit leading questions on direct but permit them on cross."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Cross-Examination of Witness",
+              "branch": "Event"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "leading-direct"
+            }
+          ]
+        },
+        {
+          "item_id": "deposition-rule",
+          "kind": "advice",
+          "text": "At the opposing expert's deposition, lock in all planned opinions and documents relied on.",
+          "span": {
+            "start": 200,
+            "end": 311,
+            "quote": "At the opposing expert's deposition, lock in every opinion she plans to offer and every document she relied on."
+          },
+          "tags": [
+            {
+              "label": "Expert Witness Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "planned-opinions",
+          "kind": "element",
+          "text": "Lock in every opinion the opposing expert plans to offer.",
+          "span": {
+            "start": 200,
+            "end": 311,
+            "quote": "At the opposing expert's deposition, lock in every opinion she plans to offer and every document she relied on."
+          },
+          "tags": [
+            {
+              "label": "Expert Witness Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "deposition-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "relied-documents",
+          "kind": "element",
+          "text": "Lock in every document the opposing expert relied on.",
+          "span": {
+            "start": 200,
+            "end": 311,
+            "quote": "At the opposing expert's deposition, lock in every opinion she plans to offer and every document she relied on."
+          },
+          "tags": [
+            {
+              "label": "Expert Witness Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Evidence",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "deposition-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "no-argument",
+          "kind": "advice",
+          "text": "Do not argue with the expert at deposition.",
+          "span": {
+            "start": 312,
+            "end": 392,
+            "quote": "Do not argue with the expert at deposition; you will only educate her for trial."
+          },
+          "tags": [
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Expert Witness Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "argument-educates",
+          "kind": "fact",
+          "text": "Arguing with the expert at deposition only educates her for trial.",
+          "span": {
+            "start": 312,
+            "end": 392,
+            "quote": "Do not argue with the expert at deposition; you will only educate her for trial."
+          },
+          "tags": [
+            {
+              "label": "Expert Witness Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "exhaustion-question",
+          "kind": "advice",
+          "text": "Close each topic by asking whether the expert has told you all the bases for the opinion.",
+          "span": {
+            "start": 393,
+            "end": 475,
+            "quote": "Close each topic by asking, \"Have you now told me all the bases for that opinion?\""
+          },
+          "tags": [
+            {
+              "label": "Expert Witness Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Testifying Expert Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-04",
+        "group_id": "synthetic-readme-04",
+        "title": "*Reliance Without a Bargain: Promissory Estoppel and the Mid-Employment Noncompete*, 41 Northland L. Rev. 233 (2025) (synthetic)",
+        "genre": "know-how",
+        "subgenre": "journal-article",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 4,
+        "text": "Courts increasingly decline to enforce a noncompete agreement that an employee signed after starting work unless the employer supplied fresh consideration. A raise, a promotion, or access to new confidential information can serve; continued at-will employment often cannot. When the agreement fails for want of consideration, some employers turn to promissory estoppel, but that doctrine protects reliance on a promise, not an employer's expectation of restraint. This Article argues that courts should reject the estoppel route outright.",
+        "sha256": "23add2b639bb341d02483ba9b8e20a71d70144916adb8e213095f394318f4f87"
+      },
+      "propositions": [
+        {
+          "item_id": "noncompete-rule",
+          "kind": "rule",
+          "text": "Courts increasingly decline to enforce a noncompete signed after the employee started work.",
+          "span": {
+            "start": 0,
+            "end": 155,
+            "quote": "Courts increasingly decline to enforce a noncompete agreement that an employee signed after starting work unless the employer supplied fresh consideration."
+          },
+          "tags": [
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Employee",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Employer",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "fresh-consideration",
+          "kind": "exception",
+          "text": "Fresh consideration supplied by the employer is an exception to declining enforcement of a mid-employment noncompete.",
+          "span": {
+            "start": 0,
+            "end": 155,
+            "quote": "Courts increasingly decline to enforce a noncompete agreement that an employee signed after starting work unless the employer supplied fresh consideration."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Consideration",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Employer",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Employee",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "noncompete-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "consideration-options",
+          "kind": "rule",
+          "text": "A raise, a promotion, or access to new confidential information can serve as fresh consideration.",
+          "span": {
+            "start": 156,
+            "end": 273,
+            "quote": "A raise, a promotion, or access to new confidential information can serve; continued at-will employment often cannot."
+          },
+          "tags": [
+            {
+              "label": "Consideration",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Employer",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "raise",
+          "kind": "element",
+          "text": "A raise can serve as fresh consideration.",
+          "span": {
+            "start": 156,
+            "end": 273,
+            "quote": "A raise, a promotion, or access to new confidential information can serve; continued at-will employment often cannot."
+          },
+          "tags": [
+            {
+              "label": "Consideration",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "consideration-options"
+            }
+          ]
+        },
+        {
+          "item_id": "promotion",
+          "kind": "element",
+          "text": "A promotion can serve as fresh consideration.",
+          "span": {
+            "start": 156,
+            "end": 273,
+            "quote": "A raise, a promotion, or access to new confidential information can serve; continued at-will employment often cannot."
+          },
+          "tags": [
+            {
+              "label": "Consideration",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "consideration-options"
+            }
+          ]
+        },
+        {
+          "item_id": "confidential-information",
+          "kind": "element",
+          "text": "Access to new confidential information can serve as fresh consideration.",
+          "span": {
+            "start": 156,
+            "end": 273,
+            "quote": "A raise, a promotion, or access to new confidential information can serve; continued at-will employment often cannot."
+          },
+          "tags": [
+            {
+              "label": "Consideration",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "consideration-options"
+            }
+          ]
+        },
+        {
+          "item_id": "continued-employment",
+          "kind": "fact",
+          "text": "Continued at-will employment often cannot serve as fresh consideration.",
+          "span": {
+            "start": 156,
+            "end": 273,
+            "quote": "A raise, a promotion, or access to new confidential information can serve; continued at-will employment often cannot."
+          },
+          "tags": [
+            {
+              "label": "Consideration",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Noncompete Agreement",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "estoppel-route",
+          "kind": "fact",
+          "text": "Some employers turn to promissory estoppel when the agreement fails for want of consideration.",
+          "span": {
+            "start": 274,
+            "end": 463,
+            "quote": "When the agreement fails for want of consideration, some employers turn to promissory estoppel, but that doctrine protects reliance on a promise, not an employer's expectation of restraint."
+          },
+          "tags": [
+            {
+              "label": "Promissory Estoppel",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Failure of Consideration",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Employer",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "estoppel-reliance",
+          "kind": "rule",
+          "text": "Promissory estoppel protects reliance on a promise.",
+          "span": {
+            "start": 274,
+            "end": 463,
+            "quote": "When the agreement fails for want of consideration, some employers turn to promissory estoppel, but that doctrine protects reliance on a promise, not an employer's expectation of restraint."
+          },
+          "tags": [
+            {
+              "label": "Promissory Estoppel",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "estoppel-expectation",
+          "kind": "rule",
+          "text": "Promissory estoppel does not protect an employer's expectation of restraint.",
+          "span": {
+            "start": 274,
+            "end": 463,
+            "quote": "When the agreement fails for want of consideration, some employers turn to promissory estoppel, but that doctrine protects reliance on a promise, not an employer's expectation of restraint."
+          },
+          "tags": [
+            {
+              "label": "Promissory Estoppel",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Employer",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "article-position",
+          "kind": "advice",
+          "text": "The Article argues that courts should reject the estoppel route outright.",
+          "span": {
+            "start": 464,
+            "end": 538,
+            "quote": "This Article argues that courts should reject the estoppel route outright."
+          },
+          "tags": [
+            {
+              "label": "Promissory Estoppel",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Employment Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-05",
+        "group_id": "synthetic-readme-05",
+        "title": "Northland Consumer Data Breach Notification Act, Nland. Stat. § 325X.04 (2025) (synthetic)",
+        "genre": "statutes-regulations",
+        "subgenre": "statute",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 5,
+        "text": "(a) A business that discovers a data breach shall notify each affected resident within 45 days after discovery. (b) The notice must describe the categories of personal information involved and the steps the resident can take to protect against identity theft. (c) A business may delay notice at the written request of a law enforcement agency, and a delay so requested does not violate subdivision (a). (d) A business that fails to give timely notice is subject to a civil penalty of up to $500 for each affected resident. (e) An affected resident may bring a civil action for damages caused by a violation of this section. (f) A business may not require a resident to waive any right under this section, and any such waiver is void. (g) An action under this section must be commenced within two years after the resident receives notice.",
+        "sha256": "4213ecd5e87ce59a6186444b6ce43d5db583ca229c1d286a3097f071752750df"
+      },
+      "propositions": [
+        {
+          "item_id": "notice-duty",
+          "kind": "rule",
+          "text": "A business discovering a data breach must notify each affected resident within 45 days after discovery.",
+          "span": {
+            "start": 0,
+            "end": 111,
+            "quote": "(a) A business that discovers a data breach shall notify each affected resident within 45 days after discovery."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Data Breach",
+              "branch": "Event"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "notice-content",
+          "kind": "rule",
+          "text": "The notice must describe the categories of personal information involved and protective steps against identity theft.",
+          "span": {
+            "start": 112,
+            "end": 259,
+            "quote": "(b) The notice must describe the categories of personal information involved and the steps the resident can take to protect against identity theft."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "notice-categories",
+          "kind": "element",
+          "text": "The notice must describe the categories of personal information involved.",
+          "span": {
+            "start": 112,
+            "end": 259,
+            "quote": "(b) The notice must describe the categories of personal information involved and the steps the resident can take to protect against identity theft."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-content"
+            }
+          ]
+        },
+        {
+          "item_id": "notice-protection",
+          "kind": "element",
+          "text": "The notice must describe steps the resident can take to protect against identity theft.",
+          "span": {
+            "start": 112,
+            "end": 259,
+            "quote": "(b) The notice must describe the categories of personal information involved and the steps the resident can take to protect against identity theft."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-content"
+            }
+          ]
+        },
+        {
+          "item_id": "notice-delay",
+          "kind": "exception",
+          "text": "A business may delay notice at the written request of a law enforcement agency.",
+          "span": {
+            "start": 260,
+            "end": 402,
+            "quote": "(c) A business may delay notice at the written request of a law enforcement agency, and a delay so requested does not violate subdivision (a)."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "notice-duty"
+            }
+          ]
+        },
+        {
+          "item_id": "delay-safe-harbor",
+          "kind": "exception",
+          "text": "A notice delay requested in writing by law enforcement does not violate subdivision (a).",
+          "span": {
+            "start": 260,
+            "end": 402,
+            "quote": "(c) A business may delay notice at the written request of a law enforcement agency, and a delay so requested does not violate subdivision (a)."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Compliance",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "notice-duty"
+            }
+          ]
+        },
+        {
+          "item_id": "notice-penalty",
+          "kind": "penalty",
+          "text": "A business failing to give timely notice is subject to a civil penalty up to $500 for each affected resident.",
+          "span": {
+            "start": 403,
+            "end": 522,
+            "quote": "(d) A business that fails to give timely notice is subject to a civil penalty of up to $500 for each affected resident."
+          },
+          "tags": [
+            {
+              "label": "Regulatory Penalty",
+              "branch": "Regulatory Objectives"
+            },
+            {
+              "label": "Violation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": [
+            {
+              "relation": "penalty-for",
+              "target_id": "notice-duty"
+            }
+          ]
+        },
+        {
+          "item_id": "resident-action",
+          "kind": "rule",
+          "text": "An affected resident may bring a civil action for damages caused by a violation of this section.",
+          "span": {
+            "start": 523,
+            "end": 623,
+            "quote": "(e) An affected resident may bring a civil action for damages caused by a violation of this section."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Right",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Violation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Private Right of Action",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "no-required-waiver",
+          "kind": "rule",
+          "text": "A business may not require a resident to waive any right under the section.",
+          "span": {
+            "start": 624,
+            "end": 733,
+            "quote": "(f) A business may not require a resident to waive any right under this section, and any such waiver is void."
+          },
+          "tags": [
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Waiver",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Right",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "waiver-void",
+          "kind": "outcome",
+          "text": "Any waiver required of a resident by a business under this section is void.",
+          "span": {
+            "start": 624,
+            "end": 733,
+            "quote": "(f) A business may not require a resident to waive any right under this section, and any such waiver is void."
+          },
+          "tags": [
+            {
+              "label": "Waiver",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Right",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Consumer Protection Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "action-deadline",
+          "kind": "rule",
+          "text": "An action under this section must be commenced within two years after the resident receives notice.",
+          "span": {
+            "start": 734,
+            "end": 837,
+            "quote": "(g) An action under this section must be commenced within two years after the resident receives notice."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Statute of Limitations",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Private Right of Action",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Privacy Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Statutes",
+              "branch": "Legal Authorities"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-06",
+        "group_id": "synthetic-readme-06",
+        "title": "Northland Civil Jury Instruction Guide, CIVJIG 25.10, \"Negligence: Definition and Direct Cause\" (synthetic)",
+        "genre": "know-how",
+        "subgenre": "jury-instruction-reference",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 6,
+        "text": "Every person has a duty to use reasonable care to avoid harming others. Negligence is the failure to use reasonable care. Reasonable care is the care a reasonable person would use in the same or similar circumstances. The plaintiff must prove by the greater weight of the evidence that the defendant was negligent and that the negligence was a direct cause of the harm. A direct cause is a cause that had a substantial part in bringing about the harm.",
+        "sha256": "c9366df6ae494931797b137ba0abb2d880626360522a9168d2d8adb76417d0c3"
+      },
+      "propositions": [
+        {
+          "item_id": "reasonable-care-duty",
+          "kind": "rule",
+          "text": "Every person has a duty to use reasonable care to avoid harming others.",
+          "span": {
+            "start": 0,
+            "end": 71,
+            "quote": "Every person has a duty to use reasonable care to avoid harming others."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Duty of Care",
+              "branch": "Objectives"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "negligence-definition",
+          "kind": "definition",
+          "text": "Negligence is the failure to use reasonable care.",
+          "span": {
+            "start": 72,
+            "end": 121,
+            "quote": "Negligence is the failure to use reasonable care."
+          },
+          "tags": [
+            {
+              "label": "Violation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Duty of Care",
+              "branch": "Objectives"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "care-definition",
+          "kind": "definition",
+          "text": "Reasonable care is the care a reasonable person would use in the same or similar circumstances.",
+          "span": {
+            "start": 122,
+            "end": 217,
+            "quote": "Reasonable care is the care a reasonable person would use in the same or similar circumstances."
+          },
+          "tags": [
+            {
+              "label": "Duty of Care",
+              "branch": "Objectives"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "negligence-proof",
+          "kind": "rule",
+          "text": "The plaintiff must prove negligence and direct causation by the greater weight of the evidence.",
+          "span": {
+            "start": 218,
+            "end": 369,
+            "quote": "The plaintiff must prove by the greater weight of the evidence that the defendant was negligent and that the negligence was a direct cause of the harm."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Preponderance of Evidence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Proximate Cause",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "prove-negligence",
+          "kind": "element",
+          "text": "The plaintiff must prove by the greater weight of the evidence that the defendant was negligent.",
+          "span": {
+            "start": 218,
+            "end": 369,
+            "quote": "The plaintiff must prove by the greater weight of the evidence that the defendant was negligent and that the negligence was a direct cause of the harm."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Preponderance of Evidence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "negligence-proof"
+            }
+          ]
+        },
+        {
+          "item_id": "prove-cause",
+          "kind": "element",
+          "text": "The plaintiff must prove by the greater weight of the evidence that the negligence was a direct cause of the harm.",
+          "span": {
+            "start": 218,
+            "end": 369,
+            "quote": "The plaintiff must prove by the greater weight of the evidence that the defendant was negligent and that the negligence was a direct cause of the harm."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Preponderance of Evidence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Plaintiff",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Defendant",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Proximate Cause",
+              "branch": "Litigation Objectives"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "negligence-proof"
+            }
+          ]
+        },
+        {
+          "item_id": "cause-definition",
+          "kind": "definition",
+          "text": "A direct cause had a substantial part in bringing about the harm.",
+          "span": {
+            "start": 370,
+            "end": 451,
+            "quote": "A direct cause is a cause that had a substantial part in bringing about the harm."
+          },
+          "tags": [
+            {
+              "label": "Proximate Cause",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Negligence",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Personal Injury and Tort Law",
+              "branch": "Area of Law"
+            },
+            {
+              "label": "Jury Instructions",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-07",
+        "group_id": "synthetic-readme-07",
+        "title": "*Vendor SaaS Agreement Negotiation Playbook*, § 4, \"Liability\" (Fernhollow Analytics in-house legal team, 2025) (synthetic)",
+        "genre": "know-how",
+        "subgenre": "contract-playbook",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 7,
+        "text": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees. Carve out data breaches, confidentiality breaches, and indemnification obligations from the cap. Require the vendor to notify us of any security incident within 72 hours. A force majeure clause should not excuse the vendor's obligation to maintain backups and restore service. Push back on any late-payment penalty above 1% per month; a court may refuse to enforce a liquidated damages clause that operates as a penalty.",
+        "sha256": "72a40179c64565d07faa81f8a42587b44fffb2d80f605033c15af1f73cad0664"
+      },
+      "propositions": [
+        {
+          "item_id": "cap-rule",
+          "kind": "advice",
+          "text": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees.",
+          "span": {
+            "start": 0,
+            "end": 106,
+            "quote": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees."
+          },
+          "tags": [
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Limitation of Liability Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "cap-carveouts",
+          "kind": "advice",
+          "text": "Carve data breaches, confidentiality breaches, and indemnification obligations out of the liability cap.",
+          "span": {
+            "start": 0,
+            "end": 203,
+            "quote": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees. Carve out data breaches, confidentiality breaches, and indemnification obligations from the cap."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Limitation of Liability Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Data Breach Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Confidentiality Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Indemnification Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "cap-exception-data",
+          "kind": "exception",
+          "text": "Carve data breaches out of the liability cap.",
+          "span": {
+            "start": 0,
+            "end": 203,
+            "quote": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees. Carve out data breaches, confidentiality breaches, and indemnification obligations from the cap."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Limitation of Liability Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Data Breach",
+              "branch": "Event"
+            },
+            {
+              "label": "Data Breach Clause",
+              "branch": "Transactional Objectives"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "cap-rule"
+            },
+            {
+              "relation": "condition-of",
+              "target_id": "cap-carveouts"
+            }
+          ]
+        },
+        {
+          "item_id": "cap-exception-confidentiality",
+          "kind": "exception",
+          "text": "Carve confidentiality breaches out of the liability cap.",
+          "span": {
+            "start": 0,
+            "end": 203,
+            "quote": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees. Carve out data breaches, confidentiality breaches, and indemnification obligations from the cap."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Limitation of Liability Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Confidentiality Clause",
+              "branch": "Transactional Objectives"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "cap-rule"
+            },
+            {
+              "relation": "condition-of",
+              "target_id": "cap-carveouts"
+            }
+          ]
+        },
+        {
+          "item_id": "cap-exception-indemnification",
+          "kind": "exception",
+          "text": "Carve indemnification obligations out of the liability cap.",
+          "span": {
+            "start": 0,
+            "end": 203,
+            "quote": "Never accept a limitation of liability clause that caps the vendor's exposure below twelve months of fees. Carve out data breaches, confidentiality breaches, and indemnification obligations from the cap."
+          },
+          "tags": [
+            {
+              "label": "Exception",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Limitation of Liability Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Indemnification Clause",
+              "branch": "Transactional Objectives"
+            }
+          ],
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "cap-rule"
+            },
+            {
+              "relation": "condition-of",
+              "target_id": "cap-carveouts"
+            }
+          ]
+        },
+        {
+          "item_id": "incident-notice",
+          "kind": "advice",
+          "text": "Require the vendor to notify the customer of any security incident within 72 hours.",
+          "span": {
+            "start": 204,
+            "end": 277,
+            "quote": "Require the vendor to notify us of any security incident within 72 hours."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "force-majeure-rule",
+          "kind": "advice",
+          "text": "A force majeure clause should not excuse the vendor's obligation to maintain backups and restore service.",
+          "span": {
+            "start": 278,
+            "end": 383,
+            "quote": "A force majeure clause should not excuse the vendor's obligation to maintain backups and restore service."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Prohibition",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Force Majeure Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "backup-duty",
+          "kind": "element",
+          "text": "Force majeure should not excuse the vendor's obligation to maintain backups.",
+          "span": {
+            "start": 278,
+            "end": 383,
+            "quote": "A force majeure clause should not excuse the vendor's obligation to maintain backups and restore service."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Force Majeure Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "force-majeure-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "restore-duty",
+          "kind": "element",
+          "text": "Force majeure should not excuse the vendor's obligation to restore service.",
+          "span": {
+            "start": 278,
+            "end": 383,
+            "quote": "A force majeure clause should not excuse the vendor's obligation to maintain backups and restore service."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Force Majeure Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "force-majeure-rule"
+            }
+          ]
+        },
+        {
+          "item_id": "late-payment-position",
+          "kind": "advice",
+          "text": "Push back on any late-payment penalty above 1% per month.",
+          "span": {
+            "start": 384,
+            "end": 527,
+            "quote": "Push back on any late-payment penalty above 1% per month; a court may refuse to enforce a liquidated damages clause that operates as a penalty."
+          },
+          "tags": [
+            {
+              "label": "Late Payment Penalty Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Penalty Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Software as a Service Agreement",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "penalty-refusal",
+          "kind": "rule",
+          "text": "A court may refuse to enforce a liquidated damages clause that operates as a penalty.",
+          "span": {
+            "start": 384,
+            "end": 527,
+            "quote": "Push back on any late-payment penalty above 1% per month; a court may refuse to enforce a liquidated damages clause that operates as a penalty."
+          },
+          "tags": [
+            {
+              "label": "Permission",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Penalty Clause",
+              "branch": "Transactional Objectives"
+            },
+            {
+              "label": "Liquidated Damages",
+              "branch": "Litigation Objectives"
+            },
+            {
+              "label": "Contract Law",
+              "branch": "Area of Law"
+            }
+          ],
+          "links": []
+        }
+      ]
+    },
+    {
+      "source": {
+        "source_id": "readme-08",
+        "group_id": "synthetic-readme-08",
+        "title": "\"Organizational Depositions in Practice,\" Northland CLE Litigation Institute, session outline, part II (synthetic)",
+        "genre": "know-how",
+        "subgenre": "cle-outline",
+        "jurisdiction": "synthetic",
+        "synthetic": true,
+        "partition": "tuning",
+        "example_id": 8,
+        "text": "The noticing party must describe each topic with reasonable particularity; vague topics invite a designee who knows nothing. The organization has a duty to prepare its designee to testify about information reasonably available to it. Serve the deposition notice at least 30 days before the deposition so the organization can prepare. The designee testifies for the organization, so an \"I don't know\" can bind it at trial. Meet and confer on the topics before the deposition, and confirm the agreed scope in writing.",
+        "sha256": "386baef546ea977f150697c0870ba4b4804719170e09e25470731490e367b457"
+      },
+      "propositions": [
+        {
+          "item_id": "particularity",
+          "kind": "rule",
+          "text": "The noticing party must describe each deposition topic with reasonable particularity.",
+          "span": {
+            "start": 0,
+            "end": 124,
+            "quote": "The noticing party must describe each topic with reasonable particularity; vague topics invite a designee who knows nothing."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "vague-topics",
+          "kind": "fact",
+          "text": "Vague deposition topics invite a designee who knows nothing.",
+          "span": {
+            "start": 0,
+            "end": 124,
+            "quote": "The noticing party must describe each topic with reasonable particularity; vague topics invite a designee who knows nothing."
+          },
+          "tags": [
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Corporate Representative Witness",
+              "branch": "Actor / Player"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "prepare-designee",
+          "kind": "rule",
+          "text": "The organization has a duty to prepare its designee to testify about information reasonably available to it.",
+          "span": {
+            "start": 125,
+            "end": 233,
+            "quote": "The organization has a duty to prepare its designee to testify about information reasonably available to it."
+          },
+          "tags": [
+            {
+              "label": "Obligation",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Corporate Representative Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Corporate Representative Deposition Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "notice-timing",
+          "kind": "advice",
+          "text": "Serve the deposition notice at least 30 days before the deposition so the organization can prepare.",
+          "span": {
+            "start": 234,
+            "end": 333,
+            "quote": "Serve the deposition notice at least 30 days before the deposition so the organization can prepare."
+          },
+          "tags": [
+            {
+              "label": "Notice",
+              "branch": "Document / Artifact"
+            },
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "representative-authority",
+          "kind": "fact",
+          "text": "The designee testifies for the organization.",
+          "span": {
+            "start": 334,
+            "end": 421,
+            "quote": "The designee testifies for the organization, so an \"I don't know\" can bind it at trial."
+          },
+          "tags": [
+            {
+              "label": "Authority",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Corporate Representative Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "binding-ignorance",
+          "kind": "fact",
+          "text": "A designee's statement that they do not know can bind the organization at trial.",
+          "span": {
+            "start": 334,
+            "end": 421,
+            "quote": "The designee testifies for the organization, so an \"I don't know\" can bind it at trial."
+          },
+          "tags": [
+            {
+              "label": "Authority",
+              "branch": "Deontic Specification"
+            },
+            {
+              "label": "Corporate Representative Witness",
+              "branch": "Actor / Player"
+            },
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "confer-topics",
+          "kind": "advice",
+          "text": "Meet and confer on the topics before the deposition.",
+          "span": {
+            "start": 422,
+            "end": 515,
+            "quote": "Meet and confer on the topics before the deposition, and confirm the agreed scope in writing."
+          },
+          "tags": [
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        },
+        {
+          "item_id": "written-scope",
+          "kind": "advice",
+          "text": "Confirm the agreed deposition scope in writing.",
+          "span": {
+            "start": 422,
+            "end": 515,
+            "quote": "Meet and confer on the topics before the deposition, and confirm the agreed scope in writing."
+          },
+          "tags": [
+            {
+              "label": "Corporate Representative Deposition",
+              "branch": "Event"
+            },
+            {
+              "label": "Discovery Practice",
+              "branch": "Service"
+            }
+          ],
+          "links": []
+        }
+      ]
+    }
+  ]
+}
