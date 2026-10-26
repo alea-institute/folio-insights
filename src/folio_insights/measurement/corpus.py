@@ -7,13 +7,17 @@ once in digest-addressed files; all retained selections use code-point offsets.
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
+import math
 import os
 import re
+import tempfile
 import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Sequence
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -34,6 +38,7 @@ PublicGenre = Literal["opinions", "statutes-regulations", "briefs"]
 Jurisdiction = Literal["federal", "MN", "TX", "CA", "NY", "FL", "IL"]
 EnvironmentName = Annotated[str, StringConstraints(pattern=r"^[A-Z][A-Z0-9_]*$")]
 DEFAULT_ROOT = Path("output/measurement/sealed")
+DEFAULT_THROTTLE_STATE = Path("output/measurement/corpus/throttle-state.json")
 SCORE_LABEL = "judge agreement, unanchored"
 
 
@@ -266,16 +271,91 @@ class HttpFetcher:
     The caller must verify current robots/terms before marking a source permitted.
     """
 
-    def __init__(self, client: httpx.Client, *, user_agent: str,
-                 clock: Callable[[], float] = time.monotonic,
+    def __init__(self, client: httpx.Client, *, user_agent: str, state_path: Path,
+                 clock: Callable[[], float] = time.time,
                  sleep: Callable[[float], None] = time.sleep) -> None:
         if not user_agent.strip():
             raise CorpusError("a contact User-Agent is required")
         self.client = client
         self.user_agent = user_agent
         self.clock, self.sleep = clock, sleep
-        self._requests: dict[str, list[float]] = defaultdict(list)
-        self._retry_at: dict[str, float] = {}
+        self.state_path = state_path
+        # Validate at startup, then reload inside each request's transaction.
+        with self._locked_state():
+            pass
+
+    @contextmanager
+    def _locked_state(self):
+        try:
+            self.state_path.parent.mkdir(parents=True, exist_ok=True)
+            # Lock a stable inode: replacing the JSON must not replace the lock.
+            with self.state_path.with_suffix(self.state_path.suffix + ".lock").open("a+b") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                try:
+                    yield self._load_state()
+                finally:
+                    fcntl.flock(lock, fcntl.LOCK_UN)
+        except OSError:
+            raise CorpusError(f"cannot read or write throttle state: {self.state_path}") from None
+
+    def _load_state(self) -> dict:
+        try:
+            raw = self.state_path.read_bytes()
+        except FileNotFoundError:
+            if self.state_path.is_symlink():
+                raise CorpusError(f"unreadable throttle state: {self.state_path}") from None
+            return {}
+        try:
+            state = json.loads(raw)
+            if not isinstance(state, dict):
+                raise ValueError
+            for host, entry in state.items():
+                if (not re.fullmatch(r"[a-z0-9.:-]+", host) or not isinstance(entry, dict)
+                        or set(entry) != {"requests", "retry_at"}):
+                    raise ValueError
+                history, retry = entry["requests"], entry["retry_at"]
+                if not isinstance(history, list):
+                    raise ValueError
+                timestamps = history + ([] if retry is None else [retry])
+                if any(type(t) not in (int, float) or not math.isfinite(t) for t in timestamps):
+                    raise ValueError
+                if history != sorted(history):
+                    raise ValueError
+            return state
+        except (ValueError, TypeError, OverflowError):
+            raise CorpusError(f"corrupt throttle state: {self.state_path}") from None
+
+    def _save_state(self, state: dict) -> None:
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=self.state_path.parent,
+                                             prefix=self.state_path.name + ".", delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(_json_bytes(state))
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, self.state_path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+
+    def _pace(self, entry: dict, limits: RateLimits) -> None:
+        now = self.clock()
+        history = entry["requests"]
+        ready = max(now, entry["retry_at"] or now)
+        if history:
+            ready = max(ready, history[-1] + limits.minimum_interval_seconds)
+        windows = ((60, limits.per_minute), (3600, limits.per_hour), (86400, limits.per_day))
+        for window, count in windows:
+            if count and len(history) >= count:
+                ready = max(ready, history[-count] + window)
+        if ready > now:
+            self.sleep(ready - now)
+        now = self.clock()
+        retention = max([limits.minimum_interval_seconds, *(w for w, n in windows if n)])
+        entry["requests"] = [stamp for stamp in history if stamp > now - retention] + [now]
+        if entry["retry_at"] is not None and entry["retry_at"] <= now:
+            entry["retry_at"] = None
 
     def fetch(self, request: DocumentRequest, source: SourcePolicy, max_bytes: int) -> bytes:
         _source_check(request, source)
@@ -291,19 +371,18 @@ class HttpFetcher:
             else:
                 prefix = "Token" if source.auth_style == "token" else "Bearer"
                 headers["Authorization"] = f"{prefix} {token}"
-        host = urlsplit(request.url).hostname
-        history = self._requests[host]
-        limits = source.rate_limits
-        now = self.clock()
-        ready = max(now, self._retry_at.get(host, now))
-        if history:
-            ready = max(ready, history[-1] + limits.minimum_interval_seconds)
-        for window, count in ((60, limits.per_minute), (3600, limits.per_hour), (86400, limits.per_day)):
-            if count and len(history) >= count:
-                ready = max(ready, history[-count] + window)
-        if ready > now:
-            self.sleep(ready - now)
-        history.append(self.clock())
+        host = url.raw_host.decode("ascii")
+        with self._locked_state() as state:
+            entry = state.setdefault(host, {"requests": [], "retry_at": None})
+            self._pace(entry, source.rate_limits)
+            # Reserve before sending so an interrupted transport still consumes quota.
+            self._save_state(state)
+            try:
+                return self._download(url, headers, max_bytes, entry)
+            finally:
+                self._save_state(state)
+
+    def _download(self, url: httpx.URL, headers: dict, max_bytes: int, entry: dict) -> bytes:
         try:
             with self.client.stream("GET", url, headers=headers,
                                     follow_redirects=False, timeout=30) as response:
@@ -313,10 +392,12 @@ class HttpFetcher:
                         delay = float(retry)
                     except ValueError:
                         try:
-                            delay = (parsedate_to_datetime(retry) - datetime.now(timezone.utc)).total_seconds()
+                            delay = parsedate_to_datetime(retry).timestamp() - self.clock()
                         except (TypeError, ValueError):
                             delay = 60
-                    self._retry_at[host] = self.clock() + max(0, delay)
+                    if not math.isfinite(delay):
+                        delay = 60
+                    entry["retry_at"] = self.clock() + max(0, delay)
                 if response.status_code != 200:
                     raise CorpusError(f"source HTTP {response.status_code}; no access bypass attempted")
                 body = bytearray()

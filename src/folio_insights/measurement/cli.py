@@ -13,7 +13,7 @@ import httpx
 from pydantic import ValidationError
 
 from folio_insights.measurement.corpus import (
-    DEFAULT_ROOT, CorpusError, DocumentRequest, HttpFetcher, collect, load_manifest,
+    DEFAULT_ROOT, DEFAULT_THROTTLE_STATE, CorpusError, DocumentRequest, HttpFetcher, collect, load_manifest,
     load_policy, seal, verify,
 )
 
@@ -52,7 +52,8 @@ def collect_command(requests_path: Path, policy_path: Path | None,
         evaluator_root = _cell_root(evaluator_root, requests[0].jurisdiction, requests[0].genre)
         with httpx.Client() as client:
             manifest = collect(requests, load_policy(policy_path), evaluator_root,
-                               HttpFetcher(client, user_agent=user_agent), seed=seed)
+                               HttpFetcher(client, user_agent=user_agent,
+                                           state_path=DEFAULT_THROTTLE_STATE), seed=seed)
         _print_verification(verify(manifest, evaluator_root))
     except (OSError, ValueError, TypeError, ValidationError) as exc:
         _fail(exc)

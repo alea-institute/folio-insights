@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
+from threading import Event
 
 import httpx
 import pytest
@@ -15,6 +17,142 @@ from folio_insights.measurement.corpus import (
     collect, load_manifest, load_policy, seal, verify,
 )
 from folio_insights.measurement.cli import cli
+
+
+class ThrottleClock:
+    def __init__(self):
+        self.now = 1_800_000_000.0
+
+    def __call__(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+@pytest.mark.parametrize("window,seconds", [("per_minute", 60), ("per_hour", 3600), ("per_day", 86400)])
+def test_sequential_fetchers_share_throttle_state(tmp_path, window, seconds):
+    clock = ThrottleClock()
+    sent = []
+    source = policy().sources[0].model_copy(update={
+        "rate_limits": policy().sources[0].rate_limits.model_copy(update={window: 2})})
+    state_path = tmp_path / "corpus" / "throttle-state.json"
+
+    def serve(request):
+        sent.append(clock())
+        return httpx.Response(200, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        for _ in range(2):
+            fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                                  clock=clock, sleep=clock.sleep)
+            for item in requests()[:2]:
+                assert fetcher.fetch(item, source, 100) == b"ok"
+    assert sent == [1_800_000_000, 1_800_000_001, 1_800_000_000 + seconds, 1_800_000_001 + seconds]
+    state = json.loads(state_path.read_bytes())
+    assert state == {"court.example": {"requests": sent[-2:], "retry_at": None}}
+
+
+@pytest.mark.parametrize("retry", ["120", "Fri, 15 Jan 2027 08:02:00 GMT"])
+def test_retry_after_persists_across_fetchers(tmp_path, retry):
+    clock = ThrottleClock()
+    state_path = tmp_path / "throttle-state.json"
+    sent = []
+
+    def serve(request):
+        sent.append(clock())
+        return httpx.Response(429 if len(sent) == 1 else 200,
+                              headers={"Retry-After": retry}, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        first = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                            clock=clock, sleep=clock.sleep)
+        with pytest.raises(CorpusError, match="HTTP 429"):
+            first.fetch(requests()[0], policy().sources[0], 100)
+        second = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                             clock=clock, sleep=clock.sleep)
+        second.fetch(requests()[0], policy().sources[0], 100)
+    assert sent == [1_800_000_000, 1_800_000_120]
+    assert json.loads(state_path.read_bytes())["court.example"]["retry_at"] is None
+
+
+@pytest.mark.parametrize("after_start", [False, True])
+@pytest.mark.parametrize("contents", ["{broken", "[]", '{"court.example": {"requests": ["bad"], "retry_at": null}}'])
+def test_corrupt_throttle_state_refuses_to_fetch(tmp_path, contents, after_start):
+    state_path = tmp_path / "throttle-state.json"
+    server = FixtureServer()
+    with httpx.Client(transport=httpx.MockTransport(server)) as client:
+        if after_start:
+            fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                                  clock=ThrottleClock())
+        state_path.write_text(contents)
+        with pytest.raises(CorpusError, match=str(state_path)):
+            if not after_start:
+                fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                                      clock=ThrottleClock())
+            fetcher.fetch(requests()[0], policy().sources[0], 100)
+    assert not server.calls
+    assert state_path.read_text() == contents
+
+
+def test_unreadable_throttle_state_refuses_to_fetch(tmp_path, monkeypatch):
+    state_path = tmp_path / "throttle-state.json"
+    state_path.write_text("{}")
+    path_type = type(state_path)
+    read_bytes = path_type.read_bytes
+
+    def unreadable(path):
+        if path == state_path:
+            raise PermissionError("fixture permission denial")
+        return read_bytes(path)
+
+    monkeypatch.setattr(path_type, "read_bytes", unreadable)
+    server = FixtureServer()
+    with httpx.Client(transport=httpx.MockTransport(server)) as client:
+        with pytest.raises(CorpusError, match=str(state_path)):
+            HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                        clock=ThrottleClock())
+    assert not server.calls
+
+
+def test_concurrent_fetchers_lock_and_preserve_both_writes(tmp_path):
+    clock = ThrottleClock()
+    state_path = tmp_path / "throttle-state.json"
+    source = policy().sources[0].model_copy(update={
+        "rate_limits": policy().sources[0].rate_limits.model_copy(update={"per_hour": 2})})
+    entered, release, started, second_entered = Event(), Event(), Event(), Event()
+    sent = []
+
+    def serve(request):
+        sent.append(clock())
+        if len(sent) == 1:
+            entered.set()
+            assert release.wait(5)
+        else:
+            second_entered.set()
+        return httpx.Response(200, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        # Both instances start with the same state: fetch must reload under lock.
+        first, second = [HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                                    clock=clock, sleep=clock.sleep) for _ in range(2)]
+
+        def run_second():
+            started.set()
+            return second.fetch(requests()[1], source, 100)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            a = pool.submit(first.fetch, requests()[0], source, 100)
+            try:
+                assert entered.wait(5)
+                b = pool.submit(run_second)
+                assert started.wait(5)
+                assert not second_entered.wait(0.1)
+            finally:
+                release.set()
+            assert a.result(timeout=5) == b.result(timeout=5) == b"ok"
+    assert sent == [1_800_000_000, 1_800_000_001]
+    assert json.loads(state_path.read_bytes())["court.example"]["requests"] == sent
 
 
 def digest(data: bytes) -> str:
@@ -85,6 +223,7 @@ def acquisition(tmp_path):
 
     client = httpx.Client(transport=httpx.MockTransport(server))
     fetcher = HttpFetcher(client, user_agent="Folio research (contact@example.test)",
+                          state_path=tmp_path / "throttle-state.json",
                           clock=lambda: now[0], sleep=sleep)
     yield server, fetcher, sleeps
     client.close()
@@ -326,7 +465,8 @@ def test_draft_gold_uses_offsets_and_cannot_anchor_itself(tmp_path, acquisition)
 def test_recorded_text_xml_and_api_formats(tmp_path, method, selector, body):
     item = requests()[0].model_copy(update={"extraction_method": method, "selector": selector})
     with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, content=body(text(0))))) as client:
-        manifest = collect([item], policy(), tmp_path, HttpFetcher(client, user_agent="Fixture contact"))
+        manifest = collect([item], policy(), tmp_path, HttpFetcher(client, user_agent="Fixture contact",
+                                       state_path=tmp_path / "throttle-state.json"))
     assert len(manifest.documents) == 1
     doc = manifest.documents[0]
     assert (tmp_path / "text" / f"{doc.normalized_sha256}.txt").read_text() == text(0)
@@ -347,7 +487,8 @@ def test_unusable_acquisitions_do_not_retain_bytes(tmp_path, acquisition, fault)
         transport = httpx.MockTransport(lambda r: httpx.Response(200, content=b"<title>Just a moment</title>"))
         with httpx.Client(transport=transport) as client:
             manifest = collect([DocumentRequest.model_validate(item)], source_policy, tmp_path,
-                               HttpFetcher(client, user_agent="Fixture contact"))
+                               HttpFetcher(client, user_agent="Fixture contact",
+                                       state_path=tmp_path / "throttle-state.json"))
     else:
         manifest = collect([DocumentRequest.model_validate(item)], source_policy, tmp_path, fetcher)
     assert not manifest.documents and len(manifest.gaps) == 1
@@ -358,19 +499,34 @@ def test_unusable_acquisitions_do_not_retain_bytes(tmp_path, acquisition, fault)
 
 def test_cli_collect_uses_recorded_transport(tmp_path, acquisition, monkeypatch):
     server, _, _ = acquisition
+    clock = ThrottleClock()
+    sent = []
+
+    def serve(request):
+        sent.append(clock())
+        return server(request)
+
+    monkeypatch.chdir(tmp_path)
     input_path, policy_path = tmp_path / "requests.json", tmp_path / "policy.json"
-    input_path.write_text(json.dumps([requests()[0].model_dump(mode="json")]))
-    policy_path.write_text(policy().model_dump_json())
+    input_path.write_text(json.dumps([r.model_dump(mode="json") for r in requests()[:2]]))
+    data = policy().model_dump(mode="json")
+    data["sources"][0]["rate_limits"]["per_hour"] = 2
+    policy_path.write_text(json.dumps(data))
     client_factory = httpx.Client
     monkeypatch.setattr("folio_insights.measurement.cli.httpx.Client",
-                        lambda: client_factory(transport=httpx.MockTransport(server)))
-    result = CliRunner().invoke(cli, ["corpus", "collect", "--requests", str(input_path),
-                                     "--policy", str(policy_path), "--user-agent", "Fixture contact",
-                                     "--evaluator-root", str(tmp_path / "evaluator")])
-    assert result.exit_code == 1  # acquired successfully; eight-document cell is incomplete
-    assert '"documents":1' in result.output
-    assert len(server.calls) == 1
-    assert load_manifest(tmp_path / "evaluator" / "manifest.json").documents
+                        lambda: client_factory(transport=httpx.MockTransport(serve)))
+    monkeypatch.setattr("folio_insights.measurement.cli.HttpFetcher",
+                        lambda *args, **kwargs: HttpFetcher(*args, **kwargs, clock=clock, sleep=clock.sleep))
+    for cell in ("first", "second"):
+        root = tmp_path / cell
+        result = CliRunner().invoke(cli, ["corpus", "collect", "--requests", str(input_path),
+                                         "--policy", str(policy_path), "--user-agent", "Fixture contact",
+                                         "--evaluator-root", str(root)])
+        assert result.exit_code == 1  # acquired successfully; eight-document cell is incomplete
+        assert '"documents":2' in result.output
+        assert len(load_manifest(root / "manifest.json").documents) == 2
+    assert sent == [1_800_000_000, 1_800_000_001, 1_800_003_600, 1_800_003_601]
+    assert (tmp_path / "output/measurement/corpus/throttle-state.json").is_file()
 
 
 def test_tuning_package_does_not_copy_policy_urls_for_heldout_documents(tmp_path, acquisition):
@@ -401,7 +557,8 @@ def test_nonzero_offsets_survive_tuning_export_with_original_coordinates(tmp_pat
     root, tuning = tmp_path / "evaluator", tmp_path / "tuning"
     with httpx.Client(transport=httpx.MockTransport(serve)) as client:
         manifest = collect(items, policy(), root,
-                           HttpFetcher(client, user_agent="Fixture contact", sleep=lambda _: None))
+                           HttpFetcher(client, user_agent="Fixture contact",
+                                       state_path=tmp_path / "throttle-state.json", sleep=lambda _: None))
     assert verify(manifest, root).complete
     seal(manifest, root, tuning)
     payload = json.loads((tuning / "manifest.json").read_text())
@@ -450,6 +607,8 @@ def test_source_query_survives_fetch_without_persisting_auth(tmp_path, acquisiti
     serialized = (tmp_path / "manifest.json").read_text()
     assert item.url in serialized
     assert "fixture credential" not in serialized and "key=" not in serialized
+    state = json.loads(fetcher.state_path.read_bytes())
+    assert state == {"court.example": {"requests": [0.0], "retry_at": None}}
 
 
 @pytest.mark.parametrize("suffix", ["", "\r\nTrailing material outside the selection."])
@@ -469,7 +628,8 @@ def test_tuning_export_preserves_crlf_bytes_and_selection_digest(tmp_path, suffi
     root, tuning = tmp_path / "evaluator", tmp_path / "tuning"
     with httpx.Client(transport=httpx.MockTransport(serve)) as client:
         manifest = collect(items, policy(), root,
-                           HttpFetcher(client, user_agent="Fixture contact", sleep=lambda _: None))
+                           HttpFetcher(client, user_agent="Fixture contact",
+                                       state_path=tmp_path / "throttle-state.json", sleep=lambda _: None))
     assert verify(manifest, root).complete
     seal(manifest, root, tuning)
     payload = json.loads((tuning / "manifest.json").read_bytes())
@@ -497,7 +657,8 @@ def test_non_object_json_is_a_document_gap(tmp_path, raw, phase):
 
     with httpx.Client(transport=httpx.MockTransport(serve)) as client:
         manifest = collect(items, policy(), tmp_path,
-                           HttpFetcher(client, user_agent="Fixture contact", sleep=lambda _: None))
+                           HttpFetcher(client, user_agent="Fixture contact",
+                                       state_path=tmp_path / "throttle-state.json", sleep=lambda _: None))
     assert len(calls) == 8
     if phase == "collect":
         assert len(manifest.documents) == 7
