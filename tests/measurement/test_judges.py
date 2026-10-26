@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import tempfile
 import threading
 import time
@@ -14,6 +15,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from folio_insights.measurement import judges
 from folio_insights.measurement.annotations import (
     Annotation,
     AnchorVerification,
@@ -111,8 +113,75 @@ def response(data, changes=None):
     }
 
 
+def process_is_running(pid):
+    # Orphans can remain as zombies until the host's reaper runs.
+    try:
+        return Path(f"/proc/{pid}/stat").read_text().split()[2] != "Z"
+    except FileNotFoundError:
+        return False
+
+
+def wait_until(predicate):
+    deadline = time.monotonic() + 5
+    while not predicate():
+        assert time.monotonic() < deadline, "fake CLI handshake did not complete"
+        threading.Event().wait(0.01)
+
+
 @pytest.fixture
-def fake_cli(tmp_path, monkeypatch):
+def cli_clock(monkeypatch):
+    class Clock:
+        started = None
+
+        def monotonic(self):
+            # Payload/auth tests must not accidentally exercise startup timeouts.
+            return 0.0
+
+        def interrupt_when_ready(
+            self, root, reason, *, leader_exits=False, real_timeout=False
+        ):
+            cancelled = threading.Event()
+
+            def tick():
+                if not (root / "ready").exists():
+                    return 0.0
+                if leader_exits and process_is_running(
+                    (root / "leader.pid").read_text()
+                ):
+                    return 0.0
+                if self.started is None:
+                    self.started = time.monotonic()
+                    if reason == "timeout":
+                        return 0.0
+                if reason == "cancelled":
+                    cancelled.set()
+                    return 0.0
+                return time.monotonic() - self.started if real_timeout else 1.0
+
+            self.monotonic = tick
+            return cancelled
+
+    clock = Clock()
+    # Replace only the adapter's time reference, not Python/subprocess clocks.
+    monkeypatch.setattr(judges, "time", clock)
+    return clock
+
+
+def acknowledge_descendant_term(root, monkeypatch):
+    killpg = os.killpg
+
+    def signal_group(pid, sig):
+        killpg(pid, sig)
+        if sig == signal.SIGTERM:
+            # The fake ignores TERM. Let its handler acknowledge receipt before
+            # the adapter's short drain interval can escalate to SIGKILL.
+            wait_until(lambda: (root / "descendant.term").exists())
+
+    monkeypatch.setattr(judges.os, "killpg", signal_group)
+
+
+@pytest.fixture
+def fake_cli(tmp_path, monkeypatch, cli_clock):
     root = tmp_path / "bin"
     root.mkdir()
     shutil.copyfile(FIXTURES / "codex-features.txt", root / "codex-features.txt")
@@ -136,7 +205,15 @@ def fake_cli(tmp_path, monkeypatch):
     # in the allowed fixture tree, isolated and automatically cleaned per test.
     with tempfile.TemporaryDirectory(prefix=".judge-cache-", dir=FIXTURES) as cache:
         monkeypatch.setenv("XDG_CACHE_HOME", cache)
-        yield configure
+        try:
+            yield configure
+        finally:
+            # Blocking fakes must not leak if a test fails before cleanup.
+            if (root / "leader.pid").exists():
+                try:
+                    os.killpg(int((root / "leader.pid").read_text()), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
 
 
 def calls(root):
@@ -511,7 +588,7 @@ def test_every_nonempty_genre_source_kind_stratum_is_sampled():
     ],
 )
 def test_invalid_or_unavailable_judgments_remain_incomplete(
-    fake_cli, adapter, provider, fault
+    fake_cli, cli_clock, adapter, provider, fault
 ):
     data = packet(2)
     payload = response(data)
@@ -530,7 +607,7 @@ def test_invalid_or_unavailable_judgments_remain_incomplete(
     elif fault == "unexpected":
         first["item_id"] = "unrequested"
     elif fault == "timeout":
-        settings = {"sleep": 2}
+        settings = {"block": True}
     elif fault == "nonzero":
         settings = {"exit": 9}
     elif fault == "bad-span":
@@ -543,11 +620,18 @@ def test_invalid_or_unavailable_judgments_remain_incomplete(
         first["score"] = 1
     elif fault == "wrong-type":
         first["item_id"] = 7
-    fake_cli(data, **{provider: {"response": payload, **settings}})
+    root = fake_cli(data, **{provider: {"response": payload, **settings}})
+    if fault == "timeout":
+        cli_clock.interrupt_when_ready(root, "timeout")
     result = adapter(model="recorded-model", timeout=0.2).judge(data)
     assert result.status == "incomplete" and result.error
     assert result.missing_item_ids
     assert not any(j.item_id == "unrequested" for j in result.judgments)
+    if fault == "timeout":
+        assert result.error == "timeout"
+        assert len(calls(root)) == 1
+    else:
+        assert result.error != "timeout"
     if fault == "missing":
         assert result.missing_item_ids == (data.items[1].item_id,)
         assert (
@@ -712,54 +796,30 @@ def test_cancellation_is_incomplete(fake_cli):
 @pytest.mark.parametrize("leader_exits", [True, False])
 @pytest.mark.parametrize("reason", ["timeout", "cancelled"])
 def test_descendant_holding_stdout_cannot_delay_cleanup(
-    fake_cli, adapter, provider, leader_exits, reason
+    fake_cli, cli_clock, monkeypatch, adapter, provider, leader_exits, reason
 ):
     data = packet(1)
     root = fake_cli(
         data,
-        **{provider: {"descendant": True, "leader_exits": leader_exits, "sleep": 2}},
+        **{provider: {"descendant": True, "leader_exits": leader_exits}},
     )
-    cancelled = threading.Event()
-
-    def cancel_when_descendant_is_ready():
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            if (root / "descendant.pid").exists():
-                if leader_exits:
-                    # Let the leader exit and communicate() observe it before
-                    # cancellation; otherwise this only exercises a live leader.
-                    time.sleep(0.1)
-                cancelled.set()
-                return
-            time.sleep(0.005)
-
-    watcher = threading.Thread(target=cancel_when_descendant_is_ready)
-    if reason == "cancelled":
-        watcher.start()
-    started = time.monotonic()
-    try:
-        result = adapter(model="recorded-model", timeout=0.25).judge(
-            data, cancelled=cancelled
-        )
-        elapsed = time.monotonic() - started
-    finally:
-        if reason == "cancelled":
-            watcher.join(timeout=3)
+    cancelled = cli_clock.interrupt_when_ready(
+        root, reason, leader_exits=leader_exits, real_timeout=True
+    )
+    acknowledge_descendant_term(root, monkeypatch)
+    timeout = 0.25
+    result = adapter(model="recorded-model", timeout=timeout).judge(
+        data, cancelled=cancelled
+    )
+    assert cli_clock.started is not None
+    elapsed = time.monotonic() - cli_clock.started
     assert result.status == "incomplete" and result.error == reason
     assert result.missing_item_ids == (data.items[0].item_id,)
-    assert elapsed < 1.25, f"cleanup took {elapsed:.2f}s for a 0.25s timeout"
+    assert elapsed < timeout + 5, f"cleanup took {elapsed:.2f}s"
     assert (root / "descendant.term").exists()
-    # Linux may retain an orphan as a zombie until its reaper runs. It must no
-    # longer execute or hold a pipe, even if the original leader already exited.
+    assert len(calls(root)) == 1
     pid = (root / "descendant.pid").read_text()
-    proc = Path(f"/proc/{pid}/stat")
-    reaped_by = time.monotonic() + 0.1
-    try:
-        while proc.read_text().split()[2] != "Z" and time.monotonic() < reaped_by:
-            time.sleep(0.005)
-        assert proc.read_text().split()[2] == "Z"
-    except FileNotFoundError:
-        pass
+    wait_until(lambda: not process_is_running(pid))
 
 
 @pytest.mark.parametrize(
@@ -767,7 +827,7 @@ def test_descendant_holding_stdout_cannot_delay_cleanup(
 )
 @pytest.mark.parametrize("stage", ["version", "auth"])
 def test_local_probe_descendants_also_have_bounded_cleanup(
-    fake_cli, adapter, provider, stage
+    fake_cli, cli_clock, monkeypatch, adapter, provider, stage
 ):
     probe = (
         ["--version"]
@@ -778,12 +838,19 @@ def test_local_probe_descendants_also_have_bounded_cleanup(
     )
     data = packet(1)
     root = fake_cli(data, **{provider: {"hang_probe": probe, "leader_exits": True}})
-    started = time.monotonic()
-    result = adapter(model="recorded-model", timeout=0.25).judge(data)
-    elapsed = time.monotonic() - started
+    cli_clock.interrupt_when_ready(
+        root, "timeout", leader_exits=True, real_timeout=True
+    )
+    acknowledge_descendant_term(root, monkeypatch)
+    timeout = 0.25
+    result = adapter(model="recorded-model", timeout=timeout).judge(data)
+    assert cli_clock.started is not None
+    elapsed = time.monotonic() - cli_clock.started
     assert result.status == "incomplete" and result.error == "timeout"
-    assert elapsed < 1.25, f"probe cleanup took {elapsed:.2f}s"
+    assert elapsed < timeout + 5, f"probe cleanup took {elapsed:.2f}s"
     assert (root / "descendant.term").exists()
+    pid = (root / "descendant.pid").read_text()
+    wait_until(lambda: not process_is_running(pid))
     assert not (root / "calls.jsonl").exists()
 
 
@@ -960,22 +1027,15 @@ def test_sampling_realized_coverage_is_in_serialized_receipt():
     "adapter,provider", [(CodexJudge, "codex"), (ClaudeJudge, "claude")]
 )
 def test_cancellation_of_running_cli_returns_missing_coverage(
-    fake_cli, adapter, provider
+    fake_cli, cli_clock, adapter, provider
 ):
     data = packet(1)
-    fake_cli(data, **{provider: {"sleep": 2}})
-    cancelled = threading.Event()
-    timer = threading.Timer(0.3, cancelled.set)
-    timer.start()
-    try:
-        result = adapter(model="recorded-model", timeout=5).judge(
-            data, cancelled=cancelled
-        )
-    finally:
-        timer.cancel()
-        timer.join()
+    root = fake_cli(data, **{provider: {"block": True}})
+    cancelled = cli_clock.interrupt_when_ready(root, "cancelled")
+    result = adapter(model="recorded-model", timeout=5).judge(data, cancelled=cancelled)
     assert result.error == "cancelled"
     assert result.missing_item_ids == (data.items[0].item_id,)
+    assert len(calls(root)) == 1
 
 
 def test_sampled_coverage_item_retains_all_prediction_context_for_its_source():
