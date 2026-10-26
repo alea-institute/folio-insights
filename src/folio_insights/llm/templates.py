@@ -28,7 +28,10 @@ from folio_insights.llm import schemas
 from folio_insights.services.prompts.boundary import BOUNDARY_REFINEMENT_PROMPT
 from folio_insights.services.prompts.classification import CLASSIFICATION_PROMPT
 from folio_insights.services.prompts.contradiction import CONTRADICTION_ANALYSIS_PROMPT
-from folio_insights.services.prompts.distillation import DISTILLATION_PROMPT
+from folio_insights.services.prompts.distillation import (
+    ATOMIC_DISTILLATION_PROMPT,
+    DISTILLATION_PROMPT,
+)
 from folio_insights.services.prompts.novelty import NOVELTY_SCORING_PROMPT
 from folio_insights.services.prompts.task_discovery import (
     TASK_DISCOVERY_PROMPT,
@@ -190,6 +193,12 @@ DISTILL = register(PromptTemplate(
     user=DISTILLATION_PROMPT, output_schema=schemas.DistilledOutput,
     max_tokens=2048,
 ))
+
+ATOMIC_DISTILL = register(PromptTemplate(
+    id="distiller.atomic", version="2", task="distiller",
+    user=ATOMIC_DISTILLATION_PROMPT, output_schema=schemas.AtomicDistilledOutput,
+    max_tokens=16384,
+), default_for_task=False)
 
 CLASSIFY = register(PromptTemplate(
     id="knowledge_classifier.classify", version="1", task="classifier",
