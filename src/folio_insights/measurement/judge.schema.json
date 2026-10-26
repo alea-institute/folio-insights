@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "JudgeSpan": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "exclusiveMinimum": 0,
+          "title": "End",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "JudgeSpan",
+      "type": "object"
+    },
+    "JudgeVerdict": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "minLength": 1,
+          "title": "Item Id",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "correct",
+            "wrong",
+            "uncertain"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "omission": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProposedOmission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "concept_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Concept Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "item_id",
+        "verdict",
+        "reason",
+        "omission",
+        "concept_ids"
+      ],
+      "title": "JudgeVerdict",
+      "type": "object"
+    },
+    "ProposedOmission": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "span": {
+          "$ref": "#/$defs/JudgeSpan"
+        }
+      },
+      "required": [
+        "source_id",
+        "span"
+      ],
+      "title": "ProposedOmission",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "judgments": {
+      "items": {
+        "$ref": "#/$defs/JudgeVerdict"
+      },
+      "title": "Judgments",
+      "type": "array"
+    }
+  },
+  "required": [
+    "judgments"
+  ],
+  "title": "VerdictBatch",
+  "type": "object"
+}
