@@ -1,0 +1,33 @@
+name: Viewer
+
+on:
+  push:
+    paths: ['viewer/**', 'playwright.config.mjs', '.github/workflows/viewer.yml']
+  pull_request:
+    paths: ['viewer/**', 'playwright.config.mjs', '.github/workflows/viewer.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  browser-a11y:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: viewer/package-lock.json
+      - run: npm --prefix viewer ci
+      - run: npm --prefix viewer exec -- playwright install --with-deps chromium
+      - run: npm --offline --prefix viewer run check
+      - run: npm --offline --prefix viewer test -- --run
+      # Provisioning above downloads tools; browser tests mock APIs and block remote requests.
+      - run: npm --offline --prefix viewer exec -- playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: workbench-browser-results
+          path: ${{ runner.temp }}/folio-workbench-results

@@ -100,6 +100,8 @@ inside builder stages; none of them is installed in a shipped image.
 | Vite 7, TypeScript 5, svelte-check | MIT / Apache-2.0 |
 | `@keenmate/svelte-treeview` | MIT |
 | Vitest 5 (`vitest`, dev only; pinned 5.0.3) | MIT |
+| `@playwright/test` (dev only; pinned 1.59.1) | Apache-2.0 |
+| `@axe-core/playwright` (dev only; pinned 4.10.2) | MPL-2.0 (file-level copyleft; test-only, not distributed) |
 
 ## Models
 
