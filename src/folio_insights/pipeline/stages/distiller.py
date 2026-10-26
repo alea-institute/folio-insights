@@ -97,19 +97,42 @@ def _atomic_prompt(group: list[_AtomicBlock], source: str) -> str:
     ], ensure_ascii=False))
 
 
-def _split_atomic_group(group: list[_AtomicBlock]) -> list[list[_AtomicBlock]]:
-    """Strictly smaller groups, with overlapping context where size permits."""
-    if len(group) > 1:
+def _split_atomic_group(group: list[_AtomicBlock], source: str) -> list[list[_AtomicBlock]]:
+    """Shrink at sentence boundaries, sharing a whole sentence where possible.
+
+    Two-sentence leaves must become singletons to make progress; an indivisible
+    sentence is never cut, even when it exceeds the budget.
+    """
+    if len(group) > 2:
         middle = len(group) // 2
-        return [group[:middle + (len(group) > 2)], group[middle:]]
+        return [group[:middle + 1], group[middle:]]
+    if len(group) == 2:
+        left, right = group
+        right_parts = _split_atomic_group([right], source)
+        if right_parts:
+            return [[left, *right_parts[0]], [right]]
+        left_parts = _split_atomic_group([left], source)
+        if left_parts:
+            return [[left], [*left_parts[-1], right]]
+        return [[left], [right]]
     block = group[0]
-    if block.end - block.start <= 1:
+    from folio_insights.services.text_normalization import split_sentences
+
+    spans = []
+    position = block.start
+    for sentence in split_sentences(source[block.start:block.end]):
+        start = source.find(sentence, position, block.end)
+        if start < 0:
+            # A tokenizer that rewrites source bytes cannot provide safe cut points.
+            return []
+        position = start + len(sentence)
+        spans.append((start, position))
+    if len(spans) <= 1:
         return []
-    middle = (block.start + block.end) // 2
-    overlap = min(128, (block.end - block.start) // 8)
+    middle = len(spans) // 2
     return [[_AtomicBlock(f"{block.id}.{start}-{end}", block.parent, start, end)]
-            for start, end in [(block.start, middle + overlap),
-                               (middle - overlap, block.end)]]
+            for start, end in [(block.start, spans[middle if len(spans) > 2 else 0][1]),
+                               (spans[middle][0], block.end)]]
 
 
 class DistillerStage(InsightsPipelineStage):
@@ -145,16 +168,26 @@ class DistillerStage(InsightsPipelineStage):
                                  for b in group)
         return input_bound <= self.input_token_budget and output_bound <= self.output_token_budget
 
-    def _atomic_groups(self, blocks: list[_AtomicBlock], source: str) -> list[list[_AtomicBlock]]:
+    def _atomic_groups(
+        self, blocks: list[_AtomicBlock], source: str, diagnostics: list[dict],
+    ) -> list[list[_AtomicBlock]]:
         pieces: list[_AtomicBlock] = []
+        seen: set[tuple[int, int]] = set()
 
         def fit(block: _AtomicBlock) -> None:
+            if (block.start, block.end) in seen:
+                return
+            seen.add((block.start, block.end))
             if self._atomic_group_fits([block], source):
                 pieces.append(block)
                 return
-            smaller = _split_atomic_group([block])
+            smaller = _split_atomic_group([block], source)
             if not smaller:
-                raise ValueError("Atomic token budgets cannot fit prompt/schema and one source character")
+                diagnostics.append({"source_file": block.parent.source_file,
+                                    "local_id": block.id, "reason": "oversized_sentence",
+                                    "start": block.start, "end": block.end})
+                pieces.append(block)
+                return
             for group in smaller:
                 fit(group[0])
 
@@ -306,19 +339,22 @@ class DistillerStage(InsightsPipelineStage):
                     "max tokens", "token limit", "too many tokens", "request too large",
                     "incompleteoutputexception",
                 )) or getattr(exc, "status_code", None) == 413
-                smaller = _split_atomic_group(group) if oversized else []
+                smaller = _split_atomic_group(group, source) if oversized else []
                 if smaller:
                     diagnostic(group[0].id, "oversized_group_split", block_ids=[b.id for b in group])
                     for child_group in smaller:
                         await extract_group(child_group)
                     return
+                if oversized:
+                    diagnostic(group[0].id, "oversized_sentence",
+                               start=group[0].start, end=group[0].end)
                 tracker.failure(file, exc)
                 diagnostic(group[0].id, "llm_failed", block_ids=[b.id for b in group])
                 logger.warning("Atomic extraction group failed for %s", file, exc_info=True)
                 return
             outputs.append((output, {b.id: (b.parent, b.start, b.end) for b in group}))
 
-        for group in self._atomic_groups(ordered_blocks, source):
+        for group in self._atomic_groups(ordered_blocks, source, diagnostics):
             await extract_group(group)
 
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
@@ -339,6 +375,9 @@ class DistillerStage(InsightsPipelineStage):
         resolved: dict[tuple[int, str], str] = {}
         aliases: dict[str, set[str]] = {}
         unique: dict[tuple[int, int, str], KnowledgeUnit] = {}
+        # Overlapping requests may legitimately re-emit the same occurrence. Allocate
+        # independently per response, then reconcile equal source spans below.
+        occurrence_uses: dict[tuple[int, str], Counter[tuple[int, int]]] = {}
         for group, candidate, blocks in candidates:
             if any(id not in blocks for id in candidate.support_ids):
                 diagnostic(candidate.id, "missing_support", support_ids=candidate.support_ids)
@@ -359,12 +398,23 @@ class DistillerStage(InsightsPipelineStage):
 
             # A narrow exact match is useful for highlighting, but a paraphrase must keep
             # its complete supporting blocks, not a fuzzy fragment or its parent's score.
-            anchor = resolve_anchor(text, evidence)
-            if (anchor is not None and anchor.score == 1.0
-                    and evidence.count(text) == 1 and check_support(text, anchor.snippet).supported
-                    and all(citation in anchor.snippet for citation in candidate.citations)):
-                end = start + anchor.end
-                start += anchor.start
+            if (text in evidence and check_support(text, text).supported
+                    and all(citation in text for citation in candidate.citations)):
+                occurrences = []
+                position = evidence.find(text)
+                while position >= 0:
+                    occurrences.append((start + position, start + position + len(text)))
+                    position = evidence.find(text, position + len(text))
+                uses = occurrence_uses.setdefault(
+                    (group, unicodedata.normalize("NFC", text)), Counter(),
+                )
+                # First unused match in source order; surplus emissions cycle over
+                # existing matches so their aliases and links still resolve.
+                start, end = min(occurrences, key=lambda span: uses[span])
+                if uses[start, end]:
+                    diagnostic(candidate.id, "surplus_occurrence", start=start, end=end,
+                               occurrence_count=len(occurrences))
+                uses[start, end] += 1
                 evidence = source[start:end]
             exact = resolve_anchor(evidence, source[start:end])
             if exact is None or not exact.verified or exact.score != 1.0:

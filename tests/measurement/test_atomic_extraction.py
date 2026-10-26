@@ -156,6 +156,30 @@ async def test_repeated_text_unicode_and_newlines_keep_occurrences(offline_port)
     assert_grounded(job)
 
 
+@pytest.mark.parametrize("emissions", [2, 3])
+async def test_repeated_statements_in_one_block_keep_offsets_and_links(emissions, offline_port):
+    claim = "A party must give written notice."
+    source = claim + "\n\n" + claim
+    payload = [proposition(f"p{i}", claim, links=[{
+        "relation": "condition-of", "target_id": "p1" if i != 1 else "p0",
+    }]) for i in range(emissions)]
+    job = await extract(job_for(source), payload, offline_port)
+    diagnostics = job.metadata["atomic_extraction"]["diagnostics"]
+    if emissions == 3:
+        assert any(d["reason"] == "surplus_occurrence" and d["local_id"] == "p2"
+                   for d in diagnostics)
+    else:
+        assert diagnostics == []
+    assert [(u.original_span.start, u.original_span.end) for u in job.units] == [
+        (0, len(claim)), (len(claim) + 2, len(source)),
+    ]
+    first, second = job.units
+    assert first.id != second.id
+    assert [link.target_id for link in first.links] == [second.id]
+    assert [link.target_id for link in second.links] == [first.id]
+    assert_grounded(job)
+
+
 async def test_short_elements_do_not_inherit_the_distiller_length_floor(offline_port):
     source = "A claimant must prove each element: (1) offer; (2) assent."
     payload = [proposition("rule", "A claimant must prove each element."),
@@ -450,6 +474,97 @@ async def test_single_long_boundary_is_bounded_without_losing_sentences(
     assert len(seen) == len(set(seen))
     assert [u.text for u in job.units] == sentences
     assert_grounded(job)
+
+
+@pytest.mark.parametrize("retry", [False, True])
+async def test_long_sentences_stay_complete_through_recursive_splits(
+    retry, offline_port, monkeypatch,
+):
+    import httpx
+
+    router, _ = offline_port
+    original_handler = router.handler
+    sentences = [
+        f"The business must notify resident number {i} in writing before the hearing "
+        "and provide the complete record of its decision together with instructions "
+        "for requesting review within the prescribed period."
+        for i in range(20)
+    ]
+    seen, successful = [], []
+
+    def handler(request):
+        body = json.loads(request.content)
+        blocks = json.loads(body["messages"][0]["content"].split("Source blocks (JSON):\n", 1)[1])
+        seen.append(blocks)
+        if retry and sum(len(b["text"]) for b in blocks) > 250:
+            router.requests.append(body)
+            return httpx.Response(413, json={"error": {
+                "message": "request too large", "type": "invalid_request_error",
+            }})
+        successful.append(blocks)
+        router.payloads["AtomicDistilledOutput"] = {"propositions": [
+            proposition(f"sentence-{i}", sentence, supports=[block["id"]])
+            for i, sentence in enumerate(sentences)
+            for block in blocks if sentence in block["text"]
+        ]}
+        return original_handler(request)
+
+    monkeypatch.setattr(router, "handler", handler)
+    job = await DistillerStage(atomic_extraction=True, input_token_budget=6500,
+                              output_token_budget=4000).execute(job_for(" ".join(sentences)))
+    assert len(seen) > 1
+    assert all(any(sentence in block["text"] for group in successful for block in group)
+               for sentence in sentences)
+    assert [u.text for u in job.units] == sentences
+    if retry:
+        assert any(d["reason"] == "oversized_group_split"
+                   for d in job.metadata["atomic_extraction"]["diagnostics"])
+    assert_grounded(job)
+
+
+async def test_indivisible_over_budget_sentence_is_sent_alone_with_diagnostic(
+    offline_port, monkeypatch,
+):
+    groups = echo_blocks(offline_port, monkeypatch)
+    sentence = "A party must provide " + "written notice and " * 100 + "a complete record."
+    job = await DistillerStage(atomic_extraction=True, input_token_budget=6500,
+                              output_token_budget=4000).execute(job_for(sentence))
+    assert [[b["text"] for b in group] for group in groups] == [[sentence]]
+    assert [u.text for u in job.units] == [sentence]
+    assert any(d["reason"] == "oversized_sentence"
+               for d in job.metadata["atomic_extraction"]["diagnostics"])
+    assert_grounded(job)
+
+
+@pytest.mark.parametrize("block_count", [1, 2])
+def test_recursive_fallback_keeps_whole_sentence_overlap_until_singleton_leaves(block_count):
+    from folio_insights.pipeline.stages.distiller import _AtomicBlock, _split_atomic_group
+
+    sentences = [f"A party must notify resident number {i} in writing." for i in range(20)]
+    size = len(sentences) // block_count
+    job = job_for(*[" ".join(sentences[i:i + size]) for i in range(0, len(sentences), size)])
+    source = job.metadata["ingested"]["synthetic.txt"]["text"]
+    pending = [[_AtomicBlock(f"b{i}", parent, parent.original_span.start,
+                             parent.original_span.end) for i, parent in enumerate(job.units)]]
+    while pending:
+        group = pending.pop()
+        children = _split_atomic_group(group, source)
+        if not children:
+            assert len(group) == 1
+            assert source[group[0].start:group[0].end].strip() in sentences
+            continue
+        covered = [{sentence for sentence in sentences
+                    if any(sentence in source[b.start:b.end] for b in child)}
+                   for child in children]
+        if len(set.union(*covered)) > 2:
+            assert set.intersection(*covered), "Fallback dropped all complete-sentence overlap"
+        for child in children:
+            assert sum(b.end - b.start for b in child) < sum(b.end - b.start for b in group)
+            for block in child:
+                text = source[block.start:block.end].strip()
+                assert any(text.startswith(sentence) for sentence in sentences)
+                assert any(text.endswith(sentence) for sentence in sentences)
+        pending.extend(children)
 
 
 async def test_same_span_nfc_duplicates_merge_links_and_citations(offline_port):
