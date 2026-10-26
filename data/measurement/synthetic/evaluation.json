@@ -27,8 +27,7 @@
           "text": "A tenant seeking return of a security deposit must establish payment and expiration of the lease.",
           "span": {
             "start": 0,
-            "end": 133,
-            "quote": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease."
+            "end": 133
           },
           "tags": [
             {
@@ -56,8 +55,7 @@
           "text": "The tenant must establish payment of the security deposit.",
           "span": {
             "start": 0,
-            "end": 133,
-            "quote": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease."
+            "end": 133
           },
           "tags": [
             {
@@ -86,8 +84,7 @@
           "text": "The tenant must establish expiration of the lease.",
           "span": {
             "start": 0,
-            "end": 133,
-            "quote": "The court holds that a tenant seeking return of a security deposit must establish payment of the deposit and expiration of the lease."
+            "end": 133
           },
           "tags": [
             {
@@ -116,8 +113,7 @@
           "text": "The landlord returned none of the security deposit.",
           "span": {
             "start": 134,
-            "end": 176,
-            "quote": "The landlord returned none of the deposit."
+            "end": 176
           },
           "tags": [
             {
@@ -137,8 +133,7 @@
           "text": "Judgment is entered for the tenant.",
           "span": {
             "start": 177,
-            "end": 212,
-            "quote": "Judgment is entered for the tenant."
+            "end": 212
           },
           "tags": [
             {
@@ -175,8 +170,7 @@
           "text": "An unsigned draft is not an enforceable contract.",
           "span": {
             "start": 0,
-            "end": 74,
-            "quote": "The court concludes that an unsigned draft is not an enforceable contract."
+            "end": 74
           },
           "tags": [
             {
@@ -196,8 +190,7 @@
           "text": "A party may nevertheless recover the reasonable value of services actually accepted.",
           "span": {
             "start": 75,
-            "end": 159,
-            "quote": "A party may nevertheless recover the reasonable value of services actually accepted."
+            "end": 159
           },
           "tags": [
             {
@@ -221,8 +214,7 @@
           "text": "The purchaser accepted the repairs.",
           "span": {
             "start": 160,
-            "end": 244,
-            "quote": "Because the purchaser accepted the repairs, the court awards their reasonable value."
+            "end": 244
           },
           "tags": [
             {
@@ -238,8 +230,7 @@
           "text": "The court awards the reasonable value of the accepted repairs.",
           "span": {
             "start": 160,
-            "end": 244,
-            "quote": "Because the purchaser accepted the repairs, the court awards their reasonable value."
+            "end": 244
           },
           "tags": [
             {
@@ -280,8 +271,7 @@
           "text": "A permit holder must file an annual report by June 1.",
           "span": {
             "start": 0,
-            "end": 57,
-            "quote": "(1) A permit holder must file an annual report by June 1."
+            "end": 57
           },
           "tags": [
             {
@@ -301,8 +291,7 @@
           "text": "The annual report must identify the facility and list its discharges.",
           "span": {
             "start": 58,
-            "end": 124,
-            "quote": "(2) The report must identify the facility and list its discharges."
+            "end": 124
           },
           "tags": [
             {
@@ -322,8 +311,7 @@
           "text": "The annual report must identify the facility.",
           "span": {
             "start": 58,
-            "end": 124,
-            "quote": "(2) The report must identify the facility and list its discharges."
+            "end": 124
           },
           "tags": [
             {
@@ -348,8 +336,7 @@
           "text": "The annual report must list its discharges.",
           "span": {
             "start": 58,
-            "end": 124,
-            "quote": "(2) The report must identify the facility and list its discharges."
+            "end": 124
           },
           "tags": [
             {
@@ -374,8 +361,7 @@
           "text": "A permit holder may omit the annual report for a year in which the permit was inactive.",
           "span": {
             "start": 125,
-            "end": 200,
-            "quote": "(3) A holder may omit a report for a year in which the permit was inactive."
+            "end": 200
           },
           "tags": [
             {
@@ -404,8 +390,7 @@
           "text": "Failure to file a required annual report carries a civil fine of $80.",
           "span": {
             "start": 201,
-            "end": 267,
-            "quote": "(4) Failure to file a required report carries a civil fine of $80."
+            "end": 267
           },
           "tags": [
             {
@@ -451,8 +436,7 @@
           "text": "An operator must retain inspection records for four years.",
           "span": {
             "start": 12,
-            "end": 70,
-            "quote": "An operator must retain inspection records for four years."
+            "end": 70
           },
           "tags": [
             {
@@ -468,8 +452,7 @@
           "text": "An operator must not alter a completed inspection record.",
           "span": {
             "start": 71,
-            "end": 128,
-            "quote": "An operator must not alter a completed inspection record."
+            "end": 128
           },
           "tags": [
             {
@@ -485,8 +468,7 @@
           "text": "A correction may be appended if the original inspection entry remains readable.",
           "span": {
             "start": 129,
-            "end": 197,
-            "quote": "A correction may be appended if the original entry remains readable."
+            "end": 197
           },
           "tags": [
             {
@@ -511,8 +493,7 @@
           "text": "Each unlawful alteration is subject to a $200 administrative penalty.",
           "span": {
             "start": 198,
-            "end": 267,
-            "quote": "Each unlawful alteration is subject to a $200 administrative penalty."
+            "end": 267
           },
           "tags": [
             {
@@ -554,8 +535,7 @@
           "text": "The moving party requests exclusion of the unsigned laboratory report.",
           "span": {
             "start": 0,
-            "end": 70,
-            "quote": "The moving party requests exclusion of the unsigned laboratory report."
+            "end": 70
           },
           "tags": [
             {
@@ -575,8 +555,7 @@
           "text": "The laboratory report identifies no author.",
           "span": {
             "start": 71,
-            "end": 135,
-            "quote": "The report identifies no author and describes no testing method."
+            "end": 135
           },
           "tags": [
             {
@@ -592,8 +571,7 @@
           "text": "The laboratory report describes no testing method.",
           "span": {
             "start": 71,
-            "end": 135,
-            "quote": "The report identifies no author and describes no testing method."
+            "end": 135
           },
           "tags": [
             {
@@ -609,8 +587,7 @@
           "text": "Without testimony supplying a foundation, the report cannot establish the concentration of the sample.",
           "span": {
             "start": 136,
-            "end": 241,
-            "quote": "Without testimony supplying that foundation, the report cannot establish the concentration of the sample."
+            "end": 241
           },
           "tags": [
             {
@@ -647,8 +624,7 @@
           "text": "The complaint alleges that Rowan promised delivery of a replacement engine on April 3.",
           "span": {
             "start": 0,
-            "end": 85,
-            "quote": "The complaint alleges that Rowan promised to deliver a replacement engine on April 3."
+            "end": 85
           },
           "tags": [
             {
@@ -668,8 +644,7 @@
           "text": "The complaint alleges the engine never arrived.",
           "span": {
             "start": 86,
-            "end": 111,
-            "quote": "The engine never arrived."
+            "end": 111
           },
           "tags": [
             {
@@ -689,8 +664,7 @@
           "text": "The buyer paid $900 to rent a substitute engine.",
           "span": {
             "start": 112,
-            "end": 209,
-            "quote": "The buyer paid $900 to rent a substitute and seeks that amount as damages for breach of contract."
+            "end": 209
           },
           "tags": [
             {
@@ -714,8 +688,7 @@
           "text": "The buyer seeks $900 as damages for breach of contract.",
           "span": {
             "start": 112,
-            "end": 209,
-            "quote": "The buyer paid $900 to rent a substitute and seeks that amount as damages for breach of contract."
+            "end": 209
           },
           "tags": [
             {
@@ -756,8 +729,7 @@
           "text": "Before producing a witness statement, check its date and the identity of the signer.",
           "span": {
             "start": 0,
-            "end": 84,
-            "quote": "Before producing a witness statement, check its date and the identity of the signer."
+            "end": 84
           },
           "tags": [
             {
@@ -777,8 +749,7 @@
           "text": "Before producing a witness statement, check its date.",
           "span": {
             "start": 0,
-            "end": 84,
-            "quote": "Before producing a witness statement, check its date and the identity of the signer."
+            "end": 84
           },
           "tags": [
             {
@@ -803,8 +774,7 @@
           "text": "Before producing a witness statement, check the identity of the signer.",
           "span": {
             "start": 0,
-            "end": 84,
-            "quote": "Before producing a witness statement, check its date and the identity of the signer."
+            "end": 84
           },
           "tags": [
             {
@@ -829,8 +799,7 @@
           "text": "Keep a copy of the witness statement version delivered.",
           "span": {
             "start": 85,
-            "end": 122,
-            "quote": "Keep a copy of the version delivered."
+            "end": 122
           },
           "tags": [
             {
@@ -846,8 +815,7 @@
           "text": "Do not annotate the delivered original witness statement.",
           "span": {
             "start": 123,
-            "end": 162,
-            "quote": "Do not annotate the delivered original."
+            "end": 162
           },
           "tags": [
             {
@@ -884,8 +852,7 @@
           "text": "Ask the witness when the alarm sounded.",
           "span": {
             "start": 0,
-            "end": 39,
-            "quote": "Ask the witness when the alarm sounded."
+            "end": 39
           },
           "tags": [
             {
@@ -905,8 +872,7 @@
           "text": "Record the answer.",
           "span": {
             "start": 40,
-            "end": 58,
-            "quote": "Record the answer."
+            "end": 58
           },
           "tags": [
             {
@@ -922,8 +888,7 @@
           "text": "Ask the witness who disabled the alarm.",
           "span": {
             "start": 59,
-            "end": 98,
-            "quote": "Ask the witness who disabled the alarm."
+            "end": 98
           },
           "tags": [
             {
@@ -943,8 +908,7 @@
           "text": "Record the answer.",
           "span": {
             "start": 99,
-            "end": 117,
-            "quote": "Record the answer."
+            "end": 117
           },
           "tags": [
             {

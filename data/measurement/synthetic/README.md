@@ -4,6 +4,10 @@
 authored atomic expectations. The source title retains the README's citation
 markup; source text is the verbatim blockquote body without Markdown quote
 prefixes. Offsets are half-open Python Unicode character positions in that text.
+Spans serialize only `start` and `end`. Use `span.source_slice(source.text)` to
+derive their exact supporting text in memory from the digest-validated snapshot.
+Serialized excerpt fields (`quote`, `snippet`, `excerpt`, `passage`, `source_text`)
+are rejected by the span schema, including empty values.
 A rule and its elements may share a complete supporting sentence. Different
 occurrences of an identical phrase retain different offsets and item IDs.
 Links use document-local item IDs and the five closed relation names from R10.

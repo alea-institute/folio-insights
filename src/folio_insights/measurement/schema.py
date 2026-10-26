@@ -38,17 +38,22 @@ class SourceSnapshot(MeasurementModel):
 
 
 class SupportingSpan(MeasurementModel):
-    """Half-open Python Unicode character offsets in the exact snapshot text."""
+    """Half-open code-point offsets; supporting text is derived, never serialized."""
 
     start: int = Field(ge=0)
     end: int = Field(gt=0)
-    quote: str = Field(min_length=1)
 
     @model_validator(mode="after")
     def check_order(self) -> SupportingSpan:
         if self.end <= self.start:
             raise ValueError("span end must follow start")
         return self
+
+    def source_slice(self, source_text: str) -> str:
+        """Return the exact support, rejecting offsets Python would silently clip."""
+        if not 0 <= self.start < self.end <= len(source_text):
+            raise ValueError("span outside source snapshot: not an exact source slice")
+        return source_text[self.start:self.end]
 
 
 class TagSelection(MeasurementModel):
@@ -93,11 +98,10 @@ class GoldDocument(MeasurementModel):
         if len(ids) != len(set(ids)):
             raise ValueError("duplicate proposition item ID")
         for prop in self.propositions:
-            span = prop.span
-            if span.end > len(self.source.text):
-                raise ValueError(f"{prop.item_id}: span outside source snapshot")
-            if self.source.text[span.start:span.end] != span.quote:
-                raise ValueError(f"{prop.item_id}: support does not match exact source slice")
+            try:
+                prop.span.source_slice(self.source.text)
+            except ValueError as exc:
+                raise ValueError(f"{prop.item_id}: {exc}") from exc
             for link in prop.links:
                 if link.target_id == prop.item_id:
                     raise ValueError(f"{prop.item_id}: self link is invalid")

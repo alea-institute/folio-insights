@@ -3,6 +3,8 @@
 The slice records named rdfs:subClassOf edges and their ancestor closure from one
 local OWL snapshot. Its digest is independent of both gold and pipeline output.
 It proves identity/ancestry, not semantic correctness or human adjudication.
+Gold document validation checks exact support via span.source_slice(source.text);
+callers use the same accessor to derive support without persisting source quotes.
 """
 from __future__ import annotations
 

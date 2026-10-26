@@ -19,7 +19,7 @@ from folio_insights.measurement.gold import (
     load_ontology,
     validate_gold,
 )
-from folio_insights.measurement.schema import EvaluationInputs, GoldSuite
+from folio_insights.measurement.schema import EvaluationInputs, GoldSuite, SupportingSpan
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLD = ROOT / DEFAULT_GOLD_DIR
@@ -27,6 +27,38 @@ GOLD = ROOT / DEFAULT_GOLD_DIR
 
 def raw_suite(name: str = "readme") -> dict:
     return json.loads((GOLD / f"{name}.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("key", ["quote", "snippet", "excerpt", "passage", "source_text"])
+@pytest.mark.parametrize("value", ["invented support", "", None])
+def test_spans_reject_serialized_excerpt_fields(key: str, value: str | None) -> None:
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        SupportingSpan.model_validate({"start": 0, "end": 1, key: value})
+
+
+@pytest.mark.parametrize("name", ["readme", "evaluation"])
+def test_gold_round_trip_stores_offsets_only_and_derives_support(name: str) -> None:
+    data = raw_suite(name)
+    suite = load_gold(GOLD / f"{name}.json")
+    assert json.loads(suite.model_dump_json()) == data
+    for doc, serialized in zip(suite.documents, data["documents"], strict=True):
+        for prop, stored in zip(doc.propositions, serialized["propositions"], strict=True):
+            assert stored["span"] == {"start": prop.span.start, "end": prop.span.end}
+            assert prop.span.source_slice(doc.source.text) == (
+                doc.source.text[prop.span.start:prop.span.end]
+            )
+
+
+def test_source_slices_use_unicode_code_points_without_normalizing() -> None:
+    data = raw_suite()
+    doc = data["documents"][0]
+    doc["source"]["text"] = "🦉 Café e\u0301. Fin."
+    doc["source"]["sha256"] = hashlib.sha256(doc["source"]["text"].encode()).hexdigest()
+    for prop in doc["propositions"]:
+        prop["span"] = {"start": 2, "end": 10}
+    loaded = GoldSuite.model_validate(data).documents[0]
+    for prop in loaded.propositions:
+        assert prop.span.source_slice(loaded.source.text) == "Café e\u0301."
 
 
 def test_contract_rule_and_three_elements_have_complete_support() -> None:
@@ -43,9 +75,9 @@ def test_contract_rule_and_three_elements_have_complete_support() -> None:
         "The plaintiff must prove the defendant's breach.",
     ]
     sentence = doc.source.text.split(". ", 1)[0] + "."
-    assert rule.span.quote == sentence
+    assert rule.span.source_slice(doc.source.text) == sentence
     for item in [rule, *elements]:
-        assert doc.source.text[item.span.start:item.span.end] == item.span.quote == sentence
+        assert item.span.source_slice(doc.source.text) == sentence
 
 
 def test_eight_readme_ids_and_verbatim_sources() -> None:
@@ -131,7 +163,8 @@ def test_independent_evaluation_groups_cover_four_genres_twice() -> None:
 def test_repeated_text_keeps_distinct_occurrence_offsets() -> None:
     doc = next(d for d in load_gold(GOLD / "evaluation.json").documents
                if d.source.source_id == "evaluation-know-how-02")
-    repeated = [p for p in doc.propositions if p.span.quote == "Record the answer."]
+    repeated = [p for p in doc.propositions
+                if p.span.source_slice(doc.source.text) == "Record the answer."]
     assert len(repeated) == 2
     assert repeated[0].text == repeated[1].text
     assert repeated[0].span.start != repeated[1].span.start
@@ -167,8 +200,8 @@ def test_exceptions_penalties_and_negligence_elements_are_separate() -> None:
 
 
 @pytest.mark.parametrize("mutation, message", [
-    ("span", "slice"), ("bounds", "span"), ("link", "target"),
-    ("negative", "span"), ("reversed", "span"), ("empty-quote", "span"),
+    ("start-bounds", "slice"), ("bounds", "span"), ("link", "target"),
+    ("negative", "span"), ("reversed", "span"), ("empty-span", "span"),
     ("cross-document-link", "target"),
     ("self-link", "self"), ("duplicate-item", "duplicate"),
     ("duplicate-source", "duplicate"), ("duplicate-example", "duplicate"),
@@ -179,16 +212,17 @@ def test_invalid_fixtures_fail_validation(mutation: str, message: str) -> None:
     data = raw_suite()
     doc = data["documents"][0]
     prop = doc["propositions"][0]
-    if mutation == "span":
-        prop["span"]["quote"] = "fabricated support"
+    if mutation == "start-bounds":
+        prop["span"] = {"start": len(doc["source"]["text"]) + 1,
+                        "end": len(doc["source"]["text"]) + 2}
     elif mutation == "bounds":
         prop["span"]["end"] = len(doc["source"]["text"]) + 1
     elif mutation == "negative":
         prop["span"]["start"] = -1
     elif mutation == "reversed":
         prop["span"]["start"] = prop["span"]["end"]
-    elif mutation == "empty-quote":
-        prop["span"]["quote"] = ""
+    elif mutation == "empty-span":
+        prop["span"] = {"start": 0, "end": 0}
     elif mutation == "cross-document-link":
         prop["links"] = [{"relation": "cites", "target_id":
                           data["documents"][1]["propositions"][0]["item_id"]}]
