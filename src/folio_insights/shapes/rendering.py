@@ -249,7 +249,7 @@ def _render_field(g: ValidationGraph, s: Term, spec: FieldSpec, value: Any) -> N
         return
     if value is None:
         return
-    if isinstance(value, list) and (spec.many or spec.kind in ("scalar", "model")):
+    if isinstance(value, (list, tuple)) and (spec.many or spec.kind in ("scalar", "model")):
         for index, item in enumerate(value):
             if item is None:
                 continue
@@ -275,7 +275,7 @@ def _render_model(g: ValidationGraph, node: Term, spec: ModelSpec, data: Mapping
         if field.kind == "scalar" and value is not None:
             # Hot path (most fields): same terms as _render_field, inline.
             datatype = field.datatype
-            items = value if isinstance(value, list) else (value,)
+            items = value if isinstance(value, (list, tuple)) else (value,)
             out = []
             for item in items:
                 if item is None:

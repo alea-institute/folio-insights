@@ -40,8 +40,12 @@ def from_rdflib(graph: Graph) -> ValidationGraph:
     g = ValidationGraph()
     # Dataset iteration yields quads; model binding uses the union of its
     # validation-view triples, just as the reference validation does.
+    seen = set()
     for s, p, o, *_context in graph:
-        g.add(term_key(s), str(p), term_key(o))
+        triple = (term_key(s), str(p), term_key(o))
+        if triple not in seen:
+            seen.add(triple)
+            g.add(*triple)
     return g
 
 

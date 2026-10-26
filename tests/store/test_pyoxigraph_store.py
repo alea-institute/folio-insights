@@ -215,6 +215,16 @@ def test_dump_turtle_emits_prefix_and_triples(tmp_path: Path) -> None:
 # ----------------------------------------------------------------------------
 # Test 8: Pitfall 2 guard — rdflib bridge silently drops annotation predicates
 # ----------------------------------------------------------------------------
+# The bridge exercises pyshacl's Dataset load/clone path and rdflib's internal
+# Dataset queries; suppress only their two known deprecations in this test.
+@pytest.mark.filterwarnings(
+    r"ignore:^Dataset\.default_context is deprecated, use Dataset\.default_graph instead\.$:"
+    r"DeprecationWarning:^(pyshacl\.(rdfutil\.(load|clone)|shapes_graph)|rdflib\.graph)$"
+)
+@pytest.mark.filterwarnings(
+    r"ignore:^Dataset\.identifier is deprecated and will be removed in future versions\.$:"
+    r"DeprecationWarning:^rdflib\.graph$"
+)
 def test_rdflib_bridge_drops_annotation_predicates_on_reification(
     tmp_path: Path,
 ) -> None:
@@ -271,7 +281,7 @@ def test_rdflib_bridge_drops_annotation_predicates_on_reification(
         )
     )
     bridged = Dataset()
-    bridged.parse(data=turtle_bytes, format="turtle")
+    bridged.default_graph.parse(data=turtle_bytes, format="turtle")
     serialized = bridged.serialize(format="turtle")
     # Pitfall 2: fi:confidence is attached to the stmt IRI, NOT the shard IRI,
     # so it is correctly absent from the shard-scoped bridge output. This

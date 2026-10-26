@@ -6,16 +6,34 @@ import subprocess
 import sys
 
 import pytest
-from rdflib import Graph
+from rdflib import Dataset, Graph, Literal, URIRef
 
 from folio_insights.shapes import pyshacl_adapter
-from folio_insights.shapes.fields import FI
+from folio_insights.shapes.fields import FI, XSD_STRING
 from folio_insights.shapes.pydantic_to_shacl import GENERATED_PATH, check_generated
-from folio_insights.shapes.rendering import ValidationGraph, render_shard
+from folio_insights.shapes.rendering import ValidationGraph, lit, render_shard
 from folio_insights.shapes.suite import SUITE_PATHS, default_suite
 from folio_insights.shards import load_shard_record
 from tests.shards.conftest import _SUBTYPE_TABLE, _sample_shard
 from tests.shards.test_atomic_records import _atomic
+
+
+# pyshacl's Dataset loader/cloner still uses the deprecated rdflib property.
+# Its queries also reach rdflib's deprecated Dataset accessors internally.
+pytestmark = [
+    pytest.mark.filterwarnings(
+        r"ignore:^Dataset\.default_context is deprecated, use Dataset\.default_graph instead\.$:"
+        r"DeprecationWarning:^pyshacl\.(rdfutil\.(load|clone)|shapes_graph)$"
+    ),
+    pytest.mark.filterwarnings(
+        r"ignore:^Dataset\.default_context is deprecated, use Dataset\.default_graph instead\.$:"
+        r"DeprecationWarning:^rdflib\.graph$"
+    ),
+    pytest.mark.filterwarnings(
+        r"ignore:^Dataset\.identifier is deprecated and will be removed in future versions\.$:"
+        r"DeprecationWarning:^rdflib\.graph$"
+    ),
+]
 
 
 def atomic_record(**updates):
@@ -52,6 +70,50 @@ def test_multi_tag_atomic_record_passes_local_and_full_shacl():
     }
     report = pyshacl_adapter.validate(graph, SUITE_PATHS, local_only=False)
     assert report.conforms, report.text
+
+
+@pytest.mark.parametrize("conflicting_key", (False, True))
+def test_dataset_union_preserves_atomic_identity(conflicting_key):
+    from folio_insights.shapes.identity_binding import BINDING_COMPONENT
+
+    data = atomic_record()
+    graph, node = render_shard(data)
+    dataset = Dataset()
+    for name in ("urn:first", "urn:second"):
+        pyshacl_adapter.to_rdflib(graph, into=dataset.graph(URIRef(name)))
+    if conflicting_key:
+        dataset.graph(URIRef("urn:second")).add((
+            URIRef(data["shard_iri"]), URIRef(FI + "propositionKey"), Literal("b" * 64),
+        ))
+
+    report = pyshacl_adapter.validate(dataset, SUITE_PATHS)
+    assert report.conforms is (not conflicting_key), report.text
+    assert any(r["component"] == BINDING_COMPONENT for r in report.results) is conflicting_key
+    union = pyshacl_adapter.from_rdflib(dataset)
+    keys = union.values(node, FI + "propositionKey")
+    assert len(keys) == (2 if conflicting_key else 1)
+    assert len(union.triples()) == len(set(union.triples()))
+    assert set(keys) == {lit(data["proposition_key"], XSD_STRING)} | ({
+        lit("b" * 64, XSD_STRING),
+    } if conflicting_key else set())
+
+
+@pytest.mark.parametrize("parents", ((), ("urn:first",), ("urn:first", "urn:second")))
+def test_tuple_and_list_archives_produce_identical_rdf(parents):
+    tuple_data = atomic_record(legacy_hierarchy={"elaborates": parents})
+    list_data = {**tuple_data, "legacy_hierarchy": {"elaborates": list(parents)}}
+    for data in (tuple_data, list_data):
+        load_shard_record(data, target_schema_version=3)
+
+    tuple_graph, node = render_shard(tuple_data)
+    list_graph, _ = render_shard(list_data)
+    assert tuple_graph.triples() == list_graph.triples()
+    history, = tuple_graph.values(node, FI + "legacyHierarchy")
+    assert [value[1] for value in tuple_graph.values(history, FI + "historicalElaborates")] == list(parents)
+    for data, graph in ((tuple_data, tuple_graph), (list_data, list_graph)):
+        assert default_suite().validate_shard(data).conforms
+        report = pyshacl_adapter.validate(graph, SUITE_PATHS)
+        assert report.conforms, report.text
 
 
 @pytest.mark.parametrize("tag,cls", _SUBTYPE_TABLE)
