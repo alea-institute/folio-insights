@@ -1,6 +1,12 @@
 """Phase 2 v2.0 Shard envelope (§6.1) — 15-field Pydantic core data model."""
 from folio_insights.shards.audit import ContentEdit, add_edit
 from folio_insights.shards.envelope import (
+    ATOMIC_ENVELOPE_SCHEMA_VERSION,
+    AtomicEnvelope,
+    AtomicIdentity,
+    LegacyHierarchy,
+    PropositionLink,
+    ShardTag,
     ENVELOPE_SCHEMA_VERSION,
     AttestedSignature,
     ShardEnvelope,
@@ -12,8 +18,17 @@ from folio_insights.shards.iri_registry import (
     ShardIRICollision,
     ShardIRIRegistry,
 )
-from folio_insights.shards.minting import mint_shard_iri
+from folio_insights.shards.minting import (
+    ATOMIC_IDENTITY_RECIPE, LEGACY_IDENTITY_RECIPE, atomic_proposition_key,
+    mint_atomic_shard_iri, mint_shard_iri,
+)
 from folio_insights.shards.records import (
+    AtomicShard,
+    AtomicSimpleAssertionShard,
+    AtomicDisputedPropositionShard,
+    AtomicConflictingAuthoritiesShard,
+    AtomicGlossShard,
+    AtomicHypothesisShard,
     LoadedShardRecord,
     MalformedEnvelopeRecord,
     UnsupportedEnvelopeVersion,
@@ -37,6 +52,22 @@ from folio_insights.shards.subtypes import (
 )
 
 __all__ = [
+    "ATOMIC_ENVELOPE_SCHEMA_VERSION",
+    "ATOMIC_IDENTITY_RECIPE",
+    "LEGACY_IDENTITY_RECIPE",
+    "AtomicEnvelope",
+    "AtomicIdentity",
+    "AtomicShard",
+    "AtomicSimpleAssertionShard",
+    "AtomicDisputedPropositionShard",
+    "AtomicConflictingAuthoritiesShard",
+    "AtomicGlossShard",
+    "AtomicHypothesisShard",
+    "LegacyHierarchy",
+    "PropositionLink",
+    "ShardTag",
+    "atomic_proposition_key",
+    "mint_atomic_shard_iri",
     "ENVELOPE_SCHEMA_VERSION",
     "add_edit",
     "AttestedSignature",

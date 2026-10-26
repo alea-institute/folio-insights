@@ -29,7 +29,10 @@ from pathlib import Path
 
 import aiosqlite
 
-from folio_insights.shards.minting import _IRI_PREFIX, mint_shard_iri
+from folio_insights.shards.minting import (
+    ATOMIC_IDENTITY_RECIPE, LEGACY_IDENTITY_RECIPE, _IRI_PREFIX,
+    atomic_proposition_key, mint_atomic_shard_iri, mint_shard_iri,
+)
 
 logger = logging.getLogger("folio_insights")
 
@@ -43,6 +46,8 @@ CREATE TABLE IF NOT EXISTS shard_iri_registry (
     full_hash   TEXT NOT NULL,
     source_uri  TEXT NOT NULL,
     source_span TEXT NOT NULL,
+    identity_recipe TEXT NOT NULL DEFAULT 'legacy-v1',
+    proposition_key TEXT,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 )
 """
@@ -103,6 +108,21 @@ class ShardIRIRegistry:
         """
         db.row_factory = aiosqlite.Row
         await db.execute(_CREATE_TABLE_SQL)
+        cursor = await db.execute("PRAGMA table_info(shard_iri_registry)")
+        columns = {row["name"] for row in await cursor.fetchall()}
+        # Additive upgrade: old rows keep their legacy identity and bytes.
+        for name, declaration in (
+            ("identity_recipe", "TEXT NOT NULL DEFAULT 'legacy-v1'"),
+            ("proposition_key", "TEXT"),
+        ):
+            if name not in columns:
+                try:
+                    await db.execute(f"ALTER TABLE shard_iri_registry ADD COLUMN {name} {declaration}")
+                except aiosqlite.OperationalError:
+                    # Another connection may have completed the same upgrade.
+                    cursor = await db.execute("PRAGMA table_info(shard_iri_registry)")
+                    if name not in {row["name"] for row in await cursor.fetchall()}:
+                        raise
         await db.execute(_CREATE_INDEX_SQL)
         await db.commit()
 
@@ -123,6 +143,25 @@ class ShardIRIRegistry:
         existing IRI instead of crashing.
         """
         iri, full_hash = mint_shard_iri(source_uri, source_span)
+        return await self._register(
+            source_uri, source_span, iri, full_hash, LEGACY_IDENTITY_RECIPE, None
+        )
+
+    async def register_atomic(
+        self, source_uri: str, source_span: str, *, text: str, start: int, end: int,
+        source_snapshot_digest: str,
+    ) -> str:
+        """Derive the key deterministically, then collision-check its recipe too."""
+        key = atomic_proposition_key(text, start, end, source_snapshot_digest)
+        iri, full_hash = mint_atomic_shard_iri(source_uri, source_span, key)
+        return await self._register(
+            source_uri, source_span, iri, full_hash, ATOMIC_IDENTITY_RECIPE, key
+        )
+
+    async def _register(
+        self, source_uri: str, source_span: str, iri: str, full_hash: str,
+        identity_recipe: str, proposition_key: str | None,
+    ) -> str:
         iri_body = iri.removeprefix(_IRI_PREFIX)
 
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,9 +173,9 @@ class ShardIRIRegistry:
                 try:
                     await db.execute(
                         "INSERT INTO shard_iri_registry "
-                        "(iri_body, full_hash, source_uri, source_span) "
-                        "VALUES (?, ?, ?, ?)",
-                        (iri_body, full_hash, source_uri, source_span),
+                        "(iri_body, full_hash, source_uri, source_span, identity_recipe, proposition_key) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (iri_body, full_hash, source_uri, source_span, identity_recipe, proposition_key),
                     )
                     await db.commit()
                     return iri
@@ -149,7 +188,7 @@ class ShardIRIRegistry:
                         raise  # not a body race — surface the real integrity error
 
             return self._resolve_existing(
-                row, iri, iri_body, full_hash, source_uri, source_span
+                row, iri, iri_body, full_hash, source_uri, source_span, identity_recipe, proposition_key
             )
 
     async def _fetch_row(
@@ -157,7 +196,7 @@ class ShardIRIRegistry:
     ) -> aiosqlite.Row | None:
         """Read the registry row for ``iri_body`` (None if unseen)."""
         cursor = await db.execute(
-            "SELECT iri_body, full_hash, source_uri, source_span "
+            "SELECT iri_body, full_hash, source_uri, source_span, identity_recipe, proposition_key "
             "FROM shard_iri_registry WHERE iri_body = ?",
             (iri_body,),
         )
@@ -171,12 +210,15 @@ class ShardIRIRegistry:
         full_hash: str,
         source_uri: str,
         source_span: str,
+        identity_recipe: str,
+        proposition_key: str | None,
     ) -> str:
         """Compare an existing row against the incoming mint: idempotent re-mint
         (same full hash → return IRI) or fail-closed collision (different full
         hash → log both hashes + raise, never overwrite)."""
         existing_full_hash = row["full_hash"]
-        if existing_full_hash == full_hash:
+        if (existing_full_hash == full_hash and row["identity_recipe"] == identity_recipe
+                and row["proposition_key"] == proposition_key):
             # Idempotent re-mint: same content, same IRI. No write.
             return iri
 
@@ -209,7 +251,7 @@ class ShardIRIRegistry:
         async with aiosqlite.connect(str(self._db_path)) as db:
             await self._bootstrap(db)
             cursor = await db.execute(
-                "SELECT iri_body, full_hash, source_uri, source_span "
+                "SELECT iri_body, full_hash, source_uri, source_span, identity_recipe, proposition_key "
                 "FROM shard_iri_registry ORDER BY iri_body"
             )
             return list(await cursor.fetchall())

@@ -28,11 +28,16 @@ verification; Phase 2 only ships the pure minting function.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 import unicodedata
 from urllib.parse import quote, urlsplit, urlunsplit
 
 _IRI_PREFIX = "urn:folio:shard/"
 _IRI_HEX_LEN = 32  # first 32 of sha256's 64 hex chars (D-01 — 128-bit body)
+LEGACY_IDENTITY_RECIPE = "legacy-v1"
+ATOMIC_IDENTITY_RECIPE = "atomic-v1"
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _normalize_uri(uri: str) -> str:
@@ -94,4 +99,47 @@ def mint_shard_iri(source_uri: str, source_span: str) -> tuple[str, str]:
     return iri, hash_hex
 
 
-__all__ = ["mint_shard_iri"]
+def atomic_proposition_key(
+    text: str, start: int, end: int, source_snapshot_digest: str,
+) -> str:
+    """Freeze NFC extraction text, exact character offsets and snapshot SHA-256.
+
+    Text is neither trimmed nor line-folded. JSON array framing makes field
+    boundaries unambiguous. Tags, links and later reviewed wording are absent.
+    """
+    if not text.strip():
+        raise ValueError("atomic text must be nonempty")
+    if type(start) is not int or type(end) is not int or start < 0 or end <= start:
+        raise ValueError("atomic offsets must be integers with 0 <= start < end")
+    if not _SHA256_RE.fullmatch(source_snapshot_digest):
+        raise ValueError("source_snapshot_digest must be a lowercase SHA-256 hex digest")
+    payload = json.dumps(
+        [ATOMIC_IDENTITY_RECIPE, unicodedata.normalize("NFC", text), start, end,
+         source_snapshot_digest],
+        ensure_ascii=False, separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def mint_atomic_shard_iri(
+    source_uri: str, source_span: str, proposition_key: str,
+) -> tuple[str, str]:
+    """Atomic-v1 identity: normalized URI, *verbatim* span and frozen key.
+
+    Separate domain framing leaves the legacy recipe untouched. Revisions use
+    the stored key; fresh extraction derives a new key with atomic_proposition_key.
+    """
+    if not _SHA256_RE.fullmatch(proposition_key):
+        raise ValueError("proposition_key must be a lowercase SHA-256 hex digest")
+    payload = json.dumps(
+        [ATOMIC_IDENTITY_RECIPE, _normalize_uri(source_uri), source_span, proposition_key],
+        ensure_ascii=False, separators=(",", ":"),
+    )
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return f"{_IRI_PREFIX}{digest[:_IRI_HEX_LEN]}", digest
+
+
+__all__ = [
+    "ATOMIC_IDENTITY_RECIPE", "LEGACY_IDENTITY_RECIPE", "atomic_proposition_key",
+    "mint_atomic_shard_iri", "mint_shard_iri",
+]

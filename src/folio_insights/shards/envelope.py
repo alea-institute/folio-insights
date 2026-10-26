@@ -52,6 +52,8 @@ from folio_insights.vocab._constants import VOCAB_VERSION  # WR-01: avoid pyoxig
 # current version solely through ``shards.records.load_shard_record``.
 # Distinct from ``vocab_version`` (the CalVer RDF vocabulary pin).
 ENVELOPE_SCHEMA_VERSION: int = 2
+# Opt-in until U35/U37 integrate generated shapes and persistent projections.
+ATOMIC_ENVELOPE_SCHEMA_VERSION: int = 3
 
 
 # D-05: canonical discriminator alias (5 values, ordered per CONTEXT D-05).
@@ -437,7 +439,113 @@ class ShardEnvelope(BaseModel):
 AttestedSignature.model_rebuild()
 
 
+class AtomicIdentity(BaseModel):
+    """Frozen extraction-time inputs; reviewed sense edits retain this key basis."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    text: str
+    start: int = Field(strict=True, ge=0)
+    end: int = Field(strict=True, gt=0)
+    source_snapshot_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def _valid_key_basis(self) -> "AtomicIdentity":
+        from folio_insights.shards.minting import atomic_proposition_key
+
+        atomic_proposition_key(**self.model_dump())
+        return self
+
+
+class ShardTag(BaseModel):
+    """Complete resolved tag payload, including branch and selection provenance."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    iri: str = Field(min_length=1)
+    label: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    extraction_path: str
+    branch: str = ""
+    judge_status: str | None = None
+
+
+class PropositionLink(BaseModel):
+    """Persisted reference, or an explicit unresolved cross-document citation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    relation: Literal["exception-to", "penalty-for", "condition-of", "cites", "contradicts"]
+    target_iri: str | None = Field(default=None, min_length=1)
+    citation: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def _endpoint(self) -> "PropositionLink":
+        if self.target_iri is None and (self.relation != "cites" or self.citation is None):
+            raise ValueError("links require a target, except explicit unresolved citations")
+        return self
+
+
+class LegacyHierarchy(BaseModel):
+    """Historical compatibility only; never interpreted as proposition links."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    elaborates: tuple[str, ...] = ()
+
+
+class AtomicEnvelope(ShardEnvelope):
+    """Schema-3 model, deliberately separate from the live schema-2 envelope.
+
+    Legacy views have no atomic key: the source/span identity remains intact.
+    New records validate the frozen basis, key and IRI together. Subtype models
+    in records.py combine this contract with existing subtype invariants.
+    """
+
+    schema_version: int = Field(default=ATOMIC_ENVELOPE_SCHEMA_VERSION, frozen=True)
+    identity_recipe: Literal["legacy-v1", "atomic-v1"] = Field(frozen=True)
+    proposition_key: str | None = Field(default=None, frozen=True, pattern=r"^[0-9a-f]{64}$")
+    atomic_identity: AtomicIdentity | None = Field(default=None, frozen=True)
+    folio_tags: list[ShardTag] = Field(default_factory=list)
+    links: list[PropositionLink] = Field(default_factory=list)
+    legacy_hierarchy: LegacyHierarchy = Field(default_factory=LegacyHierarchy, frozen=True)
+    # Compatibility accessor for old consumers; never serialized or populated.
+    elaborates: list[str] = Field(default_factory=list, exclude=True, max_length=0)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def _check_schema_version(cls, v: object) -> int:
+        if type(v) is not int or v != ATOMIC_ENVELOPE_SCHEMA_VERSION:
+            raise ValueError(f"atomic schema_version must equal {ATOMIC_ENVELOPE_SCHEMA_VERSION}")
+        return v
+
+    @model_validator(mode="after")
+    def _identity_binding(self) -> "AtomicEnvelope":
+        from folio_insights.shards.minting import atomic_proposition_key, mint_atomic_shard_iri
+
+        if self.identity_recipe == "legacy-v1":
+            if self.proposition_key is not None or self.atomic_identity is not None:
+                raise ValueError("legacy identity cannot acquire an atomic key")
+        else:
+            if self.atomic_identity is None or self.proposition_key is None:
+                raise ValueError("atomic-v1 requires its frozen identity basis and proposition_key")
+            key = atomic_proposition_key(**self.atomic_identity.model_dump())
+            if key != self.proposition_key:
+                raise ValueError("altered frozen proposition_key")
+            if mint_atomic_shard_iri(self.source_uri, self.source_span, key) != (
+                self.shard_iri, self.provenance_hash
+            ):
+                raise ValueError("atomic identity does not match shard IRI/provenance hash")
+        return self
+
+
 __all__ = [
+    "ATOMIC_ENVELOPE_SCHEMA_VERSION",
+    "AtomicEnvelope",
+    "AtomicIdentity",
+    "LegacyHierarchy",
+    "PropositionLink",
+    "ShardTag",
     "ENVELOPE_SCHEMA_VERSION",
     "AttestedSignature",
     "ShardEnvelope",

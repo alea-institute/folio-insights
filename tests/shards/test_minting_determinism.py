@@ -139,3 +139,28 @@ def test_different_span_produces_different_iri() -> None:
     iri_a, _ = mint_shard_iri("urn:x:1", "alpha")
     iri_b, _ = mint_shard_iri("urn:x:1", "beta")
     assert iri_a != iri_b
+
+
+def test_atomic_identity_distinguishes_same_span_statements_and_occurrences() -> None:
+    from folio_insights.shards import atomic_proposition_key, mint_atomic_shard_iri
+
+    def mint(text="First rule", start=10, digest="a" * 64):
+        key = atomic_proposition_key(text, start, start + 30, digest)
+        return mint_atomic_shard_iri("HTTPS://Example.COM/doc/", "verbatim span", key)
+
+    assert mint() == mint()
+    assert mint() != mint(text="Second rule")
+    assert mint() != mint(start=100)
+    assert mint() != mint(digest="b" * 64)
+    assert mint() != mint_shard_iri("https://example.com/doc", "verbatim span")
+
+
+def test_atomic_nfc_text_and_normalized_uri_but_exact_verbatim_span() -> None:
+    from folio_insights.shards import atomic_proposition_key, mint_atomic_shard_iri
+
+    key = atomic_proposition_key("café", 0, 8, "a" * 64)
+    assert key == atomic_proposition_key("cafe\u0301", 0, 8, "a" * 64)
+    assert mint_atomic_shard_iri("HTTPS://Example.COM/doc/", "span", key) == mint_atomic_shard_iri(
+        "https://example.com/doc", "span", key)
+    assert mint_atomic_shard_iri("urn:x", " span", key) != mint_atomic_shard_iri("urn:x", "span", key)
+    assert mint_atomic_shard_iri("urn:x", "a\r\nb", key) != mint_atomic_shard_iri("urn:x", "a\nb", key)
