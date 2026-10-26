@@ -8,6 +8,10 @@ import adapter from '@sveltejs/adapter-static';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
+		// Browser fixtures reuse the real layout without adding production routes.
+		...(process.env.FOLIO_WORKBENCH_FIXTURE === '1'
+			? { files: { routes: 'tests/fixtures/routes' } }
+			: {}),
 		adapter: adapter({ fallback: 'index.html' }),
 		paths: { base: '' },
 		// Gate 5 (reproducible images): SvelteKit's default version name is

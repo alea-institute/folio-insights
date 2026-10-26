@@ -46,6 +46,7 @@
 	}
 </script>
 
+<a class="skip-link" href="#main-content">Skip to content</a>
 <div class="app-shell">
 	<header class="header">
 		<div class="header-left">
@@ -68,39 +69,35 @@
 		</div>
 		{#if activePage === 'review'}
 			<div class="header-center">
-				<div class="confidence-tabs" role="tablist" aria-label="Confidence filter">
+				<div class="confidence-tabs" role="group" aria-label="Confidence filter">
 					<button
-						role="tab"
 						class="tab"
 						class:active={$confidenceFilter === 'all'}
-						aria-selected={$confidenceFilter === 'all'}
+						aria-pressed={$confidenceFilter === 'all'}
 						onclick={() => setFilter('all')}
 					>
 						All {#if $reviewStats}({$reviewStats.total}){/if}
 					</button>
 					<button
-						role="tab"
 						class="tab tab-high"
 						class:active={$confidenceFilter === 'high'}
-						aria-selected={$confidenceFilter === 'high'}
+						aria-pressed={$confidenceFilter === 'high'}
 						onclick={() => setFilter('high')}
 					>
 						High {#if $reviewStats}({$reviewStats.by_confidence.high}){/if}
 					</button>
 					<button
-						role="tab"
 						class="tab tab-medium"
 						class:active={$confidenceFilter === 'medium'}
-						aria-selected={$confidenceFilter === 'medium'}
+						aria-pressed={$confidenceFilter === 'medium'}
 						onclick={() => setFilter('medium')}
 					>
 						Medium {#if $reviewStats}({$reviewStats.by_confidence.medium}){/if}
 					</button>
 					<button
-						role="tab"
 						class="tab tab-low"
 						class:active={$confidenceFilter === 'low'}
-						aria-selected={$confidenceFilter === 'low'}
+						aria-pressed={$confidenceFilter === 'low'}
 						onclick={() => setFilter('low')}
 					>
 						Low {#if $reviewStats}({$reviewStats.by_confidence.low}){/if}
@@ -142,7 +139,7 @@
 			</div>
 		{/if}
 	</header>
-	<main class="main-content">
+	<main class="main-content" id="main-content" tabindex="-1">
 		{@render children()}
 	</main>
 </div>
@@ -152,6 +149,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100vh;
+		height: 100dvh;
 		overflow: hidden;
 	}
 
@@ -159,10 +157,12 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 48px;
-		padding: 0 var(--lg);
+		min-height: 64px;
+		padding: var(--sm) var(--lg);
+		flex-wrap: wrap;
+		gap: var(--sm) var(--lg);
 		background: var(--surface);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--gilt-line);
 		flex-shrink: 0;
 	}
 
@@ -170,21 +170,23 @@
 		display: flex;
 		align-items: center;
 		gap: var(--md);
-		height: 100%;
+		min-width: 0;
+		flex-wrap: wrap;
 	}
 
 	.app-title {
-		font-size: 18px;
-		font-weight: 600;
+		font: 600 27px/1.2 var(--reading);
 		letter-spacing: -0.3px;
 		white-space: nowrap;
 	}
 
 	.accent {
-		color: var(--accent);
+		color: var(--gilt);
 	}
 
 	.corpus-selector select {
+		max-width: 100%;
+		min-height: 38px;
 		font-size: 13px;
 		padding: var(--xs) var(--sm);
 		background: var(--surface2);
@@ -261,6 +263,18 @@
 
 	.main-content {
 		flex: 1;
-		overflow: hidden;
+		min-height: 0;
+		min-width: 0;
+		overflow: auto;
+	}
+
+	.skip-link { position: fixed; top: -100px; left: var(--md); z-index: 100; padding: var(--sm); background: var(--bg); }
+	.skip-link:focus { top: var(--md); }
+	.corpus-selector { min-width: 0; max-width: 100%; }
+	@media (max-width: 700px) {
+		.header { padding: var(--sm) var(--md); }
+		.header-left { flex: 1 1 100%; gap: var(--sm) var(--md); }
+		.header-right { margin-left: auto; }
+		.review-progress { white-space: normal; }
 	}
 </style>
