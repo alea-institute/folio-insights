@@ -28,5 +28,8 @@
 	},
 	"dependencies": {
 		"@keenmate/svelte-treeview": "^4.8.0"
+	},
+	"overrides": {
+		"playwright-core": "1.59.1"
 	}
 }
