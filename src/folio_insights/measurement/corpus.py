@@ -285,18 +285,23 @@ class HttpFetcher:
             pass
 
     @contextmanager
-    def _locked_state(self):
+    def _locked_file(self, path: Path):
         try:
-            self.state_path.parent.mkdir(parents=True, exist_ok=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
             # Lock a stable inode: replacing the JSON must not replace the lock.
-            with self.state_path.with_suffix(self.state_path.suffix + ".lock").open("a+b") as lock:
+            with path.open("a+b") as lock:
                 fcntl.flock(lock, fcntl.LOCK_EX)
                 try:
-                    yield self._load_state()
+                    yield
                 finally:
                     fcntl.flock(lock, fcntl.LOCK_UN)
         except OSError:
             raise CorpusError(f"cannot read or write throttle state: {self.state_path}") from None
+
+    @contextmanager
+    def _locked_state(self):
+        with self._locked_file(self.state_path.with_suffix(self.state_path.suffix + ".lock")):
+            yield self._load_state()
 
     def _load_state(self) -> dict:
         try:
@@ -339,7 +344,7 @@ class HttpFetcher:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
 
-    def _pace(self, entry: dict, limits: RateLimits) -> None:
+    def _reserve(self, entry: dict, limits: RateLimits) -> float:
         now = self.clock()
         history = entry["requests"]
         ready = max(now, entry["retry_at"] or now)
@@ -349,13 +354,11 @@ class HttpFetcher:
         for window, count in windows:
             if count and len(history) >= count:
                 ready = max(ready, history[-count] + window)
-        if ready > now:
-            self.sleep(ready - now)
-        now = self.clock()
-        retention = max([limits.minimum_interval_seconds, *(w for w, n in windows if n)])
-        entry["requests"] = [stamp for stamp in history if stamp > now - retention] + [now]
-        if entry["retry_at"] is not None and entry["retry_at"] <= now:
+        # A later request may use a different policy, including a daily quota.
+        entry["requests"] = [stamp for stamp in history if stamp > now - 86400] + [ready]
+        if entry["retry_at"] is not None and entry["retry_at"] <= ready:
             entry["retry_at"] = None
+        return ready
 
     def fetch(self, request: DocumentRequest, source: SourcePolicy, max_bytes: int) -> bytes:
         _source_check(request, source)
@@ -372,15 +375,31 @@ class HttpFetcher:
                 prefix = "Token" if source.auth_style == "token" else "Bearer"
                 headers["Authorization"] = f"{prefix} {token}"
         host = url.raw_host.decode("ascii")
-        with self._locked_state() as state:
-            entry = state.setdefault(host, {"requests": [], "retry_at": None})
-            self._pace(entry, source.rate_limits)
-            # Reserve before sending so an interrupted transport still consumes quota.
-            self._save_state(state)
+        host_lock = self.state_path.with_suffix(self.state_path.suffix + f".{sha256(host.encode())}.lock")
+        # Keep a host serialized through its response (including Retry-After),
+        # while unrelated hosts only share the brief JSON transactions below.
+        with self._locked_file(host_lock):
+            with self._locked_state() as state:
+                entry = state.setdefault(host, {"requests": [], "retry_at": None})
+                ready = self._reserve(entry, source.rate_limits)
+                # Persist even a future slot: a crash can only overcount quota.
+                self._save_state(state)
+            delay = ready - self.clock()
+            if delay > 0:
+                self.sleep(delay)
+            with self._locked_state() as state:
+                entry = state[host]
+                # A late wake must pace subsequent requests from the actual start.
+                now = max(ready, self.clock())
+                entry["requests"] = [stamp for stamp in entry["requests"][:-1]
+                                     if stamp > now - 86400] + [now]
+                self._save_state(state)
             try:
                 return self._download(url, headers, max_bytes, entry)
             finally:
-                self._save_state(state)
+                with self._locked_state() as state:
+                    state[host] = entry
+                    self._save_state(state)
 
     def _download(self, url: httpx.URL, headers: dict, max_bytes: int, entry: dict) -> bytes:
         try:

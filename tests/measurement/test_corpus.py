@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import date
 from threading import Event
 
@@ -31,6 +33,221 @@ class ThrottleClock:
 
 
 @pytest.mark.parametrize("window,seconds", [("per_minute", 60), ("per_hour", 3600), ("per_day", 86400)])
+@pytest.mark.parametrize("mode", ["shared-host", "policy-update"])
+def test_looser_policy_preserves_history_for_stricter_policy(tmp_path, window, seconds, mode):
+    clock = ThrottleClock()
+    sent = []
+    strict = policy().sources[0].model_copy(update={
+        "rate_limits": policy().sources[0].rate_limits.model_copy(update={window: 2})})
+    loose = policy().sources[0]
+    if mode == "shared-host":
+        loose = loose.model_copy(update={"source_id": "other-source"})
+    state_path = tmp_path / "throttle-state.json"
+
+    def serve(request):
+        sent.append(clock())
+        return FixtureServer()(request)
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                              clock=clock, sleep=clock.sleep)
+        for i, source in enumerate((strict, loose, strict)):
+            item = requests()[i].model_copy(update={"source_id": source.source_id})
+            if mode == "policy-update":
+                # Separate collections reload the changed policy and shared state.
+                fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                                      clock=clock, sleep=clock.sleep)
+                manifest = collect([item], policy().model_copy(update={"sources": (source,)}),
+                                   tmp_path / f"cell-{i}", fetcher)
+                assert len(manifest.documents) == 1
+            else:
+                fetcher.fetch(item, source, 10000)
+    assert sent == [1_800_000_000, 1_800_000_001, 1_800_000_000 + seconds]
+
+
+@pytest.mark.parametrize("blocked_on", ["cooldown", "daily-quota", "download"])
+def test_blocked_host_does_not_delay_another_host(tmp_path, blocked_on):
+    clock = ThrottleClock()
+    state_path = tmp_path / "throttle-state.json"
+    source = policy().sources[0]
+    if blocked_on == "daily-quota":
+        source = source.model_copy(update={
+            "rate_limits": source.rate_limits.model_copy(update={"per_day": 1})})
+    if blocked_on != "download":
+        state_path.write_text(json.dumps({"court.example": {
+            "requests": [clock()],
+            "retry_at": clock() + 120 if blocked_on == "cooldown" else None}}))
+    other_source = source.model_copy(update={"url_prefixes": ("https://other.example/opinions/",)})
+    other_request = requests()[0].model_copy(update={"url": "https://other.example/opinions/0"})
+    blocked, release, other_entered = Event(), Event(), Event()
+
+    def pause():
+        blocked.set()
+        assert release.wait(5)
+
+    def sleep(seconds):
+        pause()
+        clock.sleep(seconds)
+
+    def serve(request):
+        if request.url.host == "other.example":
+            other_entered.set()
+        elif blocked_on == "download":
+            pause()
+        else:
+            # Persist a cooldown after the unrelated host has saved its own state.
+            return httpx.Response(429, headers={"Retry-After": "90"})
+        return httpx.Response(200, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        first, second = [HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                                    clock=clock, sleep=sleep) for _ in range(2)]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            a = pool.submit(first.fetch, requests()[0], source, 100)
+            try:
+                assert blocked.wait(5)
+                b = pool.submit(second.fetch, other_request, other_source, 100)
+                assert other_entered.wait(1), "unrelated host blocked behind the global state lock"
+                assert b.result(timeout=1) == b"ok"
+            finally:
+                release.set()
+            if blocked_on == "download":
+                assert a.result(timeout=5) == b"ok"
+            else:
+                with pytest.raises(CorpusError, match="HTTP 429"):
+                    a.result(timeout=5)
+    state = json.loads(state_path.read_bytes())
+    assert set(state) == {"court.example", "other.example"}
+    assert state["other.example"] == {"requests": [1_800_000_000], "retry_at": None}
+    assert state["court.example"]["retry_at"] == (None if blocked_on == "download" else clock() + 90)
+
+
+def _process_fetch(pipe, state_path, oversleep):
+    """Offline process fixture; the parent controls waits and the HTTP boundary."""
+    clock = ThrottleClock()
+    source = policy().sources[0].model_copy(update={
+        "rate_limits": policy().sources[0].rate_limits.model_copy(update={"per_hour": 1})})
+
+    def sleep(seconds):
+        pipe.send(("sleep", seconds))
+        assert pipe.recv() == "continue"
+        clock.sleep(seconds + oversleep)
+
+    def serve(request):
+        pipe.send(("request", clock()))
+        assert pipe.recv() == "continue"
+        return httpx.Response(200, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                              clock=clock, sleep=sleep)
+        pipe.send(("ready", None))
+        assert pipe.recv() == "fetch"
+        pipe.send(("started", None))
+        result = fetcher.fetch(requests()[0], source, 100)
+        pipe.send(("done", result))
+
+
+def _receive(pipe, expected):
+    assert pipe.poll(5), f"process did not report {expected}"
+    event, value = pipe.recv()
+    assert event == expected
+    return value
+
+
+@contextmanager
+def _fetch_process(state_path, oversleep=0):
+    context = multiprocessing.get_context("spawn")
+    parent, child = context.Pipe()
+    process = context.Process(target=_process_fetch, args=(child, state_path, oversleep))
+    process.start()
+    child.close()
+    try:
+        _receive(parent, "ready")
+        yield process, parent
+    finally:
+        if process.is_alive():
+            process.terminate()
+        process.join(timeout=5)
+        assert not process.is_alive()
+        parent.close()
+        process.close()
+
+
+@pytest.mark.parametrize("oversleep", [0, 7])
+def test_concurrent_processes_reserve_and_obey_shared_host_quota(tmp_path, oversleep):
+    state_path = tmp_path / "throttle-state.json"
+    with _fetch_process(state_path) as (first, a), _fetch_process(state_path, oversleep) as (second, b):
+        a.send("fetch")
+        _receive(a, "started")
+        first_sent = _receive(a, "request")
+        b.send("fetch")
+        _receive(b, "started")
+        assert not b.poll(0.1), "same-host fetch overlapped the first download"
+        a.send("continue")
+        assert _receive(a, "done") == b"ok"
+        assert _receive(b, "sleep") == 3600
+        # The waiting slot is durable before sleeping, without issuing HTTP yet.
+        assert json.loads(state_path.read_bytes())["court.example"]["requests"] == [
+            first_sent, first_sent + 3600]
+        b.send("continue")
+        assert _receive(b, "request") == first_sent + 3600 + oversleep
+        b.send("continue")
+        assert _receive(b, "done") == b"ok"
+        for process in (first, second):
+            process.join(timeout=5)
+            assert process.exitcode == 0
+    assert json.loads(state_path.read_bytes())["court.example"]["requests"] == [
+        first_sent, first_sent + 3600 + oversleep]
+    # A late wake must move the reservation forward for the next quota decision.
+    clock = ThrottleClock()
+    sent = []
+    source = policy().sources[0].model_copy(update={
+        "rate_limits": policy().sources[0].rate_limits.model_copy(update={"per_hour": 1})})
+
+    def serve(request):
+        sent.append(clock())
+        return httpx.Response(200, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                              clock=clock, sleep=clock.sleep)
+        assert fetcher.fetch(requests()[0], source, 100) == b"ok"
+    assert sent == [first_sent + 7200 + oversleep]
+
+
+def test_crash_after_reservation_conservatively_consumes_quota(tmp_path):
+    clock = ThrottleClock()
+    state_path = tmp_path / "throttle-state.json"
+    state_path.write_text(json.dumps({"court.example": {"requests": [clock()], "retry_at": None}}))
+    with _fetch_process(state_path) as (process, pipe):
+        pipe.send("fetch")
+        _receive(pipe, "started")
+        assert _receive(pipe, "sleep") == 3600
+        assert json.loads(state_path.read_bytes())["court.example"]["requests"] == [
+            clock(), clock() + 3600]
+        # Kill while waiting, after reservation and before the transport is entered.
+        process.kill()
+        process.join(timeout=5)
+        assert process.exitcode < 0
+    sent = []
+    source = policy().sources[0].model_copy(update={
+        "rate_limits": policy().sources[0].rate_limits.model_copy(update={"per_hour": 1})})
+
+    def serve(request):
+        sent.append(clock())
+        return httpx.Response(200, content=b"ok")
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        fetcher = HttpFetcher(client, user_agent="Fixture contact", state_path=state_path,
+                              clock=clock, sleep=clock.sleep)
+        assert fetcher.fetch(requests()[0], source, 100) == b"ok"
+    assert sent == [1_800_007_200]
+    assert json.loads(state_path.read_bytes())["court.example"]["requests"] == [
+        1_800_000_000, 1_800_003_600, 1_800_007_200]
+
+
+@pytest.mark.parametrize("window,seconds", [("per_minute", 60), ("per_hour", 3600), ("per_day", 86400)])
 def test_sequential_fetchers_share_throttle_state(tmp_path, window, seconds):
     clock = ThrottleClock()
     sent = []
@@ -50,7 +267,8 @@ def test_sequential_fetchers_share_throttle_state(tmp_path, window, seconds):
                 assert fetcher.fetch(item, source, 100) == b"ok"
     assert sent == [1_800_000_000, 1_800_000_001, 1_800_000_000 + seconds, 1_800_000_001 + seconds]
     state = json.loads(state_path.read_bytes())
-    assert state == {"court.example": {"requests": sent[-2:], "retry_at": None}}
+    assert state == {"court.example": {
+        "requests": [stamp for stamp in sent if stamp > sent[-1] - 86400], "retry_at": None}}
 
 
 @pytest.mark.parametrize("retry", ["120", "Fri, 15 Jan 2027 08:02:00 GMT"])
