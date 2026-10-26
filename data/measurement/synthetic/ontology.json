@@ -1,0 +1,1520 @@
+{
+  "format": 1,
+  "source_url": "https://github.com/alea-institute/FOLIO",
+  "source_sha256": "b6ed82e6d17b7cb1d468453e4111ec08ca091d72a6849be2b58dd37692cb6ef9",
+  "license": "CC-BY-4.0; FOLIO, ALEA Institute",
+  "concepts_sha256": "41ab91659f771fd7879a7cf461a6445a60c3abbe65e86e512ae7b61cb8bf2505",
+  "concepts": [
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "label": "owl#Thing",
+      "alternative_labels": [],
+      "parents": []
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R1E70ce4D699e90144cB32b8",
+      "label": "United States of America (Location)",
+      "alternative_labels": [
+        "Location",
+        "the"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RE001ab376fa25C94f1244be"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R3MdX1jnLm0lwZoaOurqTG",
+      "label": "Corporate Representative Deposition Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDrCoGiMIXR6TcVXppICUT5"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R4VkvTQ3bdGYvonRh8VkvN",
+      "label": "Security Incident",
+      "alternative_labels": [
+        "Incident"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCvV18Mbbb9FYFXbHt1inuL"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R67fwZw741EuZY3jLZhsoZ",
+      "label": "Material Adverse Effect Definition - Carveouts",
+      "alternative_labels": [
+        "MAE"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RsHuW5MLfrGGruc6e9rJZC"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R6DLuG3VglXIci9EJ3MwAK",
+      "label": "Regulatory Penalty",
+      "alternative_labels": [
+        "Corrective Measure",
+        "Penalty",
+        "Regulatory Remedy",
+        "Sanction"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCDwLiS22z6MzQaQHS08hvk",
+        "https://folio.openlegalstandard.org/RCvV18Mbbb9FYFXbHt1inuL"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R70jMZb6xYrVCXW6f3EbO1e",
+      "label": "Transactional Objectives",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R73Uo5x4VyfiOXt6i4R256t",
+      "label": "Litigation Events",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDFhtJuTWcY7UZGV9F5yOoA"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF",
+      "label": "Event",
+      "alternative_labels": [],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R78xJfSMpJ2ZUUUlYdzfUvC",
+      "label": "Canada Variants",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8zL0uhEOQuxBZcdYyS8ORn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R79LjWBKHCdmQKEW6zPY8Co",
+      "label": "Litigation Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDigDgTiLFmt7iX3436yCOT"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R79jXpStbWPIClnqZrLu4yP",
+      "label": "Motions",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/Rjco9ohucVSJ0XxprM5Opb"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7H5z7e67YZSVmjrNJ0r6rm",
+      "label": "Employment Law",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R78xJfSMpJ2ZUUUlYdzfUvC",
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7LI3BONqNkXbKHKa0t3jyI",
+      "label": "Bankruptcy and Financial Restructuring Practice",
+      "alternative_labels": [
+        "Bankruptcy",
+        "Financial Restructuring/Bankruptcy",
+        "Restructuring/Bankruptcy"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDK1QEdQg1T8B5HQqMK2pZN"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7ME5bcP1ep2LpnUSiBvP1T",
+      "label": "Pretrial Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBgzWJQz52CrObfGXDKH1t7"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7MK1XmyjtYxZKg8Iw4ZN4K",
+      "label": "Personal Injury and Tort Law",
+      "alternative_labels": [
+        "Personal Injury and Torts"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7NB9WJzAFK6tIIGmfIj5Ay",
+      "label": "Objections to Direct Examination",
+      "alternative_labels": [
+        "Challenges to Direct Testimony",
+        "Direct Examination Objections",
+        "Objections to Principal Examination"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9Idcfy3k3uRwC4XohbcMAg"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7NuHbXZluNRzq9D1bLM716",
+      "label": "Agreement Attributes",
+      "alternative_labels": [
+        "Agreement Characteristics",
+        "Contract Attributes",
+        "Contractual Attributes"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBJ4HPUl2DrL4G30lmoFKJN"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7PPywVywQYcT4GloerUeuh",
+      "label": "Trial Testimony Event",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/Rchny3YFXoQyenv6XUbyo0"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7R1YAozFcvfvIX32msHyay",
+      "label": "Witness Examination Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9dd6R73IfKyiskT5Jf62R7"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7fEpxSrDSl1VojeYSxppg",
+      "label": "Citation to Legal Authority",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RUH9A0VJfKpItj0UkMldZQ"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7kUD6H5adQ83mCKuHjT5JD",
+      "label": "Information Security Law",
+      "alternative_labels": [
+        "Data Protection Law"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7lGKuy9aoKEAAMDN48WgBT",
+      "label": "Failure of Consideration",
+      "alternative_labels": [
+        "Want of Consideration"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7lbqYoeuZitiUJsrh5lYIB",
+      "label": "Testifying Expert Witness",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9tZFXPrXQJWHbqSgtCQxJF",
+        "https://folio.openlegalstandard.org/RDmpvD4XLJx0kkUTZ3QIadI"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7mT3oM7UJnGCUIq15FYip5",
+      "label": "Force Majeure Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R67fwZw741EuZY3jLZhsoZ",
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7nqxxlAfhYqqSA2UQ5UxpX",
+      "label": "Negligence",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCfunX4u69LUQ3gbhckE0oI"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7oWyxtB6MtD5SutNOJyn6b",
+      "label": "Private Right of Action",
+      "alternative_labels": [
+        "Private Enforcement Right"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH",
+      "label": "Litigation Defenses",
+      "alternative_labels": [
+        "Defenses"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7wrI57WaogjWdkpozaYZyV",
+      "label": "Oral Agreement",
+      "alternative_labels": [
+        "Parol Contract",
+        "Spoken Contract",
+        "Verbal Agreement",
+        "Verbal Contract"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7NuHbXZluNRzq9D1bLM716"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7xjtdjCK8LoDNrx5EwqIJa",
+      "label": "Data Security Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR",
+      "label": "Trial Court Practice Documents",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/Rjco9ohucVSJ0XxprM5Opb"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R87oohRQQyQ9vANv8H5W2eE",
+      "label": "Adversary Proceeding Practice",
+      "alternative_labels": [
+        "Bankruptcy Litigation Practice"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7LI3BONqNkXbKHKa0t3jyI"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R88D8i8AcSTUig2X3yPbFHg",
+      "label": "Agreements",
+      "alternative_labels": [
+        "Contracts"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBJ4HPUl2DrL4G30lmoFKJN"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R89iBjT2ujtCBRwmcKoTVJ",
+      "label": "Corporate Representative Deposition",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCnTNVCQ1VndGxskbMoaLr8"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8CdMpOM0RmyrgCCvbpiLS0",
+      "label": "Actor / Player",
+      "alternative_labels": [
+        "Actor",
+        "Player",
+        "Player Role"
+      ],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8Hs98hbvGXbyLnjZcTg1QR",
+      "label": "Duty of Care",
+      "alternative_labels": [
+        "Standard of Care"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDYMSvTzMQvR5oJWYzguyJW"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8IQg7EUvdgPRcmPx8Sz8Au",
+      "label": "Data Breach Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7xjtdjCK8LoDNrx5EwqIJa"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8K6VFq9c39kbQouame6Onf",
+      "label": "Summary Judgment",
+      "alternative_labels": [
+        "SJ"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9jpIjzc10qdgl78jXOZtfm"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8RfDzMtuMPdmNTonmhBxu",
+      "label": "Lease",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RITVzcNUrw2Bg0fvFueOTT"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8dLmng1TNW6uYIBHtkJuab",
+      "label": "Employee",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8hJCf4Ih6iuFXsxeK7e6zU",
+      "label": "Privacy Law",
+      "alternative_labels": [
+        "Privacy"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7kUD6H5adQ83mCKuHjT5JD"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X",
+      "label": "Civil Claims",
+      "alternative_labels": [
+        "Cause of Action",
+        "Civil Cause of Action"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9q7GJc1zsYT0P4Xdp6l9Oz"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8mREFTbCVNHGAdqneLSd0d",
+      "label": "Litigation Criminal Defenses",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8mchuGv5Xvl9V7trgYx6YB",
+      "label": "Software as a Service Agreement",
+      "alternative_labels": [
+        "SaaS Agreement"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RZ2ygZBRYA0HT25x0f50Du"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8wEzsnWA30YRmdfZKRkFuH",
+      "label": "Brief / Memorandum of Law",
+      "alternative_labels": [
+        "Brief",
+        "Memorandum",
+        "Memorandum of Law",
+        "Memorandum of Points and Authorities"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR",
+        "https://folio.openlegalstandard.org/R8zijLH2GH0SxOhIdzeDOs3"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8wt2n3AFdskQGAtG1Sk2s5",
+      "label": "Litigation Agreements",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R88D8i8AcSTUig2X3yPbFHg"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8zL0uhEOQuxBZcdYyS8ORn",
+      "label": "ZZZ - SANDBOX: UNDER CONSTRUCTION",
+      "alternative_labels": [],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8zijLH2GH0SxOhIdzeDOs3",
+      "label": "Bankruptcy and Restructuring Document",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R8zwKGkogGKIKWSVWb1ItRL",
+      "label": "Motions in Trial Courts",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R79jXpStbWPIClnqZrLu4yP",
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9CBXdybYDztLBRNDNJl0W",
+      "label": "Waiver",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R73Uo5x4VyfiOXt6i4R256t",
+        "https://folio.openlegalstandard.org/R8wt2n3AFdskQGAtG1Sk2s5",
+        "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9HuNkpWm24qMFuntuug6RB",
+      "label": "Evidence",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9Idcfy3k3uRwC4XohbcMAg",
+      "label": "Evidentiary Objection",
+      "alternative_labels": [
+        "Admissibility challenge",
+        "Evidence Challenge"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RrwKWn7PQLCSscgstTNLqf"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9Ii4OzSADsjS0VegX12oQJ",
+      "label": "Bankruptcy Motions",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8zijLH2GH0SxOhIdzeDOs3"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9VDFklecnzU0j36KT2PTO3",
+      "label": "Modification Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9Xkp4FqX83NG5ZI0CDfQ1k",
+      "label": "Motion to Dismiss",
+      "alternative_labels": [
+        "Demurrer",
+        "MTD",
+        "Motion for Dismissal",
+        "Motion to Terminate"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8zwKGkogGKIKWSVWb1ItRL",
+        "https://folio.openlegalstandard.org/R9Ii4OzSADsjS0VegX12oQJ",
+        "https://folio.openlegalstandard.org/RC339aKhjRAuw4JtEQUn5xw",
+        "https://folio.openlegalstandard.org/RUM0A3dwvk0A2dp3WHxNrj"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9XqhlDRrcrbyXu5YJVhaoW",
+      "label": "Discovery Events",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R73Uo5x4VyfiOXt6i4R256t"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9aSzp9cEiBCzObnP92jYFX",
+      "label": "Location",
+      "alternative_labels": [
+        "Global"
+      ],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9dd6R73IfKyiskT5Jf62R7",
+      "label": "Trial Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBgzWJQz52CrObfGXDKH1t7"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9hR0S1zExtgPQTzV0LeyD3",
+      "label": "Discovery Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7LI3BONqNkXbKHKa0t3jyI",
+        "https://folio.openlegalstandard.org/R7ME5bcP1ep2LpnUSiBvP1T"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9ikrznaQwm4RUsMzP9KXFR",
+      "label": "Authority",
+      "alternative_labels": [
+        "Legal Authority"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9jpIjzc10qdgl78jXOZtfm",
+      "label": "Judgment",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDBXUrFP9mCZLCxzqy8nbEX"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9oz08cWJcI23x0nYU1h0it",
+      "label": "Indemnification Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9pwejG33H0Y9mi74WzE2nb",
+      "label": "Jury",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDSYPGgBlFz5eWNtwoMA2c5"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9q7GJc1zsYT0P4Xdp6l9Oz",
+      "label": "Litigation Claims",
+      "alternative_labels": [
+        "Litigation Cause of Action",
+        "Litigation Causes of Action"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9tZFXPrXQJWHbqSgtCQxJF",
+      "label": "Witness",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RC5L1UD7ZnNEZtL0JB8WEyb",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9tyJmIM3Lx7OItGji5zPXN",
+      "label": "Plaintiff",
+      "alternative_labels": [
+        "Claimant",
+        "Complainant"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCFgxBbypUKKsDDOJ1iOk36"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9u4hHZJYFWdtdGcgkoqz1x",
+      "label": "Restrictive Covenant Agreement",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R88D8i8AcSTUig2X3yPbFHg"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/R9urhXjf5qj2wZs4fVFCl7A",
+      "label": "Proximate Cause",
+      "alternative_labels": [
+        "Legal Causation"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RB2CEA5hNfHnNl8DMKIfK5F",
+      "label": "Monetary Damages",
+      "alternative_labels": [
+        "Economic Damages",
+        "Pecuniary Remedies",
+        "Recoupment"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCCv5YLoHUOm5AlqcCBzqGf",
+        "https://folio.openlegalstandard.org/RDbz1PVc6y57oOb9jAIl0eN"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RB3FT9lFNQIjRnFIueLgCa7",
+      "label": "Notice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR",
+        "https://folio.openlegalstandard.org/RBgYlfvGoXoGLN1CBxDQW6B"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBA52cjyeFhnjSJD6qnT1DM",
+      "label": "Liquidated Damages",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RouKBMqFNMZxi21EPh6JJ6"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+      "label": "Affirmative Defenses",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBBifG8DRVUc0IVqvXZ2kex",
+      "label": "Corporate Representative Witness",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9tZFXPrXQJWHbqSgtCQxJF"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4",
+      "label": "Litigation Objectives",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBJ4HPUl2DrL4G30lmoFKJN",
+      "label": "Transactional Document",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBKXEdlGEMzeuinxEdRGBF5",
+      "label": "Consideration",
+      "alternative_labels": [
+        "Consideration Objectives"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDRCaFxX4hpUklgNnVS9D8C"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBgYlfvGoXoGLN1CBxDQW6B",
+      "label": "Trial Court Procedural Documents",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBgzWJQz52CrObfGXDKH1t7",
+      "label": "Trial Court Practice",
+      "alternative_labels": [
+        "District Court Practice"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R79LjWBKHCdmQKEW6zPY8Co",
+        "https://folio.openlegalstandard.org/R87oohRQQyQ9vANv8H5W2eE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh",
+      "label": "Document Types",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RBukB9MGGdY4Kwx3b6itiwi",
+      "label": "Limitation of Liability Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RZVXNAbvbm2JirFGPT4Ihy"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RC1CZydjfH8oiM4W3rCkma3",
+      "label": "Legal Authorities",
+      "alternative_labels": [],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RC2fjcpsEbrVvVymvt4oASx",
+      "label": "Breach of Contract",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RbkhZxcSyqaKNyUivxRRpu"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RC339aKhjRAuw4JtEQUn5xw",
+      "label": "Motions Responding to Complaint",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8zwKGkogGKIKWSVWb1ItRL"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RC5L1UD7ZnNEZtL0JB8WEyb",
+      "label": "Nonparty",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCCv5YLoHUOm5AlqcCBzqGf",
+      "label": "Damages",
+      "alternative_labels": [
+        "Harm"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDspRIwoJTlopUDjSgLRduf"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCDwLiS22z6MzQaQHS08hvk",
+      "label": "Regulatory Objectives",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "label": "Role in Matter",
+      "alternative_labels": [
+        "Player Role"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8CdMpOM0RmyrgCCvbpiLS0"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCFgxBbypUKKsDDOJ1iOk36",
+      "label": "Litigant",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCIPwpgRpMs1eVz4vPid0pV",
+      "label": "Contract Law",
+      "alternative_labels": [
+        "General Theory of Contracts"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCNKm9EnW4P2a7noaWhJg4j",
+      "label": "Penalty Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCZwssbqfmu0Lds0LPDV34F",
+      "label": "Compliance",
+      "alternative_labels": [
+        "Legal Compliance"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCaZrUbTpgbGRrwYk2keJES",
+      "label": "Jury Instructions",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDBXUrFP9mCZLCxzqy8nbEX"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCdJXw1Ml7DIBqmouWarZm2",
+      "label": "Exception",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCde1yp5z3QI9MoNV8BBZCj",
+      "label": "Citation to Caselaw",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7fEpxSrDSl1VojeYSxppg"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCfunX4u69LUQ3gbhckE0oI",
+      "label": "Negligence Claims",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X",
+        "https://folio.openlegalstandard.org/RDqSn32zsjxExcBFzIYxT2D"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "label": "Deontic Specification",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCnTNVCQ1VndGxskbMoaLr8",
+      "label": "Deposition",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9XqhlDRrcrbyXu5YJVhaoW"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCovPJMo8mH3uZhlySLgWIa",
+      "label": "Consumer Protection Law",
+      "alternative_labels": [
+        "Consumer Protection"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RqNYDJtQ1pAsGPKZNEUlET"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCqqI0SLTxsE8Z2rCu7KOXm",
+      "label": "Prohibition",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCurUksxnjgPwYWpCSq0xPI",
+      "label": "Permission",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCvV18Mbbb9FYFXbHt1inuL",
+      "label": "Regulatory Events",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCz1SYWoNDDTDvPr0kSJBq",
+      "label": "Cross-Examination of Witness",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7PPywVywQYcT4GloerUeuh",
+        "https://folio.openlegalstandard.org/R7R1YAozFcvfvIX32msHyay"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P",
+      "label": "Litigation Civil Defenses",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+      "label": "Labor and Employment Law",
+      "alternative_labels": [
+        "Labour and Employment Law"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDB9ffc13Cb117D7caa05f07",
+      "label": "Minnesota",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R1E70ce4D699e90144cB32b8"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDBXUrFP9mCZLCxzqy8nbEX",
+      "label": "Trial Court Created Documents",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDFhtJuTWcY7UZGV9F5yOoA",
+      "label": "Dispute Events",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDGR7PTYD8TltxEq0F8NGIR",
+      "label": "Direct-Examination of Witness",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7PPywVywQYcT4GloerUeuh",
+        "https://folio.openlegalstandard.org/R7R1YAozFcvfvIX32msHyay"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDIuHPBKs3x9tZ0vRBJ76AI",
+      "label": "Procedural Claims",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDJM7d52FqDzFaBbtRdhECs",
+      "label": "Limitations",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDK1QEdQg1T8B5HQqMK2pZN",
+      "label": "Service",
+      "alternative_labels": [],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDKJ7nEqeDxNDRxI2Wqil1N",
+      "label": "Statute of Limitations",
+      "alternative_labels": [
+        "Limitation Period",
+        "Limitations Period"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8mREFTbCVNHGAdqneLSd0d",
+        "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P",
+        "https://folio.openlegalstandard.org/RDJM7d52FqDzFaBbtRdhECs"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDNaE3PFsXDfIudTq7w3ace",
+      "label": "Judicial Opinion",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDBXUrFP9mCZLCxzqy8nbEX"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDOq8HJJl8YdcwBdCZmjlOW",
+      "label": "Confidentiality Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDRCaFxX4hpUklgNnVS9D8C",
+      "label": "Mergers and Acquisitions Objectives",
+      "alternative_labels": [
+        "M&A Objectives"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R70jMZb6xYrVCXW6f3EbO1e"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDSYPGgBlFz5eWNtwoMA2c5",
+      "label": "Decisionmaker for Legal Disputes",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDV74m3ydS2I72hZ88Mf1RX",
+      "label": "Litigation Burdens of Proof",
+      "alternative_labels": [
+        "Burden of Persuasion",
+        "Burden of Proof",
+        "Legal Standard"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDYMSvTzMQvR5oJWYzguyJW",
+      "label": "Fiduciary Duty",
+      "alternative_labels": [
+        "Trust Duty",
+        "Trustee Duty"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDbz1PVc6y57oOb9jAIl0eN",
+      "label": "Civil Remedies / Relief Sought",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RsJ6DupkWKlUlCHH0Ycxvp"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc",
+      "label": "Contractual Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R70jMZb6xYrVCXW6f3EbO1e"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDigDgTiLFmt7iX3436yCOT",
+      "label": "Dispute Service",
+      "alternative_labels": [
+        "Advocacy",
+        "Dispute",
+        "Disputes"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDK1QEdQg1T8B5HQqMK2pZN"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDmbgHQXJxEvx3QYfR6qWAn",
+      "label": "Document Components",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDmpvD4XLJx0kkUTZ3QIadI",
+      "label": "Expert Engagement Type",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RgT3hiPFNllfpt00aHX6u7"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDoqFy7w8Dr7R9MC1LSxNgv",
+      "label": "Promissory Estoppel",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RZ1dOPJ6HH6lMJGSLNxfwV",
+        "https://folio.openlegalstandard.org/RoKNrz23ylFaWAaoPC3ECY"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDqSn32zsjxExcBFzIYxT2D",
+      "label": "Tort Claims",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDrCoGiMIXR6TcVXppICUT5",
+      "label": "Deposition Practice",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9hR0S1zExtgPQTzV0LeyD3"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDsDXHKUsZoJfz87jnz7zjj",
+      "label": "Violation",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDspRIwoJTlopUDjSgLRduf",
+      "label": "Elements of Claim",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9q7GJc1zsYT0P4Xdp6l9Oz"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj",
+      "label": "Document / Artifact",
+      "alternative_labels": [
+        "Artifact",
+        "Document"
+      ],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDtFkLR3v97fran5zQ3ugao",
+      "label": "Obligation",
+      "alternative_labels": [
+        "Covenant",
+        "Duty",
+        "Legal Obligation",
+        "Responsibility"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RDvL7Pxoo5G3sPWI7IpBRgM",
+      "label": "Expert Witness Deposition",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCnTNVCQ1VndGxskbMoaLr8"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RE001ab376fa25C94f1244be",
+      "label": "North America",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9aSzp9cEiBCzObnP92jYFX"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RHagFJXtPsCCn5dbENWLNR",
+      "label": "Statutes",
+      "alternative_labels": [
+        "Codes"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RC1CZydjfH8oiM4W3rCkma3"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RITVzcNUrw2Bg0fvFueOTT",
+      "label": "Lease Agreements",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R88D8i8AcSTUig2X3yPbFHg"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RKUCwOJGfYiSc7zU1qkhAS",
+      "label": "Cybersecurity Incident",
+      "alternative_labels": [
+        "IT Security Breach",
+        "Information Security Event",
+        "Network Security Incident"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R4VkvTQ3bdGYvonRh8VkvN"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RQK2U69tYGz8WI47zMgaCP",
+      "label": "Deal Language",
+      "alternative_labels": [
+        "MAE"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDRCaFxX4hpUklgNnVS9D8C"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "label": "Area of Law",
+      "alternative_labels": [
+        "Areas of Law",
+        "Practice Area"
+      ],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RUH9A0VJfKpItj0UkMldZQ",
+      "label": "Citations to Another Document",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDmbgHQXJxEvx3QYfR6qWAn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RUM0A3dwvk0A2dp3WHxNrj",
+      "label": "Dispositive Motions",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8zwKGkogGKIKWSVWb1ItRL"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RVbr7id7xk8cwbPPGi6x1a",
+      "label": "Leading Objection",
+      "alternative_labels": [
+        "Lawyer Testifying",
+        "Lawyer Testifying Objection",
+        "Leading Question Objection",
+        "Suggestive Question Objection"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R7NB9WJzAFK6tIIGmfIj5Ay"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RWS7oVs9s2563KGt41Lsta",
+      "label": "Equitable Claims",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RZ1dOPJ6HH6lMJGSLNxfwV",
+      "label": "Contract & Quasi-Contract Claims",
+      "alternative_labels": [
+        "Contract Claims",
+        "Quasi-Contract Claims"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R8jYAnNATrfoBxAtIKpf72X"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RZ2ygZBRYA0HT25x0f50Du",
+      "label": "Service Agreement",
+      "alternative_labels": [
+        "Document"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/R88D8i8AcSTUig2X3yPbFHg"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RZSIXV7riyj3JVeY7qDJPR",
+      "label": "Modification of Agreement Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9VDFklecnzU0j36KT2PTO3"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RZVXNAbvbm2JirFGPT4Ihy",
+      "label": "Liability Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/Raw03V8d0o2ILRa4VEpq4t",
+      "label": "Data Breach",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RKUCwOJGfYiSc7zU1qkhAS"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RbkhZxcSyqaKNyUivxRRpu",
+      "label": "Breach of Contract Claims",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RZ1dOPJ6HH6lMJGSLNxfwV"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/Rchny3YFXoQyenv6XUbyo0",
+      "label": "Trial Events",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R73Uo5x4VyfiOXt6i4R256t"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RgT3hiPFNllfpt00aHX6u7",
+      "label": "Expert",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RC5L1UD7ZnNEZtL0JB8WEyb",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RijIqw1HEfQF4ctjWUlgnq",
+      "label": "Defendant",
+      "alternative_labels": [
+        "Respondent"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCFgxBbypUKKsDDOJ1iOk36"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RinqHf65TtUhr762WKqN6R",
+      "label": "Personal Jurisdiction",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDIuHPBKs3x9tZ0vRBJ76AI"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/Rjco9ohucVSJ0XxprM5Opb",
+      "label": "Litigation Document",
+      "alternative_labels": [
+        "Court Records"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E",
+      "label": "Objectives",
+      "alternative_labels": [],
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RmCCZU8GS7O8920pkDipw7",
+      "label": "Right",
+      "alternative_labels": [
+        "Legal Right"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/Ro7NzBFiq6eW3vKMpqpufQ",
+      "label": "Preponderance of Evidence",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDV74m3ydS2I72hZ88Mf1RX"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RoKNrz23ylFaWAaoPC3ECY",
+      "label": "Estoppel",
+      "alternative_labels": [
+        "Reliance on Another’s Conduct"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P",
+        "https://folio.openlegalstandard.org/RWS7oVs9s2563KGt41Lsta"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RouKBMqFNMZxi21EPh6JJ6",
+      "label": "Economic Damages",
+      "alternative_labels": [
+        "Consequential Damages"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RB2CEA5hNfHnNl8DMKIfK5F"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RqNYDJtQ1pAsGPKZNEUlET",
+      "label": "Commercial and Trade Law",
+      "alternative_labels": [
+        "Business Law"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RrwKWn7PQLCSscgstTNLqf",
+      "label": "Evidentiary Objectives",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RsHuW5MLfrGGruc6e9rJZC",
+      "label": "Material Adverse Effect Definition",
+      "alternative_labels": [
+        "MAE"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RQK2U69tYGz8WI47zMgaCP"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RsJ6DupkWKlUlCHH0Ycxvp",
+      "label": "Litigation Remedies, Relief, and Penalties",
+      "alternative_labels": [
+        "Compensations"
+      ],
+      "parents": [
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RsZxhuNFK33sHecLQ7WJdp",
+      "label": "Employer",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RuTiqSJ76kL8qUWS8cae3Z",
+      "label": "Noncompete Agreement",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/R9u4hHZJYFWdtdGcgkoqz1x"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RvarcjDMtvkjKFA7vTQdDO",
+      "label": "Late Payment Penalty Clause",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RDe0RKU39BlhcyACJW30ZLc"
+      ]
+    },
+    {
+      "iri": "https://folio.openlegalstandard.org/RwdhuuPLbMNn3T9mxGZGPH",
+      "label": "Nominal Damages",
+      "alternative_labels": [],
+      "parents": [
+        "https://folio.openlegalstandard.org/RB2CEA5hNfHnNl8DMKIfK5F"
+      ]
+    }
+  ]
+}
