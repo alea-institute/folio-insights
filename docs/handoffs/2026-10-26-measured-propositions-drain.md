@@ -1,26 +1,42 @@
----
-session: "35427fe9-7529-415d-9172-a503eeb78bbc"
-written_at: "2026-10-26T12:20:02.778Z"
-head: "6e7b1569d0c43bfbb8b3b48c434158e0e69e9a90"
-worktree: "/home/damienriehl/Coding Projects/folio-insights"
-branch: "master"
----
-# Handoff: measured propositions and workbench, Codex drain (2026-10-26)
+# Handoff: measured propositions and workbench, Codex drain (2026-10-26, refreshed)
 
 ## State
-- **Merged:** README rewrite (PR #48, then flattened to propositions in PR #49). The GitHub About panel now has a description and 15 topics.
-- **Merged:** the requirements-only plan `docs/plans/2026-10-26-0716-feat-measured-propositions-and-workbench-plan.md` (PR #50). Its decisions are recorded in the Cockpit record `folio-insights-2026-10-26-1218-measured-propositions-decisions`.
-- **Running:** a Codex planner (worker `folio-measured-plan-20261026`) enriches that plan in place via `ce-plan` on branch `docs/measured-plan-enrich`, in a worktree under `~/worktrees/`. Done: 60 units; the orchestrator rescheduled them to 21 waves (KTD15: Codex builds offline, live runs and corpus fetching belong to the orchestrator, output-changing units merge behind a live gate) and added pooled tag-recall gold (KTD2).
+- **Plan:** `docs/plans/2026-10-26-0716-feat-measured-propositions-and-workbench-plan.md` (PRs #50 and #51). KTD15 routes Codex builds offline, assigns live runs and corpus fetches to the orchestrator, and puts output-changing units behind a live held-out gate. KTD2 defines pooled tag-recall gold.
+- **Merged (12 of 60):**
 
-## Next
-1. **Verify planner output.** When the planner reaches `review_ready`, confirm three things, then push, open a PR, and merge:
-   - **Plan commit:** the enriched plan is committed on the branch.
-   - **Product Contract:** it is unchanged.
-   - **Units:** every unit has its files, tests, verify command, and wave.
-2. **Dispatch waves.** Send each wave to Codex workers through `agents/worker-wrapper.sh`, with at most 3 at a time; this shares `agent-admit` limits with the Chief drain. Units marked "network: yes" go to Claude subagents.
-3. **Instrument first.** Land the measuring loop before any pipeline change: gold suite, scorer, judges, annotation store, gate, and README regeneration.
+  | Unit | Scope | PR |
+  |---|---|---|
+  | U1 | gold | #55 |
+  | U2 | scorer | #58 |
+  | U3 | annotations | #57 |
+  | U4 | judges | #61, plus live-auth fix #63 |
+  | U10 | corpus tooling | #64 |
+  | U33 | proposition model | #59 |
+  | U34 | atomic identity | #54 |
+  | U35 | SHACL | #60 |
+  | U36 | hierarchy retirement | #56 |
+  | U51 | workbench foundation | #52 |
+  | U60 | dedup | #62 |
 
-## Constraints
-- **Autonomous week:** Damien is at a conference the week of 2026-10-26. Judge autonomously, and label every score "judge agreement, unanchored" (R5).
-- **Codex credits:** Damien's Codex credits expire about 2026-10-28. Prefer Codex workers for everything Codex can do.
-- **Pending from Damien:** the location of his know-how materials, and verification of the anchor sets.
+  README fixes landed in #48, #49, and #53. Worker-report ignore landed in #65.
+- **Judges proven live.** On the host, Codex and Claude both judged a 2-item synthetic packet correctly over subscription CLIs. `~/.codex/auth.json` was left untouched. Codex takes about 200 s per call against Claude's 13 s, so U5 must batch.
+- **In verification:** U37 (projection; hierarchy-freeze fix), U5 (coordinator; atomic-checkpoint fix; may conflict with U10 on `measurement/cli.py`), and U38 (atomic extraction behind `FOLIO_INSIGHTS_ATOMIC_EXTRACTION`, default off; recall fix applied).
+- **Next units:**
+  - **After U5:** U6 (gate).
+  - **After U37 and U38:** U39 and U41.
+  - **After U6:** U7, then U8, then U9 (a live synthetic baseline run by the orchestrator).
+
+## How to run the drain
+- **Workers:** one Codex worker per unit, launched with `agents/worker-wrapper.sh` from a `~/worktrees/folio-mp-<unit>` worktree on `feat/mp-<unit>`.
+- **Caps:** at most 3 workers at once, admitted only at load below 4. Count real wrapper processes only: lines starting `bash …/worker-wrapper.sh folio-mp`. Launcher shells must not count.
+- **Merge rule:** rebase on master, run the host quick suite (`-m "not gate5 and not slow and not integration"`, plus `generate_shapes.py --check` for shape units), and run `codex review --base <sha>`.
+  - **Defects:** fix P1 or P2 defects via a Codex follow-up task (test first).
+  - **Merge:** merge with a PR, then delete the worktree and branch.
+- **Sandbox notes:** Codex workers can't reach the network or bind ports, and their asyncio self-pipe is blocked; `/tmp/folio-sandbox-support/sitecustomize.py` works around that. Host suites are authoritative. Under heavy box load, `tests/bench/test_phase9_rollup.py` can time out at 180 s; rerun it at low load before treating it as real.
+- **Data rule:** gold and data files never serialize excerpt-key values (`quote`, `snippet`, and similar), because the exclusion scanner forbids them.
+
+## Waiting on Damien (ask `folio-insights-2026-10-26-1328-corpus-token-and-gaps`)
+- **q1:** a CourtListener token (hard block). The paste-safe command is in the session chat.
+- **q2:** a gap-cell policy for MN, TX, and NY briefs and state pleadings.
+- **Also waiting:** his own know-how materials folder, and per-genre anchor verification after the conference.
+- **Chief noise:** Chief re-notes q1 every few minutes; each note gets a one-line no-op trail receipt.
