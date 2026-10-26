@@ -24,6 +24,7 @@ from typing import Any, Literal, Union, get_args, get_origin
 import annotated_types
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+from pydantic.types import Strict
 
 FI = "https://folio-insights.aleainstitute.ai/vocab/"
 SHAPES_NS = "https://folio-insights.aleainstitute.ai/shapes/"
@@ -60,6 +61,7 @@ _SCALAR_DATATYPES: dict[type, str] = {
 # the dependency edges use the projection's singular predicates
 # (storage/projection.py DEPENDENCY_PREDICATES; a test pins the agreement).
 PREDICATE_OVERRIDES: dict[tuple[str, str], str] = {
+    ("LegacyHierarchy", "elaborates"): "historicalElaborates",
     ("AttestedSignature", "action"): "signedAction",
     ("ShardEnvelope", "depends_on_axioms"): "dependsOnAxiom",
     ("ShardEnvelope", "depends_on_definitions"): "dependsOnDefinition",
@@ -105,7 +107,9 @@ class FieldSpec:
     dict_value_datatype: str | None = None  # dict kind only
     min_inclusive: float | None = None
     max_inclusive: float | None = None
+    min_exclusive: float | None = None
     min_length: int | None = None        # str min_length
+    pattern: str | None = None
     min_items: int | None = None         # list min_length
 
 
@@ -158,8 +162,15 @@ def _bounds(info: FieldInfo) -> dict[str, Any]:
             out["min_inclusive"] = item.ge
         elif isinstance(item, annotated_types.Le):
             out["max_inclusive"] = item.le
+        elif isinstance(item, annotated_types.Gt):
+            out["min_exclusive"] = item.gt
         elif isinstance(item, annotated_types.MinLen):
             out["min_length"] = item.min_length
+        elif isinstance(item, Strict):
+            # RDF datatypes already distinguish integers, booleans and strings.
+            continue
+        elif isinstance(getattr(item, "pattern", None), str):
+            out["pattern"] = item.pattern
         else:
             raise UnsupportedFieldType(f"field constraint {item!r} is not supported")
     return out
@@ -168,8 +179,9 @@ def _bounds(info: FieldInfo) -> dict[str, Any]:
 def _field_spec(model: type[BaseModel], name: str, info: FieldInfo) -> FieldSpec:
     annotation, nullable = _unwrap_optional(info.annotation)
     many = False
-    if get_origin(annotation) is list:
-        (annotation,) = get_args(annotation)
+    origin = get_origin(annotation)
+    if origin is list or (origin is tuple and get_args(annotation)[-1:] == (Ellipsis,)):
+        annotation = get_args(annotation)[0]
         many = True
         inner, inner_nullable = _unwrap_optional(annotation)
         if inner_nullable:
@@ -216,6 +228,7 @@ def model_spec(model: type[BaseModel]) -> ModelSpec:
     """The field specs of ``model`` (inherited fields included), in declaration order."""
     fields = tuple(
         _field_spec(model, name, info) for name, info in model.model_fields.items()
+        if not info.exclude
     )
     return ModelSpec(model=model, class_iri=class_iri(model), fields=fields)
 

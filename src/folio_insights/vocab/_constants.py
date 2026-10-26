@@ -6,14 +6,8 @@ Holds the pyoxigraph-free constants from ``folio_insights.vocab``:
   * FI_PREFIX     — canonical fi: namespace IRI (Phase 8 D-01).
   * NAMESPACES    — Mapping[str, rdflib.Namespace] of canonical IRIs.
 
-This module exists so downstream callers that only need the version pin
-(e.g. ``shards/envelope.py`` for ``fi:VocabPinShape`` enforcement and
-``bench/generator.py`` for the vocab_version quad) can import the
-constant without forcing a ``pyoxigraph`` import. The parent
-``folio_insights.vocab`` package eagerly imports ``pyoxigraph`` at module
-top so its loader functions are available; this constants module is
-stdlib + rdflib only and stays importable in lightweight environments
-(e.g. a standalone schema validator, JVM-free web tier).
+Model and SHACL callers import version pins without loading RDF libraries.
+``NAMESPACES`` builds rdflib namespaces lazily when an RDF caller requests it.
 
 Decision references:
   * D-01  — canonical fi: prefix https://folio-insights.aleainstitute.ai/vocab/
@@ -23,9 +17,13 @@ Decision references:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
-from rdflib import Namespace
+if TYPE_CHECKING:
+    from rdflib import Namespace
+
+    NAMESPACES: Mapping[str, Namespace]
 
 # D-02: CalVer YYYY.MM.PATCH. Patch bumps land as "2026.05.1", "2026.05.2", …
 # Every owl:versionIRI in the 5 TTL files must mirror this value.
@@ -40,13 +38,20 @@ FRAMEWORK_NS: str = "https://folio-insights.aleainstitute.ai/framework/"
 # Canonical IRI namespace bindings (promoted from bench/generator.py:51-55).
 # rdflib.Namespace objects so SPARQL builders + graph constructors share one
 # vocabulary surface.
-NAMESPACES: Mapping[str, Namespace] = {
-    "fi": Namespace(FI_PREFIX),
-    "corpus": Namespace("https://folio-insights.aleainstitute.ai/corpus/"),
-    "shard": Namespace("https://folio-insights.aleainstitute.ai/shard/"),
-    "concept": Namespace("https://folio-insights.aleainstitute.ai/concept/"),
-    "framework": Namespace(FRAMEWORK_NS),
-}
+def __getattr__(name: str):
+    if name == "NAMESPACES":
+        from rdflib import Namespace
+
+        namespaces = {
+            "fi": Namespace(FI_PREFIX),
+            "corpus": Namespace("https://folio-insights.aleainstitute.ai/corpus/"),
+            "shard": Namespace("https://folio-insights.aleainstitute.ai/shard/"),
+            "concept": Namespace("https://folio-insights.aleainstitute.ai/concept/"),
+            "framework": Namespace(FRAMEWORK_NS),
+        }
+        globals()[name] = namespaces
+        return namespaces
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def framework_iri(framework_id: str) -> str:
@@ -61,11 +66,9 @@ def framework_iri(framework_id: str) -> str:
     return FRAMEWORK_NS + quote(framework_id, safe="")
 
 
-# TBox revision marker (Phase 9 review): the shipped TBox's entailments changed
-# in Phase 9 U0 (EL layer split, fi:inFramework subPropertyOf) while
-# VOCAB_VERSION stays pinned by every signed shard. Exports record this marker
-# and the TBox digest so consumers can tell the revisions apart.
-TBOX_REVISION: str = f"{VOCAB_VERSION}+phase9.1"
+# Keep signed vocabulary pins stable; exports identify the additive U35 term
+# declarations by this revision and the TBox digest.
+TBOX_REVISION: str = f"{VOCAB_VERSION}+mp-u35"
 
 
 # Phase 9 KTD2: the envelope keeps its four-value ``bfo_category`` literal; this

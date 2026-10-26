@@ -191,10 +191,17 @@ class PyoxigraphStore:
         """
         from pyshacl import validate  # lazy — keeps import cost off hot path
 
+        from folio_insights.shapes.fields import FI
+        from folio_insights.shapes.identity_binding import identity_binding_errors
+        from folio_insights.shapes.pyshacl_adapter import from_rdflib
+
+        # Include the frozen atomic basis as well as the shard's own triples
+        # so the bridge can enforce hash binding without an unbounded walk.
         construct = (
             "CONSTRUCT { ?s ?p ?o } WHERE { "
-            f"GRAPH ?g {{ <{shard_iri.value}> ?p ?o . "
-            f"BIND(<{shard_iri.value}> AS ?s) }} "
+            f"GRAPH ?g {{ {{ <{shard_iri.value}> ?p ?o . "
+            f"BIND(<{shard_iri.value}> AS ?s) }} UNION {{ "
+            f"<{shard_iri.value}> <{FI}atomicIdentity> ?s . ?s ?p ?o . }} }} "
             "}"
         )
         turtle_bytes = self.dump_turtle(construct_query=construct)
@@ -206,4 +213,9 @@ class PyoxigraphStore:
             inference="rdfs",
             serialize_report_graph=False,
         )
+        binding_failures = [message for _, message in identity_binding_errors(from_rdflib(data_graph))]
+        if binding_failures:
+            conforms = False
+            report_text = report_text.replace("Conforms: True", "Conforms: False", 1)
+            report_text += "\n" + "\n".join(f"Violation: {m}" for m in binding_failures)
         return conforms, report_text

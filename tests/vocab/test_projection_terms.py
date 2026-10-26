@@ -64,6 +64,21 @@ def _declared_terms() -> set[str]:
     }
 
 
+def test_every_validation_model_term_is_declared():
+    from folio_insights.shapes.fields import (
+        DICT_ENTRY_CLASS, ENTRY_KEY, ENTRY_VALUE, LIST_INDEX, model_spec, nested_models,
+    )
+    from folio_insights.shapes.rendering import ATOMIC_SHARD_MODELS, SHARD_MODELS
+
+    roots = (*SHARD_MODELS, *ATOMIC_SHARD_MODELS)
+    emitted = {DICT_ENTRY_CLASS, ENTRY_KEY, ENTRY_VALUE, LIST_INDEX}
+    for model in (*roots, *nested_models(roots)):
+        spec = model_spec(model)
+        emitted.add(spec.class_iri)
+        emitted.update(f.predicate for f in spec.fields)
+    assert not emitted - _declared_terms()
+
+
 def _fi_terms(triples) -> set[str]:
     """The fi: predicates, plus fi: classes used as rdf:type objects."""
     out: set[str] = set()

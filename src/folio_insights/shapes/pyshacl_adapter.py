@@ -22,6 +22,9 @@ from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.namespace import RDF, SH
 
 from folio_insights.shapes.fields import XSD_STRING as _XSD_STRING
+from folio_insights.shapes.identity_binding import (
+    BINDING_COMPONENT, BINDING_SHAPE, identity_binding_errors,
+)
 from folio_insights.shapes.rendering import Term, ValidationGraph
 
 
@@ -29,6 +32,20 @@ def to_rdflib(graph: ValidationGraph, *, into: Graph | None = None) -> Graph:
     g = into if into is not None else Graph()
     for s, p, o in graph.triples():
         g.add((_term(s), URIRef(p), _term(o)))
+    return g
+
+
+def from_rdflib(graph: Graph) -> ValidationGraph:
+    """Convert RDF to the shared validation view, including atomic binding inputs."""
+    g = ValidationGraph()
+    # Dataset iteration yields quads; model binding uses the union of its
+    # validation-view triples, just as the reference validation does.
+    seen = set()
+    for s, p, o, *_context in graph:
+        triple = (term_key(s), str(p), term_key(o))
+        if triple not in seen:
+            seen.add(triple)
+            g.add(*triple)
     return g
 
 
@@ -87,6 +104,7 @@ def validate(
     """Run pyshacl (no inference) and return its report as plain data.
 
     ``local_only`` drops ``sh:sparql`` constraints (corpus-tier shapes).
+    Atomic hash binding is always checked by the model, in either tier.
     """
     shapes = _shapes_graph(tuple(sorted(Path(p) for p in shape_paths)), local_only)
     data_graph = to_rdflib(data) if isinstance(data, ValidationGraph) else data
@@ -120,7 +138,18 @@ def validate(
                 "source_shape": report.value(result, SH.sourceShape),
             }
         )
-    return PyshaclResult(conforms=bool(conforms), results=results, text=text)
+    binding_graph = data if isinstance(data, ValidationGraph) else from_rdflib(data_graph)
+    binding_failures = list(identity_binding_errors(binding_graph))
+    if binding_failures:
+        text = text.replace("Conforms: True", "Conforms: False", 1)
+    for node, message in binding_failures:
+        results.append({
+            "focus": node, "path": None, "value": None,
+            "component": BINDING_COMPONENT, "severity": str(SH.Violation),
+            "message": [message], "source_shape": URIRef(BINDING_SHAPE),
+        })
+        text += f"\nViolation: {message}\n"
+    return PyshaclResult(conforms=bool(conforms) and not binding_failures, results=results, text=text)
 
 
-__all__ = ["PyshaclResult", "term_key", "to_rdflib", "validate"]
+__all__ = ["PyshaclResult", "from_rdflib", "term_key", "to_rdflib", "validate"]

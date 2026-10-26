@@ -157,13 +157,23 @@ def _validate(candidate: dict[str, Any]) -> ValidationReportOut:
     from folio_insights.shapes.rendering import render_shard
     from folio_insights.shapes.suite import default_suite
     from folio_insights.shards import MalformedEnvelopeRecord, UnsupportedEnvelopeVersion
+    from folio_insights.shards.envelope import ATOMIC_ENVELOPE_SCHEMA_VERSION, ENVELOPE_SCHEMA_VERSION
     from folio_insights.shards.records import dump_shard_record, load_shard_record
 
     suite = default_suite()
     data: dict[str, Any] = candidate
     model_valid, errors, version = True, [], None
     try:
-        loaded = load_shard_record(candidate)
+        # Schema 3 is opt-in in the storage adapter; the validation API can
+        # check it without activating schema-3 ingestion or migration.
+        loaded = load_shard_record(
+            candidate,
+            target_schema_version=(
+                ATOMIC_ENVELOPE_SCHEMA_VERSION
+                if candidate.get("schema_version") == ATOMIC_ENVELOPE_SCHEMA_VERSION
+                else ENVELOPE_SCHEMA_VERSION
+            ),
+        )
         data = json.loads(dump_shard_record(loaded.shard))
         version = loaded.source_schema_version
     except (ValidationError, UnsupportedEnvelopeVersion, MalformedEnvelopeRecord, TypeError) as exc:

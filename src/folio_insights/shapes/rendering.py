@@ -62,7 +62,14 @@ from folio_insights.shapes.fields import (
     ModelSpec,
     model_spec,
 )
-from folio_insights.shards.envelope import ShardEnvelope
+from folio_insights.shards.envelope import ATOMIC_ENVELOPE_SCHEMA_VERSION, ShardEnvelope
+from folio_insights.shards.records import (
+    AtomicConflictingAuthoritiesShard,
+    AtomicDisputedPropositionShard,
+    AtomicGlossShard,
+    AtomicHypothesisShard,
+    AtomicSimpleAssertionShard,
+)
 from folio_insights.shards.subtypes import (
     ConflictingAuthoritiesShard,
     DisputedPropositionShard,
@@ -80,8 +87,18 @@ SHARD_MODELS: tuple[type[ShardEnvelope], ...] = (
     GlossShard,
     HypothesisShard,
 )
+ATOMIC_SHARD_MODELS: tuple[type[ShardEnvelope], ...] = (
+    AtomicSimpleAssertionShard,
+    AtomicDisputedPropositionShard,
+    AtomicConflictingAuthoritiesShard,
+    AtomicGlossShard,
+    AtomicHypothesisShard,
+)
 SUBTYPE_BY_TAG: dict[str, type[ShardEnvelope]] = {
     model.model_fields["shard_type"].default: model for model in SHARD_MODELS
+}
+ATOMIC_SUBTYPE_BY_TAG: dict[str, type[ShardEnvelope]] = {
+    model.model_fields["shard_type"].default: model for model in ATOMIC_SHARD_MODELS
 }
 
 # A conservative absolute-IRI check (scheme ":" then no whitespace or
@@ -232,7 +249,7 @@ def _render_field(g: ValidationGraph, s: Term, spec: FieldSpec, value: Any) -> N
         return
     if value is None:
         return
-    if isinstance(value, list) and (spec.many or spec.kind in ("scalar", "model")):
+    if isinstance(value, (list, tuple)) and (spec.many or spec.kind in ("scalar", "model")):
         for index, item in enumerate(value):
             if item is None:
                 continue
@@ -258,7 +275,7 @@ def _render_model(g: ValidationGraph, node: Term, spec: ModelSpec, data: Mapping
         if field.kind == "scalar" and value is not None:
             # Hot path (most fields): same terms as _render_field, inline.
             datatype = field.datatype
-            items = value if isinstance(value, list) else (value,)
+            items = value if isinstance(value, (list, tuple)) else (value,)
             out = []
             for item in items:
                 if item is None:
@@ -315,7 +332,16 @@ def render_shard(
     node = shard_node(data, g)
     g.add(node, RDF_TYPE, iri(SHARD_CLASS))
     tag = data.get("shard_type")
-    model = SUBTYPE_BY_TAG.get(tag) if isinstance(tag, str) else None
+    # New fields select the atomic validation contract even with a damaged
+    # schema stamp; the generated schemaVersion constraint then refuses it.
+    atomic = data.get("schema_version") == ATOMIC_ENVELOPE_SCHEMA_VERSION or any(
+        key in data for key in (
+            "identity_recipe", "proposition_key", "atomic_identity",
+            "folio_tags", "links", "legacy_hierarchy",
+        )
+    )
+    subtypes = ATOMIC_SUBTYPE_BY_TAG if atomic else SUBTYPE_BY_TAG
+    model = subtypes.get(tag) if isinstance(tag, str) else None
     spec = model_spec(model if model is not None else ShardEnvelope)
     _render_model(g, node, spec, data)
     if model is None:
@@ -359,6 +385,7 @@ def _nt(term: Term) -> str:
 
 
 __all__ = [
+    "ATOMIC_SHARD_MODELS",
     "SHARD_MODELS",
     "SUBTYPE_BY_TAG",
     "Term",

@@ -49,7 +49,8 @@ from folio_insights.shapes.fields import (
     model_spec,
     nested_models,
 )
-from folio_insights.shapes.rendering import SHARD_MODELS
+from folio_insights.shapes.rendering import ATOMIC_SHARD_MODELS, SHARD_MODELS
+from folio_insights.shards.envelope import ATOMIC_ENVELOPE_SCHEMA_VERSION, AtomicIdentity, PropositionLink
 
 GENERATED_PATH = Path(__file__).parent / "generated" / "shard_models.shacl.ttl"
 
@@ -140,8 +141,12 @@ def _property(owner: str, spec: FieldSpec) -> str:
         lines.append(f"sh:minInclusive {_number(spec.min_inclusive, spec.datatype or '')}")
     if spec.max_inclusive is not None:
         lines.append(f"sh:maxInclusive {_number(spec.max_inclusive, spec.datatype or '')}")
+    if spec.min_exclusive is not None:
+        lines.append(f"sh:minExclusive {_number(spec.min_exclusive, spec.datatype or '')}")
     if spec.min_length is not None:
         lines.append(f"sh:minLength {spec.min_length}")
+    if spec.pattern is not None:
+        lines.append(f"sh:pattern {_string(spec.pattern)}")
     lines.append(f"sh:message {_string(_describe(owner, spec))}")
     body = " ;\n        ".join(lines)
     return f"[\n        {body} ;\n    ]"
@@ -171,6 +176,9 @@ def generate_ttl() -> str:
         "# DO NOT EDIT: regenerate with `python scripts/generate_shapes.py`;",
         "# `--check` (tests + the Dagger shapes stage) fails on drift (SHACL-04).",
         "# Generator: src/folio_insights/shapes/pydantic_to_shacl.py (Phase 11 KTD3).",
+        "# Atomic key/IRI hash binding is model-enforced by both validation engines.",
+        "# SHACL Core cannot robustly reproduce NFC/URI normalization + canonical JSON hashing.",
+        "# The engines run AtomicEnvelope._identity_binding on the graph's frozen identity inputs.",
         "",
     ]
     prefixes = dict(_PREFIXES)
@@ -193,32 +201,44 @@ def generate_ttl() -> str:
         "    ] .\n"
     )
 
-    for model in SHARD_MODELS:
+    models = (*SHARD_MODELS, *ATOMIC_SHARD_MODELS)
+    for model in models:
         spec = model_spec(model)
+        properties = [_property(model.__name__, f) for f in spec.fields]
+        if model in ATOMIC_SHARD_MODELS:
+            properties.append(
+                f'[ sh:path fi:schemaVersion ; sh:hasValue {ATOMIC_ENVELOPE_SCHEMA_VERSION} ; ]'
+            )
         out.append(
             _closed_shape(
                 shape_iri(model),
                 target=spec.class_iri,
                 comment=f"Generated from {model.__module__}.{model.__qualname__}.",
-                properties=[_property(model.__name__, f) for f in spec.fields],
+                properties=properties,
                 name=model.__name__,
             )
         )
 
     datatypes: list[str] = []
-    for model in nested_models(SHARD_MODELS):
+    for model in nested_models(models):
         spec = model_spec(model)
+        properties = [_property(model.__name__, f) for f in spec.fields]
+        if model is AtomicIdentity:
+            properties.append(
+                '[ sh:path fi:start ; sh:lessThan fi:end ; '
+                'sh:message "Atomic identity offsets require start < end" ; ]'
+            )
         out.append(
             _closed_shape(
                 shape_iri(model),
                 target=None,
                 comment=f"Generated from {model.__module__}.{model.__qualname__} (reached through sh:node).",
-                properties=[_property(model.__name__, f) for f in spec.fields],
+                properties=properties,
                 name=model.__name__,
             )
         )
         datatypes.extend(f.dict_value_datatype for f in spec.fields if f.dict_value_datatype)
-    for model in SHARD_MODELS:
+    for model in models:
         datatypes.extend(
             f.dict_value_datatype for f in model_spec(model).fields if f.dict_value_datatype
         )
@@ -242,6 +262,37 @@ def generate_ttl() -> str:
                 name="MapEntry",
             )
         )
+    # Schema-3 classes have their own closed field set. Reuse the existing
+    # hand-written subtype invariants without also targeting schema-2 shapes.
+    invariants = {
+        "AtomicDisputedPropositionShard": "DisputedPropositionInvariantsShape",
+        "AtomicConflictingAuthoritiesShard": "ConflictingAuthoritiesInvariantsShape",
+        "AtomicGlossShard": "GlossInvariantsShape",
+        "AtomicHypothesisShard": "HypothesisInvariantsShape",
+    }
+    for model in ATOMIC_SHARD_MODELS:
+        target = _curie(model_spec(model).class_iri)
+        if model.__name__ in invariants:
+            out.append(f"fis:{invariants[model.__name__]} sh:targetClass {target} .\n")
+        out.append(f"fis:AtomicRecipeShape sh:targetClass {target} .\n")
+    out.append('''fis:AtomicRecipeShape a sh:NodeShape ;
+    sh:message "atomic-v1 needs its frozen key/basis; legacy-v1 cannot carry either" ;
+    sh:or (
+        [ sh:property [ sh:path fi:identityRecipe ; sh:hasValue "atomic-v1" ] ;
+          sh:property [ sh:path fi:propositionKey ; sh:minCount 1 ] ;
+          sh:property [ sh:path fi:atomicIdentity ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path fi:identityRecipe ; sh:hasValue "legacy-v1" ] ;
+          sh:property [ sh:path fi:propositionKey ; sh:maxCount 0 ] ;
+          sh:property [ sh:path fi:atomicIdentity ; sh:maxCount 0 ] ]
+    ) .
+''')
+    out.append(
+        f"{_curie(shape_iri(PropositionLink))} sh:or (\n"
+        '    [ sh:property [ sh:path fi:targetIri ; sh:minCount 1 ] ]\n'
+        '    [ sh:property [ sh:path fi:relation ; sh:hasValue "cites" ] ;\n'
+        '      sh:property [ sh:path fi:citation ; sh:minCount 1 ] ]\n'
+        ') ; sh:message "A link needs a target or an explicit unresolved citation" .\n'
+    )
     return "\n".join(out)
 
 
