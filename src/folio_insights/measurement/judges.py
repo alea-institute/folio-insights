@@ -492,14 +492,61 @@ class _SubscriptionJudge:
 
 class CodexJudge(_SubscriptionJudge):
     provider = "codex"
-    isolation = (
-        "codex-auth-symlink-only-v1",
-        "private-cache-home-and-cwd-v1",
-        "project_doc_max_bytes=0",
-        "cli_auth_credentials_store=file",
-        "ignore-user-config-and-rules",
-        "read-only-ephemeral-no-tools",
+    _disabled_features = (
+        "shell_tool",
+        "unified_exec",
+        "apps",
+        "plugins",
+        "remote_plugin",
+        "browser_use",
+        "browser_use_external",
+        "in_app_browser",
+        "computer_use",
+        "hooks",
+        "skill_search",
+        "tool_suggest",
+        "sleep_tool",
     )
+
+    @property
+    def isolation(self) -> tuple[str, ...]:
+        return (
+            "codex-auth-symlink-only-v1",
+            "private-cache-home-and-cwd-v1",
+            "project_doc_max_bytes=0",
+            "cli_auth_credentials_store=file",
+            "ignore-user-config-and-rules",
+            "read-only-ephemeral-no-tools",
+            "disabled-features=" + ",".join(self._disabled_features),
+        )
+
+    def _probe(
+        self, cwd: str, env: dict[str, str], cancelled: threading.Event | None
+    ) -> str:
+        version = super()._probe(cwd, env, cancelled)
+        stdout = self._invoke(
+            [self.executable, "features", "list"],
+            "",
+            cwd,
+            env,
+            cancelled,
+            failure_code="cli-capability-drift",
+        )
+        features = {}
+        for line in stdout.splitlines():
+            fields = line.split()
+            # Stages can contain spaces (e.g. "under development"). Defaults
+            # occupy the final column; do not confuse them with the stage.
+            if len(fields) >= 3 and fields[-1] in ("true", "false"):
+                features[fields[0]] = " ".join(fields[1:-1])
+        drift = [
+            name
+            for name in self._disabled_features
+            if name not in features or features[name] == "removed"
+        ]
+        if drift:
+            raise _CLIUnavailable("cli-capability-drift: " + ", ".join(drift))
+        return version
 
     def _directory_base(self) -> Path:
         cache = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
@@ -561,12 +608,7 @@ class CodexJudge(_SubscriptionJudge):
             "--skip-git-repo-check",
             "--ignore-user-config",
             "--ignore-rules",
-            "--disable",
-            "shell_tool",
-            "--disable",
-            "exec_tool",
-            "--disable",
-            "apply_patch_freeform",
+            *[arg for name in self._disabled_features for arg in ("--disable", name)],
             "--config",
             'web_search="disabled"',
             "--config",

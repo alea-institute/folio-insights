@@ -32,6 +32,21 @@ from folio_insights.measurement.judges import (
 from folio_insights.measurement.schema import SourceSnapshot
 
 FIXTURES = Path(__file__).parent / "fixtures" / "fake_judges"
+CODEX_DISABLED_FEATURES = (
+    "shell_tool",
+    "unified_exec",
+    "apps",
+    "plugins",
+    "remote_plugin",
+    "browser_use",
+    "browser_use_external",
+    "in_app_browser",
+    "computer_use",
+    "hooks",
+    "skill_search",
+    "tool_suggest",
+    "sleep_tool",
+)
 CODEX_TEMP_WARNING = (
     "WARNING: proceeding, even though we could not create PATH aliases: "
     'Refusing to create helper binaries under temporary dir "/tmp" '
@@ -100,6 +115,7 @@ def response(data, changes=None):
 def fake_cli(tmp_path, monkeypatch):
     root = tmp_path / "bin"
     root.mkdir()
+    shutil.copyfile(FIXTURES / "codex-features.txt", root / "codex-features.txt")
     for name in ("codex", "claude"):
         shutil.copyfile(FIXTURES / "cli.py", root / name)
         (root / name).chmod(0o755)
@@ -376,20 +392,36 @@ def test_cli_modes_stdin_isolation_and_subscription_only_environment(
     args = call["args"]
     assert args[args.index("--model") + 1] == "recorded-model"
     if provider == "codex":
-        assert args[0] == "exec" and args[-1] == "-"
-        assert args[args.index("--sandbox") + 1] == "read-only"
-        assert {
+        assert args == [
+            "exec",
+            "--model",
+            "recorded-model",
+            "--sandbox",
+            "read-only",
             "--ephemeral",
+            "--skip-git-repo-check",
             "--ignore-user-config",
             "--ignore-rules",
+            *[arg for name in CODEX_DISABLED_FEATURES for arg in ("--disable", name)],
+            "--config",
+            'web_search="disabled"',
+            "--config",
+            "project_doc_max_bytes=0",
+            "--config",
+            'cli_auth_credentials_store="file"',
             "--output-schema",
-            "--skip-git-repo-check",
-        } <= set(args)
-        assert (
-            "shell_tool" in args
-            and "exec_tool" in args
-            and "apply_patch_freeform" in args
-        )
+            str(Path(call["cwd"]) / "schema.json"),
+            "--output-last-message",
+            str(Path(call["cwd"]) / "verdict.json"),
+            "-",
+        ]
+        probes = [
+            json.loads(line)
+            for line in (root / "probes.jsonl").read_text().splitlines()
+        ]
+        (features,) = [p for p in probes if p["args"] == ["features", "list"]]
+        assert features["cwd"] == call["cwd"]
+        assert features["env"] == call["env"]
     else:
         assert "-p" in args
         assert args[args.index("--tools") + 1] == ""
@@ -611,6 +643,57 @@ def test_capability_failure_and_missing_executable_do_not_invoke_judging(fake_cl
         .error
         == "cli-unavailable"
     )
+
+
+def codex_features_with_drift(drift):
+    features = (FIXTURES / "codex-features.txt").read_text().splitlines()
+    affected = ("unified_exec", "hooks")
+    return "\n".join(
+        f"{line.split()[0]:<40} {'removed':<18} false"
+        if line.split()[0] in affected
+        else line
+        for line in features
+        if drift != "missing" or line.split()[0] not in affected
+    )
+
+
+@pytest.mark.parametrize("drift", ["missing", "removed"])
+def test_codex_feature_capability_drift_names_features(fake_cli, drift):
+    data = packet(1)
+    fake_cli(data, codex={"features": codex_features_with_drift(drift)})
+    result = CodexJudge(model="recorded-model").judge(data)
+    assert result.status == "incomplete"
+    assert result.error == "cli-capability-drift: unified_exec, hooks"
+    assert result.missing_item_ids == (data.items[0].item_id,)
+
+
+@pytest.mark.parametrize("drift", ["missing", "removed"])
+def test_codex_feature_capability_failure_never_executes(fake_cli, drift):
+    data = packet(1)
+    root = fake_cli(data, codex={"features": codex_features_with_drift(drift)})
+    CodexJudge(model="recorded-model").judge(data)
+    assert not (root / "calls.jsonl").exists()
+
+
+def test_codex_effective_disable_set_binds_prompt_and_identity(fake_cli, monkeypatch):
+    data = packet(1)
+    root = fake_cli(data)
+    original = CodexJudge(model="recorded-model").judge(data)
+    assert original.status == "complete"
+    assert (
+        "disabled-features=" + ",".join(CODEX_DISABLED_FEATURES) in original.isolation
+    )
+    monkeypatch.setattr(CodexJudge, "_disabled_features", CODEX_DISABLED_FEATURES[:-1])
+    changed = CodexJudge(model="recorded-model").judge(data)
+    assert changed.status == "complete"
+    assert changed.input_sha256 == original.input_sha256
+    assert changed.prompt_sha256 != original.prompt_sha256
+    assert changed.judge_identity_sha256 != original.judge_identity_sha256
+    for call, result in zip(calls(root), (original, changed), strict=True):
+        args = call["args"]
+        disabled = [args[i + 1] for i, arg in enumerate(args) if arg == "--disable"]
+        assert "disabled-features=" + ",".join(disabled) in result.isolation
+        assert json.loads(call["stdin"])["isolation"] == list(result.isolation)
 
 
 def test_cancellation_is_incomplete(fake_cli):

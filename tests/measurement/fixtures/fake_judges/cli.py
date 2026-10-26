@@ -82,9 +82,20 @@ def hold_stdout():
 
 if args == control.get("hang_probe"):
     hold_stdout()
-if "--help" in args or "--version" in args or "status" in args:
+if (
+    "--help" in args
+    or "--version" in args
+    or "status" in args
+    or args == ["features", "list"]
+):
+    probe = {"provider": provider, "args": args}
+    if args == ["features", "list"]:
+        probe.update(cwd=os.getcwd(), env=dict(os.environ))
     with (root / "probes.jsonl").open("a") as stream:
-        stream.write(json.dumps({"provider": provider, "args": args}) + "\n")
+        stream.write(json.dumps(probe) + "\n")
+if args == ["features", "list"]:
+    print(control.get("features", (root / "codex-features.txt").read_text()))
+    sys.exit(0)
 if args == ["login", "status"] or args == ["auth", "status", "--json"]:
     default = (
         "Logged in using ChatGPT"
