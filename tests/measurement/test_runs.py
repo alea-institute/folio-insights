@@ -109,7 +109,7 @@ async def test_current_pipeline_run_judges_matches_scores_and_pins_annotations(s
 
 
 @pytest.mark.asyncio
-async def test_cancelled_claude_resumes_only_missing_items_and_input_change_forks(setup_run):
+async def test_cancelled_claude_retries_failed_batch_and_input_change_forks(setup_run):
     codex, partial = FakeJudge("codex"), FakeJudge("claude", error="cancelled", partial=True)
     first = await execute(setup_run, codex=codex, claude=partial)
     assert first.status == "incomplete" and first.errors == {"claude": "cancelled"}
@@ -119,7 +119,7 @@ async def test_cancelled_claude_resumes_only_missing_items_and_input_change_fork
     resumed = FakeJudge("claude")
     second = await execute(setup_run, codex=codex, claude=resumed)
     assert second.run_id == first.run_id and second.status == "complete"
-    assert not completed.intersection(i.item_id for p in resumed.calls for i in p.items)
+    assert completed <= {i.item_id for p in resumed.calls for i in p.items}
     old_count = len(codex.calls)
     changed = list(setup_run)
     changed[1] = changed[1].model_copy(update={"sampling_seed": 99})
@@ -237,6 +237,134 @@ async def test_crash_between_annotation_append_and_checkpoint_is_idempotent(setu
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("stale_checkpoint", [False, True])
+@pytest.mark.parametrize("error", ["timeout", None])
+async def test_failed_final_batch_persisted_before_checkpoint_is_retried(
+    setup_run, monkeypatch, stale_checkpoint, error,
+):
+    class FailedFinalJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            if any(item.kind == "omission" for item in packet.items):
+                return result.model_copy(update={"status": "incomplete", "error": error})
+            return result
+
+    store = setup_run[3]
+    record_result = store.record_result
+
+    def interrupt_after_failed_result(*args, **kwargs):
+        persisted = record_result(*args, **kwargs)
+        if args[1].status == "incomplete":
+            raise InterruptedError
+        return persisted
+
+    monkeypatch.setattr(store, "record_result", interrupt_after_failed_result)
+    judge = FailedFinalJudge("codex")
+    first = await execute(setup_run, codex=judge)
+    assert first.status == "incomplete"
+    failed_ids = {item.item_id for item in judge.calls[-1].items}
+    successful_ids = {item.item_id for packet in judge.calls[:-1] for item in packet.items}
+    monkeypatch.setattr(store, "record_result", record_result)
+    if stale_checkpoint:
+        # Simulate an old split write, even one incorrectly marked complete.
+        preceding = content_digest(store.results(first.run_id)[-2].model_dump(mode="json"))
+        store.save(first.model_copy(update={
+            "status": "complete", "errors": {}, "missing_item_ids": {"codex": ()},
+            "artifacts": {**first.artifacts, "codex-last": preceding}}))
+    retry = FailedFinalJudge("codex")
+    second = await execute(setup_run, codex=retry)
+    assert second.status == "incomplete", "a durable failed batch must never become complete"
+    assert {item.item_id for packet in retry.calls for item in packet.items} == failed_ids
+    assert not successful_ids.intersection(item.item_id for packet in retry.calls for item in packet.items)
+    recovered = FakeJudge("codex")
+    assert (await execute(setup_run, codex=recovered)).status == "complete"
+    assert {item.item_id for packet in recovered.calls for item in packet.items} == failed_ids
+    # Reusing an earlier receipt must still make it the newest attempt, even
+    # after a successful retry of the same batch and another stale checkpoint.
+    failed = next(result for result in store.results(first.run_id) if result.status == "incomplete")
+    complete = store.load(first.run_id)
+    store.record_result(complete.model_copy(update={"stage": "codex", "status": "incomplete"}),
+                        failed, keep_judgments=True)
+    store.save(complete)
+    retry = FailedFinalJudge("codex")
+    assert (await execute(setup_run, codex=retry)).status == "incomplete"
+    assert {item.item_id for packet in retry.calls for item in packet.items} == failed_ids
+    assert (await execute(setup_run)).status == "complete"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider", ["codex", "claude"])
+@pytest.mark.parametrize("failed", [False, True])
+@pytest.mark.parametrize("boundary", [
+    "before-persist", "after-persist", "after-checkpoint-write", "after-checkpoint",
+])
+async def test_batch_interruptions_are_atomic_and_successes_are_not_rejudged(
+    setup_run, monkeypatch, provider, failed, boundary,
+):
+    store = setup_run[3]
+    setup_run[5].batch_size = 1
+
+    class InterruptJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            if failed and len(self.calls) == 2:
+                return result.model_copy(update={"status": "incomplete", "error": "timeout"})
+            return result
+
+    judge = InterruptJudge(provider)
+    record_result, save_checkpoint = store.record_result, store._save
+    target = None
+    inside_target = False
+
+    def interrupt_checkpoint(db, report):
+        if inside_target and boundary == "after-persist":
+            # The receipt, attempt and judgments have been inserted in this
+            # transaction; interruption must roll all three back.
+            raise InterruptedError
+        save_checkpoint(db, report)
+        if inside_target and boundary == "after-checkpoint-write":
+            raise InterruptedError
+
+    def interrupt_result(report, result, **kwargs):
+        nonlocal target, inside_target
+        inside_target = result.provider == provider and len(judge.calls) == 2
+        if inside_target:
+            target = result
+            if boundary == "before-persist":
+                raise InterruptedError
+        try:
+            persisted = record_result(report, result, **kwargs)
+            if inside_target and boundary == "after-checkpoint":
+                raise InterruptedError
+            return persisted
+        finally:
+            inside_target = False
+
+    monkeypatch.setattr(store, "_save", interrupt_checkpoint)
+    monkeypatch.setattr(store, "record_result", interrupt_result)
+    first = await execute(setup_run, **{provider: judge})
+    assert first.status == "incomplete" and target is not None
+    digest = content_digest(target.model_dump(mode="json"))
+    with store._db() as db:
+        artifact = db.execute("SELECT 1 FROM artifacts WHERE sha256=?", (digest,)).fetchone()
+        attempt = db.execute("SELECT 1 FROM attempts WHERE sha256=?", (digest,)).fetchone()
+    committed = boundary == "after-checkpoint"
+    assert bool(artifact) == bool(attempt) == committed
+    item_ids = {j.item_id for j in target.judgments}
+    assert bool(item_ids & {j.item_id for j in store.judgments(first.run_id, provider)}) == committed
+    if committed:
+        assert first.artifacts[f"{provider}-last"] == digest
+    monkeypatch.setattr(store, "record_result", record_result)
+    monkeypatch.setattr(store, "_save", save_checkpoint)
+    retry = FakeJudge(provider)
+    second = await execute(setup_run, **{provider: retry})
+    assert second.run_id == first.run_id and second.status == "complete"
+    retried_ids = {item.item_id for packet in retry.calls for item in packet.items}
+    assert bool(item_ids & retried_ids) == (failed or not committed)
+    assert not {item.item_id for item in judge.calls[0].items} & retried_ids
+
+
+@pytest.mark.asyncio
 async def test_unknown_concept_results_cannot_become_completed_on_retry(setup_run):
     class UnknownConceptJudge(FakeJudge):
         def judge(self, packet, **kwargs):
@@ -251,6 +379,25 @@ async def test_unknown_concept_results_cannot_become_completed_on_retry(setup_ru
     assert second.errors == {"codex": "unresolved-concept-selections"}
     assert not setup_run[3].judgments(second.run_id, "codex")
     assert (await execute(setup_run)).status == "complete"
+
+
+@pytest.mark.asyncio
+async def test_changed_verdict_from_failed_batch_retry_retains_both_annotations(setup_run):
+    first = await execute(setup_run, codex=FakeJudge("codex", partial=True, error="timeout", uncertain=True))
+    history = await setup_run[4].history(run_id=first.run_id)
+    assert len(history) == 1 and history[0].verdict == "uncertain"
+    item_id = history[0].item_id
+    second = await execute(setup_run)
+    assert second.status == "complete"
+    history = await setup_run[4].history(run_id=first.run_id)
+    revisions = [a for a in history
+                 if a.item_id == item_id and a.author_identity.startswith("codex/")]
+    assert [a.verdict for a in revisions] == ["uncertain", "correct"]
+    assert all(a.annotation_id in second.annotation_links.values() for a in revisions)
+    assert len({a.idempotency_key for a in revisions}) == 2
+    assert next(j for j in setup_run[3].judgments(first.run_id, "codex") if j.item_id == item_id).verdict == "correct"
+    assert await execute(setup_run) == second
+    assert await setup_run[4].history(run_id=first.run_id) == history
 
 
 @pytest.mark.asyncio

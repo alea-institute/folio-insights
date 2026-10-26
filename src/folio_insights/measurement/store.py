@@ -99,20 +99,32 @@ class RunStore:
 
     def save(self, report: RunReport) -> RunReport:
         with self._db() as db:
-            db.execute("INSERT INTO runs VALUES (?, ?) ON CONFLICT(run_id) DO UPDATE SET "
-                       "checkpoint=excluded.checkpoint", (report.run_id, report.model_dump_json()))
+            self._save(db, report)
         return report
 
-    def record_result(self, run_id: str, result: JudgeResult, *, keep_judgments: bool) -> str:
-        digest = self.put(result.model_dump(mode="json"))
+    def _save(self, db, report: RunReport) -> None:
+        db.execute("INSERT INTO runs VALUES (?, ?) ON CONFLICT(run_id) DO UPDATE SET "
+                   "checkpoint=excluded.checkpoint", (report.run_id, report.model_dump_json()))
+
+    def record_result(self, report: RunReport, result: JudgeResult, *, keep_judgments: bool) -> RunReport:
+        """Commit the receipt, item rows and batch checkpoint together or not at all."""
+        payload = result.model_dump(mode="json")
+        digest = content_digest(payload)
+        report = report.model_copy(update={
+            "artifacts": {**report.artifacts, f"{report.stage}-last": digest}})
         with self._db() as db:
-            db.execute("INSERT OR IGNORE INTO attempts VALUES (?, ?, ?)",
-                       (run_id, result.provider, digest))
+            db.execute("INSERT OR IGNORE INTO artifacts VALUES (?, ?)",
+                       (digest, json.dumps(payload, ensure_ascii=False, sort_keys=True)))
+            db.execute("INSERT INTO attempts VALUES (?, ?, ?) ON CONFLICT(run_id, provider, sha256) "
+                       "DO UPDATE SET rowid=(SELECT MAX(rowid) + 1 FROM attempts)",
+                       (report.run_id, result.provider, digest))
             if keep_judgments:
                 for judgment in result.judgments:
-                    db.execute("INSERT INTO judgments VALUES (?, ?, ?, ?)",
-                               (run_id, result.provider, judgment.item_id, judgment.model_dump_json()))
-        return digest
+                    db.execute("INSERT INTO judgments VALUES (?, ?, ?, ?) "
+                               "ON CONFLICT(run_id, provider, item_id) DO UPDATE SET payload=excluded.payload",
+                               (report.run_id, result.provider, judgment.item_id, judgment.model_dump_json()))
+            self._save(db, report)
+        return report
 
     def judgments(self, run_id: str, provider: str) -> tuple[JudgeVerdict, ...]:
         with self._db() as db:
@@ -120,9 +132,20 @@ class RunStore:
                               "ORDER BY item_id", (run_id, provider)).fetchall()
         return tuple(JudgeVerdict.model_validate_json(row[0]) for row in rows)
 
-    def results(self, run_id: str) -> tuple[JudgeResult, ...]:
+    def results(self, run_id: str, *, provider: str | None = None) -> tuple[JudgeResult, ...]:
         with self._db() as db:
-            rows = db.execute("SELECT sha256 FROM attempts WHERE run_id=? ORDER BY rowid",
-                              (run_id,)).fetchall()
-        return tuple(JudgeResult.model_validate_json(json.dumps(self.artifact(row[0])))
-                     for row in rows)
+            rows = db.execute(
+                "SELECT attempts.sha256, artifacts.payload FROM attempts LEFT JOIN artifacts "
+                "ON artifacts.sha256=attempts.sha256 WHERE attempts.run_id=? "
+                + ("AND attempts.provider=? " if provider is not None else "")
+                + "ORDER BY attempts.rowid",
+                (run_id, provider) if provider is not None else (run_id,),
+            ).fetchall()
+        results = []
+        for digest, payload in rows:
+            if payload is None:
+                raise ValueError("missing measurement artifact")
+            if content_digest(json.loads(payload)) != digest:
+                raise ValueError("measurement artifact digest mismatch")
+            results.append(JudgeResult.model_validate_json(payload))
+        return tuple(results)

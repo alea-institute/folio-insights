@@ -17,7 +17,7 @@ from folio_insights.measurement.annotations import AnnotationAuthor, AnnotationI
 from folio_insights.measurement.gold import PinnedOntology, validate_gold
 from folio_insights.measurement.judge_prompts import INSTRUCTIONS, PROMPT_VERSION
 from folio_insights.measurement.judges import (
-    ConceptCandidate, JudgeItem, JudgePacket, JudgePort, JudgeResult,
+    ConceptCandidate, JudgeItem, JudgePacket, JudgePort,
     JudgeSpan, adjudication_items, claude_sample,
 )
 from folio_insights.measurement.matching import (
@@ -167,8 +167,6 @@ class MeasurementCoordinator:
                 report = self.store.save(RunReport(run_id=run_id, inputs=inputs, artifacts={
                     "bindings": self.store.put(bindings),
                     "gold": self.store.put(suite.model_dump(mode="json"))}))
-            if report.status == "complete":
-                return report
             report = self.store.save(report.model_copy(update={"status": "running", "errors": {}}))
             try:
                 return await self._resume(report, suite, ontology, extractor, codex, claude,
@@ -185,13 +183,14 @@ class MeasurementCoordinator:
         identity = report.inputs.judge_identities[provider]
         author = AnnotationAuthor(kind="judge", identity=f"{provider}/{identity.model}/{identity.cli_version}")
         for judgment in self.store.judgments(report.run_id, provider):
-            key = _item_id(provider, judgment.item_id)
+            revision = content_digest(judgment.model_dump(mode="json"))
+            key = _item_id(provider, judgment.item_id, revision)
             if key in report.annotation_links:
                 continue
             item = items[judgment.item_id]
             source = sources[item.source_id]
             annotation = await self.annotations.append(AnnotationInput(
-                idempotency_key=_item_id(report.run_id, provider, item.item_id),
+                idempotency_key=_item_id(report.run_id, provider, item.item_id, revision),
                 source_id=source.source_id, source_sha256=source.sha256, genre=source.genre,
                 run_id=report.run_id, item_id=item.item_id,
                 tag_id=item.concept_ids[0] if item.kind == "tag" else None,
@@ -207,12 +206,24 @@ class MeasurementCoordinator:
     async def _judge(self, report, packet, provider, judge, split_id, cancelled):
         report = self.store.save(report.model_copy(update={"stage": provider}))
         report = await self._annotate(report, packet, provider, split_id)
-        done = {j.item_id for j in self.store.judgments(report.run_id, provider)}
+        done = set()
+        last = None
+        known = {i.item_id for i in packet.items}
+        for attempt in self.store.results(report.run_id, provider=provider):
+            ids = {j.item_id for j in attempt.judgments} | set(attempt.missing_item_ids)
+            successful = (attempt.status == "complete" and not attempt.error
+                          and not attempt.missing_item_ids and not attempt.unresolved_concept_ids
+                          and attempt.identity == report.inputs.judge_identities[provider]
+                          and len(ids) == len(attempt.judgments)
+                          and ids <= known
+                          and attempt.input_sha256 == packet.select(tuple(ids)).sha256)
+            if successful:
+                done.update(ids)
+            else:
+                done.difference_update(ids)
+            last = attempt
+        done.intersection_update(j.item_id for j in self.store.judgments(report.run_id, provider))
         missing = tuple(i.item_id for i in packet.items if i.item_id not in done)
-        # A failed batch can contain all judgments. Retry its empty coverage probe
-        # so an error can never be turned into a verdict just by counting rows.
-        previous = report.artifacts.get(f"{provider}-last")
-        last = JudgeResult.model_validate_json(json.dumps(self.store.artifact(previous))) if previous else None
         batches = [missing[n:n + self.batch_size] for n in range(0, len(missing), self.batch_size)]
         if not batches and (last is None or last.status != "complete" or last.error
                             or last.unresolved_concept_ids or last.provider != provider
@@ -232,9 +243,7 @@ class MeasurementCoordinator:
             if result.status == "complete" and (result.error or result.missing_item_ids):
                 valid = False
             usable = valid and not result.unresolved_concept_ids
-            digest = self.store.record_result(report.run_id, result, keep_judgments=usable)
-            artifacts = {**report.artifacts, f"{provider}-last": digest}
-            if usable:
+            if usable and result.status == "complete" and not result.error:
                 done.update(got)
             missing = tuple(i.item_id for i in packet.items if i.item_id not in done)
             error = "judge-result-mismatch" if not valid else result.error
@@ -244,13 +253,14 @@ class MeasurementCoordinator:
                 error = "unresolved-concept-selections"
             if valid and result.status == "incomplete" and not error:
                 error = "judgments-incomplete"
-            report = self.store.save(report.model_copy(update={
-                "artifacts": artifacts, "missing_item_ids": {**report.missing_item_ids, provider: missing},
-                "errors": {provider: error} if error else {}}))
+            report = self.store.record_result(report.model_copy(update={
+                "status": "incomplete" if error else "running",
+                "missing_item_ids": {**report.missing_item_ids, provider: missing},
+                "errors": {provider: error} if error else {}}), result, keep_judgments=usable)
+            last = result
             report = await self._annotate(report, packet, provider, split_id)
             if error:
                 return report, None
-        last = JudgeResult.model_validate_json(json.dumps(self.store.artifact(report.artifacts[f"{provider}-last"])))
         return report, last.model_copy(update={
             "input_sha256": packet.sha256, "judgments": self.store.judgments(report.run_id, provider),
             "missing_item_ids": (), "status": "complete", "error": None})
