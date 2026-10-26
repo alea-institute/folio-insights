@@ -2,11 +2,47 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Annotated, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, model_validator
+
+LinkType = Literal["exception-to", "penalty-for", "condition-of", "cites", "contradicts"]
+LocalPropositionId = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$")]
+PropositionKind = Literal["rule", "element", "exception", "penalty", "fact", "definition",
+                          "advice", "citation", "outcome"]
+
+
+class SourceProvenance(BaseModel):
+    """Reference to the canonical source snapshot, without copying its text."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_snapshot_id: str = Field(min_length=1)
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    genre: Literal["opinions", "statutes-regulations", "briefs", "know-how"]
+    subgenre: str = ""
+
+
+class PropositionLink(BaseModel):
+    """A directed, document-local link; it is not a logical dependency."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    relation: LinkType
+    target_id: LocalPropositionId
+
+
+class UnresolvedCitation(BaseModel):
+    """An external citation retained until deterministic target resolution."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    relation: Literal["cites"] = "cites"
+    citation: str = Field(min_length=1)
 
 
 class KnowledgeType(str, Enum):
@@ -95,3 +131,53 @@ class KnowledgeUnit(BaseModel):
     content_hash: str = ""
     lineage: list[StageEvent] = Field(default_factory=list)
     cross_references: list[str] = Field(default_factory=list)
+    # Absent on legacy extraction JSON. Atomic identity is assigned by deterministic minting,
+    # never by an extractor; these fields record support and meaning, not a key or an IRI.
+    provenance: SourceProvenance | None = None
+    proposition_kind: PropositionKind | None = None
+    links: list[PropositionLink] = Field(default_factory=list)
+    unresolved_citations: list[UnresolvedCitation] = Field(default_factory=list)
+
+    def is_grounded(self, source_text: str, *, source_snapshot_id: str) -> bool:
+        """Check exact snapshot support, independently of the legacy anchor score.
+
+        Offsets count Unicode code points. This proves a verbatim source anchor, not
+        semantic entailment of the atomic text. No serialized flag can supply this proof.
+        """
+        provenance = self.provenance
+        span = self.original_span
+        return (
+            provenance is not None
+            and provenance.source_snapshot_id == source_snapshot_id
+            and provenance.source_sha256 == hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+            and span.source_file == self.source_file
+            and 0 <= span.start < span.end <= len(source_text)
+            and self.source_snippet == source_text[span.start:span.end]
+        )
+
+
+def finalize_document(
+    units: list[KnowledgeUnit], *, source_text: str, source_snapshot_id: str,
+) -> list[KnowledgeUnit]:
+    """Validate atomic output after every document-local proposition ID is stable.
+
+    Return revalidated copies so mutations during extraction cannot bypass the link
+    schema. Old JSON remains readable without provenance, but cannot claim snapshot
+    grounding here. Reciprocal links are valid; logical dependency DAG rules live elsewhere.
+    """
+    finalized = [KnowledgeUnit.model_validate(unit.model_dump()) for unit in units]
+    ids = {unit.id for unit in finalized}
+    if len(ids) != len(finalized):
+        raise ValueError("duplicate proposition ID")
+    id_adapter = TypeAdapter(LocalPropositionId)
+    for unit in finalized:
+        # Use the same local-ID contract for both endpoints without changing legacy reads.
+        id_adapter.validate_python(unit.id)
+        if not unit.is_grounded(source_text, source_snapshot_id=source_snapshot_id):
+            raise ValueError(f"{unit.id}: not grounded in source snapshot")
+        for link in unit.links:
+            if link.target_id == unit.id:
+                raise ValueError(f"{unit.id}: self link is invalid")
+            if link.target_id not in ids:
+                raise ValueError(f"{unit.id}: missing link target {link.target_id}")
+    return finalized
