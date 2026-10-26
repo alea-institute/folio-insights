@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Protocol
 
 from folio_insights.measurement.annotations import AnnotationAuthor, AnnotationInput, AnnotationStore
-from folio_insights.measurement.gold import PinnedOntology, validate_gold
+from folio_insights.measurement.gold import GoldSetError, PinnedOntology, validate_gold
 from folio_insights.measurement.judge_prompts import INSTRUCTIONS, PROMPT_VERSION
 from folio_insights.measurement.judges import (
     ConceptCandidate, JudgeItem, JudgePacket, JudgePort,
@@ -22,7 +22,7 @@ from folio_insights.measurement.judges import (
 )
 from folio_insights.measurement.matching import (
     MATCHER_POLICY, EquivalenceInputs, Prediction, PredictionDocument, content_digest,
-    freeze_equivalences,
+    freeze_equivalences, match_document,
 )
 from folio_insights.measurement.schema import EvaluationInputs, GoldSuite, SourceSnapshot, TagSelection
 from folio_insights.measurement.scoring import SCORER_VERSION, score_suite
@@ -164,18 +164,31 @@ class MeasurementCoordinator:
         with self.store.lock(run_id):
             report = self.store.load(run_id)
             if report is None:
+                gold_digest = self.store.pin_gold(suite)
                 report = self.store.save(RunReport(run_id=run_id, inputs=inputs, artifacts={
                     "bindings": self.store.put(bindings),
-                    "gold": self.store.put(suite.model_dump(mode="json"))}))
+                    "gold": gold_digest}))
+            if report.status == "complete" and self._completed(report, suite, ontology, equivalences):
+                return report
             report = self.store.save(report.model_copy(update={"status": "running", "errors": {}}))
             try:
                 return await self._resume(report, suite, ontology, extractor, codex, claude,
                                           split_id, cancelled, equivalences)
             except (KeyboardInterrupt, InterruptedError):
                 # Fetch the most recent item checkpoint, not a stale local snapshot.
-                report = self.store.load(run_id)
-                return self.store.save(report.model_copy(update={"status": "incomplete",
-                                                               "errors": {"run": "cancelled"}}))
+                report = self.store.load(run_id).model_copy(update={
+                    "status": "incomplete", "errors": {"run": "cancelled"}})
+                if all(d.source.source_id in report.extractions for d in suite.documents):
+                    rows = self._rows(report, suite)
+                    pending = self._adjudication(report, suite, rows, ontology, equivalences,
+                                                 build_packet(suite, rows, ontology), None, None, None)
+                    pending = tuple({content_digest(a): a for a in (*report.adjudication, *pending)}.values())
+                    return self._score(report, suite, rows, ontology, equivalences, pending, False)
+                return self.store.save(report.model_copy(update={"scores": None}))
+
+    def _rows(self, report, suite):
+        return tuple(PredictionDocument.model_validate(self.store.artifact(report.extractions[d.source.source_id]))
+                     for d in suite.documents)
 
     async def _annotate(self, report, packet, provider, split_id):
         sources = {s.source_id: s for s in packet.sources}
@@ -203,11 +216,10 @@ class MeasurementCoordinator:
                     "annotation_links": {**report.annotation_links, key: annotation.annotation_id}}))
         return report
 
-    async def _judge(self, report, packet, provider, judge, split_id, cancelled):
-        report = self.store.save(report.model_copy(update={"stage": provider}))
-        report = await self._annotate(report, packet, provider, split_id)
+    def _judge_progress(self, report, packet, provider):
         done = set()
         last = None
+        successful = False
         known = {i.item_id for i in packet.items}
         for attempt in self.store.results(report.run_id, provider=provider):
             ids = {j.item_id for j in attempt.judgments} | set(attempt.missing_item_ids)
@@ -223,11 +235,39 @@ class MeasurementCoordinator:
                 done.difference_update(ids)
             last = attempt
         done.intersection_update(j.item_id for j in self.store.judgments(report.run_id, provider))
+        return done, last, successful
+
+    def _completed(self, report, suite, ontology, equivalences):
+        if (report.errors or report.adjudication or not report.scores
+                or report.scores.get("readiness") != "ready"
+                or set(report.extractions) != {d.source.source_id for d in suite.documents}):
+            return False
+        rows = self._rows(report, suite)
+        packet = build_packet(suite, rows, ontology)
+        results = []
+        sample = None
+        for provider in ("codex", "claude"):
+            selected = packet if sample is None else packet.select(sample.item_ids)
+            done, last, successful = self._judge_progress(report, selected, provider)
+            if not successful or done != {i.item_id for i in selected.items}:
+                return False
+            results.append(last.model_copy(update={
+                "input_sha256": selected.sha256,
+                "judgments": self.store.judgments(report.run_id, provider)}))
+            if provider == "codex":
+                sample = claude_sample(packet, results[0].judgments, seed=report.inputs.sampling_seed)
+                if report.sample != sample.model_dump(mode="json"):
+                    return False
+        return not self._adjudication(report, suite, rows, ontology, equivalences,
+                                      packet, *results, sample)
+
+    async def _judge(self, report, packet, provider, judge, split_id, cancelled):
+        report = self.store.save(report.model_copy(update={"stage": provider}))
+        report = await self._annotate(report, packet, provider, split_id)
+        done, last, successful = self._judge_progress(report, packet, provider)
         missing = tuple(i.item_id for i in packet.items if i.item_id not in done)
         batches = [missing[n:n + self.batch_size] for n in range(0, len(missing), self.batch_size)]
-        if not batches and (last is None or last.status != "complete" or last.error
-                            or last.unresolved_concept_ids or last.provider != provider
-                            or last.identity != report.inputs.judge_identities[provider]):
+        if not batches and not successful:
             batches = [()]
         for ids in batches:
             if cancelled and cancelled.is_set():
@@ -265,6 +305,51 @@ class MeasurementCoordinator:
             "input_sha256": packet.sha256, "judgments": self.store.judgments(report.run_id, provider),
             "missing_item_ids": (), "status": "complete", "error": None})
 
+    def _adjudication(self, report, suite, rows, ontology, equivalences, packet, first, second, sample):
+        pending = ({a.item_id: a.model_dump(mode="json")
+                    for a in adjudication_items(packet, first, second, sample)}
+                   if first is not None and second is not None else {})
+        accepted = set()
+
+        def accept(source_id, prop, kind, gold_tags):
+            accepted.add(_item_id(source_id, kind, prop.item_id))
+            for tag in prop.tags:
+                try:
+                    iri = ontology.resolve(tag.label, tag.branch).iri
+                except GoldSetError:
+                    continue
+                if iri in gold_tags:
+                    accepted.add(_item_id(source_id, kind, prop.item_id, _item_id(tag.label, tag.branch)))
+
+        for doc, row in zip(suite.documents, rows, strict=True):
+            tags = {p.item_id: {ontology.resolve(t.label, t.branch).iri for t in p.tags}
+                    for p in doc.propositions}
+            for prop in doc.propositions:
+                accept(row.source_id, prop, "gold", tags[prop.item_id])
+            predictions = {p.item_id: p for p in row.propositions}
+            for pair in match_document(doc, row, equivalences).pairs:
+                accept(row.source_id, predictions[pair.prediction_id], "prediction", tags[pair.gold_id])
+
+        judgments = {provider: {j.item_id: j for j in self.store.judgments(report.run_id, provider)}
+                     for provider in ("codex", "claude")}
+        additions = []
+        by_id = {i.item_id: i for i in packet.items}
+        for provider, verdicts in judgments.items():
+            for item_id, verdict in verdicts.items():
+                if verdict.verdict == "wrong" and item_id in accepted:
+                    item = pending.setdefault(item_id, {
+                        "item_id": item_id, "reasons": [],
+                        **{p: v[item_id].model_dump(mode="json") if item_id in v else None
+                           for p, v in judgments.items()}})
+                    if "contradicts-accepted" not in item["reasons"]:
+                        item["reasons"].append("contradicts-accepted")
+                if (verdict.omission is not None or
+                        set(verdict.concept_ids) - set(by_id[item_id].concept_ids)):
+                    additions.append({"item_id": item_id, "provider": provider,
+                                      "reasons": ["proposed-addition"],
+                                      "judgment": verdict.model_dump(mode="json")})
+        return (*pending.values(), *additions)
+
     async def _resume(self, report, suite, ontology, extractor, codex, claude,
                       split_id, cancelled, equivalences):
         report = self.store.save(report.model_copy(update={"stage": "extraction"}))
@@ -286,8 +371,7 @@ class MeasurementCoordinator:
             digest = self.store.put(row.model_dump(mode="json"))
             report = self.store.save(report.model_copy(update={
                 "extractions": {**report.extractions, doc.source.source_id: digest}}))
-        rows = tuple(PredictionDocument.model_validate(self.store.artifact(report.extractions[d.source.source_id]))
-                     for d in suite.documents)
+        rows = self._rows(report, suite)
         if equivalences is not None and equivalences != freeze_equivalences(suite, rows, equivalences.edges):
             raise ValueError("stale or incompatible extraction equivalences")
         packet = build_packet(suite, rows, ontology)
@@ -298,19 +382,12 @@ class MeasurementCoordinator:
             report = self.store.save(report.model_copy(update={"sample": sample.model_dump(mode="json")}))
             report, second = await self._judge(report, packet.select(sample.item_ids), "claude", claude,
                                                 split_id, cancelled)
-        pending = ()
-        if first is not None and second is not None:
-            pending = tuple(a.model_dump(mode="json") for a in adjudication_items(packet, first, second, sample))
-            # New source-grounded omissions and outside-pool suggestions need authored
-            # adjudication, even when both judges happen to propose the same addition.
-            by_id = {i.item_id: i for i in packet.items}
-            for result in (first, second):
-                for verdict in result.judgments:
-                    if (verdict.omission is not None or
-                            set(verdict.concept_ids) - set(by_id[verdict.item_id].concept_ids)):
-                        pending += ({"item_id": verdict.item_id, "provider": result.provider,
-                                     "reasons": ["proposed-addition"], "judgment": verdict.model_dump(mode="json")},)
+        pending = self._adjudication(report, suite, rows, ontology, equivalences,
+                                     packet, first, second, sample)
         complete = first is not None and second is not None and not pending
+        return self._score(report, suite, rows, ontology, equivalences, pending, complete)
+
+    def _score(self, report, suite, rows, ontology, equivalences, pending, complete):
         scored_rows = tuple(r.model_copy(update={"judgments_complete": complete}) for r in rows)
         # The supplied edges were checked against immutable extraction content.
         # Rebind only the coordinator-owned readiness flags for this score snapshot.

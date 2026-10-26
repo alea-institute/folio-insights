@@ -16,7 +16,7 @@ from pydantic import Field
 
 from folio_insights.measurement.judges import JudgeResult, JudgeVerdict
 from folio_insights.measurement.matching import content_digest
-from folio_insights.measurement.schema import EvaluationInputs, MeasurementModel, Sha256
+from folio_insights.measurement.schema import EvaluationInputs, GoldSuite, MeasurementModel, Sha256
 
 
 class RunReport(MeasurementModel):
@@ -78,6 +78,23 @@ class RunStore:
     def put(self, payload: object) -> str:
         digest = content_digest(payload)
         with self._db() as db:
+            db.execute("INSERT OR IGNORE INTO artifacts VALUES (?, ?)",
+                       (digest, json.dumps(payload, ensure_ascii=False, sort_keys=True)))
+        return digest
+
+    def pin_gold(self, suite: GoldSuite) -> str:
+        """Corrections append a revision; existing gold artifacts stay authoritative."""
+        payload = suite.model_dump(mode="json")
+        digest = content_digest(payload)
+        with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            previous = db.execute(
+                "SELECT sha256 FROM artifacts WHERE json_extract(payload, '$.suite_id')=? "
+                "AND json_extract(payload, '$.gold_revision')=? AND sha256 != ? LIMIT 1",
+                (suite.suite_id, suite.gold_revision, digest),
+            ).fetchone()
+            if previous:
+                raise ValueError("changed gold requires a new gold revision")
             db.execute("INSERT OR IGNORE INTO artifacts VALUES (?, ?)",
                        (digest, json.dumps(payload, ensure_ascii=False, sort_keys=True)))
         return digest

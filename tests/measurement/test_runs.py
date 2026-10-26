@@ -168,6 +168,128 @@ async def test_disagreements_block_ready_scores_without_erasing_judgments(setup_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["gold", "prediction", "tag"])
+@pytest.mark.parametrize("verdicts", [("wrong", "wrong"), ("wrong", "correct"), ("correct", "wrong")])
+async def test_negative_judgments_contradicting_accepted_items_block_readiness(setup_run, kind, verdicts):
+    class NegativeJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            return result.model_copy(update={"judgments": tuple(
+                judgment.model_copy(update={"verdict": verdicts[self.provider == "claude"]})
+                if item.kind == kind else judgment
+                for item, judgment in zip(packet.items, result.judgments, strict=True))})
+
+    codex, claude = NegativeJudge("codex"), NegativeJudge("claude")
+    result = await execute(setup_run, codex=codex, claude=claude)
+    assert result.status == "adjudication"
+    pending = {item["item_id"]: item for item in result.adjudication}
+    for provider, judge, verdict in zip(("codex", "claude"), (codex, claude), verdicts, strict=True):
+        if verdict == "wrong":
+            for item in (item for packet in judge.calls for item in packet.items if item.kind == kind):
+                assert "contradicts-accepted" in pending[item.item_id]["reasons"]
+                assert pending[item.item_id][provider]["verdict"] == "wrong"
+    assert result.scores["readiness"] == "incomplete"
+    for row in [result.scores["micro"], *result.scores["sources"].values(), *result.scores["genres"].values()]:
+        assert row["target_met"] is None
+        assert row["propositions"]["precision"] is None
+        assert row["tags"]["precision"] is None
+    assert setup_run[3].load(result.run_id) == result
+    # Retrying retains the evidence and does not let agreement erase a challenge.
+    assert await execute(setup_run) == result
+
+
+@pytest.mark.asyncio
+async def test_cancelled_retry_of_completed_run_does_not_write_or_change_scores(setup_run, monkeypatch):
+    codex, claude = FakeJudge("codex"), FakeJudge("claude")
+    result = await execute(setup_run, codex=codex, claude=claude)
+    calls = len(codex.calls), len(claude.calls)
+    store = setup_run[3]
+    writes = []
+    save = store.save
+
+    def record_save(report):
+        writes.append(report)
+        return save(report)
+
+    monkeypatch.setattr(store, "save", record_save)
+    cancelled = threading.Event()
+    cancelled.set()
+    again = await execute(setup_run, codex=codex, claude=claude, cancelled=cancelled)
+    assert again.status == "complete"
+    assert again == result == store.load(result.run_id)
+    assert (len(codex.calls), len(claude.calls)) == calls
+    assert not writes
+
+
+@pytest.mark.asyncio
+async def test_cancelled_retry_refreshes_stale_ready_scores_and_contradicting_judgments(setup_run):
+    codex = FakeJudge("codex")
+    original = await execute(setup_run, codex=codex)
+    item_id = next(item.item_id for packet in codex.calls for item in packet.items if item.kind == "gold")
+    store = setup_run[3]
+    attempt = next(result for result in store.results(original.run_id, provider="codex")
+                   if any(j.item_id == item_id for j in result.judgments))
+    changed = attempt.model_copy(update={"judgments": tuple(
+        j.model_copy(update={"verdict": "wrong"}) if j.item_id == item_id else j
+        for j in attempt.judgments)})
+    # Reproduce a pre-fix complete checkpoint backed by negative judgments.
+    store.record_result(original.model_copy(update={"stage": "codex"}), changed, keep_judgments=True)
+    cancelled = threading.Event()
+    cancelled.set()
+    result = await execute(setup_run, cancelled=cancelled)
+    assert result.status == "incomplete" and result.errors == {"run": "cancelled"}
+    assert result.scores["micro"]["target_met"] is None
+    assert result.scores["readiness"] == "incomplete"
+    assert any(a["item_id"] == item_id and "contradicts-accepted" in a["reasons"]
+               for a in result.adjudication)
+    assert store.load(result.run_id) == result
+    assert (await execute(setup_run)).status == "adjudication"
+
+
+@pytest.mark.asyncio
+async def test_gold_correction_requires_new_revision_and_preserves_original_run(setup_run):
+    suite, pins, _, store, _, _ = setup_run
+    original = await execute(setup_run)
+    doc = suite.documents[0]
+    rejected = doc.propositions[0].item_id
+    corrected = suite.model_copy(update={"documents": (doc.model_copy(update={
+        "propositions": tuple(p.model_copy(update={
+            "links": tuple(link for link in p.links if link.target_id != rejected)})
+            for p in doc.propositions if p.item_id != rejected)}),)})
+    changed = list(setup_run)
+    changed[0] = corrected
+    changed[1] = pins.model_copy(update={"gold_sha256": content_digest(corrected.model_dump(mode="json"))})
+    with pytest.raises(ValueError, match="new gold revision"):
+        await execute(changed)
+    corrected = corrected.model_copy(update={"gold_revision": suite.gold_revision + "-corrected"})
+    changed[0] = corrected
+    changed[1] = changed[1].model_copy(update={
+        "gold_revision": corrected.gold_revision,
+        "gold_sha256": content_digest(corrected.model_dump(mode="json"))})
+    result = await execute(changed)
+    assert result.status == "complete" and result.run_id != original.run_id
+    assert result.scores["gold_revision"] == corrected.gold_revision
+    assert result.scores["micro"]["propositions"]["fp"] == 1
+    assert result.scores["micro"]["propositions"]["tp"] == len(doc.propositions) - 1
+    assert result.scores["micro"]["target_met"] is False
+    assert store.load(original.run_id) == original
+    assert store.artifact(original.artifacts["gold"]) == suite.model_dump(mode="json")
+    assert store.artifact(result.artifacts["gold"]) == corrected.model_dump(mode="json")
+
+
+@pytest.mark.asyncio
+async def test_unresolved_prediction_tag_stays_incomplete_instead_of_crashing(setup_run):
+    path = next(iter(setup_run[2].paths.values()))
+    data = json.loads(path.read_text())
+    data["units"][0]["folio_tags"][0]["label"] = "Unresolved fixture concept"
+    path.write_text(json.dumps(data))
+    result = await execute(setup_run)
+    assert result.status == "incomplete"
+    assert result.scores["micro"]["target_met"] is None
+    assert any("unresolved tag selections" in reason for reason in result.scores["reasons"])
+
+
+@pytest.mark.asyncio
 async def test_cancel_before_extraction_is_checkpointed(setup_run):
     cancelled = threading.Event()
     cancelled.set()
