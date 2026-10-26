@@ -64,14 +64,15 @@ def prepare_one(raw: bytes | str | Any, gate: Any) -> tuple[Any, PreparedRecord]
     """``(loaded record, PreparedRecord)`` for one raw record (in-process)."""
     from pydantic import ValidationError
 
-    from folio_insights.shards import dump_shard_record, load_shard_record
+    from folio_insights.shards import dump_shard_record
+    from folio_insights.storage.shards import load_storage_record
     from folio_insights.storage.context import _parse_raw_json, _sanitized_validation_error
 
     parsed = _parse_raw_json(raw)
     if parsed is not None:
         gate.check(parsed)
     try:
-        loaded = load_shard_record(raw)
+        loaded = load_storage_record(raw)
     except ValidationError as exc:
         raise _sanitized_validation_error(exc) from None
     if parsed is None:  # pragma: no cover - load_shard_record refuses non-JSON

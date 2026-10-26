@@ -18,14 +18,34 @@ All reads pass the projection barrier first and read at the watermark.
 """
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import json
+from collections.abc import AsyncIterator, Mapping
 from typing import TYPE_CHECKING
 
-from folio_insights.shards import ShardEnvelope, load_shard_record
+from folio_insights.shards import (
+    ATOMIC_ENVELOPE_SCHEMA_VERSION, LoadedShardRecord, ShardEnvelope, load_shard_record,
+)
 
 if TYPE_CHECKING:
     from folio_insights.revision.dependency_graph import DependencyEdge
     from folio_insights.storage.context import CorpusStorageContext, StoredShardRecord
+
+
+def load_storage_record(raw: bytes | str | Mapping) -> LoadedShardRecord:
+    """Read each journal schema without upgrading legacy signed content.
+
+    Storage opts into schema 3 for records explicitly stamped 3; the record
+    adapter still owns validation and rejects malformed/future stamps. Legacy
+    inputs keep the content-preserving 1 -> 2 path and their exact originals.
+    """
+    try:
+        data = raw if isinstance(raw, Mapping) else json.loads(raw)
+    except (ValueError, TypeError):
+        return load_shard_record(raw)
+    version = data.get("schema_version") if isinstance(data, Mapping) else None
+    if type(version) is int and version == ATOMIC_ENVELOPE_SCHEMA_VERSION:
+        return load_shard_record(raw, target_schema_version=ATOMIC_ENVELOPE_SCHEMA_VERSION)
+    return load_shard_record(raw)
 
 
 class PersistentShardStore:
@@ -62,7 +82,7 @@ class PersistentShardStore:
     async def iter_shards(self) -> AsyncIterator[ShardEnvelope]:
         upto = await self._ctx._barrier()
         for row in await self._ctx._current_shard_rows(upto):
-            yield load_shard_record(row.payload).shard
+            yield load_storage_record(row.payload).shard
 
     async def dependency_edges(self) -> tuple[list[str], list[DependencyEdge]]:
         """Every current shard IRI and every dependency edge of the corpus, from
@@ -91,4 +111,4 @@ class PersistentShardStore:
         return out
 
 
-__all__ = ["PersistentShardStore"]
+__all__ = ["PersistentShardStore", "load_storage_record"]
