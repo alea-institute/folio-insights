@@ -87,7 +87,6 @@ from folio_insights.shards import (
     LoadedShardRecord,
     ShardEnvelope,
     dump_shard_record,
-    load_shard_record,
 )
 from folio_insights.revision.acyclicity import (
     DependencyCycle,
@@ -98,6 +97,7 @@ from folio_insights.revision.acyclicity import (
 from folio_insights.shapes.corpus import run_constraints
 from folio_insights.shapes.suite import ShaclSuite, default_suite
 from folio_insights.shards.records import IDENTITY_FIELDS
+from folio_insights.storage.shards import load_storage_record
 from folio_insights.storage.errors import (
     CorpusIsolationError,
     GovernanceEventReplayed,
@@ -615,7 +615,7 @@ class CorpusStorageContext:
                 await asyncio.to_thread(handle.ensure_tbox)
                 state = await asyncio.to_thread(handle.state, self.corpus)
                 head = await self._journal.head(self.corpus)
-                stale_adapter = state.adapter_version not in (None, PROJECTION_ADAPTER_VERSION)
+                stale_adapter = state.watermark >= 0 and state.adapter_version != PROJECTION_ADAPTER_VERSION
                 if (
                     rebuild
                     or stale_adapter
@@ -988,7 +988,7 @@ class CorpusStorageContext:
                 hooked = checks and self.config.shard_validator is not None
                 for record in records:
                     if hooked:
-                        self._run_shard_hook(load_shard_record(record.payload).shard)
+                        self._run_shard_hook(load_storage_record(record.payload).shard)
                     out.append((record, None))
                 if failure is not None:
                     raise failure[1]
@@ -1015,7 +1015,7 @@ class CorpusStorageContext:
         prior_row = await tx.latest_shard(shard.shard_iri)
         if prior_row is None:
             return -1
-        _check_identity(load_shard_record(prior_row.payload).shard, shard)
+        _check_identity(load_storage_record(prior_row.payload).shard, shard)
         return prior_row.position
 
     def _pending_shard(
@@ -1089,7 +1089,7 @@ class CorpusStorageContext:
             if appended:
                 self._unmarked.add(row.position)
         await self._committed(op, row.position, row.position, [shard_iri] if appended else None)
-        return load_shard_record(row.payload).shard
+        return load_storage_record(row.payload).shard
 
     async def ingest_shards(
         self,
@@ -1103,7 +1103,7 @@ class CorpusStorageContext:
         leaves the journal and the projection unchanged. Re-ingesting the same
         batch (or retrying ``op_id``) returns the committed shards."""
         rows = await self._ingest(records, op_id=op_id)
-        return [load_shard_record(r.payload).shard for r in rows]
+        return [load_storage_record(r.payload).shard for r in rows]
 
     async def bulk_load_shards(
         self,
@@ -1197,8 +1197,8 @@ class CorpusStorageContext:
                             prior_payload = latest[rec.shard_iri].payload
                         if prior_payload is not None:
                             _check_identity(
-                                load_shard_record(prior_payload).shard,
-                                cached or load_shard_record(rec.payload).shard,
+                                load_storage_record(prior_payload).shard,
+                                cached or load_storage_record(rec.payload).shard,
                             )
                         batch[rec.shard_iri] = rec.payload
                     if self.config.refuse_dependency_cycles:
@@ -1277,7 +1277,7 @@ class CorpusStorageContext:
         )
         first = {str(subject): int(position) for subject, position in firsts}
         out = [
-            (load_shard_record(row.payload).shard, first[row.subject])
+            (load_storage_record(row.payload).shard, first[row.subject])
             for row in await self._current_shard_rows(upto)
         ]
         out.sort(key=lambda item: (item[1], item[0].shard_iri))
@@ -1632,10 +1632,21 @@ def _prepared_record(loaded: LoadedShardRecord, payload: bytes) -> PreparedRecor
 
 def _check_identity(prior: ShardEnvelope, shard: ShardEnvelope) -> None:
     """Identity is frozen and append-only lists never shrink across revisions."""
+    if shard.schema_version < prior.schema_version:
+        raise ShardIdentityViolation("a revision cannot downgrade its record schema")
     before = json.loads(prior.model_dump_json(include=set(IDENTITY_FIELDS)))
     after = json.loads(shard.model_dump_json(include=set(IDENTITY_FIELDS)))
+    for record, model in ((before, prior), (after, shard)):
+        record.update(
+            identity_recipe=getattr(model, "identity_recipe", "legacy-v1"),
+            proposition_key=getattr(model, "proposition_key", None),
+            atomic_identity=(
+                model.atomic_identity.model_dump(mode="json")
+                if getattr(model, "atomic_identity", None) is not None else None
+            ),
+        )
     if before != after:
-        changed = sorted(k for k in IDENTITY_FIELDS if before.get(k) != after.get(k))
+        changed = sorted(k for k in before if before.get(k) != after.get(k))
         raise ShardIdentityViolation(
             f"revision of {shard.shard_iri!r} would change frozen identity "
             f"fields {changed}"
@@ -1649,7 +1660,7 @@ def _check_identity(prior: ShardEnvelope, shard: ShardEnvelope) -> None:
 
 def _stored(row: JournalRow) -> StoredShardRecord:
     return StoredShardRecord(
-        shard=load_shard_record(row.payload).shard,
+        shard=load_storage_record(row.payload).shard,
         position=row.position,
         original_bytes=row.original_bytes if row.original_bytes is not None else row.payload,
         source_schema_version=(

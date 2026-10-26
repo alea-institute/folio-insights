@@ -71,9 +71,10 @@ from pyoxigraph import (
 from pyoxigraph import parse as rdf_parse
 
 from folio_insights.revision.content_edit import canonical_content_hash
-from folio_insights.shards import ShardEnvelope, load_shard_record
+from folio_insights.shards import ShardEnvelope
 from folio_insights.storage.errors import ProjectionLockTimeout, UnsupportedStorageSchema
 from folio_insights.storage.journal import KIND_GOVERNANCE, KIND_SHARD, JournalRow
+from folio_insights.storage.shards import load_storage_record
 from folio_insights.store import PyoxigraphStore
 from folio_insights.store.pyoxigraph_store import ServiceClauseBlocked
 from folio_insights.vocab._constants import BFO_CATEGORY_SPINE_CLASS, FI_PREFIX, framework_iri
@@ -85,7 +86,8 @@ PROJECTION_LOCKNAME = "projection.lock"
 #   2 — Phase 9 U0: fi:framework as an IRI (fi:frameworkId kept), fi:speechAct,
 #       fi:bfoCategory and fi:subjectBfoClass on shards; promotion citations as
 #       the declared fi:citedIri. Journal bytes and signatures are untouched.
-PROJECTION_ADAPTER_VERSION = 2
+#   3 — atomic identity, full tags/typed links, historical hierarchy archive.
+PROJECTION_ADAPTER_VERSION = 3
 
 CORPUS_NS = "https://folio-insights.aleainstitute.ai/corpus/"
 META_GRAPH = NamedNode("urn:folio-insights:storage:projection")
@@ -107,6 +109,13 @@ DEPENDENCY_PREDICATES: dict[str, str] = {
     "depends_on_precedents": "dependsOnPrecedent",
     "depends_on_shards": "dependsOnShard",
 }
+
+_ATOMIC_FIELDS = (
+    "identity_recipe", "proposition_key", "atomic_identity", "folio_tags",
+    "links", "legacy_hierarchy",
+)
+_OWNED_NODE_PREDICATES = ("atomicIdentity", "folioTags", "links", "legacyHierarchy")
+_OWNED_NODE_NS = "urn:folio-insights:projection-node:"
 
 
 def fi(local: str) -> NamedNode:
@@ -143,8 +152,8 @@ def _dt(value: datetime) -> Literal:
 
 def shard_triples(
     shard: ShardEnvelope, *, journal_position: int
-) -> list[tuple[NamedNode, NamedNode, Any]]:
-    """Shard -> RDF. Subject-only triples so a revision can replace them all."""
+) -> list[tuple[Any, NamedNode, Any]]:
+    """Shard -> RDF, including deterministic, shard-owned atomic payload nodes."""
     s = NamedNode(shard.shard_iri)
     out: list[tuple[NamedNode, NamedNode, Any]] = [
         (s, _RDF_TYPE, fi("Shard")),
@@ -192,7 +201,42 @@ def shard_triples(
             out.append((s, fi(predicate), iri_or_literal(target)))
     for sig in shard.signatures:
         out.append((s, fi("signedBy"), Literal(sig.did)))
+    out.extend(_atomic_triples(shard))
     return out
+
+
+def _atomic_triples(shard: ShardEnvelope) -> list[tuple[Any, NamedNode, Any]]:
+    """Use the generated field mapping, keeping nested types and list order.
+
+    Shard-specific skolem IRIs survive SPARQL INSERT (which relabels blank
+    nodes) and replay. Legacy parents are historical data only, never edges.
+    """
+    from folio_insights.shapes.rendering import render_shard
+
+    data = shard.model_dump(mode="json", include=set(_ATOMIC_FIELDS))
+    if not data:
+        if not shard.elaborates:
+            return []
+        data = {
+            "legacy_hierarchy": {"elaborates": shard.elaborates},
+        }
+    data.update(shard_iri=shard.shard_iri, shard_type=shard.shard_type)
+    prefix = "shard-" + hashlib.sha256(shard.shard_iri.encode()).hexdigest() + "-"
+    graph, root = render_shard(data, bnode_prefix=prefix)
+    predicates = {fi(_camel(name)).value for name in _ATOMIC_FIELDS}
+    triples = graph.triples()
+    selected = [t for t in triples if t[0] == root and t[1] in predicates]
+    owned = {obj for _, _, obj in selected if obj[0] == "B"}
+    selected.extend(t for t in triples if t[0] in owned)
+
+    def term(value: tuple) -> Any:
+        if value[0] == "I":
+            return NamedNode(value[1])
+        if value[0] == "B":
+            return NamedNode(_OWNED_NODE_NS + value[1])
+        return Literal(value[1], datatype=NamedNode(value[2]))
+
+    return [(term(s), NamedNode(p), term(o)) for s, p, o in selected]
 
 
 # Event keys whose camelCase name would be undeclared; they map to the term the
@@ -250,7 +294,7 @@ ShardLoader = Callable[[JournalRow], ShardEnvelope]
 
 def load_row_shard(row: JournalRow) -> ShardEnvelope:
     """The validated shard of a journal shard row (full U17 adapter)."""
-    return load_shard_record(row.payload).shard
+    return load_storage_record(row.payload).shard
 
 
 def row_triples(
@@ -559,7 +603,16 @@ class ProjectionHandle:
             store.update(_watermark_update(node, last.position, last.payload_sha256, chain))
             return last.position
 
-        ops = [f"DELETE WHERE {{ GRAPH {abox} {{ <{subject}> ?p ?o }} }}" for subject in existing]
+        owned_path = "|".join(str(fi(p)) for p in _OWNED_NODE_PREDICATES)
+        ops = []
+        for subject in existing:
+            ops.append(
+                f"DELETE {{ GRAPH {abox} {{ ?nested ?p ?o }} }} WHERE {{ GRAPH {abox} {{ "
+                f"<{subject}> ({owned_path}) ?nested . "
+                f'FILTER(STRSTARTS(STR(?nested), "{_OWNED_NODE_NS}")) '
+                f"?nested ?p ?o }} }}"
+            )
+            ops.append(f"DELETE WHERE {{ GRAPH {abox} {{ <{subject}> ?p ?o }} }}")
         by_graph: dict[str, list[str]] = {}
         for row in effective:
             graph, _, triples = row_triples(corpus, row, load=load)
