@@ -656,9 +656,9 @@ def verify_iris(db_path: str | None, verbose: bool) -> None:
     """Re-hash every stored shard IRI and report any drift (D-06/D-07).
 
     The standing nightly guard against source drift or a hash-logic regression:
-    re-mint each stored shard's IRI from its stored source_uri + source_span and
-    compare to the stored body. Any mismatch is surfaced for human review with a
-    non-zero exit -- this command NEVER auto-quarantines or mutates the registry.
+    re-mint each stored shard's IRI using its stored identity recipe and
+    compare both the stored body and full digest. Any mismatch is surfaced for
+    human review with a non-zero exit -- this command NEVER auto-quarantines or mutates the registry.
     """
     _setup_logging(verbose)
 
@@ -669,7 +669,10 @@ def verify_iris(db_path: str | None, verbose: bool) -> None:
         DEFAULT_REGISTRY_PATH,
         ShardIRIRegistry,
     )
-    from folio_insights.shards.minting import mint_shard_iri
+    from folio_insights.shards.minting import (
+        ATOMIC_IDENTITY_RECIPE, LEGACY_IDENTITY_RECIPE,
+        mint_atomic_shard_iri, mint_shard_iri,
+    )
 
     registry_path = Path(db_path) if db_path else DEFAULT_REGISTRY_PATH
 
@@ -698,10 +701,26 @@ def verify_iris(db_path: str | None, verbose: bool) -> None:
 
     mismatches: list[tuple[str, str, str]] = []  # (stored_iri, reminted_iri, source_uri)
     for rec in records:
-        reminted_iri, _ = mint_shard_iri(rec["source_uri"], rec["source_span"])
+        stored_iri = f"urn:folio:shard/{rec['iri_body']}"
+        try:
+            if rec["identity_recipe"] == LEGACY_IDENTITY_RECIPE:
+                if rec["proposition_key"] is not None:
+                    raise ValueError("legacy identity cannot carry an atomic key")
+                reminted_iri, digest = mint_shard_iri(rec["source_uri"], rec["source_span"])
+            elif rec["identity_recipe"] == ATOMIC_IDENTITY_RECIPE:
+                key = rec["proposition_key"]
+                if not isinstance(key, str):
+                    raise ValueError("atomic identity requires a proposition key")
+                reminted_iri, digest = mint_atomic_shard_iri(
+                    rec["source_uri"], rec["source_span"], key,
+                )
+            else:
+                raise ValueError(f"unsupported identity recipe {rec['identity_recipe']!r}")
+        except ValueError as exc:
+            mismatches.append((stored_iri, f"invalid identity: {exc}", rec["source_uri"]))
+            continue
         reminted_body = reminted_iri.removeprefix("urn:folio:shard/")
-        if reminted_body != rec["iri_body"]:
-            stored_iri = f"urn:folio:shard/{rec['iri_body']}"
+        if reminted_body != rec["iri_body"] or digest != rec["full_hash"]:
             mismatches.append((stored_iri, reminted_iri, rec["source_uri"]))
             logger.error(
                 "verify-iris MISMATCH: stored IRI %s re-mints to %s "

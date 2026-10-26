@@ -2,14 +2,14 @@
 
 PHILOSOPHY.md's axiomatic-kernel layer says every non-kernel shard is a theorem
 whose derivation chain terminates in the kernel or in cited authority. That
-chain is already in the envelope: ``elaborates`` (the Tractarian edge) and the
-four ``depends_on_*`` lists. ``derivation_tree`` walks those fields
-breadth-first from a shard and reports every kernel shard reached with the
+chain is already in the envelope: the four ``depends_on_*`` lists. Historical
+hierarchy and typed proposition links are not derivation dependencies.
+``derivation_tree`` walks those fields breadth-first from a shard and reports every kernel shard reached with the
 shortest path to it; ``derived_from_kernel`` returns just those derivations
 (the ``folio:derivedFromKernel`` view). Nothing is stored: the view is
 recomputed from current shards on every call (KTD8).
 
-* **Edges walked**, in this fixed order per shard: ``elaborates``,
+* **Edges walked**, in this fixed order per shard:
   ``depends_on_axioms``, ``depends_on_definitions``, ``depends_on_precedents``,
   ``depends_on_shards``. Each edge records the field it came from.
 * **Kernel detection** is the packaged manifest (``catalog.is_kernel_iri``):
@@ -40,7 +40,6 @@ if TYPE_CHECKING:
 
 # Envelope fields a derivation follows, in tie-break order.
 DERIVATION_FIELDS: tuple[str, ...] = (
-    "elaborates",
     "depends_on_axioms",
     "depends_on_definitions",
     "depends_on_precedents",

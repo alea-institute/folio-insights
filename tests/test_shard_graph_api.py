@@ -4,7 +4,7 @@
 over a disposable corpus: the Liber Sextus kernel seeded by a generated
 corpus admin (the U3 fixtures), plus synthetic shards in the AE4 shape:
 
-    S --elaborates--> H --depends_on_axioms--> K6 (VI 5.12.6)
+    S --depends_on_shards--> H --depends_on_axioms--> K6 (VI 5.12.6)
     D --depends_on_shards--> S              (a dependent of S)
     F                                        (free-standing, no kernel)
 
@@ -60,7 +60,7 @@ def _shard(n: int, cls: type[ShardEnvelope] = SimpleAssertionShard, **fields) ->
 
 
 H = _shard(0xA1, HypothesisShard, epistemic_status="hypothesis", depends_on_axioms=[K6])
-S = _shard(0xA2, elaborates=[H.shard_iri])
+S = _shard(0xA2, depends_on_shards=[H.shard_iri], elaborates=[H.shard_iri])
 D = _shard(0xA3, depends_on_shards=[S.shard_iri])
 F = _shard(0xA4)
 
@@ -143,22 +143,16 @@ def test_graph_shows_the_chain_to_the_kernel_and_the_dependents(client: TestClie
     assert hyp["label"] == "synthetic shard 161"
 
     assert _edges(body) == {
-        (S.shard_iri, H.shard_iri, "elaborates"),
+        (S.shard_iri, H.shard_iri, "depends_on_shards"),
         (H.shard_iri, K6, "depends_on_axioms"),
         (D.shard_iri, S.shard_iri, "depends_on_shards"),
     }
 
 
-def test_graph_tractarian_paths_nest_under_the_kernel(client: TestClient) -> None:
-    """R12 through the API: S's path sits under H's, H's under the kernel's;
-    the kernel and a shard with no primary parent are top-level."""
+def test_graph_references_are_flat_iris(client: TestClient) -> None:
     nodes = _by_iri(client.get(_graph_url(S.shard_iri)).json())
-    k6, h, s, d = (nodes[i]["tractarian_path"] for i in (K6, H.shard_iri, S.shard_iri,
-                                                           D.shard_iri))
-    assert k6 is not None and "." not in k6  # kernel shards form the top level
-    assert h.startswith(k6 + ".") and h.count(".") == 1
-    assert s.startswith(h + ".") and s.count(".") == 2
-    assert d is not None and "." not in d  # depends_on_shards is not a path parent
+    for iri in (K6, H.shard_iri, S.shard_iri, D.shard_iri):
+        assert nodes[iri]["tractarian_path"] == iri
 
 
 def test_graph_of_a_kernel_shard_lists_its_dependents(client: TestClient) -> None:
@@ -183,7 +177,7 @@ def test_graph_depth_bounds_the_walk_and_reports_truncation(client: TestClient) 
     assert list(_by_iri(one)) == [S.shard_iri, H.shard_iri, D.shard_iri]
     assert one["truncated"] is True  # K6 lies beyond hop 1
     assert _edges(one) == {
-        (S.shard_iri, H.shard_iri, "elaborates"),
+        (S.shard_iri, H.shard_iri, "depends_on_shards"),
         (D.shard_iri, S.shard_iri, "depends_on_shards"),
     }
 
@@ -340,13 +334,13 @@ def test_derivation_exports_the_ae4_chain_with_paths(client: TestClient) -> None
     assert chain["kernel_iri"] == K6 and chain["citation"] == "VI 5.12.6"
     assert chain["path"] == [S.shard_iri, H.shard_iri, K6] and chain["depth"] == 2
     assert chain["edges"] == [
-        {"from": S.shard_iri, "to": H.shard_iri, "field": "elaborates"},
+        {"from": S.shard_iri, "to": H.shard_iri, "field": "depends_on_shards"},
         {"from": H.shard_iri, "to": K6, "field": "depends_on_axioms"},
     ]
     paths = {n["iri"]: n["tractarian_path"] for n in body["nodes"]}
     assert set(paths) == {S.shard_iri, H.shard_iri, K6}
     assert body["tractarian_path"] == paths[S.shard_iri]
-    assert paths[S.shard_iri].startswith(paths[K6] + ".")
+    assert paths[S.shard_iri] == S.shard_iri and paths[K6] == K6
 
 
 def test_derivation_through_a_dependency_and_bounded_depth(client: TestClient) -> None:
@@ -459,9 +453,7 @@ STICKY = "sticky-corpus"
 
 
 def _sticky_corpus(root: Path) -> dict[str, str | None]:
-    """A corpus whose canonical paths need the revision history: C is reparented
-    under A after D's root ordinal was taken, X waits on a dangling parent P that
-    arrives later. Returns ``TractarianIndex.from_context``'s path per shard."""
+    """A corpus with legacy parent edits and late arrivals; references stay flat."""
     from folio_insights.revision.tractarian import TractarianIndex
 
     from tests.storage.conftest import shard as plain
@@ -488,16 +480,16 @@ def _sticky_corpus(root: Path) -> dict[str, str | None]:
 def test_graph_and_derivation_paths_equal_the_storage_context_paths(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """P1: the API replays the same revision history as ``from_context`` (sticky
-    ordinals), so a reparent or a late parent never renumbers paths in the viewer."""
+    """The API and storage context expose stable IRIs after legacy parent edits."""
     from folio_insights.revision.tractarian import TractarianIndex
 
     root = tmp_path / "storage"
     canonical = _sticky_corpus(root)
     snapshot = read_corpus_snapshot(root / JOURNAL_FILENAME, STICKY)
-    # The history matters on this corpus: a history-less index numbers differently.
+    # Parent history never changes the reference.
     naive = TractarianIndex(snapshot.entries)
-    assert {i: naive.path_of(i) for i in canonical} != canonical
+    assert {i: naive.path_of(i) for i in canonical} == canonical
+    assert canonical == {i: i for i in canonical}
 
     monkeypatch.setattr(api_main, "_corpus_root", root)
     client = TestClient(app)
@@ -562,7 +554,7 @@ def test_snapshot_cache_serves_repeats_and_invalidates_on_a_new_commit(
     assert fresh is not first and fresh.head > first.head
     assert late in fresh.shards()
     resp = client.get(_graph_url(late, STICKY))
-    assert resp.status_code == 200 and _by_iri(resp.json())[late]["tractarian_path"] == "1.2"
+    assert resp.status_code == 200 and _by_iri(resp.json())[late]["tractarian_path"] == late
 
 
 def test_snapshot_cache_is_bounded() -> None:
@@ -634,9 +626,9 @@ def test_parallel_fields_do_not_displace_other_nodes_reaching_edges() -> None:
         for i in range(499)
     ]
     body = build_graph([(s, i) for i, s in enumerate([root, *neighbours])],
-                       root.shard_iri, depth=1)
+                       root.shard_iri, depth=1, edge_cap=1500)
     assert len(body["nodes"]) == 500
-    assert len(body["edges"]) == 2000
+    assert len(body["edges"]) == 1500
     assert body["truncated_reasons"] == ["edge_cap"]
     assert {e["from"] for e in body["edges"] if e["to"] == root.shard_iri} == {
         s.shard_iri for s in neighbours
@@ -655,12 +647,12 @@ def test_truncation_reasons_name_each_bound() -> None:
     assert whole["truncated"] is False and whole["truncated_reasons"] == []
 
 
-def test_edge_field_order_puts_the_tractarian_parent_first() -> None:
-    """A pair joined by two fields lists ``elaborates`` before ``depends_on_shards``."""
+def test_legacy_hierarchy_never_adds_graph_edges() -> None:
+    """Historical hierarchy adds no dependency edge, including duplicate references."""
     parent = _shard(0x91)
     child = _shard(0x92, elaborates=[parent.shard_iri], depends_on_shards=[parent.shard_iri])
     body = build_graph([(parent, 0), (child, 1)], child.shard_iri)
-    assert [e["field"] for e in body["edges"]] == ["elaborates", "depends_on_shards"]
+    assert [e["field"] for e in body["edges"]] == ["depends_on_shards"]
 
 
 def test_derivation_walk_is_capped_and_reports_it() -> None:

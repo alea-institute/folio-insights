@@ -87,3 +87,45 @@ def test_help_exits_zero(runner) -> None:
     """Lazy-import discipline: heavy deps stay off `folio-insights --help`."""
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
+
+
+def test_verify_iris_mixed_recipes(runner, tmp_path) -> None:
+    db_path = tmp_path / "registry.db"
+    registry = ShardIRIRegistry(db_path)
+
+    async def seed() -> None:
+        await registry.register("urn:legacy", "legacy span")
+        await registry.register_atomic(
+            "urn:atomic", "verbatim span", text="A duty applies.", start=0, end=13,
+            source_snapshot_digest="a" * 64,
+        )
+
+    asyncio.run(seed())
+    result = runner.invoke(cli, ["verify-iris", "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    assert "all 2" in result.output
+
+
+@pytest.mark.parametrize("column,value", [
+    ("identity_recipe", "unknown-v9"),
+    ("proposition_key", None),
+    ("proposition_key", "b" * 64),
+    ("full_hash", "c" * 64),
+])
+def test_verify_iris_atomic_drift_is_reported_without_repair(runner, tmp_path, column, value):
+    import sqlite3
+
+    db_path = tmp_path / "registry.db"
+    registry = ShardIRIRegistry(db_path)
+    iri = asyncio.run(registry.register_atomic(
+        "urn:atomic", "verbatim span", text="A duty applies.", start=0, end=13,
+        source_snapshot_digest="a" * 64,
+    ))
+    with sqlite3.connect(db_path) as db:
+        db.execute(f"UPDATE shard_iri_registry SET {column} = ?", (value,))
+    result = runner.invoke(cli, ["verify-iris", "--db", str(db_path)])
+    assert result.exit_code != 0
+    assert iri in result.output
+    assert "FAILED" in result.output
+    with sqlite3.connect(db_path) as db:
+        assert db.execute(f"SELECT {column} FROM shard_iri_registry").fetchone()[0] == value

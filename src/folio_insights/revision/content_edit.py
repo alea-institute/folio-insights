@@ -68,6 +68,12 @@ IMMUTABLE_FIELD_PATHS: frozenset[str] = frozenset(
         "first_extractor_did",
         # U17 envelope schema version (Pydantic-frozen; R18 identity boundary)
         "schema_version",
+        # Frozen schema-3 identity basis and historical compatibility metadata.
+        "identity_recipe",
+        "proposition_key",
+        "atomic_identity",
+        "legacy_hierarchy",
+        "elaborates",
         # identity-defining triple parts (Triple submodel is mutable — gate-only)
         "triple.subject",
         "triple.predicate",
@@ -460,12 +466,17 @@ async def edit_shard_content(
 
     # D-06 gate — BEFORE any mutation. ``triple.subject``/``.predicate`` are NOT
     # frozen on the mutable Triple submodel, so this gate is their only guard.
-    if field_path in IMMUTABLE_FIELD_PATHS:
+    if any(
+        field_path == protected
+        or field_path.startswith(protected + ".")
+        or protected.startswith(field_path + ".")
+        for protected in IMMUTABLE_FIELD_PATHS
+    ):
         raise ValueError(
             f"Field {field_path!r} is immutable (IMMUTABLE_FIELD_PATHS, D-06); "
             "edits to identity fields, triple.subject/.predicate, or the "
             "append-only content_edits/signatures lists are forbidden. "
-            "(triple.object is editable — re-parenting, D-04.)"
+            "(triple.object remains editable, D-04.)"
         )
 
     # CR-01: deep working copy — the stored shard is NEVER mutated. Any exception

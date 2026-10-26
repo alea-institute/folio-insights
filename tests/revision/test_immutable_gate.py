@@ -27,14 +27,16 @@ _IDENTITY_FIELDS = {
 
 def test_immutable_set_contents() -> None:
     """The set is the 6 identity fields + schema_version (U17) + 2 triple parts
-    + 2 lists (11)."""
+    + 2 lists and schema-3 frozen metadata (16)."""
     assert _IDENTITY_FIELDS <= IMMUTABLE_FIELD_PATHS
     assert "triple.subject" in IMMUTABLE_FIELD_PATHS
     assert "triple.predicate" in IMMUTABLE_FIELD_PATHS
     assert "content_edits" in IMMUTABLE_FIELD_PATHS
     assert "signatures" in IMMUTABLE_FIELD_PATHS
     assert "schema_version" in IMMUTABLE_FIELD_PATHS
-    assert len(IMMUTABLE_FIELD_PATHS) == 11
+    assert {"identity_recipe", "proposition_key", "atomic_identity",
+            "legacy_hierarchy", "elaborates"} <= IMMUTABLE_FIELD_PATHS
+    assert len(IMMUTABLE_FIELD_PATHS) == 16
 
 
 def test_triple_object_not_immutable() -> None:

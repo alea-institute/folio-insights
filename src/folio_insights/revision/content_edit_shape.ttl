@@ -14,7 +14,8 @@
 #
 # CANNOT enforce: immutability of past entries (D-08a). SHACL is stateless over a
 # single snapshot and cannot see a deletion/mutation (RESEARCH L115-124). That half
-# is carried by ContentEdit frozen=True + the IMMUTABLE_FIELD_PATHS gate (Plan 02).
+# is carried by ContentEdit frozen=True + the IMMUTABLE_FIELD_PATHS gate,
+# including frozen atomic recipe/key/basis and protected triple parts (U36).
 #
 # Source: spiked live against pyshacl 0.31.0 / rdflib 7.6.0 (RESEARCH L83-103)
 # [VERIFIED: uv run spike].

@@ -1,16 +1,16 @@
-"""``folio-insights graph`` — the dependency web and Tractarian paths (drain U4).
+"""``folio-insights graph`` — logical dependencies and flat references (drain U4).
 
 * ``graph validate CORPUS [--json]`` — every cycle stored in the corpus's
-  dependency web (the four ``depends_on_*`` lists plus ``elaborates``), as
+  dependency web (the four ``depends_on_*`` lists), as
   ``A -> B -> A``; exits 1 when any exists. New writes cannot add one while
   ``StorageConfig.refuse_dependency_cycles`` is on (the default), so a
   finding here is a legacy cycle written before the guard or with it off.
-* ``graph path CORPUS IRI`` — the shard's Tractarian path and IRI; exits 1
+* ``graph path CORPUS IRI`` — the shard's stable reference and IRI; exits 1
   when the IRI is not a shard of the corpus.
-* ``graph tree CORPUS [--json]`` — every shard's path beside its IRI in path
-  order (``--json``: the nested tree plus its findings).
+* ``graph tree CORPUS [--json]`` — every shard's reference beside its IRI in
+  first-commit order (``--json``: the flat list plus its findings).
 
-Paths are display identifiers derived from the journal (``revision/
+References are frozen shard IRIs read from the journal (``revision/
 tractarian.py``); the content-hash URN stays the shard's identity. Like the
 ``storage`` group this module lives outside the storage package and imports
 it only when a command runs; it reads a corpus that already has committed
@@ -67,7 +67,7 @@ def _with_corpus(
 
 @click.group(name="graph")
 def graph_group() -> None:
-    """Dependency-web checks and Tractarian path identifiers."""
+    """Logical dependency checks and flat proposition references."""
 
 
 @graph_group.command(name="validate")
@@ -75,11 +75,11 @@ def graph_group() -> None:
 @corpus_root_option
 @click.option("--json", "as_json", is_flag=True, help="Print a JSON report.")
 def validate_cmd(corpus_name: str, corpus_root: Path | None, as_json: bool) -> None:
-    """Report every stored dependency cycle (elaborates included); exit 1 if any."""
+    """Report every stored logical dependency cycle; exit 1 if any."""
     from folio_insights.revision.dependency_graph import DependencyGraph
 
     async def read(ctx: CorpusStorageContext) -> DependencyGraph:
-        return await DependencyGraph.from_store(ctx.shards, include_elaborates=True)
+        return await DependencyGraph.from_store(ctx.shards)
 
     graph = _with_corpus(corpus_root, corpus_name, read)
     cycles = [[*cycle, cycle[0]] for cycle in graph.cycles()]
@@ -107,7 +107,7 @@ def validate_cmd(corpus_name: str, corpus_root: Path | None, as_json: bool) -> N
 @click.argument("iri")
 @corpus_root_option
 def path_cmd(corpus_name: str, iri: str, corpus_root: Path | None) -> None:
-    """Print IRI's Tractarian path beside the IRI."""
+    """Print IRI's stable flat reference beside the IRI."""
     from folio_insights.revision.tractarian import TractarianIndex
 
     index = _with_corpus(corpus_root, corpus_name, TractarianIndex.from_context)
@@ -121,9 +121,9 @@ def path_cmd(corpus_name: str, iri: str, corpus_root: Path | None) -> None:
 @graph_group.command(name="tree")
 @click.argument("corpus_name")
 @corpus_root_option
-@click.option("--json", "as_json", is_flag=True, help="Print the nested tree as JSON.")
+@click.option("--json", "as_json", is_flag=True, help="Print the flat proposition list as JSON.")
 def tree_cmd(corpus_name: str, corpus_root: Path | None, as_json: bool) -> None:
-    """Print every shard's Tractarian path beside its IRI, in path order."""
+    """Print every shard's flat reference beside its IRI, in commit order."""
     from folio_insights.revision.tractarian import TractarianIndex
 
     index = _with_corpus(corpus_root, corpus_name, TractarianIndex.from_context)
