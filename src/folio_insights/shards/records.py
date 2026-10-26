@@ -8,8 +8,11 @@ Versions (``ENVELOPE_SCHEMA_VERSION`` lives in ``envelope.py``):
 
 * **1 — legacy.** The unstamped envelope shipped through Phase 8. A record with
   no ``schema_version`` key is version 1.
-* **2 — current.** Adds the frozen ``schema_version`` stamp and requires the
+* **2 — live default.** Adds the frozen ``schema_version`` stamp and requires the
   nullable envelope keys to be present (``null`` is data, not absence — R18).
+* **3 — opt-in atomic view.** Explicit ``target_schema_version=3`` selects the
+  new recipe/key, full tags/links and historical hierarchy archive. The default
+  remains 2 until U35/U37 integrate generated shapes and projection storage.
 
 Guarantees:
 
@@ -39,12 +42,18 @@ import copy
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Annotated, Any, Literal, Union
 
-from pydantic import TypeAdapter
+from pydantic import Field, TypeAdapter
 
-from folio_insights.shards.envelope import ENVELOPE_SCHEMA_VERSION, ShardEnvelope
-from folio_insights.shards.subtypes import Shard
+from folio_insights.shards.audit import ContentEdit
+from folio_insights.shards.envelope import (
+    ATOMIC_ENVELOPE_SCHEMA_VERSION, ENVELOPE_SCHEMA_VERSION, AtomicEnvelope, ShardEnvelope,
+)
+from folio_insights.shards.subtypes import (
+    ConflictingAuthoritiesShard, DisputedPropositionShard, GlossShard,
+    HypothesisShard, Shard, SimpleAssertionShard,
+)
 
 LEGACY_ENVELOPE_SCHEMA_VERSION: int = 1
 
@@ -69,6 +78,45 @@ IDENTITY_FIELDS: tuple[str, ...] = (
 )
 
 _SHARD_ADAPTER: TypeAdapter = TypeAdapter(Shard)
+AtomicEnvelope.model_rebuild(_types_namespace={"ContentEdit": ContentEdit})
+
+
+class AtomicSimpleAssertionShard(AtomicEnvelope, SimpleAssertionShard):
+    """Schema-3 simple assertion."""
+
+    shard_type: Literal["simple_assertion"] = "simple_assertion"
+
+
+class AtomicDisputedPropositionShard(AtomicEnvelope, DisputedPropositionShard):
+    """Schema-3 dispute with the existing dispute invariants."""
+
+    shard_type: Literal["disputed_proposition"] = "disputed_proposition"
+
+
+class AtomicConflictingAuthoritiesShard(AtomicEnvelope, ConflictingAuthoritiesShard):
+    """Schema-3 conflicting authorities."""
+
+    shard_type: Literal["conflicting_authorities"] = "conflicting_authorities"
+
+
+class AtomicGlossShard(AtomicEnvelope, GlossShard):
+    """Schema-3 gloss."""
+
+    shard_type: Literal["gloss"] = "gloss"
+
+
+class AtomicHypothesisShard(AtomicEnvelope, HypothesisShard):
+    """Schema-3 hypothesis."""
+
+    shard_type: Literal["hypothesis"] = "hypothesis"
+
+
+AtomicShard = Annotated[
+    Union[AtomicSimpleAssertionShard, AtomicDisputedPropositionShard,
+          AtomicConflictingAuthoritiesShard, AtomicGlossShard, AtomicHypothesisShard],
+    Field(discriminator="shard_type"),
+]
+_ATOMIC_SHARD_ADAPTER: TypeAdapter = TypeAdapter(AtomicShard)
 
 
 class UnsupportedEnvelopeVersion(ValueError):
@@ -105,6 +153,21 @@ def _migrate_v1_to_v2(record: dict[str, Any]) -> dict[str, Any]:
     return record
 
 
+def _migrate_v2_to_v3(record: dict[str, Any]) -> dict[str, Any]:
+    """Archive hierarchy without inventing atomic identities or typed links."""
+    # Validate the source before supplying new defaults: corrupt recipe/key
+    # fields must be refused rather than silently erased by migration.
+    _SHARD_ADAPTER.validate_python(record)
+    record["legacy_hierarchy"] = {"elaborates": record.pop("elaborates", [])}
+    record["identity_recipe"] = "legacy-v1"
+    record["proposition_key"] = None
+    record["atomic_identity"] = None
+    record["folio_tags"] = []
+    record["links"] = []
+    record["schema_version"] = ATOMIC_ENVELOPE_SCHEMA_VERSION
+    return record
+
+
 MIGRATIONS: Mapping[tuple[int, int], EnvelopeMigration] = {
     (1, 2): EnvelopeMigration(
         from_version=1,
@@ -112,6 +175,7 @@ MIGRATIONS: Mapping[tuple[int, int], EnvelopeMigration] = {
         content_preserving=True,
         apply=_migrate_v1_to_v2,
     ),
+    (2, 3): EnvelopeMigration(2, 3, False, _migrate_v2_to_v3),
 }
 
 
@@ -195,8 +259,13 @@ def load_shard_record(
     raw: bytes | str | Mapping[str, Any],
     *,
     migrations: Mapping[tuple[int, int], EnvelopeMigration] = MIGRATIONS,
+    target_schema_version: int = ENVELOPE_SCHEMA_VERSION,
 ) -> LoadedShardRecord:
     """Load a stored shard record, migrating supported legacy versions forward.
+
+    Schema 3 is explicitly opt-in via ``target_schema_version=3``. The normal
+    storage adapter continues to reject it until its integration dependencies
+    are ready. No target permits downgrades.
 
     Raises ``UnsupportedEnvelopeVersion`` for a non-integer, boolean, < 1,
     newer-than-current, or path-less version, and ``MalformedEnvelopeRecord``
@@ -204,7 +273,12 @@ def load_shard_record(
     Pydantic ``ValidationError`` propagates for a record that parses but does
     not validate as a ``Shard``.
     """
-    current_version = ENVELOPE_SCHEMA_VERSION
+    # Keep schema 3 opt-in until shapes/projection integration (U35/U37).
+    current_version = target_schema_version
+    if type(current_version) is not int or current_version not in (
+        ENVELOPE_SCHEMA_VERSION, ATOMIC_ENVELOPE_SCHEMA_VERSION
+    ):
+        raise UnsupportedEnvelopeVersion(f"unsupported target schema_version {current_version!r}")
     data, original = _parse(raw)
     source_version = _declared_version(data)
     if source_version < 1:
@@ -252,7 +326,8 @@ def load_shard_record(
             f"explicitly (null is data, not absence); missing {missing}"
         )
 
-    shard = _SHARD_ADAPTER.validate_python(data)
+    adapter = _ATOMIC_SHARD_ADAPTER if current_version == ATOMIC_ENVELOPE_SCHEMA_VERSION else _SHARD_ADAPTER
+    shard = adapter.validate_python(data)
     return LoadedShardRecord(
         shard=shard,
         source_schema_version=source_version,
@@ -264,7 +339,7 @@ def load_shard_record(
 
 
 def dump_shard_record(shard: ShardEnvelope) -> bytes:
-    """Serialize ``shard`` as a current-version record (compact UTF-8 JSON).
+    """Serialize ``shard`` in its declared schema (compact UTF-8 JSON).
 
     Explicit nulls are kept and the ``schema_version`` stamp is always present.
     """
@@ -272,6 +347,12 @@ def dump_shard_record(shard: ShardEnvelope) -> bytes:
 
 
 __all__ = [
+    "AtomicShard",
+    "AtomicSimpleAssertionShard",
+    "AtomicDisputedPropositionShard",
+    "AtomicConflictingAuthoritiesShard",
+    "AtomicGlossShard",
+    "AtomicHypothesisShard",
     "IDENTITY_FIELDS",
     "LEGACY_ENVELOPE_SCHEMA_VERSION",
     "MIGRATIONS",
