@@ -16,7 +16,7 @@ Corpus-backed reads of a shard's place in the dependency web:
     GET /api/v1/corpus/{corpus}/shards/{iri}/graph?depth=N
         The shard, what it derives from (upstream, toward the kernel) and what
         derives from it (downstream, its dependents), up to ``N`` hops each way
-        (default 3, at most 8). Every node carries its Tractarian path
+        (default 3, at most 8). Every node carries its stable flat reference
         (``revision/tractarian.py``) beside its IRI, a short label, its type,
         epistemic status and kernel flag (with the kernel citation, such as
         ``VI 5.12.6``); every edge names the envelope field it comes from.
@@ -27,15 +27,13 @@ Corpus-backed reads of a shard's place in the dependency web:
         The ``derivedFromKernel`` chains (``kernel/traversal.py``): every
         kernel shard the shard derives from with the shortest path to it, in
         the ``folio-insights/kernel-chain/v1`` format the ``kernel chain`` CLI
-        exports, plus each chain node's Tractarian path. The walk visits at
+        exports, plus each chain node's stable flat reference. The walk visits at
         most 500 shards (the graph's node cap), nearest first; ``truncated``
         and ``truncated_reasons`` (``depth``, ``node_cap``) report a cut.
 
-Every Tractarian path is the canonical one: the snapshot carries the corpus's
-full shard revision history, replayed exactly as
-``TractarianIndex.from_context`` replays it (sticky ordinals across a
-reparent or a late-arriving parent), so the viewer, the CLI and the storage
-context always agree.
+The compatibility ``tractarian_path`` value is the frozen shard IRI. Legacy
+parent metadata remains in historical records, outside navigation. The viewer,
+CLI and storage context all use the same flat references.
 
 Both reads take the IRI as one percent-encoded path segment (the viewer sends
 ``encodeURIComponent(iri)``), decoded exactly once from the raw request path,
@@ -153,7 +151,6 @@ SHARD_URN = re.compile(r"urn:folio:shard/[0-9a-f]{32}")
 HTTP_IRI = re.compile(r"https?://[^\s/?#<>\"{}|\\^`]+(?:[/?#][^\s<>\"{}|\\^`]*)?")
 #: Envelope fields that are dependency edges, in ``kernel.traversal``'s tie-break order.
 EDGE_FIELDS: tuple[str, ...] = (
-    "elaborates",
     "depends_on_axioms",
     "depends_on_definitions",
     "depends_on_precedents",
@@ -474,10 +471,9 @@ def build_graph(
     """The bounded dependency graph around ``root`` (see the module docstring).
 
     ``entries`` are a corpus's current shards with first commit positions;
-    ``index`` is the corpus's canonical ``TractarianIndex`` (a route passes
-    ``CorpusSnapshot.index``, built from the revision history). Without it the
-    paths come from a history-less index over ``entries``, which is canonical
-    only for a corpus in which every shard was committed once.
+    ``index`` is the corpus's flat reference index (a route passes
+    ``CorpusSnapshot.index``). References are the frozen IRIs whether or not
+    revision history is supplied.
 
     The walk is breadth-first and level-synchronous in both directions: hop
     ``d`` upstream (the targets of a node's dependency fields) and then hop
@@ -485,10 +481,9 @@ def build_graph(
     before hop ``d + 1``, so the node cap drops the farthest nodes first. Each
     node is placed once, with the direction and distance that reached it
     first. A kernel node ends an upstream branch, as in ``kernel.traversal``.
-    ``edges`` are the dependency edges between placed nodes (a dependent that
-    also cites an ancestor shows both), in node then ``EDGE_FIELDS`` order, so
-    a pair joined by two fields lists ``elaborates`` first; past ``edge_cap``
-    the edges that placed a node are kept before the others. ``truncated``
+    ``edges`` are logical dependency edges between placed nodes, in node then
+    ``EDGE_FIELDS`` order. Past ``edge_cap`` the edges that placed a node are
+    kept before the others. ``truncated``
     says a bound cut something off and ``truncated_reasons`` lists which, in
     the order ``depth``, ``node_cap``, ``edge_cap``.
 

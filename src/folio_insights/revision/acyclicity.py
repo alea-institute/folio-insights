@@ -1,8 +1,8 @@
 """The dependency-cycle guard (drain U4, R13, KTD9).
 
 A write may not close a cycle in the dependency web: the four
-``depends_on_*`` lists PLUS the Tractarian ``elaborates`` edges. A cycle there
-would make derivation (``kernel/traversal.py``), the Tractarian tree and the
+``depends_on_*`` lists. Historical hierarchy and typed proposition links
+are excluded. A logical dependency cycle would make derivation and the
 retraction cascade circular, so the storage layer refuses the whole batch with
 ``DependencyCycle`` before anything is appended (``storage/context.py``,
 ``StorageConfig.refuse_dependency_cycles``).
@@ -46,15 +46,14 @@ from collections.abc import (
 )
 from typing import TYPE_CHECKING, Any
 
-from folio_insights.revision.dependency_graph import ELABORATES_FIELD
 from folio_insights.revision.store import DEPENDENCY_FIELDS
 
 if TYPE_CHECKING:
     from folio_insights.revision.dependency_graph import DependencyGraph
     from folio_insights.shards import ShardEnvelope
 
-# Every field whose IRIs are edges for the guard: dependencies, then elaborates.
-EDGE_FIELDS: tuple[str, ...] = (*DEPENDENCY_FIELDS, ELABORATES_FIELD)
+# Only logical dependencies participate in DAG validation.
+EDGE_FIELDS: tuple[str, ...] = DEPENDENCY_FIELDS
 
 # What the sans-IO search yields (IRIs to load) and is sent back (their
 # committed out-edges; an IRI absent from the mapping has none).
@@ -292,8 +291,7 @@ def find_new_cycle(
     committed_graph: DependencyGraph, new_shards: Iterable[ShardEnvelope]
 ) -> list[str] | None:
     """The cycle ``new_shards`` would close over ``committed_graph``, or
-    ``None``. Build the committed graph with ``include_elaborates=True``;
-    otherwise committed ``elaborates`` edges are invisible to the check."""
+    ``None``. Historical hierarchy and typed links do not enter the graph."""
     return run_search(_batch_edges(new_shards), _graph_loader(committed_graph))
 
 

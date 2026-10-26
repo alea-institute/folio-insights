@@ -42,36 +42,28 @@ A, B, C, D = iri(0xA), iri(0xB), iri(0xC), iri(0xD)
 # ── the pure check ────────────────────────────────────────────────────────
 
 
-def test_edge_fields_are_the_dependency_lists_plus_elaborates() -> None:
+def test_edge_fields_are_only_logical_dependencies() -> None:
     assert EDGE_FIELDS == (
-        "depends_on_precedents",
-        "depends_on_definitions",
-        "depends_on_shards",
+        "depends_on_precedents", "depends_on_definitions", "depends_on_shards",
         "depends_on_axioms",
-        "elaborates",
     )
     s = shard(1, depends_on_axioms=[A], elaborates=[B, A], depends_on_shards=[C])
-    assert shard_out_edges(s) == (C, A, B)
-    assert record_out_edges(json.loads(dump_shard_record(s))) == (C, A, B)
-    # A legacy record missing a field contributes nothing for it.
-    assert record_out_edges({"depends_on_shards": [A], "elaborates": None}) == (A,)
+    assert shard_out_edges(s) == (C, A)
+    assert record_out_edges(json.loads(dump_shard_record(s))) == (C, A)
+    assert record_out_edges({"depends_on_shards": [A], "elaborates": [B]}) == (A,)
 
 
-def test_dependency_graph_includes_elaborates_only_when_asked() -> None:
+def test_dependency_graph_ignores_historical_hierarchy() -> None:
     s = shard(1, depends_on_shards=[A], elaborates=[B])
-    assert {e.dependency for e in shard_edges(s)} == {A}
-    assert {(e.dependency, e.field) for e in shard_edges(s, include_elaborates=True)} == {
-        (A, "depends_on_shards"), (B, "elaborates"),
-    }
+    assert {(e.dependency, e.field) for e in shard_edges(s)} == {(A, "depends_on_shards")}
     assert DependencyGraph.from_shards([s]).dependencies(iri(1)) == [A]
-    assert DependencyGraph.from_shards([s], include_elaborates=True).dependencies(iri(1)) == [A, B]
 
 
 def test_ae5_pure_check_names_the_cycle() -> None:
     """AE5: A depends on B is committed; writing B that depends on A is
     refused and names ``A -> B -> A``."""
     committed = DependencyGraph.from_shards(
-        [shard(0xA, depends_on_shards=[B])], include_elaborates=True
+        [shard(0xA, depends_on_shards=[B])]
     )
     with pytest.raises(DependencyCycle) as info:
         check_new_edges(committed, [shard(0xB, depends_on_shards=[A])])
@@ -82,11 +74,11 @@ def test_ae5_pure_check_names_the_cycle() -> None:
 
 def test_acyclic_writes_pass() -> None:
     committed = DependencyGraph.from_shards(
-        [shard(0xA), shard(0xB, depends_on_shards=[A])], include_elaborates=True
+        [shard(0xA), shard(0xB, depends_on_shards=[A])]
     )
-    check_new_edges(committed, [shard(0xC, depends_on_shards=[A, B], elaborates=[B])])
+    check_new_edges(committed, [shard(0xC, depends_on_shards=[A, B], depends_on_precedents=[B])])
     # A diamond is not a cycle.
-    check_new_edges(committed, [shard(0xC, depends_on_shards=[A]), shard(0xD, elaborates=[A, iri(0xC)])])
+    check_new_edges(committed, [shard(0xC, depends_on_shards=[A]), shard(0xD, depends_on_precedents=[A, iri(0xC)])])
 
 
 def test_self_edge_is_refused() -> None:
@@ -94,23 +86,23 @@ def test_self_edge_is_refused() -> None:
         check_new_edges(DependencyGraph(), [shard(0xA, depends_on_axioms=[A])])
     assert info.value.cycle == [A, A]
     with pytest.raises(DependencyCycle):
-        check_new_edges(DependencyGraph(), [shard(0xA, elaborates=[A])])
+        check_new_edges(DependencyGraph(), [shard(0xA, depends_on_precedents=[A])])
 
 
 def test_cycle_internal_to_the_batch_is_found() -> None:
     batch = [
         shard(0xA, depends_on_shards=[B]),
         shard(0xB, depends_on_definitions=[C]),
-        shard(0xC, elaborates=[A]),
+        shard(0xC, depends_on_precedents=[A]),
     ]
     cycle = find_new_cycle(DependencyGraph(), batch)
     assert cycle is not None and cycle[0] == cycle[-1] and len(cycle) == 4
     assert set(cycle) == {A, B, C}
 
 
-def test_elaborates_edges_close_cycles() -> None:
+def test_precedent_edges_close_cycles() -> None:
     committed = DependencyGraph.from_shards(
-        [shard(0xA, elaborates=[B]), shard(0xB)], include_elaborates=True
+        [shard(0xA, depends_on_precedents=[B]), shard(0xB)]
     )
     with pytest.raises(DependencyCycle) as info:
         check_new_edges(committed, [shard(0xB, depends_on_axioms=[A])])
@@ -119,14 +111,14 @@ def test_elaborates_edges_close_cycles() -> None:
 
 def test_cycle_through_a_long_committed_chain_names_the_shortest_path() -> None:
     chain = [shard(1)] + [shard(n, depends_on_shards=[iri(n - 1)]) for n in range(2, 200)]
-    committed = DependencyGraph.from_shards(chain, include_elaborates=True)
+    committed = DependencyGraph.from_shards(chain)
     cycle = find_new_cycle(committed, [shard(1, depends_on_shards=[iri(199)])])
     assert cycle == [iri(n) for n in range(199, 0, -1)] + [iri(199)]
 
 
 def test_last_revision_in_a_batch_wins() -> None:
     committed = DependencyGraph.from_shards(
-        [shard(0xA, depends_on_shards=[B])], include_elaborates=True
+        [shard(0xA, depends_on_shards=[B])]
     )
     # B first claims A (a cycle), then a later revision in the same batch drops it.
     check_new_edges(committed, [shard(0xB, depends_on_shards=[A]), shard(0xB)])
@@ -135,7 +127,6 @@ def test_last_revision_in_a_batch_wins() -> None:
 def test_unchanged_legacy_cycle_is_not_a_new_edge() -> None:
     legacy = DependencyGraph.from_shards(
         [shard(0xA, depends_on_shards=[B]), shard(0xB, depends_on_shards=[A])],
-        include_elaborates=True,
     )
     # Re-writing B with the edges it already had closes nothing new.
     check_new_edges(legacy, [shard(0xB, depends_on_shards=[A], sense="revised")])
@@ -144,7 +135,7 @@ def test_unchanged_legacy_cycle_is_not_a_new_edge() -> None:
     check_new_edges(looped, [shard(0xC, depends_on_shards=[C], sense="revised")])
     # ... but a NEW edge into the legacy cycle that closes another one is refused.
     with pytest.raises(DependencyCycle):
-        check_new_edges(legacy, [shard(0xB, depends_on_shards=[A, C]), shard(0xC, elaborates=[B])])
+        check_new_edges(legacy, [shard(0xB, depends_on_shards=[A, C]), shard(0xC, depends_on_precedents=[B])])
 
 
 # ── the storage guard ─────────────────────────────────────────────────────
@@ -171,15 +162,14 @@ async def test_ae5_put_is_refused_inside_the_transaction(tmp_path: Path) -> None
         await ctx.close()
 
 
-async def test_put_self_edge_and_elaborates_cycle_are_refused(tmp_path: Path) -> None:
+async def test_put_self_edge_and_precedent_cycle_are_refused(tmp_path: Path) -> None:
     ctx = await CorpusStorageContext.open(tmp_path / "s", "corpus-a")
     try:
         with pytest.raises(DependencyCycle) as info:
-            await ctx.shards.put(A, shard(0xA, elaborates=[A]))
+            await ctx.shards.put(A, shard(0xA, depends_on_precedents=[A]))
         assert info.value.cycle == [A, A]
-        await ctx.ingest_shards([shard(0xA, elaborates=[B]), shard(0xB)])
-        # The committed elaborates edge is read from the journal (it is not
-        # projected), so B -> A closes A -> B -> A.
+        await ctx.ingest_shards([shard(0xA, depends_on_precedents=[B]), shard(0xB)])
+        # The committed logical dependency closes A -> B -> A.
         with pytest.raises(DependencyCycle) as info:
             await ctx.shards.put(B, shard(0xB, depends_on_precedents=[A]))
         assert info.value.cycle == [A, B, A]
@@ -195,7 +185,7 @@ async def test_batch_with_an_internal_cycle_is_refused_whole(tmp_path: Path) -> 
         batch = [
             shard(2),  # innocent records in the same batch are refused too
             shard(0xA, depends_on_shards=[B]),
-            shard(0xB, elaborates=[C]),
+            shard(0xB, depends_on_precedents=[C]),
             shard(0xC, depends_on_axioms=[A]),
         ]
         with pytest.raises(DependencyCycle):
@@ -216,7 +206,7 @@ async def test_batch_closing_a_cycle_against_a_committed_chain(tmp_path: Path) -
         await ctx.ingest_shards(chain)
         # Revising the root to rest on the tail closes the whole chain.
         with pytest.raises(DependencyCycle) as info:
-            await ctx.ingest_shards([shard(50), shard(1, elaborates=[iri(39)])])
+            await ctx.ingest_shards([shard(50), shard(1, depends_on_precedents=[iri(39)])])
         assert info.value.cycle == [iri(n) for n in range(39, 0, -1)] + [iri(39)]
         # A dependent added on the tail is fine.
         await ctx.ingest_shards([shard(40, depends_on_shards=[iri(39)])])
@@ -229,7 +219,7 @@ async def test_large_pool_bulk_load_is_checked_from_payloads(tmp_path: Path) -> 
     the payload JSON and refuses the whole bulk load."""
     n = 2600  # above PARALLEL_MIN_ITEMS
     records = [shard(k, depends_on_shards=[iri(k - 1)] if k else []) for k in range(n)]
-    records[0] = shard(0, elaborates=[iri(n - 1)])
+    records[0] = shard(0, depends_on_precedents=[iri(n - 1)])
     ctx = await CorpusStorageContext.open(tmp_path / "s", "corpus-a")
     try:
         with pytest.raises(DependencyCycle) as info:
@@ -252,21 +242,21 @@ async def test_guard_can_be_turned_off_for_legacy_loads_and_then_tolerates_them(
     )
     try:
         await off.ingest_shards(
-            [shard(0xA, depends_on_shards=[B]), shard(0xB, elaborates=[A])]
+            [shard(0xA, depends_on_shards=[B]), shard(0xB, depends_on_precedents=[A])]
         )
     finally:
         await off.close()
     ctx = await CorpusStorageContext.open(root, "corpus-a")
     try:
         # A revision that keeps the legacy edges is not refused...
-        await ctx.shards.put(B, shard(0xB, elaborates=[A], sense="revised"), op_id="r1")
+        await ctx.shards.put(B, shard(0xB, depends_on_precedents=[A], sense="revised"), op_id="r1")
         # ...but one that adds a new cycle-closing edge is.
         with pytest.raises(DependencyCycle):
             await ctx.ingest_shards([shard(0xC, depends_on_shards=[B]), shard(0xA, depends_on_shards=[B, C])])
-        graph = await DependencyGraph.from_store(ctx.shards, include_elaborates=True)
+        graph = await DependencyGraph.from_store(ctx.shards)
         assert graph.cycles() == [(A, B)]
-        # Without elaborates the stored web is acyclic (A -> B only).
-        assert (await DependencyGraph.from_store(ctx.shards)).is_acyclic()
+        # Both bulk and in-memory reads retain the logical cycle.
+        assert not (await DependencyGraph.from_store(ctx.shards)).is_acyclic()
     finally:
         await ctx.close()
 
@@ -303,7 +293,7 @@ def test_graph_validate_reports_stored_legacy_cycles(tmp_path: Path) -> None:
     root = tmp_path / "root"
     _seed(
         root,
-        [shard(0xA, depends_on_shards=[B]), shard(0xB, elaborates=[A]), shard(0xC, depends_on_axioms=[C])],
+        [shard(0xA, depends_on_shards=[B]), shard(0xB, depends_on_precedents=[A]), shard(0xC, depends_on_axioms=[C])],
         guard=False,
     )
     runner = CliRunner()
@@ -325,7 +315,7 @@ def test_graph_validate_passes_an_acyclic_corpus_and_refuses_unknown(tmp_path: P
     from folio_insights.cli import cli
 
     root = tmp_path / "root"
-    _seed(root, [shard(0xA), shard(0xB, elaborates=[A], depends_on_shards=[A])], guard=True)
+    _seed(root, [shard(0xA), shard(0xB, depends_on_precedents=[A], depends_on_shards=[A])], guard=True)
     runner = CliRunner()
     out = runner.invoke(cli, ["graph", "validate", "corpus-a", "--corpus-root", str(root)])
     assert out.exit_code == 0, out.output

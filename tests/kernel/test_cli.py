@@ -96,7 +96,7 @@ def test_seed_then_chain_end_to_end(tmp_path: Path) -> None:
     assert as_ttl.exit_code == 0, as_ttl.output
     triples = {(t.subject.value, t.predicate.value, t.object.value)
                for t in parse(out.read_text("utf-8"), format=RdfFormat.TURTLE)}
-    assert (s.shard_iri, FI + "elaborates", h.shard_iri) in triples
+    assert (s.shard_iri, FI + "dependsOnShard", h.shard_iri) in triples
     assert (h.shard_iri, FI + "dependsOnAxiom", k6) in triples
 
     shallow = runner.invoke(cli, ["kernel", "chain", "c", s.shard_iri, "--max-depth", "1",

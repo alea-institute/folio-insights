@@ -1,6 +1,6 @@
 """Drain U3 (R11, AE4, KTD8) — derivedFromKernel traversal and chain export.
 
-AE4: a synthetic shard S elaborates a hypothesis H that depends on regula
+AE4: a synthetic shard S logically depends on a hypothesis H that depends on regula
 VI 5.12.6 ("Nemo potest ad impossibile obligari"); S's chain is the two-hop
 S -> H -> kernel 5.12.6 and exports as JSON and Turtle. The walk is
 breadth-first, cycle-safe, bounded, and reports when no kernel is reached.
@@ -61,7 +61,7 @@ def _shard(n: int, cls: type[ShardEnvelope] = SimpleAssertionShard, **fields) ->
 def _ae4_shards() -> tuple[ShardEnvelope, ShardEnvelope]:
     h = _shard(0xA1, HypothesisShard, epistemic_status="hypothesis",
                depends_on_axioms=[K6])
-    s = _shard(0xA2, elaborates=[h.shard_iri])
+    s = _shard(0xA2, depends_on_shards=[h.shard_iri])
     return h, s
 
 
@@ -88,7 +88,7 @@ async def test_ae4_two_hop_chain_through_storage(seeded: SeededCorpus) -> None:
     assert d.citation_uri == "urn:folio:kernel:liber-sextus:5.12.6"
     assert d.path == (s.shard_iri, h.shard_iri, K6)
     assert d.edges == (
-        DerivationEdge(s.shard_iri, h.shard_iri, "elaborates"),
+        DerivationEdge(s.shard_iri, h.shard_iri, "depends_on_shards"),
         DerivationEdge(h.shard_iri, K6, "depends_on_axioms"),
     )
     assert d.depth == 2
@@ -101,20 +101,20 @@ async def test_ae4_two_hop_chain_through_storage(seeded: SeededCorpus) -> None:
     assert entry["kernel_iri"] == K6 and entry["citation"] == "VI 5.12.6"
     assert entry["path"] == [s.shard_iri, h.shard_iri, K6]
     assert entry["edges"] == [
-        {"from": s.shard_iri, "to": h.shard_iri, "field": "elaborates"},
+        {"from": s.shard_iri, "to": h.shard_iri, "field": "depends_on_shards"},
         {"from": h.shard_iri, "to": K6, "field": "depends_on_axioms"},
     ]
     assert {n["iri"]: n["kernel"] for n in data["nodes"]} == {
         s.shard_iri: False, h.shard_iri: False, K6: True,
     }
     assert {(e["from"], e["predicate"]) for e in data["edges"]} == {
-        (s.shard_iri, FI_PREFIX + "elaborates"), (h.shard_iri, FI_PREFIX + "dependsOnAxiom"),
+        (s.shard_iri, FI_PREFIX + "dependsOnShard"), (h.shard_iri, FI_PREFIX + "dependsOnAxiom"),
     }
 
     ttl = chain_to_turtle(tree)
     triples = {(t.subject.value, t.predicate.value, t.object.value)
                for t in parse(ttl, format=RdfFormat.TURTLE)}
-    assert (s.shard_iri, FI_PREFIX + "elaborates", h.shard_iri) in triples
+    assert (s.shard_iri, FI_PREFIX + "dependsOnShard", h.shard_iri) in triples
     assert (h.shard_iri, FI_PREFIX + "dependsOnAxiom", K6) in triples
     assert (K6, RDF_TYPE.value, FI_PREFIX + "CommonAxiom") in triples
     assert (K6, FI_PREFIX + "reference", "VI 5.12.6") in triples
@@ -128,7 +128,7 @@ async def test_ae4_two_hop_chain_through_storage(seeded: SeededCorpus) -> None:
 
 async def test_planted_cycle_terminates_and_still_finds_the_kernel() -> None:
     a = _shard(1, depends_on_shards=[_iri(2)])
-    b = _shard(2, depends_on_shards=[_iri(1)], elaborates=[_iri(3)])
+    b = _shard(2, depends_on_shards=[_iri(1), _iri(3)])
     c = _shard(3, depends_on_shards=[_iri(2)], depends_on_axioms=[K6])
     tree = await derivation_tree(_store(a, b, c), a.shard_iri)
     assert [d.kernel_iri for d in tree.derivations] == [K6]
@@ -137,8 +137,8 @@ async def test_planted_cycle_terminates_and_still_finds_the_kernel() -> None:
 
 
 async def test_pure_cycle_reports_no_kernel() -> None:
-    a = _shard(1, elaborates=[_iri(2)])
-    b = _shard(2, elaborates=[_iri(1)])
+    a = _shard(1, depends_on_shards=[_iri(2)])
+    b = _shard(2, depends_on_shards=[_iri(1)])
     tree = await derivation_tree(_store(a, b), a.shard_iri)
     assert tree.derivations == () and not tree.kernel_reached and not tree.truncated
     assert json.loads(chain_to_json(tree))["derivedFromKernel"] == []
@@ -162,15 +162,15 @@ async def test_a_shard_reaching_no_kernel_reports_none() -> None:
 
 async def test_shortest_path_wins_and_ties_break_by_field_order() -> None:
     h = _shard(1, depends_on_axioms=[K6])
-    s = _shard(2, elaborates=[h.shard_iri], depends_on_axioms=[K6, K79],
+    s = _shard(2, depends_on_definitions=[h.shard_iri], depends_on_axioms=[K6, K79],
                depends_on_shards=[h.shard_iri])
     tree = await derivation_tree(_store(h, s), s.shard_iri)
     assert [(d.kernel_iri, d.path) for d in tree.derivations] == [
         (K6, (s.shard_iri, K6)), (K79, (s.shard_iri, K79)),
     ]
-    # h is reached first through ``elaborates`` (the first field), not depends_on_shards
+    # Definition dependencies win ties over shard dependencies.
     h_edge = [e for e in tree.edges_walked if e.target == h.shard_iri][0]
-    assert h_edge.field == "elaborates"
+    assert h_edge.field == "depends_on_definitions"
 
 
 async def test_every_dependency_field_is_walked_and_labelled() -> None:
@@ -190,8 +190,8 @@ async def test_every_dependency_field_is_walked_and_labelled() -> None:
 
 
 async def test_max_depth_bounds_the_walk_and_reports_truncation() -> None:
-    a = _shard(1, elaborates=[_iri(2)])
-    b = _shard(2, elaborates=[_iri(3)])
+    a = _shard(1, depends_on_shards=[_iri(2)])
+    b = _shard(2, depends_on_shards=[_iri(3)])
     c = _shard(3, depends_on_axioms=[K6])
     store = _store(a, b, c)
     assert (await derivation_tree(store, a.shard_iri, max_depth=3)).kernel_reached
@@ -207,15 +207,15 @@ async def test_depth_limit_on_an_already_visited_node_is_not_truncation() -> Non
     """R -> {B, C}, B -> C: at max_depth=1 the walk reached every node, so nothing was
     cut off; only a genuinely unvisited node beyond the limit makes it truncated."""
     c = _shard(3)
-    b = _shard(2, elaborates=[c.shard_iri])
-    r = _shard(1, elaborates=[b.shard_iri, c.shard_iri])
+    b = _shard(2, depends_on_shards=[c.shard_iri])
+    r = _shard(1, depends_on_shards=[b.shard_iri, c.shard_iri])
     exhaustive = await derivation_tree(_store(r, b, c), r.shard_iri, max_depth=1)
     assert sorted(exhaustive.visited) == sorted([r.shard_iri, b.shard_iri, c.shard_iri])
     assert exhaustive.truncated is False
     assert json.loads(chain_to_json(exhaustive))["truncated"] is False
     # Give C an unvisited dependency: now max_depth=1 really cuts it off.
     d = _shard(4)
-    b2 = _shard(2, elaborates=[c.shard_iri, d.shard_iri])
+    b2 = _shard(2, depends_on_shards=[c.shard_iri, d.shard_iri])
     cut = await derivation_tree(_store(r, b2, c, d), r.shard_iri, max_depth=1)
     assert cut.truncated is True and d.shard_iri not in cut.visited
 
@@ -269,3 +269,10 @@ def test_edge_predicates_match_the_projection_and_the_vocabulary() -> None:
         assert f"fi:{term} a owl:" in declared, term
     assert "fi:derivedFromKernel a" not in declared  # the JSON-only view, by design
 
+
+
+async def test_historical_elaborates_is_not_a_derivation_dependency() -> None:
+    legacy = _shard(1, elaborates=[K6])
+    tree = await derivation_tree(_store(legacy), legacy.shard_iri)
+    assert tree.visited == (legacy.shard_iri,)
+    assert tree.edges_walked == () and not tree.kernel_reached
