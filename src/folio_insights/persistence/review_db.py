@@ -50,6 +50,65 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+ANNOTATION_SCHEMA_STATEMENTS = (
+    """CREATE TABLE IF NOT EXISTS annotations (
+        annotation_id TEXT PRIMARY KEY,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        source_id TEXT NOT NULL,
+        source_sha256 TEXT NOT NULL,
+        genre TEXT NOT NULL,
+        run_id TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        tag_id TEXT,
+        partition TEXT NOT NULL CHECK (partition IN
+            ('tuning', 'evaluation-candidate', 'held-out', 'retired')),
+        split_id TEXT,
+        author_kind TEXT NOT NULL CHECK (author_kind IN ('judge', 'human')),
+        author_identity TEXT NOT NULL,
+        action TEXT NOT NULL,
+        verdict TEXT NOT NULL CHECK (verdict IN ('correct', 'wrong', 'uncertain')),
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        supersedes_annotation_id TEXT UNIQUE REFERENCES annotations(annotation_id),
+        span_start INTEGER,
+        span_end INTEGER,
+        CHECK (partition NOT IN ('held-out', 'retired') OR split_id IS NOT NULL)
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_annotation_target ON annotations(run_id, item_id, tag_id)",
+    """CREATE TABLE IF NOT EXISTS annotation_split_retirements (
+        split_id TEXT PRIMARY KEY,
+        author_kind TEXT NOT NULL CHECK (author_kind = 'human'),
+        author_identity TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE IF NOT EXISTS anchor_verifications (
+        verification_id TEXT PRIMARY KEY,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        genre TEXT NOT NULL,
+        anchor_set_id TEXT NOT NULL,
+        anchor_sha256 TEXT NOT NULL,
+        gold_revision TEXT NOT NULL,
+        annotation_ids TEXT NOT NULL,
+        author_kind TEXT NOT NULL CHECK (author_kind = 'human'),
+        author_identity TEXT NOT NULL CHECK (author_identity = 'damien'),
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""",
+    """CREATE VIEW IF NOT EXISTS tag_verdicts AS
+        SELECT a.* FROM annotations AS a
+        WHERE a.tag_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM annotations AS newer
+            WHERE newer.supersedes_annotation_id = a.annotation_id
+        )""",
+    *(f"""CREATE TRIGGER IF NOT EXISTS {table}_no_{operation.lower()}
+        BEFORE {operation} ON {table}
+        BEGIN SELECT RAISE(ABORT, '{table} is append-only'); END"""
+      for table in ("annotations", "annotation_split_retirements", "anchor_verifications")
+      for operation in ("UPDATE", "DELETE")),
+)
+ANNOTATION_SCHEMA_SQL = ";\n".join(ANNOTATION_SCHEMA_STATEMENTS) + ";\n"
+
 SCHEMA_SQL = """\
 CREATE TABLE IF NOT EXISTS review_decisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,7 +219,27 @@ CREATE INDEX IF NOT EXISTS idx_tul_unit ON task_unit_links(unit_id);
 CREATE INDEX IF NOT EXISTS idx_contradiction_task ON contradictions(task_id);
 CREATE INDEX IF NOT EXISTS idx_iri_entity ON iri_registry(entity_id);
 CREATE INDEX IF NOT EXISTS idx_iri_iri ON iri_registry(iri);
-"""
+""" + ANNOTATION_SCHEMA_SQL
+
+
+async def ensure_annotation_schema(db: Any) -> None:
+    """Add annotation storage on write, without touching legacy decision rows.
+
+    Serialize concurrent migrations and honor a caller's existing transaction.
+    Reads never call this; use execute rather than executescript to retain atomicity.
+    """
+    owns_transaction = not getattr(db, "in_transaction", False)
+    if owns_transaction:
+        await db.execute("BEGIN IMMEDIATE")
+    try:
+        for statement in ANNOTATION_SCHEMA_STATEMENTS:
+            await db.execute(statement)
+        if owns_transaction:
+            await db.commit()
+    except BaseException:
+        if owns_transaction and getattr(db, "in_transaction", False):
+            await db.rollback()
+        raise
 
 
 async def persist_discovery(db_path: Path, corpus_name: str, job: Any) -> None:
@@ -483,6 +562,7 @@ def read_legacy_proposed_class_rows(db_path: Path) -> list[dict[str, Any]]:
 
 
 __all__ = [
+    "ANNOTATION_SCHEMA_SQL",
     "DECISION_NONCES_SQL",
     "DECISION_SIGNATURE_COLUMNS",
     "DECISION_TABLES",
@@ -495,6 +575,7 @@ __all__ = [
     "decision_signature_columns",
     "present_signature_columns",
     "ensure_decision_signature_schema",
+    "ensure_annotation_schema",
     "persist_discovery",
     "read_legacy_proposed_class_rows",
     "seal_legacy_proposed_class_table",
