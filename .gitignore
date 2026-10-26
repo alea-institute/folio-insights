@@ -65,3 +65,6 @@ data/governance/folio_lexicon_cache.json
 
 # Harness-managed agent worktrees are never tracked
 .claude/worktrees/
+
+# Codex worker reports (orchestrator scratch, never tracked)
+.worker-report*.md
