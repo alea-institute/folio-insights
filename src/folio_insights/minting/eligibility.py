@@ -73,6 +73,8 @@ from folio_insights.minting.support import (
 from folio_insights.models.knowledge_unit import ConceptTag, KnowledgeType, KnowledgeUnit
 from folio_insights.services.anchoring import MIN_ANCHOR_SCORE, resolve_anchor
 from folio_insights.services.substance import is_substantive
+from folio_insights.shards.envelope import AtomicIdentity
+from folio_insights.shards.minting import atomic_proposition_key
 
 if TYPE_CHECKING:
     from folio_insights.rubric.oracle import IriOracle
@@ -136,10 +138,11 @@ B9_PATHS: frozenset[str] = frozenset({"llm", "semantic", "heading_context"})
 VERIFIED_PATHS: frozenset[str] = frozenset({RULER_PATH}) | B9_PATHS
 
 #: Unit types the SimpleAssertion mapping covers (``minting.mapper.PREDICATE_BY_UNIT_TYPE``).
-#: Citations and procedural rules wait on subtype routing (Phase 10 U17 Open Question 1).
+#: Legacy routing remains unchanged until atomic minting passes its live gate.
 SUPPORTED_UNIT_TYPES: frozenset[KnowledgeType] = frozenset(
     {KnowledgeType.ADVICE, KnowledgeType.PRINCIPLE, KnowledgeType.PITFALL}
 )
+ATOMIC_UNIT_TYPES = SUPPORTED_UNIT_TYPES | {KnowledgeType.RULE, KnowledgeType.CITATION}
 
 #: (stage, action) lineage events written as the direct result of an LLM call. Each must
 #: carry its template identity (U1, KTD2) for the unit's prompt hash to be real.
@@ -207,6 +210,8 @@ class Eligible:
     anchor score in [0.85, 1.0], recomputed from the source. ``tags`` are the
     IRI-carrying tags the minter may use, most confident first. ``support`` is how
     well the verified slice supports the unit text (``minting.support``).
+    ``atomic_identity`` is populated only by the explicit atomic route, after
+    exact offsets and the source snapshot digest have been independently checked.
     """
 
     verified_span: str
@@ -217,6 +222,7 @@ class Eligible:
     source_sha256: str
     tags: tuple[ConceptTag, ...]
     support: SupportResult | None = None
+    atomic_identity: AtomicIdentity | None = None
 
     @property
     def top_tag(self) -> ConceptTag:
@@ -262,15 +268,20 @@ def _span_key(source: str, span: str) -> str:
     return f"{source}\n{folded}"
 
 
-def iri_tags(unit: KnowledgeUnit) -> tuple[ConceptTag, ...]:
-    """The unit's IRI-carrying tags, most confident first (ties by IRI), one per IRI."""
-    best: dict[str, ConceptTag] = {}
-    for tag in unit.folio_tags:
+def iri_tags(unit: KnowledgeUnit, *, atomic: bool = False) -> tuple[ConceptTag, ...]:
+    """IRI-carrying tags, confidence first; atomic records retain each claimed branch."""
+    best: dict[tuple[str, str], ConceptTag] = {}
+    tags = unit.folio_tags
+    if atomic:
+        tags = sorted(tags, key=lambda t: (
+            -t.confidence, t.iri, t.branch, t.extraction_path, t.label, t.judge_status or ""))
+    for tag in tags:
         if not tag.iri:
             continue
-        held = best.get(tag.iri)
+        key = (tag.iri, tag.branch if atomic else "")
+        held = best.get(key)
         if held is None or tag.confidence > held.confidence:
-            best[tag.iri] = tag
+            best[key] = tag
     return tuple(sorted(best.values(), key=lambda t: (-t.confidence, t.iri)))
 
 
@@ -290,8 +301,8 @@ def _metadata(unit: KnowledgeUnit) -> Reason | None:
     return None
 
 
-def _unit_type(unit: KnowledgeUnit) -> Reason | None:
-    if unit.unit_type in SUPPORTED_UNIT_TYPES:
+def _unit_type(unit: KnowledgeUnit, *, atomic: bool = False) -> Reason | None:
+    if unit.unit_type in (ATOMIC_UNIT_TYPES if atomic else SUPPORTED_UNIT_TYPES):
         return None
     return Reason(UNIT_TYPE_UNSUPPORTED,
                   f"unit type {unit.unit_type.value!r} has no SimpleAssertion mapping yet "
@@ -456,6 +467,21 @@ def _verify_anchor(
     return (found.start, found.end), assessment.route, found.score
 
 
+def _verify_atomic_anchor(
+    unit: KnowledgeUnit, source: str, raw_has_stored: bool,
+) -> tuple[tuple[int, int], str, float] | Reason:
+    if raw_has_stored:
+        veto = _stored_veto(unit)
+        if veto is not None:
+            return veto
+    if unit.provenance is None or not unit.is_grounded(
+        source, source_snapshot_id=unit.provenance.source_snapshot_id,
+    ):
+        return Reason(ANCHOR_UNVERIFIED, "atomic offsets, source snapshot and verbatim "
+                                        "slice must independently match the source file")
+    return (unit.original_span.start, unit.original_span.end), "span", 1.0
+
+
 def evaluate(
     unit: KnowledgeUnit,
     source_text_resolver: SourceTextResolver,
@@ -465,6 +491,7 @@ def evaluate(
     stored_anchor: bool = True,
     oracle: IriOracle | None = None,
     support: SupportPolicy | None = None,
+    atomic: bool = False,
 ) -> Outcome:
     """Decide whether ``unit`` may be minted (module docstring).
 
@@ -474,14 +501,14 @@ def evaluate(
     refuse a unit (``_stored_veto``), never accept one. ``oracle`` checks every
     carried IRI's existence and branch; ``support`` is the claim-support policy
     (default ``SupportPolicy()``; its NLI scorer, when requested, must already be
-    resolved).
+    resolved). ``atomic`` opts into schema-3 identity, full-tag mapping and rule/citation
+    routing; the live minter keeps its legacy behavior until U40 integration and gating.
     """
     run = run or RunEvidence()
     support = support or SupportPolicy()
     reasons: list[Reason] = []
 
-    for check in (_metadata, _unit_type):
-        reason = check(unit)
+    for reason in (_metadata(unit), _unit_type(unit, atomic=atomic)):
         if reason is not None:
             reasons.append(reason)
     reasons.extend(_iri_checks(unit, run))
@@ -497,7 +524,8 @@ def evaluate(
         reasons.append(Reason(SOURCE_UNAVAILABLE,
                               f"source {key!r} could not be read ({error or 'unknown'})"))
     else:
-        anchored = _verify_anchor(unit, text, stored_anchor)
+        verify = _verify_atomic_anchor if atomic else _verify_anchor
+        anchored = verify(unit, text, stored_anchor)
         if isinstance(anchored, Reason):
             reasons.append(anchored)
         else:
@@ -517,12 +545,24 @@ def evaluate(
         reasons.extend(Reason(code, detail) for code, detail in measured.failures())
 
     keys: list[str] = []
-    if span_text is not None:
-        keys.append("span:" + _span_key(key, span_text))
-    keys.append("hash:" + (unit.content_hash or hashlib.sha256(unit.text.encode()).hexdigest()))
+    identity = None
+    if atomic:
+        if verified is not None and text is not None and unit.text.strip():
+            identity = AtomicIdentity(
+                text=unit.text, start=verified[0][0], end=verified[0][1],
+                source_snapshot_digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            )
+            keys.append("atomic-v1:" + hashlib.sha256(key.encode("utf-8")).hexdigest()
+                        + ":" + atomic_proposition_key(**identity.model_dump()))
+    else:
+        if span_text is not None:
+            keys.append("span:" + _span_key(key, span_text))
+        keys.append("hash:" + (unit.content_hash or hashlib.sha256(unit.text.encode()).hexdigest()))
     if seen is not None and any(k in seen for k in keys):
-        reasons.append(Reason(DUPLICATE_IN_RUN, "an earlier unit of this run already mints the "
-                                                "same source passage or content"))
+        reasons.append(Reason(DUPLICATE_IN_RUN,
+                              "an earlier unit of this run already mints the same atomic "
+                              "occurrence" if atomic else "an earlier unit of this run already "
+                              "mints the same source passage or content"))
 
     if reasons:
         return Refused.of(reasons, support=measured)
@@ -537,13 +577,15 @@ def evaluate(
         match=round(float(match), 6),
         source_key=key,
         source_sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(),
-        tags=iri_tags(unit),
+        tags=iri_tags(unit, atomic=atomic),
         support=measured,
+        atomic_identity=identity,
     )
 
 
 __all__ = [
     "ANCHOR_UNVERIFIED",
+    "ATOMIC_UNIT_TYPES",
     "B9_PATHS",
     "BFO_UNCLASSIFIABLE",
     "CLAIM_NOT_ENTAILED",
