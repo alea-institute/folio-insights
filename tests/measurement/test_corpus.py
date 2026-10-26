@@ -429,3 +429,88 @@ def test_plan_verification_command_resolves_default_cell_directory(tmp_path, acq
     result = CliRunner().invoke(cli, ["corpus", "verify", "--jurisdiction", "federal",
                                      "--genre", "opinions", "--require-documents", "8"])
     assert result.exit_code == 0, result.output
+
+
+@pytest.mark.parametrize("auth_style", ["none", "bearer", "token", "query-key"])
+def test_source_query_survives_fetch_without_persisting_auth(tmp_path, acquisition, monkeypatch, auth_style):
+    server, fetcher, _ = acquisition
+    data = policy().model_dump(mode="json")
+    if auth_style != "none":
+        data["sources"][0].update(auth_env="COURT_FIXTURE_TOKEN", auth_style=auth_style)
+    monkeypatch.setenv("COURT_FIXTURE_TOKEN", "fixture credential&+")
+    item = requests()[0].model_copy(update={
+        "url": requests()[0].url + "?version=2026&part=5&part=6&label=a%20b&empty="})
+    manifest = collect([item], AcquisitionPolicy.model_validate(data), tmp_path, fetcher)
+    assert len(manifest.documents) == 1
+    expected_url = item.url
+    if auth_style == "query-key":
+        expected_url += "&key=fixture+credential%26%2B"
+    assert str(server.calls[0].url) == expected_url
+    assert manifest.documents[0].request.url == item.url
+    serialized = (tmp_path / "manifest.json").read_text()
+    assert item.url in serialized
+    assert "fixture credential" not in serialized and "key=" not in serialized
+
+
+@pytest.mark.parametrize("suffix", ["", "\r\nTrailing material outside the selection."])
+def test_tuning_export_preserves_crlf_bytes_and_selection_digest(tmp_path, suffix):
+    prefix = "🦉 Préface.\r\n"
+    selected = {i: text(i).replace(". ", ".\r\n") for i in range(8)}
+    items = [item.model_copy(update={
+        "extraction_method": "utf8-v1", "selector": None,
+        "span": item.span.model_copy(update={"start": len(prefix),
+                                             "end": len(prefix) + len(selected[i])}),
+    }) for i, item in enumerate(requests())]
+
+    def serve(request):
+        i = int(request.url.path.rsplit("/", 1)[1])
+        return httpx.Response(200, content=(prefix + selected[i] + suffix).encode("utf-8"))
+
+    root, tuning = tmp_path / "evaluator", tmp_path / "tuning"
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        manifest = collect(items, policy(), root,
+                           HttpFetcher(client, user_agent="Fixture contact", sleep=lambda _: None))
+    assert verify(manifest, root).complete
+    seal(manifest, root, tuning)
+    payload = json.loads((tuning / "manifest.json").read_bytes())
+    for doc in payload["documents"]:
+        i = int(doc["request"]["document_id"].rsplit("-", 1)[1])
+        exported = (tuning / "text" / f"{doc['text_sha256']}.txt").read_bytes()
+        assert exported == selected[i].encode("utf-8")
+        assert digest(exported) == doc["text_sha256"] == doc["span_sha256"]
+        assert doc["origin_span"] == {"start": len(prefix), "end": len(prefix) + len(selected[i])}
+        assert doc["request"]["span"] == {"start": 0, "end": len(selected[i])}
+
+
+@pytest.mark.parametrize("raw", [b"[]", b"null", b'"scalar"', b"42", b"true"])
+@pytest.mark.parametrize("phase", ["collect", "verify"])
+def test_non_object_json_is_a_document_gap(tmp_path, raw, phase):
+    items = [item.model_copy(update={"extraction_method": "json-field-v1", "selector": "plain_text"})
+             for item in requests()]
+    calls = []
+
+    def serve(request):
+        calls.append(request)
+        i = int(request.url.path.rsplit("/", 1)[1])
+        body = raw if phase == "collect" and i == 0 else json.dumps({"plain_text": text(i)}).encode()
+        return httpx.Response(200, content=body)
+
+    with httpx.Client(transport=httpx.MockTransport(serve)) as client:
+        manifest = collect(items, policy(), tmp_path,
+                           HttpFetcher(client, user_agent="Fixture contact", sleep=lambda _: None))
+    assert len(calls) == 8
+    if phase == "collect":
+        assert len(manifest.documents) == 7
+        assert len(manifest.gaps) == 1
+        assert manifest.gaps[0].document_id == "doc-0"
+        assert manifest.gaps[0].reason == "JSON response is not an object"
+    else:
+        assert verify(manifest, tmp_path).complete
+        # Keep the raw digest valid so verification reaches extraction of the recorded fixture.
+        (tmp_path / "raw" / f"{digest(raw)}.bin").write_bytes(raw)
+        doc = manifest.documents[0].model_copy(update={"raw_sha256": digest(raw)})
+        manifest = manifest.model_copy(update={"documents": (doc, *manifest.documents[1:])})
+    result = verify(manifest, tmp_path)
+    assert not result.complete
+    assert "doc-0: JSON response is not an object" in result.errors
+    assert not any(error.startswith("doc-1:") for error in result.errors)

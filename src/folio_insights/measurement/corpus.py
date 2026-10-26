@@ -232,6 +232,8 @@ def normalize(raw: bytes, request: DocumentRequest) -> str:
         return raw.decode("utf-8")
     if method == "json-field-v1":
         value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise CorpusError("JSON response is not an object")
         # Deliberately select one API field, never silently select an alternative.
         value = value[request.selector]
         if not isinstance(value, str):
@@ -278,13 +280,14 @@ class HttpFetcher:
     def fetch(self, request: DocumentRequest, source: SourcePolicy, max_bytes: int) -> bytes:
         _source_check(request, source)
         headers = {"User-Agent": self.user_agent}
-        params = {}
+        url = httpx.URL(request.url)
         if source.auth_env:
             token = os.environ.get(source.auth_env)
             if not token:
                 raise CorpusError("required source authentication is unavailable")
             if source.auth_style == "query-key":
-                params["key"] = token
+                auth_query = str(httpx.QueryParams({"key": token})).encode("ascii")
+                url = url.copy_with(query=url.query + (b"&" if url.query else b"") + auth_query)
             else:
                 prefix = "Token" if source.auth_style == "token" else "Bearer"
                 headers["Authorization"] = f"{prefix} {token}"
@@ -302,7 +305,7 @@ class HttpFetcher:
             self.sleep(ready - now)
         history.append(self.clock())
         try:
-            with self.client.stream("GET", request.url, headers=headers, params=params,
+            with self.client.stream("GET", url, headers=headers,
                                     follow_redirects=False, timeout=30) as response:
                 if response.status_code == 429:
                     retry = response.headers.get("Retry-After", "60")
@@ -521,9 +524,12 @@ def seal(manifest: CorpusManifest, root: Path, tuning_output: Path) -> str:
     for doc in manifest.documents:
         if doc.partition != "tuning":
             continue
-        canonical = (root / "text" / f"{doc.normalized_sha256}.txt").read_text(encoding="utf-8")
+        canonical = (root / "text" / f"{doc.normalized_sha256}.txt").read_bytes().decode("utf-8")
         selected = doc.request.span.source_slice(canonical)
-        _store(tuning_output, "text", doc.span_sha256, "txt", selected.encode("utf-8"))
+        selected_bytes = selected.encode("utf-8")
+        if sha256(selected_bytes) != doc.span_sha256:
+            raise CorpusError("exported selection does not match recorded grounding digest")
+        _store(tuning_output, "text", doc.span_sha256, "txt", selected_bytes)
         # Raw files, held-out records and judge rationales never enter this payload.
         record = doc.model_dump(mode="json", exclude={"judge_rationale"})
         # The evaluator policy may list exact held-out document URLs. Narrow it
