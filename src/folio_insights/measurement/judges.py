@@ -30,6 +30,7 @@ from folio_insights.measurement.schema import (
     JudgeIdentity,
     MeasurementModel,
     Nonempty,
+    Sha256,
     SourceSnapshot,
     SupportingSpan,
 )
@@ -167,10 +168,34 @@ class JudgeResult(MeasurementModel):
     identity: JudgeIdentity
     input_sha256: Nonempty
     prompt_sha256: Nonempty
+    isolation: tuple[Nonempty, ...]
+    judge_identity_sha256: Sha256 | None = None
     judgments: tuple[JudgeVerdict, ...] = ()
     missing_item_ids: tuple[str, ...] = ()
     unresolved_concept_ids: tuple[str, ...] = ()
     error: str | None = None
+
+    @model_validator(mode="after")
+    def bind_identity_hash(self):
+        digest = _digest(
+            json.dumps(
+                {
+                    "provider": self.provider,
+                    "identity": self.identity.model_dump(mode="json"),
+                    "isolation": list(self.isolation),
+                },
+                sort_keys=True,
+            )
+        )
+        if (
+            self.judge_identity_sha256 is not None
+            and self.judge_identity_sha256 != digest
+        ):
+            raise ValueError(
+                "judge identity hash does not match the recorded isolation"
+            )
+        object.__setattr__(self, "judge_identity_sha256", digest)
+        return self
 
 
 class JudgePort(Protocol):
@@ -211,6 +236,7 @@ class _CLIUnavailable(Exception):
 class _SubscriptionJudge:
     provider: Literal["codex", "claude"]
     required_flags: tuple[str, ...]
+    isolation: tuple[str, ...]
 
     def __init__(
         self, *, model: str, executable: str | None = None, timeout: float = 120
@@ -358,19 +384,20 @@ class _SubscriptionJudge:
     def judge(
         self, packet: JudgePacket, *, cancelled: threading.Event | None = None
     ) -> JudgeResult:
-        prompt = render_prompt(packet.model_dump(mode="json"))
+        prompt = render_prompt(packet.model_dump(mode="json"), isolation=self.isolation)
         version = "unavailable"
         missing = tuple(i.item_id for i in packet.items)
         result = dict(
             provider=self.provider,
             input_sha256=packet.sha256,
             prompt_sha256=_digest(prompt),
+            isolation=self.isolation,
         )
         try:
             if cancelled is not None and cancelled.is_set():
                 raise _CLIUnavailable("cancelled")
             with tempfile.TemporaryDirectory(prefix="folio-judge-") as cwd:
-                env = _subscription_env()
+                env = self._environment(Path(cwd))
                 version = self._probe(cwd, env, cancelled)
                 self._require_subscription(cwd, env, cancelled)
                 if not packet.items:
@@ -445,6 +472,9 @@ class _SubscriptionJudge:
             else None,
         )
 
+    def _environment(self, cwd: Path) -> dict[str, str]:
+        return _subscription_env()
+
     def _arguments(self, cwd: Path) -> list[str]:
         raise NotImplementedError
 
@@ -454,6 +484,37 @@ class _SubscriptionJudge:
 
 class CodexJudge(_SubscriptionJudge):
     provider = "codex"
+    isolation = (
+        "codex-auth-symlink-only-v1",
+        "temporary-home-and-cwd-v1",
+        "project_doc_max_bytes=0",
+        "cli_auth_credentials_store=file",
+        "ignore-user-config-and-rules",
+        "read-only-ephemeral-no-tools",
+    )
+
+    def _environment(self, cwd: Path) -> dict[str, str]:
+        env = _subscription_env()
+        # Locate auth by path only: never read or copy credential contents. All
+        # probes and the model share this per-run home; TemporaryDirectory owns
+        # cleanup even on refused authentication, cancellation or invalid output.
+        real_home = Path(env.get("HOME", str(Path.home())))
+        auth_home = (
+            Path(env.get("CODEX_HOME", str(real_home / ".codex")))
+            .expanduser()
+            .absolute()
+        )
+        isolated = cwd / "codex-home"
+        isolated.mkdir()
+        (isolated / "auth.json").symlink_to(auth_home / "auth.json")
+        home = cwd / "home"
+        home.mkdir()
+        env["HOME"] = str(home)
+        env["CODEX_HOME"] = str(isolated)
+        for name in ("CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME"):
+            env.pop(name, None)
+        return env
+
     required_flags = (
         "--model",
         "--sandbox",
@@ -489,6 +550,10 @@ class CodexJudge(_SubscriptionJudge):
             "apply_patch_freeform",
             "--config",
             'web_search="disabled"',
+            "--config",
+            "project_doc_max_bytes=0",
+            "--config",
+            'cli_auth_credentials_store="file"',
             "--output-schema",
             str(schema),
             "--output-last-message",
@@ -502,6 +567,12 @@ class CodexJudge(_SubscriptionJudge):
 
 class ClaudeJudge(_SubscriptionJudge):
     provider = "claude"
+    isolation = (
+        "safe-mode-no-claude-md",
+        "autoMemoryEnabled=false",
+        "temporary-cwd-v1",
+        "no-settings-sources-hooks-skills-mcp-tools-or-session",
+    )
     required_flags = (
         "-p",
         "--model",
@@ -538,7 +609,7 @@ class ClaudeJudge(_SubscriptionJudge):
             "--setting-sources",
             "",
             "--settings",
-            '{"disableAllHooks":true}',
+            '{"disableAllHooks":true,"autoMemoryEnabled":false}',
             "--disable-slash-commands",
             "--permission-mode",
             "dontAsk",
@@ -660,6 +731,26 @@ def adjudication_items(
     return tuple(queue)
 
 
+class AnchorRevision(JudgeModel):
+    """Evaluator-owned manifest frozen BEFORE human verification.
+
+    Persist this canonical manifest's sha256 as AnchorVerification.anchor_sha256.
+    Hash each complete JudgeItem as sorted, ensure_ascii=False JSON (the same
+    encoding as JudgePacket.sha256). Callers must load the verified manifest,
+    never regenerate it from the items being evaluated after verification.
+    """
+
+    anchor_set_id: Nonempty
+    gold_revision: Nonempty
+    item_sha256: dict[Nonempty, Sha256]
+
+    @property
+    def sha256(self) -> str:
+        return _digest(
+            json.dumps(self.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
+        )
+
+
 class AnchorAccuracy(MeasurementModel):
     provider: Literal["codex", "claude"]
     genre: Genre | None
@@ -669,6 +760,7 @@ class AnchorAccuracy(MeasurementModel):
     denominator: int
     evaluated: int
     accuracy: float | None
+    reason: str | None = None
 
 
 def anchor_accuracy(
@@ -677,20 +769,45 @@ def anchor_accuracy(
     labels: tuple[Annotation, ...],
     *,
     verification: AnchorVerification | None,
+    anchor: AnchorRevision | None = None,
+    gold_revision: str | None = None,
 ) -> AnchorAccuracy:
+    """Compare labels only against their frozen manifest and current run revision.
+
+    gold_revision comes from trusted evaluation inputs, independently of anchor.
+    Legacy callers without a verified manifest/revision remain unanchored.
+    """
     if result.input_sha256 != packet.sha256:
         raise ValueError("judge result does not belong to the anchor packet")
-    if verification is None:
+
+    def unanchored(reason: str) -> AnchorAccuracy:
         return AnchorAccuracy(
             provider=result.provider,
-            genre=None,
+            genre=verification.genre if verification else None,
             label="judge agreement, unanchored",
             verification_id=None,
             correct=0,
             denominator=0,
             evaluated=0,
             accuracy=None,
+            reason=reason,
         )
+
+    if verification is None:
+        return unanchored("missing-anchor-verification")
+    if anchor is None:
+        return unanchored("missing-anchor-revision")
+    if gold_revision is None:
+        return unanchored("missing-gold-revision")
+    if anchor.anchor_set_id != verification.anchor_set_id:
+        return unanchored("anchor-set-mismatch")
+    if anchor.sha256 != verification.anchor_sha256:
+        return unanchored("anchor-sha256-mismatch")
+    if (
+        gold_revision != verification.gold_revision
+        or anchor.gold_revision != gold_revision
+    ):
+        return unanchored("gold-revision-mismatch")
     by_id = {a.annotation_id: a for a in labels}
     if len(by_id) != len(labels) or len(set(verification.annotation_ids)) != len(
         verification.annotation_ids
@@ -711,7 +828,16 @@ def anchor_accuracy(
             or a.item_id not in items
             or items[a.item_id].source_id != a.source_id
         ):
-            raise ValueError("anchor labels do not match the source/genre/item context")
+            return unanchored("anchor-source-genre-item-mismatch")
+        item_sha256 = _digest(
+            json.dumps(
+                items[a.item_id].model_dump(mode="json"),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        if anchor.item_sha256.get(a.item_id) != item_sha256:
+            return unanchored("anchor-item-content-mismatch")
         chosen.append(a)
     if len({a.item_id for a in chosen}) != len(chosen):
         raise ValueError("anchor requires one human label per item")

@@ -704,9 +704,27 @@ def test_packet_and_model_output_contracts_are_closed_and_offset_grounded():
     assert schema["$defs"]["JudgeVerdict"]["additionalProperties"] is False
 
 
+def anchor_revision(data):
+    from folio_insights.measurement.judges import AnchorRevision
+
+    return AnchorRevision(
+        anchor_set_id="anchor-1",
+        gold_revision="gold-v1",
+        item_sha256={
+            i.item_id: hashlib.sha256(
+                json.dumps(
+                    i.model_dump(mode="json"), ensure_ascii=False, sort_keys=True
+                ).encode()
+            ).hexdigest()
+            for i in data.items
+        },
+    )
+
+
 def test_anchor_accuracy_needs_damien_verification_and_reports_denominators(fake_cli):
     data = packet(2)
     fake_cli(data)
+    revision = anchor_revision(data)
     result = CodexJudge(model="recorded-model").judge(data)
     labels = tuple(
         Annotation(
@@ -734,7 +752,7 @@ def test_anchor_accuracy_needs_damien_verification_and_reports_denominators(fake
         idempotency_key="anchor-key",
         genre="opinions",
         anchor_set_id="anchor-1",
-        anchor_sha256="a" * 64,
+        anchor_sha256=revision.sha256,
         gold_revision="gold-v1",
         annotation_ids=("a0", "a1"),
         reason="Verified.",
@@ -743,7 +761,14 @@ def test_anchor_accuracy_needs_damien_verification_and_reports_denominators(fake
         author_identity="damien",
         created_at="2026-10-26T12:00:00Z",
     )
-    anchored = anchor_accuracy(data, result, labels, verification=verification)
+    anchored = anchor_accuracy(
+        data,
+        result,
+        labels,
+        verification=verification,
+        anchor=revision,
+        gold_revision="gold-v1",
+    )
     assert anchored.label == "human-anchored"
     assert (anchored.correct, anchored.denominator, anchored.evaluated) == (1, 2, 2)
     assert anchored.accuracy == 0.5 and anchored.verification_id == "v1"
@@ -752,6 +777,8 @@ def test_anchor_accuracy_needs_damien_verification_and_reports_denominators(fake
         result.model_copy(update={"judgments": result.judgments[:1]}),
         labels,
         verification=verification,
+        anchor=revision,
+        gold_revision="gold-v1",
     )
     assert incomplete.denominator == 2 and incomplete.evaluated == 1
     assert incomplete.accuracy is None
@@ -759,7 +786,14 @@ def test_anchor_accuracy_needs_damien_verification_and_reports_denominators(fake
         update={"author_kind": "judge", "author_identity": "codex"}
     )
     with pytest.raises(ValueError, match="human"):
-        anchor_accuracy(data, result, (forged, labels[1]), verification=verification)
+        anchor_accuracy(
+            data,
+            result,
+            (forged, labels[1]),
+            verification=verification,
+            anchor=revision,
+            gold_revision="gold-v1",
+        )
 
 
 @pytest.mark.parametrize(
@@ -834,3 +868,166 @@ def test_sampled_coverage_item_retains_all_prediction_context_for_its_source():
     assert subset.predictions == data.predictions
     assert len(subset.predictions) == 10
     assert "judgments" not in subset.model_dump_json()
+
+
+@pytest.mark.parametrize(
+    "adapter,provider", [(CodexJudge, "codex"), (ClaudeJudge, "claude")]
+)
+def test_global_instructions_and_memory_are_isolated(fake_cli, adapter, provider):
+    data = packet(1)
+    root = fake_cli(data, **{provider: {"require_auth_link": provider == "codex"}})
+    home = Path(os.environ["HOME"])
+    (home / "AGENTS.md").write_text("OPERATOR-AGENTS-POISON")
+    (home / "CLAUDE.md").write_text("OPERATOR-CLAUDE-POISON")
+    (home / ".claude").mkdir()
+    (home / ".claude" / "CLAUDE.md").write_text("OPERATOR-CLAUDE-POISON")
+    memory = home / "projects" / "fake-project" / "memory"
+    memory.mkdir(parents=True)
+    (memory / "MEMORY.md").write_text("OPERATOR-MEMORY-POISON")
+    # An empty stand-in, never an actual credential or credential read.
+    auth = home / "auth.json"
+    auth.touch()
+    result = adapter(model="recorded-model").judge(data)
+    assert result.status == "complete"
+    (call,) = calls(root)
+    assert call["discovery"]["instructions"] == []
+    assert "POISON" not in json.dumps({k: call[k] for k in ("stdin", "env", "cwd")})
+    assert not Path(call["cwd"]).exists()
+    if provider == "codex":
+        isolated = Path(call["env"]["CODEX_HOME"])
+        assert isolated != home and not isolated.exists()
+        assert call["discovery"]["config_entries"] == ["auth.json"]
+        assert call["discovery"]["auth_link"] == str(auth)
+        assert "project_doc_max_bytes=0" in call["args"]
+    else:
+        assert "--safe-mode" in call["args"]
+        settings = json.loads(call["args"][call["args"].index("--settings") + 1])
+        assert settings["autoMemoryEnabled"] is False
+    assert result.isolation
+    identity = {
+        "provider": provider,
+        "identity": result.identity.model_dump(mode="json"),
+        "isolation": list(result.isolation),
+    }
+    expected = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+    assert result.judge_identity_sha256 == expected
+    changed = type(result).model_validate(
+        result.model_dump(exclude={"judge_identity_sha256"})
+        | {"isolation": ("different-policy",)}
+    )
+    assert changed.judge_identity_sha256 != result.judge_identity_sha256
+    assert json.loads(call["stdin"])["isolation"] == list(result.isolation)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "text",
+        "span",
+        "concept_ids",
+        "anchor_sha256",
+        "gold_revision",
+        "item_sha256",
+        "missing_anchor",
+        "source_sha256",
+        "missing_gold_revision",
+        "unchanged",
+    ],
+)
+def test_changed_item_cannot_reuse_human_anchor(fake_cli, change):
+    data = packet(1)
+    fake_cli(data)
+    revision = anchor_revision(data)
+    labels = (
+        Annotation(
+            idempotency_key="key",
+            source_id="source-1",
+            source_sha256=data.sources[0].sha256,
+            genre="opinions",
+            run_id="anchor-run",
+            item_id=data.items[0].item_id,
+            partition="tuning",
+            action="judge-verdict",
+            verdict="correct",
+            reason="Human review.",
+            annotation_id="a0",
+            author_kind="human",
+            author_identity="damien",
+            created_at="2026-10-26T12:00:00Z",
+        ),
+    )
+    verification = AnchorVerification(
+        idempotency_key="anchor-key",
+        genre="opinions",
+        anchor_set_id="anchor-1",
+        anchor_sha256=revision.sha256,
+        gold_revision="gold-v1",
+        annotation_ids=("a0",),
+        reason="Verified.",
+        verification_id="v1",
+        author_kind="human",
+        author_identity="damien",
+        created_at="2026-10-26T12:00:00Z",
+    )
+    updates = {
+        "text": "A revised claim.",
+        "span": {"start": 2, "end": 10},
+        "concept_ids": (),
+    }
+    if change in updates:
+        changed = JudgeItem.model_validate(
+            data.items[0].model_dump() | {change: updates[change]}
+        )
+        data = data.model_copy(update={"items": (changed,)})
+    elif change == "anchor_sha256":
+        verification = verification.model_copy(update={"anchor_sha256": "b" * 64})
+    elif change == "source_sha256":
+        text = "A party must serve notice."
+        source = data.sources[0].model_copy(
+            update={
+                "text": text,
+                "sha256": hashlib.sha256(text.encode()).hexdigest(),
+            }
+        )
+        data = data.model_copy(update={"sources": (source,)})
+    elif change == "item_sha256":
+        revision = revision.model_copy(
+            update={"item_sha256": {data.items[0].item_id: "b" * 64}}
+        )
+        verification = verification.model_copy(
+            update={"anchor_sha256": revision.sha256}
+        )
+    result = CodexJudge(model="recorded-model").judge(data)
+    accuracy = anchor_accuracy(
+        data,
+        result,
+        labels,
+        verification=verification,
+        anchor=None if change == "missing_anchor" else revision,
+        gold_revision=None
+        if change == "missing_gold_revision"
+        else "gold-v2"
+        if change == "gold_revision"
+        else "gold-v1",
+    )
+    if change == "unchanged":
+        assert accuracy.label == "human-anchored"
+        assert accuracy.accuracy == 1.0
+        assert accuracy.reason is None
+        return
+    assert accuracy.label == "judge agreement, unanchored"
+    assert accuracy.accuracy is None
+    assert accuracy.reason
+
+
+@pytest.mark.parametrize("adapter", [CodexJudge, ClaudeJudge])
+def test_hashed_judge_identity_survives_receipt_round_trip(fake_cli, adapter):
+    data = packet(1)
+    fake_cli(data)
+    result = adapter(model="recorded-model").judge(data)
+    restored = type(result).model_validate_json(result.model_dump_json())
+    assert restored == result
+    receipt = json.loads(result.model_dump_json())
+    receipt["isolation"] = ["changed-policy"]
+    with pytest.raises(ValidationError, match="identity.*hash"):
+        type(result).model_validate_json(json.dumps(receipt))

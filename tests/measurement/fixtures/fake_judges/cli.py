@@ -15,6 +15,48 @@ control = json.loads((root / "control.json").read_text())[provider]
 args = sys.argv[1:]
 
 
+def discovery():
+    home = pathlib.Path(os.environ["HOME"])
+    config = pathlib.Path(
+        os.environ.get(
+            "CODEX_HOME" if provider == "codex" else "CLAUDE_CONFIG_DIR",
+            str(home / (".codex" if provider == "codex" else ".claude")),
+        )
+    )
+    found = []
+    if provider == "codex":
+        candidates = [config / "AGENTS.md"]
+        if "project_doc_max_bytes=0" not in args:
+            candidates += [p / "AGENTS.md" for p in pathlib.Path.cwd().parents]
+    else:
+        candidates = (
+            []
+            if "--safe-mode" in args
+            else [
+                home / ".claude" / "CLAUDE.md",
+                config / "CLAUDE.md",
+            ]
+        )
+        settings = (
+            json.loads(args[args.index("--settings") + 1])
+            if "--settings" in args
+            else {}
+        )
+        if settings.get("autoMemoryEnabled") is not False:
+            candidates += list((config / "projects").glob("*/memory/MEMORY.md"))
+    for path in candidates:
+        if path.is_file():
+            found.append(path.read_text())
+    auth = config / "auth.json"
+    return {
+        "instructions": found,
+        "config_entries": sorted(p.name for p in config.iterdir())
+        if config.is_dir()
+        else [],
+        "auth_link": str(auth.readlink()) if auth.is_symlink() else None,
+    }
+
+
 def hold_stdout():
     subprocess.Popen(
         [
@@ -54,6 +96,8 @@ if args == ["login", "status"] or args == ["auth", "status", "--json"]:
             }
         )
     )
+    if control.get("require_auth_link") and not discovery()["auth_link"]:
+        sys.exit(1)
     print(
         control.get("auth_status", default),
         file=sys.stderr if provider == "codex" else sys.stdout,
@@ -93,6 +137,7 @@ with (root / "calls.jsonl").open("a") as stream:
                 "stdin": packet,
                 "cwd": os.getcwd(),
                 "env": dict(os.environ),
+                "discovery": discovery(),
             }
         )
         + "\n"
