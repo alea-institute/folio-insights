@@ -1,0 +1,456 @@
+{
+  "format": 1,
+  "documents_per_cell": 8,
+  "tuning_groups": 6,
+  "held_out_groups": 2,
+  "minimum_words": 150,
+  "maximum_words": 400,
+  "max_download_bytes": 10000000,
+  "sources": [
+    {
+      "source_id": "govinfo",
+      "publisher": "US Government Publishing Office",
+      "url_prefixes": [
+        "https://www.govinfo.gov/content/",
+        "https://www.govinfo.gov/bulkdata/"
+      ],
+      "access_method": "bulk-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.govinfo.gov/robots.txt",
+      "terms_url": "https://www.govinfo.gov/about/policies",
+      "rights_basis": "Federal government works; document-specific third-party exclusions",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "ecfr",
+      "publisher": "Office of the Federal Register",
+      "url_prefixes": [
+        "https://www.ecfr.gov/api/versioner/v1/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.ecfr.gov/robots.txt",
+      "terms_url": "https://www.ecfr.gov/reader-aids/understanding-the-ecfr/what-is-the-ecfr",
+      "rights_basis": "Federal rule text; exclude incorporated third-party material",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "courtlistener-opinions",
+      "publisher": "Free Law Project",
+      "url_prefixes": [
+        "https://www.courtlistener.com/api/rest/v4/opinions/"
+      ],
+      "access_method": "token-api",
+      "auth_env": "COURTLISTENER_TOKEN",
+      "auth_style": "token",
+      "rate_limits": {
+        "minimum_interval_seconds": 1,
+        "per_minute": 5,
+        "per_hour": 50,
+        "per_day": 125
+      },
+      "robots_url": "https://www.courtlistener.com/robots.txt",
+      "terms_url": "https://www.courtlistener.com/terms/",
+      "rights_basis": "Opinion text as government edicts; API terms need operator verification",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "courtlistener-recap",
+      "publisher": "Free Law Project",
+      "url_prefixes": [
+        "https://www.courtlistener.com/api/rest/v4/recap-documents/"
+      ],
+      "access_method": "token-api",
+      "auth_env": "COURTLISTENER_TOKEN",
+      "auth_style": "token",
+      "rate_limits": {
+        "minimum_interval_seconds": 1,
+        "per_minute": 5,
+        "per_hour": 50,
+        "per_day": 125
+      },
+      "robots_url": "https://www.courtlistener.com/robots.txt",
+      "terms_url": "https://www.courtlistener.com/terms/",
+      "rights_basis": "Filing availability is not a license; explicit retained-material permission required",
+      "substitute_forum_label": "State-government filing in federal court; record the actual federal forum",
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "scotus",
+      "publisher": "Supreme Court of the United States",
+      "url_prefixes": [
+        "https://www.supremecourt.gov/opinions/",
+        "https://www.supremecourt.gov/DocketPDF/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.supremecourt.gov/robots.txt",
+      "terms_url": "https://www.supremecourt.gov/about/websitepolicies.aspx",
+      "rights_basis": "Opinion text as government edicts; party briefs require separate rights proof",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "ca-courts",
+      "publisher": "California Courts",
+      "url_prefixes": [
+        "https://courts.ca.gov/",
+        "https://supreme.courts.ca.gov/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://courts.ca.gov/robots.txt",
+      "terms_url": "https://courts.ca.gov/conditions-use",
+      "rights_basis": "Opinion edicts only; briefs require document-specific license or permission",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "il-courts",
+      "publisher": "Illinois Courts",
+      "url_prefixes": [
+        "https://www.illinoiscourts.gov/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.illinoiscourts.gov/robots.txt",
+      "terms_url": "https://www.illinoiscourts.gov/",
+      "rights_basis": "Opinion edicts only; state or private authorship alone does not clear briefs",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "mn-revisor",
+      "publisher": "Minnesota Revisor of Statutes",
+      "url_prefixes": [
+        "https://www.revisor.mn.gov/statutes/cite/",
+        "https://www.revisor.mn.gov/rules/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.revisor.mn.gov/robots.txt",
+      "terms_url": "https://www.revisor.mn.gov/copyright/",
+      "rights_basis": "Official enactments as edicts; copyright claim requires document-specific check and exclusions",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "tx-statutes",
+      "publisher": "Texas Legislative Council",
+      "url_prefixes": [
+        "https://statutes.capitol.texas.gov/"
+      ],
+      "access_method": "bulk-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://statutes.capitol.texas.gov/robots.txt",
+      "terms_url": "https://statutes.capitol.texas.gov/information/",
+      "rights_basis": "Official enactments as edicts; verify download paths and terms",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "tx-register",
+      "publisher": "Texas Secretary of State",
+      "url_prefixes": [
+        "https://www.sos.texas.gov/texreg/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.sos.texas.gov/robots.txt",
+      "terms_url": "https://www.sos.texas.gov/texreg/",
+      "rights_basis": "Official adopted rules only; copying notice requires verification",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "ca-leginfo",
+      "publisher": "California Legislative Counsel",
+      "url_prefixes": [
+        "https://downloads.leginfo.legislature.ca.gov/"
+      ],
+      "access_method": "bulk-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://downloads.leginfo.legislature.ca.gov/robots.txt",
+      "terms_url": "https://leginfo.legislature.ca.gov/faces/codes.xhtml",
+      "rights_basis": "Official code text as edicts; bulk layout and access terms need verification",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "ny-openleg",
+      "publisher": "New York State Senate",
+      "url_prefixes": [
+        "https://legislation.nysenate.gov/api/3/laws/"
+      ],
+      "access_method": "token-api",
+      "auth_env": "NYSENATE_API_KEY",
+      "auth_style": "query-key",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://legislation.nysenate.gov/robots.txt",
+      "terms_url": "https://legislation.nysenate.gov/static/docs/html/index.html",
+      "rights_basis": "Unofficial unannotated statute text; verify terms and enacted text",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "ny-register",
+      "publisher": "New York Department of State",
+      "url_prefixes": [
+        "https://dos.ny.gov/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://dos.ny.gov/robots.txt",
+      "terms_url": "https://dos.ny.gov/state-register",
+      "rights_basis": "Official adopted-rule text as edicts; verify file-specific terms",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "fl-statutes",
+      "publisher": "Florida Legislature",
+      "url_prefixes": [
+        "https://www.leg.state.fl.us/statutes/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.leg.state.fl.us/robots.txt",
+      "terms_url": "https://www.leg.state.fl.us/",
+      "rights_basis": "Official statutory text as edicts; exclude annotations",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "fl-rules",
+      "publisher": "Florida Department of State",
+      "url_prefixes": [
+        "https://www.flrules.org/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.flrules.org/robots.txt",
+      "terms_url": "https://www.flrules.org/",
+      "rights_basis": "Rule text copyright claim; requires explicit document-specific clearance",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "il-legislation",
+      "publisher": "Illinois General Assembly",
+      "url_prefixes": [
+        "https://www.ilga.gov/",
+        "https://my.ilga.gov/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.ilga.gov/robots.txt",
+      "terms_url": "https://www.ilga.gov/",
+      "rights_basis": "Unannotated enactments as edicts; TLS chain and download terms need operator verification",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "doj-osg",
+      "publisher": "US Department of Justice",
+      "url_prefixes": [
+        "https://www.justice.gov/osg/",
+        "https://www.justice.gov/d9/",
+        "https://www.justice.gov/media/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 10
+      },
+      "robots_url": "https://www.justice.gov/robots.txt",
+      "terms_url": "https://www.justice.gov/legalpolicies",
+      "rights_basis": "Federal-authored briefs under 17 USC 105; exclude incorporated third-party works",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "ftc",
+      "publisher": "Federal Trade Commission",
+      "url_prefixes": [
+        "https://www.ftc.gov/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 5
+      },
+      "robots_url": "https://www.ftc.gov/robots.txt",
+      "terms_url": "https://www.ftc.gov/site-information/privacy-policy",
+      "rights_basis": "Federal-authored filings under 17 USC 105; verify each document",
+      "substitute_forum_label": null,
+      "access_status": "permitted"
+    },
+    {
+      "source_id": "sec",
+      "publisher": "Securities and Exchange Commission",
+      "url_prefixes": [
+        "https://www.sec.gov/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://www.sec.gov/robots.txt",
+      "terms_url": "https://www.sec.gov/about/privacy-information",
+      "rights_basis": "Federal-authored complaints under 17 USC 105; classified research client required",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "fl-fsu-briefs",
+      "publisher": "Florida State University Law Library",
+      "url_prefixes": [
+        "https://library.law.fsu.edu/Digital-Collections/flsupct/"
+      ],
+      "access_method": "direct-download",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://library.law.fsu.edu/robots.txt",
+      "terms_url": "https://library.law.fsu.edu/Digital-Collections/flsupct/",
+      "rights_basis": "Compilation and private briefs restricted; public records do not confer redistribution rights",
+      "substitute_forum_label": null,
+      "access_status": "pending-review"
+    },
+    {
+      "source_id": "mn-brief-archive",
+      "publisher": "Minnesota State Law Library",
+      "url_prefixes": [
+        "https://mn.gov/law-library-stat/"
+      ],
+      "access_method": "manual-permission",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://mn.gov/robots.txt",
+      "terms_url": "https://mn.gov/law-library/",
+      "rights_basis": "Permission required for retained party briefs; access challenge must not be bypassed",
+      "substitute_forum_label": null,
+      "access_status": "blocked"
+    },
+    {
+      "source_id": "tx-court-search",
+      "publisher": "Texas Courts",
+      "url_prefixes": [
+        "https://search.txcourts.gov/"
+      ],
+      "access_method": "manual-permission",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://search.txcourts.gov/robots.txt",
+      "terms_url": "https://www.txcourts.gov/",
+      "rights_basis": "Robots disallow scripts; obtain permission or use a labelled alternate forum",
+      "substitute_forum_label": null,
+      "access_status": "blocked"
+    },
+    {
+      "source_id": "ny-courtpass",
+      "publisher": "New York Court of Appeals",
+      "url_prefixes": [
+        "https://courtpass.nycourts.gov/"
+      ],
+      "access_method": "manual-permission",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://courtpass.nycourts.gov/robots.txt",
+      "terms_url": "https://www.nycourts.gov/",
+      "rights_basis": "Access challenge; retained party briefs need explicit permission",
+      "substitute_forum_label": null,
+      "access_status": "blocked"
+    },
+    {
+      "source_id": "cap-static",
+      "publisher": "Harvard Library Innovation Lab",
+      "url_prefixes": [
+        "https://static.case.law/"
+      ],
+      "access_method": "manual-permission",
+      "auth_env": null,
+      "auth_style": "none",
+      "rate_limits": {
+        "minimum_interval_seconds": 1
+      },
+      "robots_url": "https://static.case.law/robots.txt",
+      "terms_url": "https://lil.law.harvard.edu/blog/2024/03/26/transitions-for-the-caselaw-access-project/",
+      "rights_basis": "Released case text; robots disallow scripted access without written permission",
+      "substitute_forum_label": null,
+      "access_status": "blocked"
+    }
+  ]
+}
