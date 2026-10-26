@@ -194,14 +194,14 @@ flowchart LR
 
 This is an implementation plan, not evidence that extraction accuracy has already improved. New paths and commands below are planned additions unless identified as existing. Each U-ID is one worker assignment, normally one focused commit. The orchestrator admits at most three workers in a wave, waits for their receipts, and integrates prerequisite commits before starting the next wave. The wave schedule below is deliberately conservative about shared-file edits. Never dispatch two units owning the same file together.
 
-U1–U9 build and exercise the instrument against the current pipeline. U10–U32 establish the public real-corpus gold and its first sealed baseline. Only then may U33–U50 and U60 change the pipeline or its output contracts. U51–U57 implement the workbench in the existing SvelteKit app. U59 makes annotation-driven tuning automatic; U58 proves the complete loop. A failed quality gate leaves a candidate unpromoted; it does not prevent keeping a reviewed implementation behind an inactive configuration. Neither a mocked test nor an unpublished fixture score counts as a live gate run.
+U1–U9 build and exercise the instrument against the current pipeline. U10–U32 establish the public real-corpus gold and its first sealed baseline. U33–U50 and U60 may be built in parallel with the instrument, but an output-changing unit merges only after a live gate accepts it (KTD15): first against U9's sealed synthetic holdout, and also against the real held-out corpus once U32 seals it. U51–U57 implement the workbench in the existing SvelteKit app. U59 makes annotation-driven tuning automatic; U58 proves the complete loop. A failed quality gate leaves a candidate unpromoted; it does not prevent keeping a reviewed implementation behind an inactive configuration. Neither a mocked test nor an unpublished fixture score counts as a live gate run.
 
-Workers use the main checkout's existing Python venv read-only, with `PYTHONPATH=src` to import this worktree and `PYTHONDONTWRITEBYTECODE=1`. In commands, `FOLIO_PYTHON` is the orchestrator-provided path to that interpreter. Do not install into it. All document paths are repo-relative. Network flags describe the entire assignment, including required live verification, rather than whether its unit tests need a network.
+Workers use the main checkout's existing Python venv read-only, with `PYTHONPATH=src` to import this worktree and `PYTHONDONTWRITEBYTECODE=1`. In commands, `FOLIO_PYTHON` is the orchestrator-provided path to that interpreter. Do not install into it. All document paths are repo-relative. Network flags follow KTD15: they describe who executes each part of an assignment, and a Codex build assignment never needs a network.
 
 ### Key Technical Decisions
 
 - KTD1. **Version the evaluation inputs independently of pipeline output.** Add `src/folio_insights/measurement/` alongside the existing `rubric/`; reuse its fixture/CLI conventions without relabelling RUB-EXTRACT as precision/recall. An evaluation run pins source snapshots, gold revision, split manifest, ontology digest, scorer/matcher version, baseline/candidate commit and configuration hashes, extraction prompt hashes, judge prompts, CLI/model identities and deterministic sampling seed. Store per-item checkpoints and content hashes under `output/measurement/`; publish sanitized aggregate receipts under `docs/evidence/measurement/`. Raw held-out labels and judge rationales never enter worker-visible evidence commits. This implements R1–R7.
-- KTD2. **Score exhaustive gold, including omissions.** For R4, gold enumerates atomic propositions, spans, typed links and complete tag sets; a model's failure to propose an omission cannot erase a gold item. Deterministic one-to-one matching uses exact grounded spans and independently adjudicated semantic equivalence edges when text differs. A compound claim cannot match several atomic gold claims. Freeze matching policy before evaluating candidates. Count unmatched predictions as proposition FP, unmatched gold as FN, and matched atomic equivalents as TP. Tag TP/FP/FN are proposition-scoped resolver identities: tags on unmatched predictions are FP; tags on missed gold propositions are FN. Deduplicate identical tags within a proposition, but duplicate proposition predictions incur FP. Report P and R independently for propositions and tags by genre and by source, with numerator/denominator counts and micro totals. Zero denominators are explicitly unmeasurable, never 1.0. Distinguish a fully evaluated empty prediction set over nonempty gold from missing gold, sources or judgments; the former has known recall zero and undefined precision, with the recovery transition in KTD7. Report branch/link/grounding diagnostics separately without substituting them for R4's axes.
+- KTD2. **Score exhaustive gold, including omissions.** For R4, gold enumerates atomic propositions, spans, typed links and complete tag sets; a model's failure to propose an omission cannot erase a gold item. Deterministic one-to-one matching uses exact grounded spans and independently adjudicated semantic equivalence edges when text differs. A compound claim cannot match several atomic gold claims. Freeze matching policy before evaluating candidates. Count unmatched predictions as proposition FP, unmatched gold as FN, and matched atomic equivalents as TP. Tag TP/FP/FN are proposition-scoped resolver identities: tags on unmatched predictions are FP; tags on missed gold propositions are FN. Deduplicate identical tags within a proposition, but duplicate proposition predictions incur FP. Report P and R independently for propositions and tags by genre and by source, with numerator/denominator counts and micro totals. Zero denominators are explicitly unmeasurable, never 1.0. Distinguish a fully evaluated empty prediction set over nonempty gold from missing gold, sources or judgments; the former has known recall zero and undefined precision, with the recovery transition in KTD7. Report branch/link/grounding diagnostics separately without substituting them for R4's axes. Complete tag sets come from pooled adjudication, because nobody can enumerate every applicable concept out of 18,000+ unaided. For each gold proposition, the candidate pool is the union of tags from the gold author, every evaluated pipeline configuration, both judges' missing-tag proposals, and the resolver's top candidates per branch. Each pooled tag is adjudicated, and the surviving set is the gold tag set. A tag that a later candidate proposes outside the existing pool enters adjudication before scoring; it is never an automatic false positive. To estimate how much the pool itself misses, each run asks the Claude sample of KTD4 to name missing tags against the pooled set. That pool-miss rate is reported beside tag recall, and an uncorrected pool-miss rate above 5% for a genre labels that genre's tag recall "pool-limited."
 - KTD3. **Use subscription CLIs through one evaluation-judge port.** Implement Codex (`codex exec`) and Claude (`claude -p`) adapters returning the same strict verdict schema: correct/wrong/uncertain, reason, item ID, optional source-grounded omission and opaque concept-selection IDs. The model sees quoted source, candidate items and a candidate catalog with opaque IDs/labels; output schemas prohibit IRI fields and reject IRI strings. Deterministic code alone expands IDs to FOLIO IRIs (R15). Invoke argument arrays without a shell, feed prompts through stdin, isolate the working directory and tools, and validate exact item coverage. Use Codex read-only/ephemeral execution and structured schema output; use Claude structured JSON, disabled tools and session persistence. Capability-check flags against the installed CLI help. In the subprocess environment, remove API-key, custom-base-URL and cloud-provider overrides, including `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL`; never set either. No HTTP SDK or API-key fallback exists. Missing subscription auth, quota, timeout, cancellation, invalid output or nonzero exit leaves an incomplete checkpointed run. A retry processes only missing items under the same input hashes. Preserve the current pipeline branch judge's separate provenance checks; this port does not forge those checks or their template identities (R3, R15).
 - KTD4. **Claude reviews independently and lightly.** For each run, take a reproducible 20% sample, rounded up with at least one item from every nonempty genre/source/item-kind stratum, then union every Codex-uncertain item. Items include predictions, gold/omission coverage decisions and proposed missing tags. Record the denominator and realized coverage, which may exceed 20% on small suites. Claude receives no Codex verdict or rationale. Any verdict difference, incompatible omission assessment or unresolved uncertainty creates an adjudication item. Preserve both original judgments and append the human resolution. Pending uncertainty/disagreement cannot be silently removed from score denominators or accepted by a gate. R5 labels apply until Damien verifies the relevant genre's anchor; an anchor reports each judge's correctness against human labels and never certifies itself (R3–R6).
 - KTD5. **One append-only annotation service, partition-aware.** Add annotation tables through the existing `persistence/review_db.py` additive migration seam and a `measurement/annotations.py` service shared by CLI and API. Each record identifies source snapshot, run/item/tag, author kind and authenticated identity, verdict/action, reason, time, partition and superseded annotation ID. Judge corrections, promoted/confirmed drops, highlights and tag edits all use it (R6, R22, R23). Keep review annotations separate from the shard governance journal and the single proposed-class approval ledger. Expose a `tag_verdicts` compatibility view over annotations rather than create a competing write store. Map legacy UI “weak” to uncertain explicitly. Tuning exports include tuning and retired-split annotations, never an active held-out partition. Idempotency prevents duplicate retry annotations; a correction appends history rather than rewriting the author's original reason.
@@ -214,6 +214,12 @@ Workers use the main checkout's existing Python venv read-only, with `PYTHONPATH
 - KTD12. **Retain all minter safeguards while extending meaning.** Before implementing U39/U40, re-read every module in `src/folio_insights/minting/`. Preserve source-visibility, framework, BFO, substantive-content, support, template, oracle, signing, extractor authorization and journal refusal contracts. Keep all validated tags in dedicated fields even if a compatibility triple retains one primary subject. Add procedural-rule and citation subtype routing. For R13/R14 implicit tags, separate deterministic candidate resolution/existence/ancestry from semantic evidence: a concept's own label is not evidence, and lexical matching alone cannot veto every implicit-area selection. Record the new origin and semantic verdict explicitly, and register it in minter eligibility. Actual ontology ancestry supplies branch labels including Deontic Specification. Preserve unresolved proposals as review data with no valid-IRI vote (R12–R17).
 - KTD13. **Use one proposition export payload on both export stacks.** Direct extraction exports and journal/projection exports preserve the full tag, branch, span and link set (R18). Both `cli.py` and `api/routes/export.py` currently require tasks. Make propositions the default export source, with task discovery/approval an optional secondary view (R19); preserve operator authorization for writes. OWL/Turtle/JSON-LD serialize declared predicates and retain original signed-record metadata on the journal path. HTML/Markdown escape source text and render the same payload. No format may silently select just the primary tag.
 - KTD14. **Extend Read/Decide inside the existing static viewer.** Reuse `docs/design/review-ui/tokens.css` and the read/inbox mockups, existing operator identity, corpus selector, `SourceContext`, `FolioTree` and keyboard conventions. `AnnotatedText` uses offset boundary-sweep rendering with safe text nodes, supports overlapping spans and maps DOM UTF-16 selection offsets back to canonical source character offsets. Coverage uses all validated proposition spans; sentence gaps and explicit drop markers are distinct. Confirm/reject/add/promote actions call the shared annotation API. Read and CLI actions have matching domain effects. The Decide audit shows judgments, disagreements and gate receipts, not a second approval ledger. Keep adapter-static and FastAPI content negotiation (R20–R24).
+- KTD15. **Codex builds offline; live runs belong to the orchestrator; output changes merge behind the gate.** Codex workers run in a `workspace-write` sandbox with no network. Every Codex build assignment therefore implements and unit-tests its code against recorded fixtures and fake judge executables, and never calls `codex exec`, `claude -p`, or a remote source. Three kinds of work need a network, and the orchestrator owns them:
+  - **Live runs (U9, U32, U58):** the orchestrator executes them with subscription CLIs after their prerequisites merge.
+  - **Corpus fetching (U11–U31):** a Claude subagent with network access fetches and snapshots the public sources first, with license or public-domain receipts. Codex then drafts gold from the committed snapshots offline. Live judge cross-checks of drafted gold run as orchestrator live runs.
+  - **Merge gates:** a unit marked **Merge gate** changes extraction, tagging, minting, or export output. Its branch merges only after the orchestrator runs a live gate on that branch's configuration and the gate accepts under KTD7. Before U32, the gate runs on U9's sealed synthetic holdout. After U32, it also runs on the real held-out corpus. A rejected or incomplete gate leaves the branch unmerged, with its receipt.
+
+  Units that change no output (contracts, migrations, storage, viewer, APIs) merge on passing tests and code review alone. This keeps the build inside the Codex sandbox and starts pipeline work in parallel with the instrument, without letting an unmeasured output change land.
 
 ### Assumptions and bounded choices
 
@@ -336,7 +342,7 @@ The shared domain surface is extraction snapshot → item/judge annotations → 
 
 ## Implementation Units
 
-The index is a navigation aid. Unit bodies own the complete file/test assignments. Wave and network are repeated there for dispatch. A dependency always names an earlier wave; a unit's live gate also requires U32's active sealed evaluator even where the dependency list cites a transitive prerequisite.
+The index is a navigation aid. Unit bodies own the complete file/test assignments. Wave and network are repeated there for dispatch. A dependency always names an earlier wave. A unit marked **Merge gate** merges only after the KTD15 live gate accepts it: on U9's sealed synthetic holdout before U32, and also on U32's sealed real corpus afterward.
 
 | Unit | Title | Primary files | Dependencies | Wave | Network |
 |---|---|---|---|---:|---|
@@ -348,58 +354,58 @@ The index is a navigation aid. Unit bodies own the complete file/test assignment
 | U6 | Sealed split loader and before/after held-out gate | `src/folio_insights/measurement/splits.py` | U5 | 5 | no |
 | U7 | README regeneration from extraction and score artifacts | `src/folio_insights/measurement/readme.py` | U6 | 6 | no |
 | U8 | Checked README-refresh publication adapter | `src/folio_insights/measurement/publication.py` | U7 | 7 | no |
-| U9 | Live synthetic baseline and measuring-loop characterization | `docs/evidence/measurement/synthetic-baseline.json` | U8 | 8 | yes |
-| U10 | Bounded public-corpus acquisition and rights manifest tooling | `src/folio_insights/measurement/corpus.py` | U9 | 9 | no |
-| U11 | Federal opinions gold batch | `data/measurement/tuning/federal/opinions/` | U10 | 10 | yes |
-| U12 | Federal statutes and regulations gold batch | `data/measurement/tuning/federal/statutes-regulations/` | U10 | 10 | yes |
-| U13 | Federal briefs, motions and pleadings gold batch | `data/measurement/tuning/federal/briefs/` | U10 | 10 | yes |
-| U14 | Minnesota opinions gold batch | `data/measurement/tuning/mn/opinions/` | U10 | 11 | yes |
-| U15 | Minnesota statutes and regulations gold batch | `data/measurement/tuning/mn/statutes-regulations/` | U10 | 11 | yes |
-| U16 | Minnesota briefs, motions and pleadings gold batch | `data/measurement/tuning/mn/briefs/` | U10 | 11 | yes |
-| U17 | Texas opinions gold batch | `data/measurement/tuning/tx/opinions/` | U10 | 12 | yes |
-| U18 | Texas statutes and regulations gold batch | `data/measurement/tuning/tx/statutes-regulations/` | U10 | 12 | yes |
-| U19 | Texas briefs, motions and pleadings gold batch | `data/measurement/tuning/tx/briefs/` | U10 | 12 | yes |
-| U20 | California opinions gold batch | `data/measurement/tuning/ca/opinions/` | U10 | 13 | yes |
-| U21 | California statutes and regulations gold batch | `data/measurement/tuning/ca/statutes-regulations/` | U10 | 13 | yes |
-| U22 | California briefs, motions and pleadings gold batch | `data/measurement/tuning/ca/briefs/` | U10 | 13 | yes |
-| U23 | New York opinions gold batch | `data/measurement/tuning/ny/opinions/` | U10 | 14 | yes |
-| U24 | New York statutes and regulations gold batch | `data/measurement/tuning/ny/statutes-regulations/` | U10 | 14 | yes |
-| U25 | New York briefs, motions and pleadings gold batch | `data/measurement/tuning/ny/briefs/` | U10 | 14 | yes |
-| U26 | Florida opinions gold batch | `data/measurement/tuning/fl/opinions/` | U10 | 15 | yes |
-| U27 | Florida statutes and regulations gold batch | `data/measurement/tuning/fl/statutes-regulations/` | U10 | 15 | yes |
-| U28 | Florida briefs, motions and pleadings gold batch | `data/measurement/tuning/fl/briefs/` | U10 | 15 | yes |
-| U29 | Illinois opinions gold batch | `data/measurement/tuning/il/opinions/` | U10 | 16 | yes |
-| U30 | Illinois statutes and regulations gold batch | `data/measurement/tuning/il/statutes-regulations/` | U10 | 16 | yes |
-| U31 | Illinois briefs, motions and pleadings gold batch | `data/measurement/tuning/il/briefs/` | U10 | 16 | yes |
-| U32 | Seal real corpus and record its current-pipeline baseline | `src/folio_insights/measurement/corpus.py` | U11, U12, U13, U14, U15, U16, U17, U18, U19, U20, U21, U22, U23, U24, U25, U26, U27, U28, U29, U30, U31 | 17 | yes |
-| U33 | Flat extraction model and typed-link contract | `src/folio_insights/models/knowledge_unit.py` | U32 | 18 | yes |
-| U34 | Versioned atomic identity and envelope migration | `src/folio_insights/shards/minting.py` | U32 | 18 | yes |
-| U35 | Generated SHACL and declared tag/link vocabulary | `src/folio_insights/shapes/pydantic_to_shacl.py` | U33, U34 | 19 | yes |
-| U36 | Retire active hierarchy while preserving revision safeguards | `src/folio_insights/revision/dependency_graph.py` | U34 | 19 | yes |
-| U37 | Projection rebuild and recoverable new-record storage | `src/folio_insights/storage/projection.py` | U35, U36 | 20 | yes |
-| U38 | Atomic splitting and grounded typed-link extraction | `src/folio_insights/pipeline/stages/distiller.py` | U33, U32, U60 | 20 | yes |
-| U39 | Full-tag shard mapping and procedural/citation subtype routing | `src/folio_insights/minting/mapper.py` | U37, U38 | 21 | yes |
-| U40 | Two-phase mint links and audited existing-record reconciliation | `src/folio_insights/minting/minter.py` | U39, U36 | 22 | yes |
-| U41 | Ontology candidate resolution and real ancestor branch labels | `src/folio_insights/services/folio_ontology.py` | U37, U38 | 21 | yes |
-| U42 | Deterministic deontic pass | `src/folio_insights/services/deontic.py` | U41 | 22 | yes |
-| U43 | Probabilistic deontic recovery pass | `src/folio_insights/services/deontic.py` | U42, U40 | 23 | yes |
-| U44 | Deterministic Area of Law tagging | `src/folio_insights/services/folio_ontology.py` | U43 | 24 | yes |
-| U45 | Probabilistic implicit Area of Law tagging | `src/folio_insights/pipeline/stages/folio_tagger.py` | U44 | 25 | yes |
-| U46 | Genre-aware extraction across all four source genres | `src/folio_insights/models/corpus.py` | U45 | 26 | yes |
-| U47 | Common proposition payload and RDF export fidelity | `src/folio_insights/services/proposition_export.py` | U46, U40 | 27 | yes |
-| U48 | HTML and Markdown proposition exports | `src/folio_insights/services/proposition_export.py` | U47 | 28 | yes |
-| U49 | Task-independent CLI and API exports | `src/folio_insights/cli.py` | U48 | 29 | yes |
-| U50 | Persist dropped candidates and source coverage evidence | `src/folio_insights/pipeline/stages/boundary_detection.py` | U38, U40 | 23 | yes |
-| U51 | Absorbed RUI design components and browser/a11y harness | `viewer/src/app.css` | U37 | 23 | no |
-| U52 | Workbench source/run read API | `api/routes/measurement.py` | U50, U51 | 24 | no |
-| U53 | Source overlays, gaps and dropped markers in Read mode | `viewer/src/routes/read/[corpus]/[doc]/+page.svelte` | U52 | 25 | no |
-| U54 | Reviewer action API with authenticated annotation authors | `api/routes/annotations.py` | U52, U3, U41 | 25 | no |
-| U55 | Promote, confirm and highlight-to-add reviewer flows | `viewer/src/routes/read/[corpus]/[doc]/+page.svelte` | U53, U54 | 26 | no |
-| U56 | Branch-grouped tag correction in Read mode | `viewer/src/lib/components/PropositionTags.svelte` | U55, U45 | 27 | no |
-| U57 | Judge/disagreement/gate audit in Decide mode | `viewer/src/routes/inbox/+page.svelte` | U56, U52 | 28 | no |
-| U58 | Complete live gate, generated README and reviewer audit acceptance | `tests/measurement/test_end_to_end.py` | U49, U57, U59 | 30 | yes |
-| U59 | Annotation-driven bounded auto-tuning cycle | `src/folio_insights/measurement/tuning.py` | U32, U45, U57 | 29 | yes |
-| U60 | Occurrence-aware extraction deduplication | `src/folio_insights/pipeline/stages/deduplicator.py` | U33 | 19 | yes |
+| U9 | Live synthetic baseline and measuring-loop characterization | `docs/evidence/measurement/synthetic-baseline.json` | U8 | 8 | live run (orchestrator, network) |
+| U10 | Bounded public-corpus acquisition and rights manifest tooling | `src/folio_insights/measurement/corpus.py` | U1 | 2 | no |
+| U11 | Federal opinions gold batch | `data/measurement/tuning/federal/opinions/` | U10 | 8 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U12 | Federal statutes and regulations gold batch | `data/measurement/tuning/federal/statutes-regulations/` | U10 | 9 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U13 | Federal briefs, motions and pleadings gold batch | `data/measurement/tuning/federal/briefs/` | U10 | 11 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U14 | Minnesota opinions gold batch | `data/measurement/tuning/mn/opinions/` | U10 | 12 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U15 | Minnesota statutes and regulations gold batch | `data/measurement/tuning/mn/statutes-regulations/` | U10 | 13 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U16 | Minnesota briefs, motions and pleadings gold batch | `data/measurement/tuning/mn/briefs/` | U10 | 13 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U17 | Texas opinions gold batch | `data/measurement/tuning/tx/opinions/` | U10 | 13 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U18 | Texas statutes and regulations gold batch | `data/measurement/tuning/tx/statutes-regulations/` | U10 | 14 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U19 | Texas briefs, motions and pleadings gold batch | `data/measurement/tuning/tx/briefs/` | U10 | 14 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U20 | California opinions gold batch | `data/measurement/tuning/ca/opinions/` | U10 | 14 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U21 | California statutes and regulations gold batch | `data/measurement/tuning/ca/statutes-regulations/` | U10 | 15 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U22 | California briefs, motions and pleadings gold batch | `data/measurement/tuning/ca/briefs/` | U10 | 15 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U23 | New York opinions gold batch | `data/measurement/tuning/ny/opinions/` | U10 | 15 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U24 | New York statutes and regulations gold batch | `data/measurement/tuning/ny/statutes-regulations/` | U10 | 16 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U25 | New York briefs, motions and pleadings gold batch | `data/measurement/tuning/ny/briefs/` | U10 | 16 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U26 | Florida opinions gold batch | `data/measurement/tuning/fl/opinions/` | U10 | 16 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U27 | Florida statutes and regulations gold batch | `data/measurement/tuning/fl/statutes-regulations/` | U10 | 17 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U28 | Florida briefs, motions and pleadings gold batch | `data/measurement/tuning/fl/briefs/` | U10 | 17 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U29 | Illinois opinions gold batch | `data/measurement/tuning/il/opinions/` | U10 | 17 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U30 | Illinois statutes and regulations gold batch | `data/measurement/tuning/il/statutes-regulations/` | U10 | 18 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U31 | Illinois briefs, motions and pleadings gold batch | `data/measurement/tuning/il/briefs/` | U10 | 18 | fetch yes (Claude subagent), gold drafting no (Codex) |
+| U32 | Seal real corpus and record its current-pipeline baseline | `src/folio_insights/measurement/corpus.py` | U11, U12, U13, U14, U15, U16, U17, U18, U19, U20, U21, U22, U23, U24, U25, U26, U27, U28, U29, U30, U31, U6 | 19 | live run (orchestrator, network) |
+| U33 | Flat extraction model and typed-link contract | `src/folio_insights/models/knowledge_unit.py` | U1 | 3 | no |
+| U34 | Versioned atomic identity and envelope migration | `src/folio_insights/shards/minting.py` | None | 1 | no |
+| U35 | Generated SHACL and declared tag/link vocabulary | `src/folio_insights/shapes/pydantic_to_shacl.py` | U33, U34 | 4 | no |
+| U36 | Retire active hierarchy while preserving revision safeguards | `src/folio_insights/revision/dependency_graph.py` | U34 | 3 | no |
+| U37 | Projection rebuild and recoverable new-record storage | `src/folio_insights/storage/projection.py` | U35, U36 | 5 | no |
+| U38 | Atomic splitting and grounded typed-link extraction | `src/folio_insights/pipeline/stages/distiller.py` | U33, U60 | 5 | no |
+| U39 | Full-tag shard mapping and procedural/citation subtype routing | `src/folio_insights/minting/mapper.py` | U37, U38 | 6 | no |
+| U40 | Two-phase mint links and audited existing-record reconciliation | `src/folio_insights/minting/minter.py` | U39, U36 | 7 | no |
+| U41 | Ontology candidate resolution and real ancestor branch labels | `src/folio_insights/services/folio_ontology.py` | U37, U38 | 6 | no |
+| U42 | Deterministic deontic pass | `src/folio_insights/services/deontic.py` | U41 | 7 | no |
+| U43 | Probabilistic deontic recovery pass | `src/folio_insights/services/deontic.py` | U42, U40 | 8 | no |
+| U44 | Deterministic Area of Law tagging | `src/folio_insights/services/folio_ontology.py` | U41, U43 | 9 | no |
+| U45 | Probabilistic implicit Area of Law tagging | `src/folio_insights/pipeline/stages/folio_tagger.py` | U44, U43 | 10 | no |
+| U46 | Genre-aware extraction across all four source genres | `src/folio_insights/models/corpus.py` | U45 | 11 | no |
+| U47 | Common proposition payload and RDF export fidelity | `src/folio_insights/services/proposition_export.py` | U46, U40 | 12 | no |
+| U48 | HTML and Markdown proposition exports | `src/folio_insights/services/proposition_export.py` | U47 | 18 | no |
+| U49 | Task-independent CLI and API exports | `src/folio_insights/cli.py` | U48 | 19 | no |
+| U50 | Persist dropped candidates and source coverage evidence | `src/folio_insights/pipeline/stages/boundary_detection.py` | U38, U40 | 8 | no |
+| U51 | Absorbed RUI design components and browser/a11y harness | `viewer/src/app.css` | None | 1 | no |
+| U52 | Workbench source/run read API | `api/routes/measurement.py` | U50, U51, U3 | 9 | no |
+| U53 | Source overlays, gaps and dropped markers in Read mode | `viewer/src/routes/read/[corpus]/[doc]/+page.svelte` | U52 | 10 | no |
+| U54 | Reviewer action API with authenticated annotation authors | `api/routes/annotations.py` | U52, U3, U41 | 10 | no |
+| U55 | Promote, confirm and highlight-to-add reviewer flows | `viewer/src/routes/read/[corpus]/[doc]/+page.svelte` | U53, U54 | 11 | no |
+| U56 | Branch-grouped tag correction in Read mode | `viewer/src/lib/components/PropositionTags.svelte` | U55, U45 | 12 | no |
+| U57 | Judge/disagreement/gate audit in Decide mode | `viewer/src/routes/inbox/+page.svelte` | U56 | 19 | no |
+| U58 | Complete live gate, generated README and reviewer audit acceptance | `tests/measurement/test_end_to_end.py` | U49, U57, U59, U32 | 21 | live run (orchestrator, network) |
+| U59 | Annotation-driven bounded auto-tuning cycle | `src/folio_insights/measurement/tuning.py` | U45, U57, U6 | 20 | no |
+| U60 | Occurrence-aware extraction deduplication | `src/folio_insights/pipeline/stages/deduplicator.py` | U33 | 4 | no |
 
 ### U1. Gold schemas and the eight atomic synthetic examples
 
@@ -434,6 +440,7 @@ The index is a navigation aid. Unit bodies own the complete file/test assignment
 1. A compound prediction cannot earn four TPs against the rule-plus-three-elements fixture; missing elements lower recall.
 2. An extra proposition and its tags count as FP; a missed proposition and its tags count as FN; duplicating one tag inside a matched proposition does not inflate TP.
 3. Covers AE5. Unverified statute anchors label even passing numbers unanchored; zero denominators remain unmeasurable, while absent source rows and uncertain alignments make evaluation incomplete.
+4. Pooled tag gold (KTD2): a predicted tag outside a proposition's adjudicated pool is queued for adjudication and excluded from TP/FP until resolved. Pool-miss rate is reported beside tag recall, and above 5% the genre's tag recall carries the "pool-limited" label.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_scoring.py`.
 
@@ -550,7 +557,7 @@ The index is a navigation aid. Unit bodies own the complete file/test assignment
 **Goal:** Deliver a live synthetic baseline and characterize the measuring loop before pipeline changes.
 **Requirements:** R1, R3–R8; A1–A5, F1.
 **Dependencies:** U8.
-**Parallelism:** wave 8. **Network:** yes.
+**Parallelism:** wave 8. **Network:** live run (orchestrator, network).
 
 **Files:** `docs/evidence/measurement/synthetic-baseline.json`, `docs/evidence/measurement/synthetic-cycle.json`, `data/measurement/synthetic/split-manifest.json`.
 
@@ -568,8 +575,8 @@ Then run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change instrum
 
 **Goal:** Deliver bounded public-corpus acquisition and rights manifest tooling.
 **Requirements:** R2, R11, R16.
-**Dependencies:** U9.
-**Parallelism:** wave 9. **Network:** no.
+**Dependencies:** U1.
+**Parallelism:** wave 2. **Network:** no.
 
 **Files:** `src/folio_insights/measurement/corpus.py`, `src/folio_insights/measurement/cli.py`, `data/measurement/corpus-policy.json`, `tests/measurement/test_corpus.py`.
 
@@ -587,7 +594,7 @@ Then run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change instrum
 **Goal:** Deliver federal opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 10. **Network:** yes.
+**Parallelism:** wave 8. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/federal/opinions/`, `output/measurement/sealed/federal/opinions/`, `docs/evidence/measurement/corpus/federal-opinions.json`.
 
@@ -606,7 +613,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver federal statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 10. **Network:** yes.
+**Parallelism:** wave 9. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/federal/statutes-regulations/`, `output/measurement/sealed/federal/statutes-regulations/`, `docs/evidence/measurement/corpus/federal-statutes-regulations.json`.
 
@@ -625,7 +632,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver federal briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 10. **Network:** yes.
+**Parallelism:** wave 11. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/federal/briefs/`, `output/measurement/sealed/federal/briefs/`, `docs/evidence/measurement/corpus/federal-briefs.json`.
 
@@ -644,7 +651,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver minnesota opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 11. **Network:** yes.
+**Parallelism:** wave 12. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/mn/opinions/`, `output/measurement/sealed/mn/opinions/`, `docs/evidence/measurement/corpus/mn-opinions.json`.
 
@@ -663,7 +670,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver minnesota statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 11. **Network:** yes.
+**Parallelism:** wave 13. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/mn/statutes-regulations/`, `output/measurement/sealed/mn/statutes-regulations/`, `docs/evidence/measurement/corpus/mn-statutes-regulations.json`.
 
@@ -682,7 +689,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver minnesota briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 11. **Network:** yes.
+**Parallelism:** wave 13. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/mn/briefs/`, `output/measurement/sealed/mn/briefs/`, `docs/evidence/measurement/corpus/mn-briefs.json`.
 
@@ -701,7 +708,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver texas opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 12. **Network:** yes.
+**Parallelism:** wave 13. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/tx/opinions/`, `output/measurement/sealed/tx/opinions/`, `docs/evidence/measurement/corpus/tx-opinions.json`.
 
@@ -720,7 +727,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver texas statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 12. **Network:** yes.
+**Parallelism:** wave 14. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/tx/statutes-regulations/`, `output/measurement/sealed/tx/statutes-regulations/`, `docs/evidence/measurement/corpus/tx-statutes-regulations.json`.
 
@@ -739,7 +746,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver texas briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 12. **Network:** yes.
+**Parallelism:** wave 14. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/tx/briefs/`, `output/measurement/sealed/tx/briefs/`, `docs/evidence/measurement/corpus/tx-briefs.json`.
 
@@ -758,7 +765,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver california opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 13. **Network:** yes.
+**Parallelism:** wave 14. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/ca/opinions/`, `output/measurement/sealed/ca/opinions/`, `docs/evidence/measurement/corpus/ca-opinions.json`.
 
@@ -777,7 +784,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver california statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 13. **Network:** yes.
+**Parallelism:** wave 15. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/ca/statutes-regulations/`, `output/measurement/sealed/ca/statutes-regulations/`, `docs/evidence/measurement/corpus/ca-statutes-regulations.json`.
 
@@ -796,7 +803,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver california briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 13. **Network:** yes.
+**Parallelism:** wave 15. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/ca/briefs/`, `output/measurement/sealed/ca/briefs/`, `docs/evidence/measurement/corpus/ca-briefs.json`.
 
@@ -815,7 +822,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver new York opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 14. **Network:** yes.
+**Parallelism:** wave 15. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/ny/opinions/`, `output/measurement/sealed/ny/opinions/`, `docs/evidence/measurement/corpus/ny-opinions.json`.
 
@@ -834,7 +841,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver new York statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 14. **Network:** yes.
+**Parallelism:** wave 16. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/ny/statutes-regulations/`, `output/measurement/sealed/ny/statutes-regulations/`, `docs/evidence/measurement/corpus/ny-statutes-regulations.json`.
 
@@ -853,7 +860,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver new York briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 14. **Network:** yes.
+**Parallelism:** wave 16. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/ny/briefs/`, `output/measurement/sealed/ny/briefs/`, `docs/evidence/measurement/corpus/ny-briefs.json`.
 
@@ -872,7 +879,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver florida opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 15. **Network:** yes.
+**Parallelism:** wave 16. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/fl/opinions/`, `output/measurement/sealed/fl/opinions/`, `docs/evidence/measurement/corpus/fl-opinions.json`.
 
@@ -891,7 +898,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver florida statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 15. **Network:** yes.
+**Parallelism:** wave 17. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/fl/statutes-regulations/`, `output/measurement/sealed/fl/statutes-regulations/`, `docs/evidence/measurement/corpus/fl-statutes-regulations.json`.
 
@@ -910,7 +917,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver florida briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 15. **Network:** yes.
+**Parallelism:** wave 17. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/fl/briefs/`, `output/measurement/sealed/fl/briefs/`, `docs/evidence/measurement/corpus/fl-briefs.json`.
 
@@ -929,7 +936,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver illinois opinions gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 16. **Network:** yes.
+**Parallelism:** wave 17. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/il/opinions/`, `output/measurement/sealed/il/opinions/`, `docs/evidence/measurement/corpus/il-opinions.json`.
 
@@ -948,7 +955,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver illinois statutes and regulations gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 16. **Network:** yes.
+**Parallelism:** wave 18. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/il/statutes-regulations/`, `output/measurement/sealed/il/statutes-regulations/`, `docs/evidence/measurement/corpus/il-statutes-regulations.json`.
 
@@ -967,7 +974,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Goal:** Deliver illinois briefs, motions and pleadings gold batch.
 **Requirements:** R2, R4, R11, R16.
 **Dependencies:** U10.
-**Parallelism:** wave 16. **Network:** yes.
+**Parallelism:** wave 18. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
 **Files:** `data/measurement/tuning/il/briefs/`, `output/measurement/sealed/il/briefs/`, `docs/evidence/measurement/corpus/il-briefs.json`.
 
@@ -985,8 +992,8 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 
 **Goal:** Deliver seal real corpus and record its current-pipeline baseline.
 **Requirements:** R2–R7, R11; F1.
-**Dependencies:** U11, U12, U13, U14, U15, U16, U17, U18, U19, U20, U21, U22, U23, U24, U25, U26, U27, U28, U29, U30, U31.
-**Parallelism:** wave 17. **Network:** yes.
+**Dependencies:** U11, U12, U13, U14, U15, U16, U17, U18, U19, U20, U21, U22, U23, U24, U25, U26, U27, U28, U29, U30, U31, U6.
+**Parallelism:** wave 19. **Network:** live run (orchestrator, network).
 
 **Files:** `src/folio_insights/measurement/corpus.py`, `tests/measurement/test_real_manifest.py`, `docs/evidence/measurement/real-baseline.json`.
 
@@ -1004,8 +1011,8 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real
 
 **Goal:** Deliver flat extraction model and typed-link contract.
 **Requirements:** R9, R10, R16.
-**Dependencies:** U32.
-**Parallelism:** wave 18. **Network:** yes.
+**Dependencies:** U1.
+**Parallelism:** wave 3. **Network:** no.
 
 **Files:** `src/folio_insights/models/knowledge_unit.py`, `tests/measurement/test_proposition_model.py`.
 
@@ -1023,8 +1030,8 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real
 
 **Goal:** Deliver versioned atomic identity and envelope migration.
 **Requirements:** R9, R10, R15–R17; Phase 9/13 deltas.
-**Dependencies:** U32.
-**Parallelism:** wave 18. **Network:** yes.
+**Dependencies:** None.
+**Parallelism:** wave 1. **Network:** no.
 
 **Files:** `src/folio_insights/shards/minting.py`, `src/folio_insights/shards/iri_registry.py`, `src/folio_insights/shards/envelope.py`, `src/folio_insights/shards/records.py`, `src/folio_insights/shards/__init__.py`, `tests/shards/test_atomic_records.py`, `tests/shards/test_minting_determinism.py`.
 
@@ -1043,7 +1050,7 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real
 **Goal:** Deliver generated SHACL and declared tag/link vocabulary.
 **Requirements:** R10, R12, R16–R18; Phase 11 delta.
 **Dependencies:** U33, U34.
-**Parallelism:** wave 19. **Network:** yes.
+**Parallelism:** wave 4. **Network:** no.
 
 **Files:** `src/folio_insights/shapes/pydantic_to_shacl.py`, `src/folio_insights/shapes/generated/shard_models.shacl.ttl`, `src/folio_insights/shapes/fields.py`, `src/folio_insights/shapes/rendering.py`, `src/folio_insights/vocab/`, `tests/shapes/test_atomic_shapes.py`, `tests/vocab/test_projection_terms.py`.
 
@@ -1063,7 +1070,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver retire active hierarchy while preserving revision safeguards.
 **Requirements:** R10; Phase 9 delta.
 **Dependencies:** U34.
-**Parallelism:** wave 19. **Network:** yes.
+**Parallelism:** wave 3. **Network:** no.
 
 **Files:** `src/folio_insights/revision/dependency_graph.py`, `src/folio_insights/revision/acyclicity.py`, `src/folio_insights/revision/tractarian.py`, `src/folio_insights/revision/content_edit.py`, `src/folio_insights/revision/content_edit_shape.ttl`, `src/folio_insights/cli.py`, `tests/revision/test_flat_propositions.py`, `tests/shards/test_verify_iris_cli.py`.
 
@@ -1082,7 +1089,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver occurrence-aware extraction deduplication.
 **Requirements:** R9, R10, R16; AE1.
 **Dependencies:** U33.
-**Parallelism:** wave 19. **Network:** yes.
+**Parallelism:** wave 4. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/pipeline/stages/deduplicator.py`, `tests/measurement/test_atomic_dedup.py`.
 
@@ -1101,7 +1108,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver projection rebuild and recoverable new-record storage.
 **Requirements:** R10, R12, R17, R18; Phase 13 delta.
 **Dependencies:** U35, U36.
-**Parallelism:** wave 20. **Network:** yes.
+**Parallelism:** wave 5. **Network:** no.
 
 **Files:** `src/folio_insights/storage/projection.py`, `src/folio_insights/storage/context.py`, `src/folio_insights/storage/shards.py`, `tests/storage/test_atomic_projection.py`, `tests/storage/test_projection_v2_rebuild.py`.
 
@@ -1119,8 +1126,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver atomic splitting and grounded typed-link extraction.
 **Requirements:** R9, R10, R16; AE1, AE2.
-**Dependencies:** U33, U32, U60.
-**Parallelism:** wave 20. **Network:** yes.
+**Dependencies:** U33, U60.
+**Parallelism:** wave 5. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/pipeline/stages/distiller.py`, `src/folio_insights/pipeline/orchestrator.py`, `src/folio_insights/llm/schemas.py`, `src/folio_insights/llm/templates.py`, `src/folio_insights/services/prompts/distillation.py`, `tests/measurement/test_atomic_extraction.py`, `tests/test_extraction_safeguards.py`.
 
@@ -1139,7 +1146,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver full-tag shard mapping and procedural/citation subtype routing.
 **Requirements:** R12, R15–R17.
 **Dependencies:** U37, U38.
-**Parallelism:** wave 21. **Network:** yes.
+**Parallelism:** wave 6. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/minting/mapper.py`, `src/folio_insights/minting/eligibility.py`, `tests/minting/test_atomic_mapper.py`.
 
@@ -1158,7 +1165,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver two-phase mint links and audited existing-record reconciliation.
 **Requirements:** R10, R12, R15–R17.
 **Dependencies:** U39, U36.
-**Parallelism:** wave 22. **Network:** yes.
+**Parallelism:** wave 7. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/minting/minter.py`, `src/folio_insights/minting/report.py`, `tests/minting/test_atomic_minter.py`.
 
@@ -1177,7 +1184,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver ontology candidate resolution and real ancestor branch labels.
 **Requirements:** R12, R15.
 **Dependencies:** U37, U38.
-**Parallelism:** wave 21. **Network:** yes.
+**Parallelism:** wave 6. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/services/folio_ontology.py`, `src/folio_insights/services/bridge/folio_bridge.py`, `src/folio_insights/pipeline/stages/folio_tagger.py`, `tests/measurement/test_candidate_resolution.py`.
 
@@ -1196,7 +1203,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver deterministic deontic pass.
 **Requirements:** R12, R13, R15; AE2.
 **Dependencies:** U41.
-**Parallelism:** wave 22. **Network:** yes.
+**Parallelism:** wave 7. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/services/deontic.py`, `src/folio_insights/pipeline/stages/folio_tagger.py`, `src/folio_insights/minting/eligibility.py`, `tests/measurement/test_deontic_rules.py`.
 
@@ -1215,7 +1222,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver probabilistic deontic recovery pass.
 **Requirements:** R12, R13, R15, R17.
 **Dependencies:** U42, U40.
-**Parallelism:** wave 23. **Network:** yes.
+**Parallelism:** wave 8. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/services/deontic.py`, `src/folio_insights/llm/schemas.py`, `src/folio_insights/llm/templates.py`, `src/folio_insights/pipeline/stages/folio_tagger.py`, `src/folio_insights/minting/eligibility.py`, `tests/measurement/test_deontic_semantic.py`.
 
@@ -1233,8 +1240,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver deterministic Area of Law tagging.
 **Requirements:** R12, R14, R15.
-**Dependencies:** U43.
-**Parallelism:** wave 24. **Network:** yes.
+**Dependencies:** U41, U43.
+**Parallelism:** wave 9. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/services/folio_ontology.py`, `src/folio_insights/pipeline/stages/folio_tagger.py`, `tests/measurement/test_area_rules.py`.
 
@@ -1252,8 +1259,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver probabilistic implicit Area of Law tagging.
 **Requirements:** R12, R14–R17; AE3.
-**Dependencies:** U44.
-**Parallelism:** wave 25. **Network:** yes.
+**Dependencies:** U44, U43.
+**Parallelism:** wave 10. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/pipeline/stages/folio_tagger.py`, `src/folio_insights/llm/schemas.py`, `src/folio_insights/llm/templates.py`, `src/folio_insights/minting/eligibility.py`, `tests/measurement/test_area_semantic.py`.
 
@@ -1272,7 +1279,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver genre-aware extraction across all four source genres.
 **Requirements:** R9, R11, R16.
 **Dependencies:** U45.
-**Parallelism:** wave 26. **Network:** yes.
+**Parallelism:** wave 11. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/models/corpus.py`, `src/folio_insights/config.py`, `src/folio_insights/pipeline/stages/ingestion.py`, `src/folio_insights/pipeline/stages/knowledge_classifier.py`, `src/folio_insights/services/prompts/classification.py`, `src/folio_insights/services/prompts/distillation.py`, `tests/measurement/test_genres.py`.
 
@@ -1291,7 +1298,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver common proposition payload and RDF export fidelity.
 **Requirements:** R10, R12, R16, R18.
 **Dependencies:** U46, U40.
-**Parallelism:** wave 27. **Network:** yes.
+**Parallelism:** wave 12. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/services/proposition_export.py`, `src/folio_insights/services/owl_serializer.py`, `src/folio_insights/services/jsonld_builder.py`, `src/folio_insights/storage/exports.py`, `tests/measurement/test_rdf_proposition_exports.py`.
 
@@ -1310,7 +1317,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver hTML and Markdown proposition exports.
 **Requirements:** R18.
 **Dependencies:** U47.
-**Parallelism:** wave 28. **Network:** yes.
+**Parallelism:** wave 18. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/services/proposition_export.py`, `src/folio_insights/services/task_exporter.py`, `tests/measurement/test_text_proposition_exports.py`.
 
@@ -1329,7 +1336,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver task-independent CLI and API exports.
 **Requirements:** R18, R19.
 **Dependencies:** U48.
-**Parallelism:** wave 29. **Network:** yes.
+**Parallelism:** wave 19. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/cli.py`, `api/routes/export.py`, `tests/measurement/test_direct_export_cli.py`, `tests/test_export_api.py`.
 
@@ -1348,7 +1355,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver persist dropped candidates and source coverage evidence.
 **Requirements:** R16, R20–R22; AE6.
 **Dependencies:** U38, U40.
-**Parallelism:** wave 23. **Network:** yes.
+**Parallelism:** wave 8. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/pipeline/stages/boundary_detection.py`, `src/folio_insights/pipeline/stages/distiller.py`, `src/folio_insights/pipeline/orchestrator.py`, `src/folio_insights/measurement/candidates.py`, `tests/measurement/test_dropped_candidates.py`.
 
@@ -1366,8 +1373,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver absorbed RUI design components and browser/a11y harness.
 **Requirements:** R20–R24; absorbs RUI-1 and shared RUI-3 frame.
-**Dependencies:** U37.
-**Parallelism:** wave 23. **Network:** no.
+**Dependencies:** None.
+**Parallelism:** wave 1. **Network:** no.
 
 **Files:** `viewer/src/app.css`, `viewer/src/routes/+layout.svelte`, `viewer/src/lib/components/ReviewCard.svelte`, `viewer/src/lib/components/AnnotatedText.svelte`, `viewer/src/lib/components/Chip.svelte`, `viewer/package.json`, `viewer/playwright.config.ts`, `viewer/tests/e2e/workbench-foundation.spec.ts`, `.github/workflows/viewer.yml`.
 
@@ -1384,8 +1391,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver workbench source/run read API.
 **Requirements:** R20, R21, R24; A4, F2.
-**Dependencies:** U50, U51.
-**Parallelism:** wave 24. **Network:** no.
+**Dependencies:** U50, U51, U3.
+**Parallelism:** wave 9. **Network:** no.
 
 **Files:** `api/routes/measurement.py`, `api/routes/source.py`, `api/main.py`, `tests/measurement/test_read_api.py`, `tests/test_source_confinement_async.py`.
 
@@ -1403,7 +1410,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver source overlays, gaps and dropped markers in Read mode.
 **Requirements:** R20, R21; F2, AE6; absorbs RUI-2 rendering.
 **Dependencies:** U52.
-**Parallelism:** wave 25. **Network:** no.
+**Parallelism:** wave 10. **Network:** no.
 
 **Files:** `viewer/src/routes/read/[corpus]/[doc]/+page.svelte`, `viewer/src/routes/read/[corpus]/[doc]/+page.ts`, `viewer/src/lib/components/AnnotatedText.svelte`, `viewer/src/lib/source/intervals.ts`, `viewer/src/lib/source/intervals.test.ts`, `viewer/src/lib/api/measurement.ts`, `viewer/tests/e2e/workbench-read.spec.ts`.
 
@@ -1421,7 +1428,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver reviewer action API with authenticated annotation authors.
 **Requirements:** R6, R15, R16, R22–R24; A4, F2.
 **Dependencies:** U52, U3, U41.
-**Parallelism:** wave 25. **Network:** no.
+**Parallelism:** wave 10. **Network:** no.
 
 **Files:** `api/routes/annotations.py`, `api/main.py`, `src/folio_insights/measurement/annotations.py`, `tests/measurement/test_annotation_api.py`, `tests/api/test_auth.py`.
 
@@ -1439,7 +1446,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver promote, confirm and highlight-to-add reviewer flows.
 **Requirements:** R6, R20–R22; F2, AE6.
 **Dependencies:** U53, U54.
-**Parallelism:** wave 26. **Network:** no.
+**Parallelism:** wave 11. **Network:** no.
 
 **Files:** `viewer/src/routes/read/[corpus]/[doc]/+page.svelte`, `viewer/src/lib/components/CandidateActions.svelte`, `viewer/src/lib/components/HighlightAdd.svelte`, `viewer/src/lib/api/measurement.ts`, `viewer/tests/e2e/workbench-corrections.spec.ts`.
 
@@ -1457,7 +1464,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Goal:** Deliver branch-grouped tag correction in Read mode.
 **Requirements:** R6, R12, R15, R23; absorbs RUI-2 tag verdicts.
 **Dependencies:** U55, U45.
-**Parallelism:** wave 27. **Network:** no.
+**Parallelism:** wave 12. **Network:** no.
 
 **Files:** `viewer/src/lib/components/PropositionTags.svelte`, `viewer/src/lib/components/TagVerdict.svelte`, `viewer/src/routes/read/[corpus]/[doc]/+page.svelte`, `viewer/src/lib/api/measurement.ts`, `viewer/tests/e2e/workbench-tags.spec.ts`.
 
@@ -1474,8 +1481,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver judge/disagreement/gate audit in Decide mode.
 **Requirements:** R3, R5–R7, R24; A4, F2; absorbs tag/audit subset of RUI-3.
-**Dependencies:** U56, U52.
-**Parallelism:** wave 28. **Network:** no.
+**Dependencies:** U56.
+**Parallelism:** wave 19. **Network:** no.
 
 **Files:** `viewer/src/routes/inbox/+page.svelte`, `viewer/src/lib/components/ReviewCard.svelte`, `viewer/src/lib/components/JudgeEvidence.svelte`, `viewer/src/lib/components/GateHistory.svelte`, `viewer/src/lib/api/measurement.ts`, `viewer/tests/e2e/workbench-audit.spec.ts`.
 
@@ -1492,8 +1499,8 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 
 **Goal:** Deliver annotation-driven bounded auto-tuning cycle.
 **Requirements:** R3, R6–R8; A1–A5, F1.
-**Dependencies:** U32, U45, U57.
-**Parallelism:** wave 29. **Network:** yes.
+**Dependencies:** U45, U57, U6.
+**Parallelism:** wave 20. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
 **Files:** `src/folio_insights/measurement/tuning.py`, `src/folio_insights/measurement/cli.py`, `tests/measurement/test_tuning.py`, `docs/evidence/measurement/auto-tune-cycle.json`.
 
@@ -1511,8 +1518,8 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement tune --min-annotations 2
 
 **Goal:** Deliver complete live gate, generated README and reviewer audit acceptance.
 **Requirements:** R1–R24; A1–A5, F1, F2, AE1–AE6.
-**Dependencies:** U49, U57, U59.
-**Parallelism:** wave 30. **Network:** yes.
+**Dependencies:** U49, U57, U59, U32.
+**Parallelism:** wave 21. **Network:** live run (orchestrator, network).
 
 **Files:** `tests/measurement/test_end_to_end.py`, `viewer/tests/e2e/workbench-e2e.spec.ts`, `docs/evidence/measurement/final-acceptance.json`, `docs/evidence/measurement/workbench-review.md`, `README.md`.
 
