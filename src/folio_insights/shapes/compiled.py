@@ -46,6 +46,9 @@ from pyoxigraph import BlankNode, Literal, NamedNode, RdfFormat
 from pyoxigraph import parse as rdf_parse
 
 from folio_insights.shapes.fields import RDF_TYPE, XSD_STRING
+from folio_insights.shapes.identity_binding import (
+    BINDING_COMPONENT, BINDING_SHAPE, identity_binding_errors,
+)
 from folio_insights.shapes.rendering import Term, ValidationGraph
 
 SH = "http://www.w3.org/ns/shacl#"
@@ -933,7 +936,7 @@ class CompiledSuite:
     def validate(
         self, g: ValidationGraph, *, focus: Iterable[Term] | None = None
     ) -> list[ShaclResult]:
-        """Validate every target (or only targets within ``focus``)."""
+        """Validate targets plus atomic model binding, restricted to ``focus`` if given."""
         wanted = set(focus) if focus is not None else None
         # One pass builds the class index the targetClass lookups need; with
         # rdfs:subClassOf in the data the slower closure path is used instead.
@@ -944,7 +947,14 @@ class CompiledSuite:
                 break
             for t in props.get(RDF_TYPE, ()):
                 by_class.setdefault(t[1], []).append(s)
-        results: list[ShaclResult] = []
+        results: list[ShaclResult] = [
+            ShaclResult(
+                focus=node, path=None, value=None,
+                component=BINDING_COMPONENT, severity="Violation",
+                source_shape=("I", BINDING_SHAPE), messages=(message,),
+            )
+            for node, message in identity_binding_errors(g, focus=wanted)
+        ]
         for kind, value, shape in self.targets:
             if kind == "targetClass" and by_class is not None:
                 nodes = by_class.get(value[1], ())

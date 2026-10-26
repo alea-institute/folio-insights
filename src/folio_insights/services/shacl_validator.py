@@ -14,6 +14,9 @@ import pyshacl
 from rdflib import Graph, Namespace, URIRef
 from rdflib.namespace import OWL, RDF
 
+from folio_insights.shapes.identity_binding import identity_binding_errors
+from folio_insights.shapes.pyshacl_adapter import from_rdflib
+
 # Namespace for folio-insights custom terms
 FOLIO_INSIGHTS = Namespace(
     "https://folio.openlegalstandard.org/modules/folio-insights/"
@@ -98,6 +101,13 @@ class SHACLValidator:
             # Ensure at least one violation is reported
             if not violations and not conforms:
                 violations.append(results_text.strip())
+
+        binding_failures = [message for _, message in identity_binding_errors(from_rdflib(data_graph))]
+        if binding_failures:
+            conforms = False
+            violations.extend(binding_failures)
+            results_text = results_text.replace("Conforms: True", "Conforms: False", 1)
+            results_text += "\n" + "\n".join(f"Violation: {m}" for m in binding_failures)
 
         return ValidationResult(
             conforms=conforms,

@@ -2,6 +2,9 @@
 # DO NOT EDIT: regenerate with `python scripts/generate_shapes.py`;
 # `--check` (tests + the Dagger shapes stage) fails on drift (SHACL-04).
 # Generator: src/folio_insights/shapes/pydantic_to_shacl.py (Phase 11 KTD3).
+# Atomic key/IRI hash binding is model-enforced by both validation engines.
+# SHACL Core cannot robustly reproduce NFC/URI normalization + canonical JSON hashing.
+# The engines run AtomicEnvelope._identity_binding on the graph's frozen identity inputs.
 
 @prefix fi: <https://folio-insights.aleainstitute.ai/vocab/> .
 @prefix fis: <https://folio-insights.aleainstitute.ai/shapes/> .
@@ -3817,7 +3820,8 @@ fis:gen-AtomicIdentity a sh:NodeShape ;
         sh:datatype xsd:string ;
         sh:pattern "^[0-9a-f]{64}$" ;
         sh:message "AtomicIdentity.source_snapshot_digest must be required, single-valued, xsd:string (generated from the Pydantic model)" ;
-    ] .
+    ] ;
+    sh:property [ sh:path fi:start ; sh:lessThan fi:end ; sh:message "Atomic identity offsets require start < end" ; ] .
 
 fis:gen-ShardTag a sh:NodeShape ;
     rdfs:comment "Generated from folio_insights.shards.envelope.ShardTag (reached through sh:node)." ;

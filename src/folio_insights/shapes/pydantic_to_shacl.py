@@ -50,7 +50,7 @@ from folio_insights.shapes.fields import (
     nested_models,
 )
 from folio_insights.shapes.rendering import ATOMIC_SHARD_MODELS, SHARD_MODELS
-from folio_insights.shards.envelope import ATOMIC_ENVELOPE_SCHEMA_VERSION, PropositionLink
+from folio_insights.shards.envelope import ATOMIC_ENVELOPE_SCHEMA_VERSION, AtomicIdentity, PropositionLink
 
 GENERATED_PATH = Path(__file__).parent / "generated" / "shard_models.shacl.ttl"
 
@@ -176,6 +176,9 @@ def generate_ttl() -> str:
         "# DO NOT EDIT: regenerate with `python scripts/generate_shapes.py`;",
         "# `--check` (tests + the Dagger shapes stage) fails on drift (SHACL-04).",
         "# Generator: src/folio_insights/shapes/pydantic_to_shacl.py (Phase 11 KTD3).",
+        "# Atomic key/IRI hash binding is model-enforced by both validation engines.",
+        "# SHACL Core cannot robustly reproduce NFC/URI normalization + canonical JSON hashing.",
+        "# The engines run AtomicEnvelope._identity_binding on the graph's frozen identity inputs.",
         "",
     ]
     prefixes = dict(_PREFIXES)
@@ -219,12 +222,18 @@ def generate_ttl() -> str:
     datatypes: list[str] = []
     for model in nested_models(models):
         spec = model_spec(model)
+        properties = [_property(model.__name__, f) for f in spec.fields]
+        if model is AtomicIdentity:
+            properties.append(
+                '[ sh:path fi:start ; sh:lessThan fi:end ; '
+                'sh:message "Atomic identity offsets require start < end" ; ]'
+            )
         out.append(
             _closed_shape(
                 shape_iri(model),
                 target=None,
                 comment=f"Generated from {model.__module__}.{model.__qualname__} (reached through sh:node).",
-                properties=[_property(model.__name__, f) for f in spec.fields],
+                properties=properties,
                 name=model.__name__,
             )
         )
