@@ -4,12 +4,21 @@
 import json
 import pathlib
 import sys
-import time
 import os
 import signal
 import subprocess
 
 root = pathlib.Path(__file__).parent
+
+if sys.argv[1:2] == ["--hold-stdout"]:
+    signal.signal(signal.SIGTERM, lambda *_: (root / "descendant.term").touch())
+    (root / "descendant.pid").write_text(str(os.getpid()))
+    ready_fd = int(sys.argv[2])
+    os.write(ready_fd, b"1")
+    os.close(ready_fd)
+    while True:
+        signal.pause()
+
 provider = pathlib.Path(__file__).name
 control = json.loads((root / "control.json").read_text())[provider]
 args = sys.argv[1:]
@@ -60,24 +69,27 @@ def discovery():
 
 
 def hold_stdout():
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    read_fd, write_fd = os.pipe()
     subprocess.Popen(
         [
             sys.executable,
-            "-c",
-            "import os, pathlib, signal, sys, time; "
-            "signal.signal(signal.SIGTERM, lambda *_: pathlib.Path(sys.argv[2]).touch()); "
-            "pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); "
-            "time.sleep(2)",
-            str(root / "descendant.pid"),
-            str(root / "descendant.term"),
+            __file__,
+            "--hold-stdout",
+            str(write_fd),
         ],
         stdin=subprocess.DEVNULL,
+        pass_fds=(write_fd,),
     )
-    while not (root / "descendant.pid").exists():
-        time.sleep(0.005)
+    os.close(write_fd)
+    with os.fdopen(read_fd, "rb") as ready:
+        assert ready.read(1) == b"1"
+    (root / "leader.pid").write_text(str(os.getpid()))
+    (root / "ready").touch()
     if control.get("leader_exits"):
         sys.exit(0)
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    while True:
+        signal.pause()
 
 
 if args == control.get("hang_probe"):
@@ -157,7 +169,11 @@ with (root / "calls.jsonl").open("a") as stream:
     )
 if control.get("descendant"):
     hold_stdout()
-time.sleep(control.get("sleep", 0))
+if control.get("block"):
+    (root / "leader.pid").write_text(str(os.getpid()))
+    (root / "ready").touch()
+    while True:
+        signal.pause()
 if control.get("exit"):
     sys.exit(control["exit"])
 response = control.get("response", {"judgments": []})
