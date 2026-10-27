@@ -99,6 +99,7 @@ from folio_insights.storage.errors import StorageError
 from folio_insights.storage.projection import (
     CORPUS_NS,
     TBOX_GRAPH,
+    closure_graph,
     corpus_graph,
     fi,
     governance_event_iri,
@@ -377,6 +378,10 @@ class ExportDataset:
     def governance(self) -> NamedNode:
         return governance_graph(self.corpus)
 
+    @property
+    def closure(self) -> NamedNode:
+        return closure_graph(self.corpus)
+
     def quads(self) -> list[Quad]:
         return [q for graph in self.graphs.values() for q in graph]
 
@@ -393,7 +398,7 @@ async def build_export_dataset(
     returned, so the signed records describe exactly the projected revisions.
     """
     corpus = ctx.corpus
-    graph_names = [corpus_graph(corpus), governance_graph(corpus)]
+    graph_names = [corpus_graph(corpus), governance_graph(corpus), closure_graph(corpus)]
     if include_tbox:
         graph_names.append(TBOX_GRAPH)
 
@@ -774,10 +779,11 @@ def _write_formats(
     abox = dataset.graph(dataset.abox)
     gov = dataset.graph(dataset.governance)
     tbox = dataset.graph(TBOX_GRAPH)
+    closure = dataset.graph(dataset.closure)
 
     for fmt in formats:
         if fmt is ExportFormat.COMBINED_TTL:
-            merged = as_default_graph(abox + gov + tbox)
+            merged = as_default_graph(abox + gov + tbox + closure)
             path = dest / "combined.ttl"
             written.append(path)
             _write(path, _ttl(merged))
@@ -788,6 +794,12 @@ def _write_formats(
             rel = abox_filename(dataset.corpus)
             written.append(dest / rel)
             files[fmt.value] = [_graph_file(dest, rel, abox, dataset.abox, "abox Turtle")]
+            if closure:
+                rel = f"closure/{quote(dataset.corpus, safe='') or '_'}.ttl"
+                written.append(dest / rel)
+                files[fmt.value].append(
+                    _graph_file(dest, rel, closure, dataset.closure, "closure Turtle")
+                )
         elif fmt is ExportFormat.TBOX_TTL:
             written.append(dest / "tbox.ttl")
             files[fmt.value] = [_graph_file(dest, "tbox.ttl", tbox, TBOX_GRAPH, "tbox.ttl")]
@@ -833,6 +845,7 @@ def _write_formats(
             "abox": dataset.abox.value,
             "governance": dataset.governance.value,
             "tbox": TBOX_GRAPH.value,
+            **({"closure": dataset.closure.value} if closure else {}),
         },
         "formats": {
             name: {

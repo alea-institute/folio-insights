@@ -1,8 +1,7 @@
-"""``folio-insights query count`` (Phase 9 U5): world-assumption-aware counts.
+"""Signed closure declaration and world-assumption-aware count commands.
 
-A closure contract is passed on the command line (``--scope`` with
-``--closed-class`` / ``--closed-property``); membership is read from the
-corpus's ``fi:closedUnder`` triples. Without both halves the answer is open.
+Stored declarations supply the contract. Optional class/property flags restrict it;
+they cannot establish closure on their own or broaden the stored declaration.
 """
 from __future__ import annotations
 
@@ -74,9 +73,9 @@ def count_group() -> None:
 def _scope_options(fn):  # noqa: ANN001, ANN202
     for opt in (
         click.option("--closed-property", "closed_properties", multiple=True,
-                     help="Property IRI that is complete inside --scope."),
+                     help="Restrict --scope to this stored closed property."),
         click.option("--closed-class", "closed_classes", multiple=True,
-                     help="Class IRI that is complete inside --scope."),
+                     help="Restrict --scope to this stored closed class."),
         click.option("--scope", "scope", default=None,
                      help="Closed-world scope IRI (the closure contract)."),
         click.option("--corpus", required=True),
@@ -104,7 +103,8 @@ def _run(corpus: str, corpus_root: Path | None, scope: str | None,
     async def run() -> dict:
         ctx = await CorpusStorageContext.open(root, corpus)
         try:
-            scopes = [ClosedWorldScope(scope, frozenset(classes), frozenset(props))] if scope else []
+            scopes = ([ClosedWorldScope(scope, frozenset(classes), frozenset(props))]
+                      if scope and (classes or props) else [])
             return asdict(await call(ClosedWorldQuery(ctx, scopes)))
         finally:
             await ctx.close()

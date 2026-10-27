@@ -664,6 +664,9 @@ class CorpusStorageContext:
                     if applied.chain_digest is not None
                     else None
                 )
+                from folio_insights.closure.projection import sync_closure
+
+                await sync_closure(self, handle, watermark, applied.chain_digest)
                 result: T | None = None
                 if read is not None:
                     try:
@@ -814,6 +817,12 @@ class CorpusStorageContext:
             lambda h, _wm: h.query(self.corpus, sparql, include_tbox=include_tbox)
         )
         return result
+
+    async def closed_world_snapshot(self) -> Any:
+        """Capture verified closure contracts and all count facts under one projection lock."""
+        from folio_insights.closure.projection import capture_snapshot
+
+        return await capture_snapshot(self)
 
     async def rebuild_projection(self) -> int:
         """Drop and replay this corpus's projection from the journal (U4 seam)."""

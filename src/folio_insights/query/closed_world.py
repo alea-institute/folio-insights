@@ -12,13 +12,10 @@ says which, as data, on every result (``world_assumption``):
 * ``"open"``: anything else. No negation-as-failure runs; the result carries
   only what is asserted, plus an incompleteness note (it "may be incomplete").
 
-How a scope is declared. No existing writer emits ``fi:closedUnder`` yet (the
-shard projection has no field for it), so a scope has two halves, both
-required for a closed answer: the *membership* is read from
-``?s fi:closedUnder ?scope`` triples present in the corpus projection, and the
-*closure contract* (which classes and properties are complete) is data the
-caller passes as :class:`ClosedWorldScope`. A caller-supplied scope alone never
-closes the world, and a bare triple alone never does either.
+Stored corpora derive membership and contracts from verified declarations.
+Each count captures both together with its facts, and caller contracts may only
+restrict the stored contract. Generic runners retain explicit trusted caller
+contracts: a contract alone never closes the world, nor does a bare triple.
 
 Injection safety. ``CorpusStorageContext.query`` takes SPARQL text with no
 binding API, so every caller-supplied IRI is validated against a strict IRI
@@ -91,6 +88,14 @@ class ClosedWorldScope:
 
 
 @dataclass(frozen=True)
+class ClosedWorldSnapshot:
+    """One immutable view of persisted contracts and the facts they cover."""
+
+    runner: SparqlRunner
+    scopes: tuple[ClosedWorldScope, ...]
+
+
+@dataclass(frozen=True)
 class CountResult:
     """Base of every count API result: the answer always carries its world
     assumption. ``count`` is ``None`` when an open world cannot give one."""
@@ -144,6 +149,20 @@ class ClosedWorldQuery:
     def scopes(self) -> dict[str, ClosedWorldScope]:
         return dict(self._scopes)
 
+    async def _snapshot_query(self) -> ClosedWorldQuery | None:
+        capture = getattr(self._runner, "closed_world_snapshot", None)
+        if capture is None:
+            return None
+        snapshot = await capture()
+        scopes = list(snapshot.scopes)
+        if self._scopes:
+            scopes = [ClosedWorldScope(
+                stored.scope_iri,
+                stored.closed_classes & self._scopes[stored.scope_iri].closed_classes,
+                stored.closed_properties & self._scopes[stored.scope_iri].closed_properties,
+            ) for stored in scopes if stored.scope_iri in self._scopes]
+        return ClosedWorldQuery(snapshot.runner, scopes)
+
     async def declared_scope_iris(self) -> list[str]:
         """Scope IRIs that at least one subject joins with ``fi:closedUnder``."""
         rows = _rows(await self._runner.query(
@@ -174,6 +193,9 @@ class ClosedWorldQuery:
         whole set. Otherwise the same asserted set is returned as open.
         """
         subj, pred = _iri(subject), _iri(prop)
+        snapshot = await self._snapshot_query()
+        if snapshot is not None:
+            return await snapshot.count_related(subject, prop)
         scope = await self._bound_scope(subject, cls=None, prop=prop)
         rows = _rows(await self._runner.query(
             f"SELECT DISTINCT ?o WHERE {{ VALUES ?s {{ {subj} }} VALUES ?p {{ {pred} }} "
@@ -194,6 +216,9 @@ class ClosedWorldQuery:
         of the class, and those with an asserted ``prop``) is returned.
         """
         klass, pred, scope_ref = _iri(cls), _iri(prop), _iri(scope_iri)
+        snapshot = await self._snapshot_query()
+        if snapshot is not None:
+            return await snapshot.count_lacking(cls, prop, scope_iri)
         scope = self._scopes.get(scope_iri)
         members = (
             f"VALUES ?c {{ {klass} }} VALUES ?p {{ {pred} }} VALUES ?scope {{ {scope_ref} }} "
@@ -231,7 +256,7 @@ class ClosedWorldQuery:
 COUNT_APIS: tuple[str, ...] = ("count_related", "count_lacking")
 
 __all__ = [
-    "CLOSED_UNDER", "COUNT_APIS", "ClosedWorldQuery", "ClosedWorldScope", "CountResult",
+    "CLOSED_UNDER", "COUNT_APIS", "ClosedWorldQuery", "ClosedWorldScope", "ClosedWorldSnapshot", "CountResult",
     "InvalidIri", "LackingCount", "OPEN_NOTE", "RelatedCount", "SparqlRunner",
     "WorldAssumption",
 ]
