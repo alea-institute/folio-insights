@@ -22,6 +22,50 @@ def query_group() -> None:
     """Corpus queries with explicit world assumptions."""
 
 
+@query_group.command(name="declare")
+@click.option("--corpus", required=True)
+@corpus_root_option
+@click.option("--declaration", "declaration_path", required=True,
+              type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Corpus-admin signed closure declaration JSON.")
+@click.option("--op-id", help="Must equal the operation ID in the signed artifact.")
+def declare_cmd(corpus: str, corpus_root: Path | None,
+                declaration_path: Path, op_id: str | None) -> None:
+    """Persist an explicit signed closure contract; no key is loaded or created."""
+    from pydantic import ValidationError
+
+    from folio_insights.closure.declarations import ClosureDeclaration, submit_declaration
+    from folio_insights.storage import CorpusStorageContext
+    from folio_insights.storage.errors import ProjectionRecoveryPending
+    from folio_insights.storage.journal import JOURNAL_FILENAME, committed_corpora
+
+    try:
+        declaration = ClosureDeclaration.model_validate_json(
+            declaration_path.read_text(encoding="utf-8")
+        )
+    except (ValidationError, OSError):
+        raise click.ClickException("invalid or unreadable closure declaration artifact") from None
+    if declaration.corpus != corpus or (op_id is not None and op_id != declaration.op_id):
+        raise click.ClickException("selected corpus or operation ID does not match the signed artifact")
+    root = resolve_corpus_root(corpus_root)
+    if corpus not in committed_corpora(root / JOURNAL_FILENAME):
+        raise click.ClickException("the selected corpus does not exist")
+
+    async def run() -> dict:
+        async with await CorpusStorageContext.open(root, corpus) as ctx:
+            entry = await submit_declaration(ctx, declaration, op_id=op_id)
+            return {"status": "committed", "op_id": entry.op_id, "ledger_position": entry.position}
+
+    try:
+        click.echo(json.dumps(asyncio.run(run()), indent=2))
+    except ProjectionRecoveryPending:
+        raise click.ClickException(
+            "declaration committed; projection recovery pending. Reopen and retry the same artifact"
+        ) from None
+    except ValueError as exc:
+        raise click.ClickException(f"closure declaration refused: {exc}") from None
+
+
 @query_group.group(name="count")
 def count_group() -> None:
     """Count queries; every result states its world assumption."""

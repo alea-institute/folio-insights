@@ -313,6 +313,21 @@ A valid signature authenticates authorship; the existing sampling, label
 coverage, record correspondence and Wilson-bound checks still determine status.
 The shipped labeled set remains uncertified.
 
+### Explicit closure declarations
+
+An existing corpus administrator can prepare a signed artifact with
+`closure.declarations.capture_main_state` and `sign_declaration`, then submit it
+using `query declare --corpus ID --declaration closure.json`. The command accepts
+the signed artifact without loading or creating a private key. An optional
+`--op-id` must match the signed operation ID.
+
+Each declaration binds its scope, complete class/property contract, explicit
+members and current main-journal digest. A replacement supplies the whole new
+contract and member set. Retrying an older artifact returns its historical record
+without restoring superseded membership. Any main-journal advancement invalidates
+the completeness claim until the administrator declares it again. The ledger
+preserves declarations across reopening and snapshot restore.
+
 ### CORPUS-04 validation inputs
 
 `bench.corpus04.run_corpus04(..., cluster_inputs={corpus_id: options})` passes each
