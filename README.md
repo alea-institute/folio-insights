@@ -298,6 +298,9 @@ authentication and decision authorship remain separate checks.
 
 Polysemy fork release and FP-gate certification always require a registered
 signature. Legacy unsigned dispositions remain readable for descriptive audits.
+Fork approval also binds the complete emitted fork, including grouping, labels,
+framework, jurisdiction and provenance. Older records without that complete
+binding cannot authorize release.
 To prepare a review without recording approval, run
 `polysemy review --corpus ID --reviewer-did DID --prepare reviewed.json`. This
 writes the reviewed record and `reviewed.json.decision.json`, the exact input for
@@ -333,6 +336,8 @@ derived, corpus-specific graph. Closed-world counts read the stored contract,
 membership and facts from one snapshot. Caller-supplied classes or properties can
 restrict that contract but cannot broaden it. Projection rebuilds recover closure
 from the signed ledger; they do not modify signed shard payloads.
+Nightly dumps include a closure graph when needed and record an empty graph after
+invalidation so restoring a later dump cannot retain obsolete membership.
 
 ### CORPUS-04 validation inputs
 
