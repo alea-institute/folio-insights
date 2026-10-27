@@ -90,7 +90,7 @@
   "sealed": false,
   "status": "offline-draft-complete-live-cross-check-pending",
   "tuning_artifacts": {
-    "README.md": "575c5dc2cb2d1213c8ac1beea1ac73487a90c58844652e46b1601d72e3ddc546",
+    "README.md": "1edc5d080f28b5c058d8668b28d3c974f516b18b49b93f364757fefd684fb83a",
     "manifest.json": "ecc9bab071a59d80989abe8bde5287d879d7798ecc3aae8637260118c0cbfe5c",
     "ontology.json": "b9a337083884c52ce347c7b8caa3d468073c7c22dbb8c2c187160d5b2c2c82ac",
     "resolved-tags.json": "7a0be1d48d6a710501a6c89d7d5418d57a9b567c2288e38b0df7c7ae90dd1b4f",
