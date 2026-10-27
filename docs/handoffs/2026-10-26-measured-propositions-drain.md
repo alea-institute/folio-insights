@@ -2,7 +2,7 @@
 
 ## State
 - **Plan:** `docs/plans/2026-10-26-0716-feat-measured-propositions-and-workbench-plan.md` (PRs #50 and #51). KTD15 routes Codex builds offline, assigns live runs and corpus fetches to the orchestrator, and puts output-changing units behind a live held-out gate. KTD2 defines pooled tag-recall gold.
-- **Merged (12 of 60):**
+- **Merged (17 of 60):**
 
   | Unit | Scope | PR |
   |---|---|---|
@@ -11,24 +11,30 @@
   | U3 | annotations | #57 |
   | U4 | judges | #61, plus live-auth fix #63 |
   | U10 | corpus tooling | #64 |
+  | U12 | federal statutes/regs tuning gold; unsealed; live cross-check pending | #72 |
   | U33 | proposition model | #59 |
   | U34 | atomic identity | #54 |
   | U35 | SHACL | #60 |
   | U36 | hierarchy retirement | #56 |
+  | U37 | projection | #67 |
+  | U38 | atomic extraction, inactive behind `FOLIO_INSIGHTS_ATOMIC_EXTRACTION` | #69 |
+  | U39 | full-tag minting, atomic-gated | #71 |
   | U51 | workbench foundation | #52 |
   | U60 | dedup | #62 |
 
-  README fixes landed in #48, #49, and #53. Worker-report ignore landed in #65.
+  Judge-test hardening landed in #68. Worker-report ignore landed in #65.
 - **Judges proven live.** On the host, Codex and Claude both judged a 2-item synthetic packet correctly over subscription CLIs. `~/.codex/auth.json` was left untouched. Codex takes about 200 s per call against Claude's 13 s, so U5 must batch.
-- **In verification:** U37 (projection; hierarchy-freeze fix), U5 (coordinator; atomic-checkpoint fix; may conflict with U10 on `measurement/cli.py`), and U38 (atomic extraction behind `FOLIO_INSIGHTS_ATOMIC_EXTRACTION`, default off; recall fix applied).
+- **In fix/verify loops:** U5 (coordinator; P1 negative-verdict and concept-identity fixes applied), U41 (branch ancestry; exclusion-by-ancestry fix running), U38b (list evidence and failure accounting), U40 (two-phase mint links).
 - **Next units:**
-  - **After U5:** U6 (gate).
-  - **After U37 and U38:** U39 and U41.
-  - **After U6:** U7, then U8, then U9 (a live synthetic baseline run by the orchestrator).
+  - **After U5:** U6 (gate), then U7, then U8, then U9 (a live synthetic baseline run by the orchestrator).
+  - **After U41:** U42 (deterministic deontic).
+  - **After U40:** U50 (dropped candidates).
+- **Receipts path:** measurement receipts go to `data/measurement/receipts/`, never `docs/evidence/`, which `scripts/check_exclusions.py` treats as an excluded prefix. Plan KTD1 was updated to match.
+- **Corpus:** the federal statutes/regs cell is collected and verified under the gitignored `output/measurement/corpus/federal/statutes-regulations/`. Seal it with the `corpus seal` CLI after the live judge cross-check. The eCFR policy entry is unusable because robots.txt disallows its text API; use govinfo `/content/`. Fetch briefs must set the User-Agent to the repo URL.
 
 ## How to run the drain
 - **Workers:** one Codex worker per unit, launched with `agents/worker-wrapper.sh` from a `~/worktrees/folio-mp-<unit>` worktree on `feat/mp-<unit>`.
-- **Caps:** at most 3 workers at once, admitted only at load below 4. Count real wrapper processes only: lines starting `bash …/worker-wrapper.sh folio-mp`. Launcher shells must not count.
+- **Caps:** at most 3 workers at once, admitted at load below 6 with more than 16 GiB free (relaxed from 4 because other sessions hold load at about 5); host verify suites likewise run at load below 6. Count real wrapper processes only: lines starting `bash …/worker-wrapper.sh folio-mp`. Launcher shells must not count.
 - **Merge rule:** rebase on master, run the host quick suite (`-m "not gate5 and not slow and not integration"`, plus `generate_shapes.py --check` for shape units), and run `codex review --base <sha>`.
   - **Defects:** fix P1 or P2 defects via a Codex follow-up task (test first).
   - **Merge:** merge with a PR, then delete the worktree and branch.
