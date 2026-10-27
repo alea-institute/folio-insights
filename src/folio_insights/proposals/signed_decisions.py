@@ -147,6 +147,12 @@ _SIG_B64URL = re.compile(r"[A-Za-z0-9_-]{86}")
 _HANDLE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
+def validate_corpus_id(value: str) -> str:
+    if not isinstance(value, str) or not _CORPUS.fullmatch(value):
+        raise ValueError("corpus must be a corpus ID of letters, digits, '.', '_' or '-'")
+    return value
+
+
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
@@ -282,9 +288,7 @@ class DecisionBody(BaseModel):
     @field_validator("corpus")
     @classmethod
     def _corpus(cls, v: str) -> str:
-        if not _CORPUS.fullmatch(v):
-            raise ValueError("corpus must be a corpus ID of letters, digits, '.', '_' or '-'")
-        return v
+        return validate_corpus_id(v)
 
     @field_validator("target")
     @classmethod
@@ -925,23 +929,42 @@ class DecisionSignaturePolicy:
         return handle
 
 
-def load_policy() -> DecisionSignaturePolicy:
+def load_policy(corpus: str | None = None) -> DecisionSignaturePolicy:
     """The policy from settings (``FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS``,
     ``FOLIO_INSIGHTS_DECISION_SIGNERS_FILE``). Raises ``DecisionPolicyMisconfigured``
     when signatures are required without a signers file, or the file is refused."""
     from folio_insights.config import get_settings
 
-    settings = get_settings()
+    from pydantic_settings import SettingsError
+
+    try:
+        if corpus is not None:
+            validate_corpus_id(corpus)
+        settings = get_settings()
+    except (ValueError, SettingsError):
+        raise DecisionPolicyMisconfigured("signed-decision settings are invalid") from None
+    required = settings.require_signed_decisions or corpus in settings.require_signed_decision_corpora
     path = settings.decision_signers_file
     signers = None if path is None else _signers_cache.get(Path(path).expanduser())
-    if settings.require_signed_decisions and signers is None:
+    if required and not signers:
         raise DecisionPolicyMisconfigured(
             "FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1 needs FOLIO_INSIGHTS_DECISION_SIGNERS_FILE "
             "listing the reviewers' did:key DIDs (a signature by an unregistered key "
             "authenticates nobody); refusing every decision until it is configured"
         )
-    return DecisionSignaturePolicy(require_signed=settings.require_signed_decisions,
+    return DecisionSignaturePolicy(require_signed=required,
                                    signers=signers)
+
+
+def resolve_policy(corpus: str, supplied: DecisionSignaturePolicy | None = None) -> DecisionSignaturePolicy:
+    """Configured enforcement and reviewer registration cannot be relaxed by a caller."""
+    configured = load_policy(corpus)
+    if supplied is None:
+        return configured
+    return DecisionSignaturePolicy(
+        require_signed=configured.require_signed or supplied.require_signed,
+        signers=configured.signers if configured.signers is not None else supplied.signers,
+    )
 
 
 __all__ = [

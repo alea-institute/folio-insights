@@ -66,6 +66,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     api_main._extraction_data.clear()
     api_main.load_extraction(CORPUS)
     monkeypatch.delenv("FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS", raising=False)
+    monkeypatch.delenv("FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA", raising=False)
     monkeypatch.delenv("FOLIO_INSIGHTS_DECISION_SIGNERS_FILE", raising=False)
     get_settings.cache_clear()
     reset_signers_cache()
@@ -224,9 +225,10 @@ def test_malformed_signature_is_400(env):
 # ---- policy ---------------------------------------------------------------------------------
 
 
-def test_require_signed_refuses_unsigned_and_accepts_registered(env):
+@pytest.mark.parametrize("scope", ["global", "corpus"])
+def test_require_signed_refuses_unsigned_and_accepts_registered(env, scope):
     key = _key()
-    _configure(env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1",
+    _configure(env, **_required_setting(scope, CORPUS),
                FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(
                    _signers(env, f"{did_key_of(key)} alice")))
     r = _review(env)
@@ -246,14 +248,28 @@ def test_require_signed_refuses_unsigned_and_accepts_registered(env):
     assert _rows(env)["unit-001"]["decided_by"] == "human:alice"
 
 
-def test_require_signed_without_signers_file_is_503(env):
-    _configure(env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1")
+@pytest.mark.parametrize("scope", ["global", "corpus"])
+def test_require_signed_without_signers_file_is_503(env, scope):
+    _configure(env, **_required_setting(scope, CORPUS))
     r = _review(env, signature=_unit_sig(_key()))
     assert r.status_code == 503
     assert _rows(env) == {}
 
 
 # ---- operator and signer are both recorded ---------------------------------------------------
+
+
+def _required_setting(scope, corpus):
+    if scope == "global":
+        return {"FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS": "1"}
+    return {"FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA": json.dumps([corpus])}
+
+
+def test_unselected_corpus_keeps_unsigned_reviews(env):
+    _configure(env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA='["different-corpus"]')
+    response = _review(env)
+    assert response.status_code == 200
+    assert response.json()["signature_verified"] is False
 
 
 def test_operator_token_and_signer_are_recorded_separately(env):
@@ -459,9 +475,10 @@ def test_signed_task_review_and_bulk_approve(env):
     assert shown["signature_verified"] is True and shown["signer_registered"] is False
 
 
-def test_require_signed_refuses_unsigned_task_review(env):
+@pytest.mark.parametrize("scope", ["global", "corpus"])
+def test_require_signed_refuses_unsigned_task_review(env, scope):
     _seed_tasks(env)
-    _configure(env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1",
+    _configure(env, **_required_setting(scope, CORPUS),
                FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(
                    _signers(env, f"{did_key_of(_key())} alice")))
     r = env["client"].post(f"/api/v1/corpus/{CORPUS}/tasks/task-a/review",
@@ -482,11 +499,12 @@ def _seed_contradiction(env):
 
 
 @pytest.mark.parametrize("operation", ["create", "delete", "move", "resolve"])
-def test_task_mutations_require_signatures_and_record_registered_authors(env, operation):
+@pytest.mark.parametrize("scope", ["global", "corpus"])
+def test_task_mutations_require_signatures_and_record_registered_authors(env, operation, scope):
     _seed_tasks(env)
     cid = _seed_contradiction(env)
     key = _key()
-    _configure(env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1",
+    _configure(env, **_required_setting(scope, CORPUS),
                FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(
                    _signers(env, f"{did_key_of(key)} alice")))
     base = f"/api/v1/corpus/{CORPUS}"
@@ -631,7 +649,8 @@ def test_signed_proposed_class_decision_records_signer_and_operator(ledger_env):
     assert r.status_code == 409 and "nonce" in r.json()["detail"]
 
 
-def test_proposed_class_tampered_and_unsigned_required(ledger_env):
+@pytest.mark.parametrize("scope", ["global", "corpus"])
+def test_proposed_class_tampered_and_unsigned_required(ledger_env, scope):
     key = _key()
     head_decision = _decision(ledger_env)
     sig = _pc_sig(key, ledger_env["pid"])
@@ -641,7 +660,7 @@ def test_proposed_class_tampered_and_unsigned_required(ledger_env):
     r = _pc_review(ledger_env, status="reject", note="Synthetic note.",
                    signature=_pc_sig(key, ledger_env["pid"]))
     assert r.status_code == 400 and "verdict" in r.json()["detail"]
-    _configure(ledger_env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1",
+    _configure(ledger_env, **_required_setting(scope, LEDGER),
                FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(
                    _signers(ledger_env, f"{did_key_of(key)} alice")))
     r = _pc_review(ledger_env, status="approve")

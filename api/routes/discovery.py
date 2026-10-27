@@ -544,7 +544,7 @@ async def review_task(
             kind=KIND_TASK_REVIEW, corpus=corpus_id, target=task_id, verdict=body.status,
             rationale=body.note or "", detail={"edited_label": body.edited_label},
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus_id),
     )
     cols = signing.signature_columns(verified, signing.operator_handle(request))
 
@@ -629,7 +629,7 @@ async def bulk_approve_tasks(
             kind=KIND_TASK_BULK_APPROVE, corpus=corpus_id, target=CORPUS_WIDE_TARGET,
             verdict="approved", detail=selector,
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus_id),
     )
     operator = signing.operator_handle(request)
     cols = signing.signature_columns(verified, operator)
@@ -677,7 +677,7 @@ async def create_task(
                     "parent_task_id": body.parent_task_id,
                     "is_procedural": body.is_procedural},
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus_id),
     )
     cols = signing.signature_columns(verified, signing.operator_handle(request))
 
@@ -732,7 +732,7 @@ async def delete_task(
         expected=ExpectedDecision(
             kind=KIND_TASK_DELETE, corpus=corpus_id, target=task_id, verdict="delete",
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus_id),
     )
     cols = signing.signature_columns(verified, signing.operator_handle(request))
 
@@ -800,7 +800,7 @@ async def hierarchy_edit(
             target=body.source_task_id or CORPUS_WIDE_TARGET, verdict=body.edit_type,
             rationale=body.detail or "", detail={"target_task_id": body.target_task_id},
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus_id),
     )
     operator = signing.operator_handle(request)
     cols = signing.signature_columns(verified, operator)
@@ -971,7 +971,7 @@ async def resolve_contradiction(
             verdict=body.resolution, rationale=body.note or "",
             detail={"resolved_text": body.resolved_text},
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus_id),
     )
     cols = signing.signature_columns(verified, signing.operator_handle(request))
 

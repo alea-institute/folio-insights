@@ -78,10 +78,10 @@ _MISCONFIGURED_DETAIL = (
 )
 
 
-def policy_or_503() -> DecisionSignaturePolicy:
+def policy_or_503(corpus: str | None = None) -> DecisionSignaturePolicy:
     """The signed-decision policy, or a 503 refusal when its configuration is unusable."""
     try:
-        return load_policy()
+        return load_policy(corpus)
     except DecisionPolicyMisconfigured as exc:
         logger.error("signed decisions: %s", exc)
         raise HTTPException(status_code=503, detail=_MISCONFIGURED_DETAIL) from None
