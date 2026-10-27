@@ -136,6 +136,17 @@ def build_packet(suite: GoldSuite, predictions: tuple[PredictionDocument, ...],
                        predictions=tuple(context), catalog=catalog)
 
 
+def _resolved_concepts(packet, ontology):
+    """Map resolvable catalog selections to IRIs, leaving failures unresolved."""
+    resolved = {}
+    for selection in packet.catalog:
+        try:
+            resolved[selection.concept_id] = ontology.resolve(selection.label, selection.branch).iri
+        except GoldSetError:
+            continue
+    return resolved
+
+
 def _omission_matches(item, omission, doc, row, equivalences):
     if omission.source_id != doc.source.source_id:
         return set(), False
@@ -255,17 +266,19 @@ class MeasurementCoordinator:
                     "annotation_links": {**report.annotation_links, key: annotation.annotation_id}}))
         return report
 
-    def _judge_progress(self, report, packet, provider):
+    def _judge_progress(self, report, packet, provider, ontology):
         done = set()
         last = None
         successful = False
         known = {i.item_id for i in packet.items}
+        resolved = _resolved_concepts(packet, ontology)
         for attempt in self.store.results(report.run_id, provider=provider):
             ids = {j.item_id for j in attempt.judgments} | set(attempt.missing_item_ids)
             successful = (attempt.status == "complete" and not attempt.error
                           and not attempt.missing_item_ids and not attempt.unresolved_concept_ids
                           and attempt.identity == report.inputs.judge_identities[provider]
                           and len(ids) == len(attempt.judgments)
+                          and all(c in resolved for j in attempt.judgments for c in j.concept_ids)
                           and ids <= known
                           and attempt.input_sha256 == packet.select(tuple(ids)).sha256)
             if successful:
@@ -287,7 +300,7 @@ class MeasurementCoordinator:
         sample = None
         for provider in ("codex", "claude"):
             selected = packet if sample is None else packet.select(sample.item_ids)
-            done, last, successful = self._judge_progress(report, selected, provider)
+            done, last, successful = self._judge_progress(report, selected, provider, ontology)
             if not successful or done != {i.item_id for i in selected.items}:
                 return False
             results.append(last.model_copy(update={
@@ -300,10 +313,11 @@ class MeasurementCoordinator:
         return not self._adjudication(report, suite, rows, ontology, equivalences,
                                       packet, *results, sample)
 
-    async def _judge(self, report, packet, provider, judge, split_id, cancelled):
+    async def _judge(self, report, packet, provider, judge, split_id, cancelled, ontology):
         report = self.store.save(report.model_copy(update={"stage": provider}))
         report = await self._annotate(report, packet, provider, split_id)
-        done, last, successful = self._judge_progress(report, packet, provider)
+        done, last, successful = self._judge_progress(report, packet, provider, ontology)
+        resolved = _resolved_concepts(packet, ontology)
         missing = tuple(i.item_id for i in packet.items if i.item_id not in done)
         batches = [missing[n:n + self.batch_size] for n in range(0, len(missing), self.batch_size)]
         if not batches and not successful:
@@ -313,6 +327,9 @@ class MeasurementCoordinator:
                 raise InterruptedError
             selected = packet.select(ids)
             result = judge.judge(selected, cancelled=cancelled)
+            unresolved = set(result.unresolved_concept_ids) | {
+                c for j in result.judgments for c in j.concept_ids if c not in resolved}
+            result = result.model_copy(update={"unresolved_concept_ids": tuple(sorted(unresolved))})
             expected = set(ids)
             got = [j.item_id for j in result.judgments]
             valid = (result.provider == provider and result.input_sha256 == selected.sha256
@@ -345,9 +362,21 @@ class MeasurementCoordinator:
             "missing_item_ids": (), "status": "complete", "error": None})
 
     def _adjudication(self, report, suite, rows, ontology, equivalences, packet, first, second, sample):
-        pending = ({a.item_id: a.model_dump(mode="json")
-                    for a in adjudication_items(packet, first, second, sample)}
-                   if first is not None and second is not None else {})
+        resolved = _resolved_concepts(packet, ontology)
+
+        def identities(selections):
+            return {resolved.get(c, c) for c in selections}
+
+        pending = {}
+        if first is not None and second is not None:
+            for entry in adjudication_items(packet, first, second, sample):
+                reasons = entry.reasons
+                if ("concept-difference" in reasons
+                        and identities(entry.codex.concept_ids) == identities(entry.claude.concept_ids)):
+                    reasons = tuple(r for r in reasons if r != "concept-difference")
+                if reasons:
+                    pending[entry.item_id] = entry.model_copy(update={
+                        "reasons": reasons}).model_dump(mode="json")
         accepted = set()
 
         def accept(source_id, prop, kind, gold_tags):
@@ -385,18 +414,18 @@ class MeasurementCoordinator:
                     if "contradicts-accepted" not in item["reasons"]:
                         item["reasons"].append("contradicts-accepted")
                 item = by_id[item_id]
-                concepts = set(item.concept_ids)
+                concepts = identities(item.concept_ids)
                 reasons = []
                 if verdict.omission is not None:
                     doc, row = documents[item.source_id]
                     matches, uncertain = _omission_matches(item, verdict.omission, doc, row, equivalences)
                     if len(matches) == 1 and not uncertain:
                         gold = next(p for p in doc.propositions if p.item_id in matches)
-                        concepts.update(_item_id(t.label, t.branch) for t in gold.tags)
+                        concepts.update(ontology.resolve(t.label, t.branch).iri for t in gold.tags)
                     else:
                         reasons.append("ambiguous-omission-match" if matches or uncertain
                                        else "proposed-addition")
-                if set(verdict.concept_ids) - concepts and "proposed-addition" not in reasons:
+                if identities(verdict.concept_ids) - concepts and "proposed-addition" not in reasons:
                     reasons.append("proposed-addition")
                 if reasons:
                     additions.append({"item_id": item_id, "provider": provider,
@@ -429,13 +458,13 @@ class MeasurementCoordinator:
         if equivalences is not None and equivalences != freeze_equivalences(suite, rows, equivalences.edges):
             raise ValueError("stale or incompatible extraction equivalences")
         packet = build_packet(suite, rows, ontology)
-        report, first = await self._judge(report, packet, "codex", codex, split_id, cancelled)
+        report, first = await self._judge(report, packet, "codex", codex, split_id, cancelled, ontology)
         second, sample = None, None
         if first is not None:
             sample = claude_sample(packet, first.judgments, seed=report.inputs.sampling_seed)
             report = self.store.save(report.model_copy(update={"sample": sample.model_dump(mode="json")}))
             report, second = await self._judge(report, packet.select(sample.item_ids), "claude", claude,
-                                                split_id, cancelled)
+                                                split_id, cancelled, ontology)
         pending = self._adjudication(report, suite, rows, ontology, equivalences,
                                      packet, first, second, sample)
         complete = first is not None and second is not None and not pending

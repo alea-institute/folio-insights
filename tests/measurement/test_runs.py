@@ -12,7 +12,7 @@ from folio_insights.measurement.gold import load_gold, load_ontology
 from folio_insights.measurement.judges import JudgeResult, JudgeSpan, JudgeVerdict, ProposedOmission
 from folio_insights.measurement.matching import MATCHER_POLICY, content_digest
 from folio_insights.measurement.runs import (
-    MeasurementCoordinator, PipelineExtraction, judge_template_sha256,
+    MeasurementCoordinator, PipelineExtraction, build_packet, claude_sample, judge_template_sha256,
 )
 from folio_insights.measurement.schema import EvaluationInputs, JudgeIdentity
 from folio_insights.measurement.scoring import SCORER_VERSION
@@ -126,6 +126,68 @@ async def test_current_pipeline_run_judges_matches_scores_and_pins_annotations(s
     again = await execute(setup_run, codex=codex, claude=claude)
     assert again == result
     assert len(await annotations.history(run_id=result.run_id)) == len(history)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("canonical_providers", [("codex", "claude"), ("codex",)])
+async def test_canonical_selections_for_accepted_concepts_complete(setup_run, canonical_providers):
+    ontology = load_ontology()
+
+    class CanonicalJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            catalog = {c.concept_id: c for c in packet.catalog}
+            canonical = {c.label: c.concept_id for c in packet.catalog if c.label == c.branch}
+            return result.model_copy(update={"judgments": tuple(j.model_copy(update={
+                "concept_ids": tuple(canonical[ontology.resolve(
+                    catalog[c].label, catalog[c].branch).label] for c in j.concept_ids),
+            }) for j in result.judgments)})
+
+    judges = {provider: CanonicalJudge(provider) for provider in canonical_providers}
+    result = await execute(setup_run, **judges)
+    assert not result.adjudication
+    assert result.status == "complete"
+    assert result.scores["readiness"] == "ready"
+    calls = {provider: len(judge.calls) for provider, judge in judges.items()}
+    assert await execute(setup_run, **judges) == result
+    assert calls == {provider: len(judge.calls) for provider, judge in judges.items()}
+
+
+@pytest.mark.asyncio
+async def test_new_concept_aliases_queue_additions_without_false_disagreement(setup_run):
+    ontology = load_ontology()
+    suite, pins, extractor, _, _, _ = setup_run
+    doc = suite.documents[0]
+    extractor.sha256
+    packet = build_packet(suite, (await extractor.extract(doc.source),), ontology)
+    sample = claude_sample(packet, FakeJudge("codex").judge(packet).judgments, seed=pins.sampling_seed)
+    target_id = next(i.proposition_id for i in packet.items
+                     if i.kind == "gold" and i.item_id in sample.item_ids)
+    target = next(p for p in doc.propositions if p.item_id == target_id)
+    existing = {ontology.resolve(t.label, t.branch).iri for t in target.tags}
+    new_tag = next(t for p in doc.propositions for t in p.tags
+                   if t.label != t.branch and ontology.resolve(t.label, t.branch).iri not in existing)
+
+    class AdditionJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            label, branch = ((new_tag.label, new_tag.label) if self.provider == "codex"
+                             else (new_tag.label, new_tag.branch))
+            selection = next(c.concept_id for c in packet.catalog
+                             if (c.label, c.branch) == (label, branch))
+            return result.model_copy(update={"judgments": tuple(
+                j.model_copy(update={"concept_ids": (selection,)})
+                if i.kind == "gold" and i.proposition_id == target.item_id else j
+                for i, j in zip(packet.items, result.judgments, strict=True))})
+
+    result = await execute(setup_run, **{
+        provider: AdditionJudge(provider) for provider in ("codex", "claude")})
+    additions = [a for a in result.adjudication if "proposed-addition" in a["reasons"]]
+    assert {a["provider"] for a in additions} == {"codex", "claude"}
+    assert not any("concept-difference" in a["reasons"] for a in result.adjudication)
+    assert result.status == "adjudication"
+    assert result.scores["readiness"] == "incomplete"
+    assert len({tuple(a["judgment"]["concept_ids"]) for a in additions}) == 2
 
 
 @pytest.mark.asyncio
@@ -463,6 +525,11 @@ async def test_unresolved_prediction_tag_stays_incomplete_instead_of_crashing(se
     assert result.status == "incomplete"
     assert result.scores["micro"]["target_met"] is None
     assert any("unresolved tag selections" in reason for reason in result.scores["reasons"])
+    assert result.errors == {"codex": "unresolved-concept-selections"}
+    assert not setup_run[3].judgments(result.run_id, "codex")
+    retry = await execute(setup_run)
+    assert retry.run_id == result.run_id and retry.status == "incomplete"
+    assert retry.errors == result.errors
 
 
 @pytest.mark.asyncio
