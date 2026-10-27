@@ -28,7 +28,7 @@ from folio_insights.pipeline.stages.base import (
     record_lineage,
 )
 from folio_insights.pipeline.stages.structure_parser import StructuredElement
-from folio_insights.services.anchoring import resolve_anchor
+from folio_insights.services.anchoring import AnchorResult, resolve_anchor
 from folio_insights.services.boundary.structural import Boundary, detect_structural_boundaries
 from folio_insights.services.substance import is_structural
 
@@ -47,6 +47,16 @@ _LLM_METHOD_TEMPLATES: dict[str, PromptTemplate] = {_LLM_REFINED: BOUNDARY}
 def _template_for_method(method: str) -> PromptTemplate | None:
     """The prompt template behind a boundary ``method``, or ``None`` for a deterministic one."""
     return _LLM_METHOD_TEMPLATES.get(method.split("+", 1)[0])
+
+
+def _is_short_list_evidence(text: str) -> bool:
+    """Recognize element fragments, without admitting heading/contents shapes."""
+    body = re.sub(r"^(?:[-*•]\s+|\(?\d+[.)]\s*|[a-z][.)]\s+)", "", text).strip()
+    if re.match(r"^(?:section|chapter|part|article|appendix|title|clause|subsection|rule)\b",
+                body, re.IGNORECASE):
+        return False
+    word = r"[^\W\d_]+(?:[-’'][^\W\d_]+)*"
+    return bool(re.fullmatch(rf"{word}(?:\s+{word})?[.;]?", body))
 
 
 class BoundaryDetectionStage(InsightsPipelineStage):
@@ -85,6 +95,20 @@ class BoundaryDetectionStage(InsightsPipelineStage):
             # --- Tier 1: Structural heuristics ---
             tier1 = detect_structural_boundaries(elements, source_file=file_key)
 
+            if settings.atomic_extraction:
+                lead_in: Boundary | None = None
+                for b in tier1:
+                    if b.method == "structural_list_item":
+                        if (lead_in is not None and b.section_path == lead_in.section_path
+                                and _is_short_list_evidence(b.text)):
+                            # Carry context admission through lineage to the atomic input
+                            # guard; the fragment still needs independent source grounding.
+                            b.method = "structural_list_evidence"
+                    else:
+                        lead_in = (b if b.method != "structural_heading"
+                                   and not is_structural(b.text)
+                                   and re.search(r"[.!?:][\"')\]]*$", b.text) else None)
+
             # Identify ambiguous segments (long text without clear splits)
             final_boundaries: list[Boundary] = []
             ambiguous: list[Boundary] = []
@@ -122,19 +146,27 @@ class BoundaryDetectionStage(InsightsPipelineStage):
                 continue
 
             text = b.text.strip()
-            if not text or len(text) < 10:
+            list_evidence = b.method == "structural_list_evidence"
+            if not text or (len(text) < 10 and not list_evidence):
                 continue
 
             # B6: a heading, contents entry or attribution line is not knowledge. Only the
             # shape decides here; short genuine advice stays a unit.
-            if is_structural(text):
+            if is_structural(text) and not list_evidence:
                 skipped_non_substantive += 1
                 continue
 
             content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
             source_text = source_text_by_file.get(b.source_file, "")
-            anchor = resolve_anchor(text, source_text) if source_text else None
+            if list_evidence:
+                # A short fragment may also occur in the lead-in. Anchor this list
+                # occurrence, allowing for whitespace at the structural start.
+                start = source_text.find(text, b.start)
+                anchor = (AnchorResult(start, start + len(text), text, 1.0, True)
+                          if start != -1 else None)
+            else:
+                anchor = resolve_anchor(text, source_text) if source_text else None
             if anchor is not None:
                 span = Span(start=anchor.start, end=anchor.end, source_file=b.source_file)
             else:

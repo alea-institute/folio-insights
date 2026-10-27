@@ -288,7 +288,10 @@ class DistillerStage(InsightsPipelineStage):
         used: set[tuple[int, int]] = set()
         for index, parent in enumerate(parents):
             text = parent.text.strip()
-            if not _atomic_admitted(text):
+            list_evidence = any(event.stage == "boundary_detection" and event.action == "split"
+                                and event.detail == "method=structural_list_evidence"
+                                for event in parent.lineage)
+            if not _atomic_admitted(text) and not list_evidence:
                 diagnostic(parent.id, "non_substantive")
                 continue
             span = parent.original_span
@@ -305,7 +308,9 @@ class DistillerStage(InsightsPipelineStage):
                 if position >= 0:
                     offset = position
                     anchor = resolve_anchor(text, source[position:position + len(text)])
-            if anchor is None or not anchor.verified or not _atomic_admitted(anchor.snippet):
+            if (anchor is None or not anchor.verified
+                    or not (_atomic_admitted(anchor.snippet)
+                            or (list_evidence and anchor.snippet == text))):
                 diagnostic(parent.id, "unverified_input")
                 continue
             start, end = offset + anchor.start, offset + anchor.end
@@ -321,7 +326,6 @@ class DistillerStage(InsightsPipelineStage):
         provider = bridge.get_llm_for_task("distiller")  # type: ignore[union-attr]
 
         async def extract_group(group: list[_AtomicBlock]) -> None:
-            tracker.attempt()
             try:
                 result = await provider.structured(
                     _atomic_prompt(group, source), schema=AtomicDistilledOutput,
@@ -348,10 +352,14 @@ class DistillerStage(InsightsPipelineStage):
                 if oversized:
                     diagnostic(group[0].id, "oversized_sentence",
                                start=group[0].start, end=group[0].end)
+                tracker.attempt()
                 tracker.failure(file, exc)
                 diagnostic(group[0].id, "llm_failed", block_ids=[b.id for b in group])
                 logger.warning("Atomic extraction group failed for %s", file, exc_info=True)
                 return
+            # Only terminal groups count: a size-rejected parent is superseded by
+            # its children, so counting it would dilute the terminal failure ratio.
+            tracker.attempt()
             outputs.append((output, {b.id: (b.parent, b.start, b.end) for b in group}))
 
         for group in self._atomic_groups(ordered_blocks, source, diagnostics):
