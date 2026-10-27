@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from folio_insights.proposals.signed_decisions import (
     DecisionReplayed, DecisionSignaturePolicy, SignedDecision, resolve_policy,
@@ -49,6 +49,7 @@ class ProposedFork(BaseModel):
         "analogica",
     ] | None = None
     suggested_child_iris: list[str] = []
+    fork_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class DispositionRecord(BaseModel):

@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING, Any
 
 import jcs
 
+from folio_insights.governance.clock import parse_committed_at
 from folio_insights.storage.errors import JournalStateChanged
 from folio_insights.storage.journal import ProposalLedgerRow, check_replay
 
@@ -224,6 +225,7 @@ class PersistentProposalLedger:
                     actual = await tx.proposal_head()
                     if actual != expected_head:
                         raise JournalStateChanged(expected=expected_head, actual=actual)
+                main_committed_at: datetime | None = None
                 if expected_main_state is not None:
                     from folio_insights.storage.projection import CHAIN_GENESIS, chain_step
 
@@ -238,6 +240,9 @@ class PersistentProposalLedger:
                     digest = CHAIN_GENESIS
                     for position, main_op_id, payload_sha, committed in rows:
                         digest = chain_step(digest, position, main_op_id, payload_sha, committed)
+                        stamp = parse_committed_at(committed)
+                        main_committed_at = (stamp if main_committed_at is None
+                                             else max(main_committed_at, stamp))
                     if digest != expected_main_digest:
                         raise JournalStateChanged(expected=expected_main_head, actual=main_head)
                 committed_at: datetime | None = None
@@ -249,6 +254,8 @@ class PersistentProposalLedger:
                     snapshot, committed_at = await _governance_snapshot_in_transaction(
                         tx, ctx.corpus
                     )
+                    if main_committed_at is not None:
+                        committed_at = max(committed_at, main_committed_at)
                     await authorize(snapshot, committed_at)
                 if check_commit_time is not None:
                     if committed_at is None:

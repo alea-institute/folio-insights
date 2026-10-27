@@ -32,11 +32,17 @@ from folio_insights.proposals.signed_decisions import (
 
 if TYPE_CHECKING:
     from folio_insights.polysemy.dispositions import DispositionRecord
+    from folio_insights.polysemy.distinguo import DistinguoFork
     from folio_insights.polysemy.fp_audit import Certification
 
 
 def _digest(value: dict[str, Any]) -> str:
     return hashlib.sha256(jcs.canonicalize(value)).hexdigest()
+
+
+def complete_fork_digest(fork: DistinguoFork) -> str:
+    """Bind every emission and provenance field, including registry-derived metadata."""
+    return _digest(fork.model_dump(mode="json"))
 
 
 def disposition_fields(record: DispositionRecord) -> dict[str, Any]:

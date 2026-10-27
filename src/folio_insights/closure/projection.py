@@ -4,11 +4,15 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from pyoxigraph import NamedNode, Store
 
-from folio_insights.closure.declarations import LEDGER_KIND, load_declarations
+from folio_insights.closure.declarations import (
+    LEDGER_KIND, ClosureDeclaration, ClosureDeclarationRefused, _ledger_digest,
+    capture_main_state, load_declarations,
+)
 from folio_insights.query.closed_world import CLOSED_UNDER, ClosedWorldSnapshot
 from folio_insights.storage.projection import (
     CHAIN_GENESIS, ProjectionHandle, _refuse_service, corpus_graph, corpus_graphs, governance_graph,
@@ -18,12 +22,21 @@ if TYPE_CHECKING:
     from folio_insights.storage.context import CorpusStorageContext
 
 
+@dataclass(frozen=True)
+class ClosureProjectionCache:
+    """Authority derived from complete verified main and metadata prefixes."""
+
+    corpus: str
+    token: tuple[int, str, int, str]
+    active: tuple[ClosureDeclaration, ...]
+
+
 async def sync_closure(ctx: CorpusStorageContext, handle: ProjectionHandle, watermark: int,
                        main_digest: str | None) -> None:
     """Fold exactly one metadata prefix against the projection's main-journal prefix."""
     entries = await ctx.proposals.entries()
     if not any(entry.kind == LEDGER_KIND for entry in entries):
-        # The common case needs neither signature checks nor main-journal reconstruction.
+        ctx._closure_cache = None
         handle.closure_scopes = ()
         await asyncio.to_thread(handle.replace_closure, ctx.corpus, (), None)
         return
@@ -32,17 +45,24 @@ async def sync_closure(ctx: CorpusStorageContext, handle: ProjectionHandle, wate
         return {quad.subject.value for graph in (corpus_graph(ctx.corpus), governance_graph(ctx.corpus))
                 for quad in handle.graph_quads(graph) if isinstance(quad.subject, NamedNode)}
 
-    loaded = await load_declarations(
-        ctx, main_head=watermark, main_digest=main_digest or CHAIN_GENESIS,
-        entries=entries, known_members=await asyncio.to_thread(members),
-    )
-    handle.closure_scopes = tuple(declaration.scope for declaration in loaded.active)
+    head, digest = await capture_main_state(ctx, upto=watermark)
+    if digest != (main_digest or CHAIN_GENESIS):
+        raise ClosureDeclarationRefused("captured main journal digest does not match")
+    token = (head, digest, len(entries) - 1, _ledger_digest(entries))
+    cached = ctx._closure_cache
+    if cached is None or cached.corpus != ctx.corpus or cached.token != token:
+        loaded = await load_declarations(
+            ctx, main_head=head, main_digest=digest, entries=entries,
+            known_members=await asyncio.to_thread(members),
+        )
+        cached = ClosureProjectionCache(ctx.corpus, token, loaded.active)
+        ctx._closure_cache = cached
+    handle.closure_scopes = tuple(declaration.scope for declaration in cached.active)
     digest = hashlib.sha256(json.dumps(
-        [loaded.main_head, loaded.main_digest, loaded.ledger_head, loaded.ledger_digest],
-        separators=(",", ":"),
+        token, separators=(",", ":"),
     ).encode()).hexdigest()
-    triples = [(member, CLOSED_UNDER, declaration.scope_iri)
-               for declaration in loaded.active for member in declaration.members]
+    triples = ((member, CLOSED_UNDER, declaration.scope_iri)
+               for declaration in cached.active for member in declaration.members)
     await asyncio.to_thread(handle.replace_closure, ctx.corpus, triples, digest)
 
 

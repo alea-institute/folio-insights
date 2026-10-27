@@ -324,6 +324,8 @@ class DistinguoFork(BaseModel):
         this, so a disposition of one fork cannot release another (other
         frameworks, kind, prime analogate or relation).
         """
+        from folio_insights.polysemy.signing import complete_fork_digest
+
         prime_iri = self.sense(self.prime_analogate).iri if self.prime_analogate else None
         return ProposedFork(
             cluster_id=self.cluster_id,
@@ -334,6 +336,7 @@ class DistinguoFork(BaseModel):
             proportional_relation=self.proportional_relation if prime_iri else None,
             distinction_kind=self.distinction_kind,
             suggested_child_iris=[s.iri for s in self.senses],
+            fork_sha256=complete_fork_digest(self),
         )
 
 

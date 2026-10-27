@@ -157,6 +157,7 @@ from folio_insights.storage.projection import (
 )
 
 if TYPE_CHECKING:
+    from folio_insights.closure.projection import ClosureProjectionCache
     from folio_insights.identity.cache import DidDocCache
 
 T = TypeVar("T")
@@ -497,6 +498,7 @@ class CorpusStorageContext:
         # (watermark, chain digest) last verified against or written from this
         # context's journal (see ``_chain_matches``).
         self._verified_chain: tuple[int, str] | None = None
+        self._closure_cache: ClosureProjectionCache | None = None
         self._closed = True
         self._write_lock = asyncio.Lock()
         # First journal positions this context committed whose SHACL marker
@@ -543,6 +545,7 @@ class CorpusStorageContext:
         return ctx
 
     async def close(self) -> None:
+        self._closure_cache = None
         self._closed = True
         await self._journal.close()
 
@@ -576,6 +579,7 @@ class CorpusStorageContext:
             )
 
     async def _fail_closed(self) -> None:
+        self._closure_cache = None
         self._closed = True
         await self._journal.close()
 
@@ -628,6 +632,7 @@ class CorpusStorageContext:
                     # beside it (a journal whose applied prefix differs in any
                     # row: the chain digest covers every row up to the watermark).
                     await asyncio.to_thread(handle.reset, self.corpus)
+                    self._closure_cache = None
                     watermark = -1
                 else:
                     watermark = state.watermark
