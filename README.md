@@ -328,6 +328,12 @@ without restoring superseded membership. Any main-journal advancement invalidate
 the completeness claim until the administrator declares it again. The ledger
 preserves declarations across reopening and snapshot restore.
 
+Normal queries and exports include verified `fi:closedUnder` membership in a
+derived, corpus-specific graph. Closed-world counts read the stored contract,
+membership and facts from one snapshot. Caller-supplied classes or properties can
+restrict that contract but cannot broaden it. Projection rebuilds recover closure
+from the signed ledger; they do not modify signed shard payloads.
+
 ### CORPUS-04 validation inputs
 
 `bench.corpus04.run_corpus04(..., cluster_inputs={corpus_id: options})` passes each
