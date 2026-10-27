@@ -1,0 +1,4077 @@
+{
+  "documents": [
+    {
+      "gold_status": "draft",
+      "normalized_sha256": "3360765b089646ad2a34d64aced6b8b7aab0aea920c75eee76baafad3b55b93f",
+      "origin_span": {
+        "end": 1848,
+        "start": 28
+      },
+      "partition": "tuning",
+      "propositions": [
+        {
+          "item_id": "notice-duty",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "A debt collector must send the consumer a written debt-validation notice within five days after the initial collection communication, subject to the stated exceptions."
+        },
+        {
+          "item_id": "initial-information-exception",
+          "kind": "exception",
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 321,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Exception"
+            }
+          ],
+          "text": "The written-notice duty does not apply when the initial communication already contains the required information."
+        },
+        {
+          "item_id": "paid-debt-exception",
+          "kind": "exception",
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 321,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Exception"
+            }
+          ],
+          "text": "The written-notice duty does not apply when the consumer has paid the debt."
+        },
+        {
+          "item_id": "notice-amount",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The debt-validation notice must state the amount owed."
+        },
+        {
+          "item_id": "notice-creditor",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The debt-validation notice must identify the current creditor."
+        },
+        {
+          "item_id": "notice-dispute-period",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must explain that the collector will assume validity unless the consumer disputes all or part of the debt within thirty days of receipt."
+        },
+        {
+          "item_id": "notice-verification",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must promise verification or a judgment copy after a written dispute within the thirty-day period."
+        },
+        {
+          "item_id": "notice-mailing",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must promise mailing of the verification or judgment copy after a timely written dispute."
+        },
+        {
+          "item_id": "notice-original-creditor",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "notice-duty"
+            }
+          ],
+          "span": {
+            "end": 1199,
+            "start": 29
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must promise the original creditor’s name and address upon a timely written request when that creditor differs from the current creditor."
+        },
+        {
+          "item_id": "cease-collection",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1820,
+            "start": 1219
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            }
+          ],
+          "text": "After a timely written dispute or request for the original creditor’s identity, the collector must stop collection of the debt or disputed portion until the required response is obtained and mailed."
+        },
+        {
+          "item_id": "written-dispute-trigger",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "cease-collection"
+            }
+          ],
+          "span": {
+            "end": 1820,
+            "start": 1219
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            }
+          ],
+          "text": "A written dispute of all or part of the debt within the subsection (a) thirty-day period triggers the collection suspension."
+        },
+        {
+          "item_id": "identity-request-trigger",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "cease-collection"
+            }
+          ],
+          "span": {
+            "end": 1820,
+            "start": 1219
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Creditor"
+            }
+          ],
+          "text": "A written request within the subsection (a) thirty-day period for the original creditor’s name and address triggers the collection suspension."
+        },
+        {
+          "item_id": "suspension-release",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "cease-collection"
+            }
+          ],
+          "span": {
+            "end": 1820,
+            "start": 1219
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            }
+          ],
+          "text": "Collection may resume only after verification, a judgment copy, or the requested original-creditor information is obtained and a copy mailed to the consumer."
+        }
+      ],
+      "raw_sha256": "5d62f20dc253a2ee81c753241262cbf5f980f6e4d52cabb09bb11984c6afa0ac",
+      "request": {
+        "case_section": "15 U.S.C. § 1692g",
+        "document_date": "2024-01-03",
+        "document_id": "fed-sr-01",
+        "extraction_method": "html-xpath-v1",
+        "federal_employee_work": false,
+        "forum": "United States Code",
+        "genre": "statutes-regulations",
+        "group_id": "grp-fed-sr-01",
+        "jurisdiction": "federal",
+        "official_text": true,
+        "related_group_ids": [],
+        "rights": {
+          "basis": "government-edicts",
+          "checked_date": "2026-10-27",
+          "exclusions": [
+            "Exclude any third-party copyrighted material noted in or incorporated by reference into the source",
+            "Exclude editorial notes and headnotes added by the publisher"
+          ],
+          "original_retention_allowed": true,
+          "retained_evaluation_allowed": true,
+          "supporting_url": "https://www.govinfo.gov/about/policies"
+        },
+        "selector": "//p[starts-with(@class,'statutory-body')]|//h4[@class='subsection-head']|//h3[@class='section-head']",
+        "source_id": "govinfo",
+        "span": {
+          "end": 1820,
+          "start": 0
+        },
+        "subgenre": "statute",
+        "title": "15 U.S.C. § 1692g (FDCPA debt validation)",
+        "url": "https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap41-subchapV-sec1692g.htm"
+      },
+      "retrieved_at": "2026-10-27T17:03:26.919931Z",
+      "snapshot_id": "7386edf24825e58b59c2d286f9aca08699ba8fb955f63290802d074d496260e9",
+      "source_policy": {
+        "access_method": "bulk-download",
+        "access_status": "permitted",
+        "auth_env": null,
+        "auth_style": "none",
+        "publisher": "US Government Publishing Office",
+        "rate_limits": {
+          "minimum_interval_seconds": 1.0,
+          "per_day": null,
+          "per_hour": null,
+          "per_minute": null
+        },
+        "rights_basis": "Federal government works; document-specific third-party exclusions",
+        "robots_url": "https://www.govinfo.gov/robots.txt",
+        "source_id": "govinfo",
+        "substitute_forum_label": null,
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "url_prefixes": [
+          "https://www.govinfo.gov/content/pkg/USCODE-2023-title15/html/USCODE-2023-title15-chap41-subchapV-sec1692g.htm"
+        ]
+      },
+      "span_sha256": "b65831ced986b9c02a80baa289e9ec1af2e8dca19d2087618f2f18b5959faae0",
+      "text_sha256": "b65831ced986b9c02a80baa289e9ec1af2e8dca19d2087618f2f18b5959faae0"
+    },
+    {
+      "gold_status": "draft",
+      "normalized_sha256": "578334ec9ba620418d8aa8cad65e388b3bc770075095dcd9c1466afa4026c122",
+      "origin_span": {
+        "end": 1849,
+        "start": 38
+      },
+      "partition": "tuning",
+      "propositions": [
+        {
+          "item_id": "unauthorized-employment",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 303,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "A person or entity must not knowingly hire an unauthorized alien or recruit or refer one for a fee for employment in the United States."
+        },
+        {
+          "item_id": "knowing-hire",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "unauthorized-employment"
+            }
+          ],
+          "span": {
+            "end": 303,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "Hiring an alien for United States employment while knowing the alien lacks authorization for that employment is unlawful."
+        },
+        {
+          "item_id": "knowing-recruit",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "unauthorized-employment"
+            }
+          ],
+          "span": {
+            "end": 303,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "Recruiting an alien for a fee for United States employment while knowing the alien lacks authorization for that employment is unlawful."
+        },
+        {
+          "item_id": "knowing-refer",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "unauthorized-employment"
+            }
+          ],
+          "span": {
+            "end": 303,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "Referring an alien for a fee for United States employment while knowing the alien lacks authorization for that employment is unlawful."
+        },
+        {
+          "item_id": "verification-hire",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 732,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            }
+          ],
+          "text": "Hiring an individual for United States employment without complying with subsection (b) verification requirements is unlawful."
+        },
+        {
+          "item_id": "agricultural-verification",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 732,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            }
+          ],
+          "text": "An agricultural association, agricultural employer, or farm labor contractor must not hire, recruit for a fee, or refer for a fee an individual for United States employment without subsection (b) compliance."
+        },
+        {
+          "item_id": "agricultural-hire",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agricultural-verification"
+            }
+          ],
+          "span": {
+            "end": 732,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            }
+          ],
+          "text": "A covered agricultural entity may not hire an individual for United States employment without subsection (b) compliance."
+        },
+        {
+          "item_id": "agricultural-recruit",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agricultural-verification"
+            }
+          ],
+          "span": {
+            "end": 732,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            }
+          ],
+          "text": "A covered agricultural entity may not recruit an individual for a fee for United States employment without subsection (b) compliance."
+        },
+        {
+          "item_id": "agricultural-refer",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agricultural-verification"
+            }
+          ],
+          "span": {
+            "end": 732,
+            "start": 54
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            }
+          ],
+          "text": "A covered agricultural entity may not refer an individual for a fee for United States employment without subsection (b) compliance."
+        },
+        {
+          "item_id": "continued-employment",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 993,
+            "start": 733
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "After a lawful initial hire, a person or entity may not continue United States employment knowing the alien is or has become unauthorized for that employment."
+        },
+        {
+          "item_id": "good-faith-defense",
+          "kind": "exception",
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "unauthorized-employment"
+            }
+          ],
+          "span": {
+            "end": 1357,
+            "start": 994
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Exception"
+            },
+            {
+              "branch": "Objectives",
+              "label": "Affirmative Defenses"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            }
+          ],
+          "text": "Establishing good-faith subsection (b) compliance for the hiring, recruitment, or referral establishes an affirmative defense to paragraph (1)(A)."
+        },
+        {
+          "item_id": "good-faith-proof",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "good-faith-defense"
+            }
+          ],
+          "span": {
+            "end": 1357,
+            "start": 994
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Compliance"
+            },
+            {
+              "branch": "Objectives",
+              "label": "Affirmative Defenses"
+            }
+          ],
+          "text": "The person or entity must establish good-faith subsection (b) compliance for the particular hiring, recruitment, or referral to invoke the defense."
+        },
+        {
+          "item_id": "contract-deemed-hire",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1811,
+            "start": 1358
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            }
+          ],
+          "text": "A person or entity obtaining an alien’s United States labor through a covered contract, subcontract, or exchange while knowing the alien is unauthorized is deemed to have hired the alien in violation of paragraph (1)(A)."
+        },
+        {
+          "item_id": "contract-date",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "contract-deemed-hire"
+            }
+          ],
+          "span": {
+            "end": 1811,
+            "start": 1358
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "The contractual labor arrangement must have been entered, renegotiated, or extended after November 6, 1986."
+        },
+        {
+          "item_id": "contract-labor",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "contract-deemed-hire"
+            }
+          ],
+          "span": {
+            "end": 1811,
+            "start": 1358
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "The arrangement must obtain the alien’s labor in the United States."
+        },
+        {
+          "item_id": "contract-knowledge",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "contract-deemed-hire"
+            }
+          ],
+          "span": {
+            "end": 1811,
+            "start": 1358
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Immigration Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "The user must know the alien is unauthorized to perform that labor."
+        }
+      ],
+      "raw_sha256": "4c971a984b34648b808af6399b9204c133d523223c92a2d5e5b19fcbf1b39895",
+      "request": {
+        "case_section": "8 U.S.C. § 1324a",
+        "document_date": "2024-01-03",
+        "document_id": "fed-sr-02",
+        "extraction_method": "html-xpath-v1",
+        "federal_employee_work": false,
+        "forum": "United States Code",
+        "genre": "statutes-regulations",
+        "group_id": "grp-fed-sr-02",
+        "jurisdiction": "federal",
+        "official_text": true,
+        "related_group_ids": [],
+        "rights": {
+          "basis": "government-edicts",
+          "checked_date": "2026-10-27",
+          "exclusions": [
+            "Exclude any third-party copyrighted material noted in or incorporated by reference into the source",
+            "Exclude editorial notes and headnotes added by the publisher"
+          ],
+          "original_retention_allowed": true,
+          "retained_evaluation_allowed": true,
+          "supporting_url": "https://www.govinfo.gov/about/policies"
+        },
+        "selector": "//p[starts-with(@class,'statutory-body')]|//h4[@class='subsection-head']|//h3[@class='section-head']",
+        "source_id": "govinfo",
+        "span": {
+          "end": 1811,
+          "start": 0
+        },
+        "subgenre": "statute",
+        "title": "8 U.S.C. § 1324a (unlawful employment of aliens)",
+        "url": "https://www.govinfo.gov/content/pkg/USCODE-2023-title8/html/USCODE-2023-title8-chap12-subchapII-partVIII-sec1324a.htm"
+      },
+      "retrieved_at": "2026-10-27T17:03:27.904145Z",
+      "snapshot_id": "3efef832ea894c7327c2179f957e5a2e2410601b630f361026fdd7f8107b5212",
+      "source_policy": {
+        "access_method": "bulk-download",
+        "access_status": "permitted",
+        "auth_env": null,
+        "auth_style": "none",
+        "publisher": "US Government Publishing Office",
+        "rate_limits": {
+          "minimum_interval_seconds": 1.0,
+          "per_day": null,
+          "per_hour": null,
+          "per_minute": null
+        },
+        "rights_basis": "Federal government works; document-specific third-party exclusions",
+        "robots_url": "https://www.govinfo.gov/robots.txt",
+        "source_id": "govinfo",
+        "substitute_forum_label": null,
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "url_prefixes": [
+          "https://www.govinfo.gov/content/pkg/USCODE-2023-title8/html/USCODE-2023-title8-chap12-subchapII-partVIII-sec1324a.htm"
+        ]
+      },
+      "span_sha256": "a336f2b93f7d8de0b246cf58141589f348dc550a572b8d2076214a61fa867d9c",
+      "text_sha256": "a336f2b93f7d8de0b246cf58141589f348dc550a572b8d2076214a61fa867d9c"
+    },
+    {
+      "gold_status": "draft",
+      "normalized_sha256": "f9f10c8c280b56860df5e1e6857d63f5b7aec3f15cd5b74b5f5d7b8459f8526d",
+      "origin_span": {
+        "end": 2377,
+        "start": 40
+      },
+      "partition": "tuning",
+      "propositions": [
+        {
+          "item_id": "employer-discrimination",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 667,
+            "start": 23
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "An employer may not discriminate in hiring, discharge, employment conditions, or employment opportunities because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "discriminatory-refusal",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "employer-discrimination"
+            }
+          ],
+          "span": {
+            "end": 667,
+            "start": 23
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "An employer may not fail or refuse to hire an individual because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "discriminatory-discharge",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "employer-discrimination"
+            }
+          ],
+          "span": {
+            "end": 667,
+            "start": 23
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "An employer may not discharge an individual because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "discriminatory-terms",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "employer-discrimination"
+            }
+          ],
+          "span": {
+            "end": 667,
+            "start": 23
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "An employer may not discriminate in compensation, terms, conditions, or privileges of employment because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "discriminatory-classification",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "employer-discrimination"
+            }
+          ],
+          "span": {
+            "end": 667,
+            "start": 23
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            }
+          ],
+          "text": "An employer may not limit, segregate, or classify employees or applicants in a way that deprives or tends to deprive employment opportunities or adversely affects employee status because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "agency-discrimination",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1052,
+            "start": 699
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "An employment agency may not discriminate in referral, classification, or other treatment because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "agency-refusal",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agency-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1052,
+            "start": 699
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "An employment agency may not fail or refuse to refer an individual for employment because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "agency-other-discrimination",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agency-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1052,
+            "start": 699
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "An employment agency may not otherwise discriminate against an individual because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "agency-classification",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agency-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1052,
+            "start": 699
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "An employment agency may not classify an individual for employment on the basis of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "agency-discriminatory-referral",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "agency-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1052,
+            "start": 699
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            }
+          ],
+          "text": "An employment agency may not refer an individual for employment on the basis of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "union-discrimination",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not discriminate in membership or employment opportunities, or cause an employer to discriminate in violation of this section."
+        },
+        {
+          "item_id": "union-exclusion",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not exclude an individual from membership because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "union-expulsion",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not expel an individual from membership because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "union-other-discrimination",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not otherwise discriminate against an individual because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "union-classification",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not limit, segregate, or classify members or applicants in ways that deny, tend to deny, or limit employment opportunities or adversely affect employee or applicant status because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "union-referral",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not classify, fail, or refuse to refer an individual for employment in ways that deny, tend to deny, or limit employment opportunities or adversely affect employee or applicant status because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "union-causation",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not cause an employer to discriminate in violation of this section."
+        },
+        {
+          "item_id": "union-attempt",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "union-discrimination"
+            }
+          ],
+          "span": {
+            "end": 1893,
+            "start": 1082
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "A labor organization may not attempt to cause an employer to discriminate in violation of this section."
+        },
+        {
+          "item_id": "training-discrimination",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 2337,
+            "start": 1916
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "An employer, labor organization, or joint labor-management committee controlling apprenticeship or other training or retraining may not discriminate in admission or employment in such a program because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "training-admission",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "training-discrimination"
+            }
+          ],
+          "span": {
+            "end": 2337,
+            "start": 1916
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "An employer, labor organization, or joint labor-management committee controlling a covered training program may not discriminate in admission because of race, color, religion, sex, or national origin."
+        },
+        {
+          "item_id": "training-employment",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "training-discrimination"
+            }
+          ],
+          "span": {
+            "end": 2337,
+            "start": 1916
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Discrimination Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Discrimination Law"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Legal Entity",
+              "label": "Labor Union"
+            }
+          ],
+          "text": "An employer, labor organization, or joint labor-management committee controlling a covered training program may not discriminate in employment in that program because of race, color, religion, sex, or national origin."
+        }
+      ],
+      "raw_sha256": "12a155ceae882e4fce670057d5005b82cbce6df49cb307bd9c2ccbbf17eb4c6e",
+      "request": {
+        "case_section": "42 U.S.C. § 2000e-2",
+        "document_date": "2024-01-03",
+        "document_id": "fed-sr-03",
+        "extraction_method": "html-xpath-v1",
+        "federal_employee_work": false,
+        "forum": "United States Code",
+        "genre": "statutes-regulations",
+        "group_id": "grp-fed-sr-03",
+        "jurisdiction": "federal",
+        "official_text": true,
+        "related_group_ids": [],
+        "rights": {
+          "basis": "government-edicts",
+          "checked_date": "2026-10-27",
+          "exclusions": [
+            "Exclude any third-party copyrighted material noted in or incorporated by reference into the source",
+            "Exclude editorial notes and headnotes added by the publisher"
+          ],
+          "original_retention_allowed": true,
+          "retained_evaluation_allowed": true,
+          "supporting_url": "https://www.govinfo.gov/about/policies"
+        },
+        "selector": "//p[starts-with(@class,'statutory-body')]|//h4[@class='subsection-head']|//h3[@class='section-head']",
+        "source_id": "govinfo",
+        "span": {
+          "end": 2337,
+          "start": 0
+        },
+        "subgenre": "statute",
+        "title": "42 U.S.C. § 2000e-2 (Title VII unlawful employment practices)",
+        "url": "https://www.govinfo.gov/content/pkg/USCODE-2023-title42/html/USCODE-2023-title42-chap21-subchapVI-sec2000e-2.htm"
+      },
+      "retrieved_at": "2026-10-27T17:03:28.902873Z",
+      "snapshot_id": "5450c26aa2f242223f1abaf08aa727d91e14d63db8e56dfa787fe40877f854d5",
+      "source_policy": {
+        "access_method": "bulk-download",
+        "access_status": "permitted",
+        "auth_env": null,
+        "auth_style": "none",
+        "publisher": "US Government Publishing Office",
+        "rate_limits": {
+          "minimum_interval_seconds": 1.0,
+          "per_day": null,
+          "per_hour": null,
+          "per_minute": null
+        },
+        "rights_basis": "Federal government works; document-specific third-party exclusions",
+        "robots_url": "https://www.govinfo.gov/robots.txt",
+        "source_id": "govinfo",
+        "substitute_forum_label": null,
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "url_prefixes": [
+          "https://www.govinfo.gov/content/pkg/USCODE-2023-title42/html/USCODE-2023-title42-chap21-subchapVI-sec2000e-2.htm"
+        ]
+      },
+      "span_sha256": "275027a21eb9a8315097bdbcd8d473524fb7851028b31cd5e1259913721664eb",
+      "text_sha256": "275027a21eb9a8315097bdbcd8d473524fb7851028b31cd5e1259913721664eb"
+    },
+    {
+      "gold_status": "draft",
+      "normalized_sha256": "296c93f5b95e2504c316acdd2efac293414e68f96f9f0dcfec397cdbc30b85fd",
+      "origin_span": {
+        "end": 2205,
+        "start": 49
+      },
+      "partition": "tuning",
+      "propositions": [
+        {
+          "item_id": "abusive-conduct",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 2156,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            }
+          ],
+          "text": "For sellers and telemarketers, the listed abusive telemarketing conduct violates the Rule."
+        },
+        {
+          "item_id": "threats",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 243,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            }
+          ],
+          "text": "A seller or telemarketer may not threaten a person in telemarketing."
+        },
+        {
+          "item_id": "intimidation",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 243,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            }
+          ],
+          "text": "A seller or telemarketer may not use intimidation in telemarketing."
+        },
+        {
+          "item_id": "profane-language",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 243,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            }
+          ],
+          "text": "A seller or telemarketer may not use profane or obscene language in telemarketing."
+        },
+        {
+          "item_id": "credit-repair-payment",
+          "kind": "rule",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 861,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Credit Report"
+            }
+          ],
+          "text": "A seller or telemarketer may not request or receive credit-repair payment until both the represented performance period expires and the specified proof of success is provided."
+        },
+        {
+          "item_id": "performance-period",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-repair-payment"
+            }
+          ],
+          "span": {
+            "end": 861,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Credit Report"
+            }
+          ],
+          "text": "The represented time for providing all promised credit-repair goods or services must expire before payment may be requested or received."
+        },
+        {
+          "item_id": "success-documentation",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-repair-payment"
+            }
+          ],
+          "span": {
+            "end": 861,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Credit Report"
+            }
+          ],
+          "text": "Before requesting or receiving credit-repair payment, the seller must provide the person a consumer-reporting-agency report demonstrating that the promised results were achieved."
+        },
+        {
+          "item_id": "report-age",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-repair-payment"
+            }
+          ],
+          "span": {
+            "end": 861,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Credit Report"
+            }
+          ],
+          "text": "The consumer report demonstrating credit-repair success must have been issued more than six months after the results were achieved."
+        },
+        {
+          "item_id": "permissible-report-purpose",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1059,
+            "start": 862
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Credit Report"
+            }
+          ],
+          "text": "The Rule does not alter the Fair Credit Reporting Act requirement that a consumer report be obtained only for a specified permissible purpose."
+        },
+        {
+          "item_id": "recovery-payment",
+          "kind": "rule",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 1410,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            }
+          ],
+          "text": "A seller or telemarketer may not request or receive payment for recovery of money or value from a previous transaction until seven business days after its delivery to the person."
+        },
+        {
+          "item_id": "attorney-exception",
+          "kind": "exception",
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "recovery-payment"
+            }
+          ],
+          "span": {
+            "end": 1507,
+            "start": 1060
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Exception"
+            }
+          ],
+          "text": "The recovery-service payment restriction does not apply to goods or services furnished by a licensed attorney."
+        },
+        {
+          "item_id": "advance-loan-fee",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 1798,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            }
+          ],
+          "text": "A seller or telemarketer may not request or receive a fee before obtaining a loan or credit extension when the seller or telemarketer has guaranteed or represented a high likelihood of obtaining or arranging it."
+        },
+        {
+          "item_id": "debt-relief-payment",
+          "kind": "rule",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "abusive-conduct"
+            }
+          ],
+          "span": {
+            "end": 2156,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Violation"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            }
+          ],
+          "text": "A seller or telemarketer may not request or receive a debt-relief fee until and unless the listed conditions are satisfied."
+        },
+        {
+          "item_id": "altered-debt",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "debt-relief-payment"
+            }
+          ],
+          "span": {
+            "end": 2156,
+            "start": 31
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Debt Collection Law"
+            }
+          ],
+          "text": "Before a debt-relief fee may be requested or received, the seller or telemarketer must have altered the terms of at least one debt under a qualifying agreement executed by the customer."
+        }
+      ],
+      "raw_sha256": "20c9462eabe3e16294b702ebffd7fbb65e63f66c16185f770fb070bdc839af8e",
+      "request": {
+        "case_section": "16 C.F.R. § 310.4",
+        "document_date": "2023-01-01",
+        "document_id": "fed-sr-06",
+        "extraction_method": "xml-xpath-v1",
+        "federal_employee_work": false,
+        "forum": "Code of Federal Regulations",
+        "genre": "statutes-regulations",
+        "group_id": "grp-fed-sr-06",
+        "jurisdiction": "federal",
+        "official_text": true,
+        "related_group_ids": [],
+        "rights": {
+          "basis": "government-edicts",
+          "checked_date": "2026-10-27",
+          "exclusions": [
+            "Exclude any third-party copyrighted material noted in or incorporated by reference into the source",
+            "Exclude editorial notes and headnotes added by the publisher"
+          ],
+          "original_retention_allowed": true,
+          "retained_evaluation_allowed": true,
+          "supporting_url": "https://www.govinfo.gov/about/policies"
+        },
+        "selector": "//SECTION",
+        "source_id": "govinfo",
+        "span": {
+          "end": 2156,
+          "start": 0
+        },
+        "subgenre": "regulation",
+        "title": "16 C.F.R. § 310.4 (Telemarketing Sales Rule abusive practices)",
+        "url": "https://www.govinfo.gov/content/pkg/CFR-2023-title16-vol1/xml/CFR-2023-title16-vol1-sec310-4.xml"
+      },
+      "retrieved_at": "2026-10-27T17:03:31.891996Z",
+      "snapshot_id": "f4b70bead10e262d95f698f5017b05ce2854020a54160ed0c68fad6fe3f274a3",
+      "source_policy": {
+        "access_method": "bulk-download",
+        "access_status": "permitted",
+        "auth_env": null,
+        "auth_style": "none",
+        "publisher": "US Government Publishing Office",
+        "rate_limits": {
+          "minimum_interval_seconds": 1.0,
+          "per_day": null,
+          "per_hour": null,
+          "per_minute": null
+        },
+        "rights_basis": "Federal government works; document-specific third-party exclusions",
+        "robots_url": "https://www.govinfo.gov/robots.txt",
+        "source_id": "govinfo",
+        "substitute_forum_label": null,
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "url_prefixes": [
+          "https://www.govinfo.gov/content/pkg/CFR-2023-title16-vol1/xml/CFR-2023-title16-vol1-sec310-4.xml"
+        ]
+      },
+      "span_sha256": "e591b6a948fb70055fa5f07d7e8c41407d4d68c1852fc799a2f16fdbc3c45121",
+      "text_sha256": "e591b6a948fb70055fa5f07d7e8c41407d4d68c1852fc799a2f16fdbc3c45121"
+    },
+    {
+      "gold_status": "draft",
+      "normalized_sha256": "de73f327087077626d9e32d48a699856083ec902c0764d57f0c3353428ec9e16",
+      "origin_span": {
+        "end": 1467,
+        "start": 95
+      },
+      "partition": "tuning",
+      "propositions": [
+        {
+          "item_id": "credit-contract-notice",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 725,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            }
+          ],
+          "text": "In a sale or lease of consumer goods or services in or affecting commerce, a seller may not take or receive a consumer credit contract lacking the prescribed holder notice."
+        },
+        {
+          "item_id": "credit-contract-format",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-contract-notice"
+            }
+          ],
+          "span": {
+            "end": 725,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            }
+          ],
+          "text": "The required notice in the consumer credit contract must use boldface type of at least ten points."
+        },
+        {
+          "item_id": "holder-claims",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-contract-notice"
+            }
+          ],
+          "span": {
+            "end": 725,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must state that a holder is subject to all claims the debtor could assert against the seller for goods or services obtained under the contract or with its proceeds."
+        },
+        {
+          "item_id": "holder-defenses",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-contract-notice"
+            }
+          ],
+          "span": {
+            "end": 725,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must state that a holder is subject to all defenses the debtor could assert against the seller for goods or services obtained under the contract or with its proceeds."
+        },
+        {
+          "item_id": "holder-recovery-cap",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "credit-contract-notice"
+            }
+          ],
+          "span": {
+            "end": 725,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The notice must state that the debtor’s recovery under the contract cannot exceed amounts the debtor paid under it."
+        },
+        {
+          "item_id": "purchase-money-proceeds",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 1316,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            }
+          ],
+          "text": "In a covered consumer sale or lease, a seller may not accept purchase-money-loan proceeds as full or partial payment unless the connected consumer credit contract contains the prescribed holder notice."
+        },
+        {
+          "item_id": "purchase-money-format",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "purchase-money-proceeds"
+            }
+          ],
+          "span": {
+            "end": 1316,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            }
+          ],
+          "text": "The notice in a consumer credit contract connected to a purchase-money loan must use boldface type of at least ten points."
+        },
+        {
+          "item_id": "purchase-money-claims",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "purchase-money-proceeds"
+            }
+          ],
+          "span": {
+            "end": 1316,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The purchase-money notice must state that a holder is subject to all claims the debtor could assert against the seller for goods or services bought with the contract proceeds."
+        },
+        {
+          "item_id": "purchase-money-defenses",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "purchase-money-proceeds"
+            }
+          ],
+          "span": {
+            "end": 1316,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The purchase-money notice must state that a holder is subject to all defenses the debtor could assert against the seller for goods or services bought with the contract proceeds."
+        },
+        {
+          "item_id": "purchase-money-cap",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "purchase-money-proceeds"
+            }
+          ],
+          "span": {
+            "end": 1316,
+            "start": 0
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Consumer Protection Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Finance and Lending Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Seller"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Regulatory Notice"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Debtor"
+            }
+          ],
+          "text": "The purchase-money notice must state that the debtor’s recovery under the contract cannot exceed amounts the debtor paid under it."
+        }
+      ],
+      "raw_sha256": "28f5beefeab9bca1e019269f9fa0be5e799b16736e626902f0d79bca13c36d9d",
+      "request": {
+        "case_section": "16 C.F.R. § 433.2",
+        "document_date": "2023-01-01",
+        "document_id": "fed-sr-07",
+        "extraction_method": "xml-xpath-v1",
+        "federal_employee_work": false,
+        "forum": "Code of Federal Regulations",
+        "genre": "statutes-regulations",
+        "group_id": "grp-fed-sr-07",
+        "jurisdiction": "federal",
+        "official_text": true,
+        "related_group_ids": [],
+        "rights": {
+          "basis": "government-edicts",
+          "checked_date": "2026-10-27",
+          "exclusions": [
+            "Exclude any third-party copyrighted material noted in or incorporated by reference into the source",
+            "Exclude editorial notes and headnotes added by the publisher"
+          ],
+          "original_retention_allowed": true,
+          "retained_evaluation_allowed": true,
+          "supporting_url": "https://www.govinfo.gov/about/policies"
+        },
+        "selector": "//SECTION",
+        "source_id": "govinfo",
+        "span": {
+          "end": 1372,
+          "start": 0
+        },
+        "subgenre": "regulation",
+        "title": "16 C.F.R. § 433.2 (FTC Holder Rule)",
+        "url": "https://www.govinfo.gov/content/pkg/CFR-2023-title16-vol1/xml/CFR-2023-title16-vol1-sec433-2.xml"
+      },
+      "retrieved_at": "2026-10-27T17:03:32.938991Z",
+      "snapshot_id": "86edbf8efb8427be87025d57dae733b9917af241dcd5c23ed08a4b6ec5d3eb98",
+      "source_policy": {
+        "access_method": "bulk-download",
+        "access_status": "permitted",
+        "auth_env": null,
+        "auth_style": "none",
+        "publisher": "US Government Publishing Office",
+        "rate_limits": {
+          "minimum_interval_seconds": 1.0,
+          "per_day": null,
+          "per_hour": null,
+          "per_minute": null
+        },
+        "rights_basis": "Federal government works; document-specific third-party exclusions",
+        "robots_url": "https://www.govinfo.gov/robots.txt",
+        "source_id": "govinfo",
+        "substitute_forum_label": null,
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "url_prefixes": [
+          "https://www.govinfo.gov/content/pkg/CFR-2023-title16-vol1/xml/CFR-2023-title16-vol1-sec433-2.xml"
+        ]
+      },
+      "span_sha256": "6440fc9d87e125686df391bc529af1d3a1dc34a3d46a28cf9235541809924759",
+      "text_sha256": "6440fc9d87e125686df391bc529af1d3a1dc34a3d46a28cf9235541809924759"
+    },
+    {
+      "gold_status": "draft",
+      "normalized_sha256": "c68445e3ed0fc6f63800d4d1a2ff8af49a0e8491294a27404f56904e7e05ba92",
+      "origin_span": {
+        "end": 2373,
+        "start": 131
+      },
+      "partition": "tuning",
+      "propositions": [
+        {
+          "item_id": "fatality-report",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 237,
+            "start": 27
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "An employer must report a work-related employee death to OSHA within eight hours after the death."
+        },
+        {
+          "item_id": "serious-injury-report",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 521,
+            "start": 242
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            },
+            {
+              "branch": "Event",
+              "label": "Injury"
+            }
+          ],
+          "text": "An employer must report work-related inpatient hospitalization, amputation, or eye loss to OSHA within twenty-four hours after the event."
+        },
+        {
+          "item_id": "hospitalization-report",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "serious-injury-report"
+            }
+          ],
+          "span": {
+            "end": 521,
+            "start": 242
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            },
+            {
+              "branch": "Event",
+              "label": "Injury"
+            }
+          ],
+          "text": "An employer must report work-related inpatient hospitalization of one or more employees to OSHA within twenty-four hours."
+        },
+        {
+          "item_id": "amputation-report",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "serious-injury-report"
+            }
+          ],
+          "span": {
+            "end": 521,
+            "start": 242
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            },
+            {
+              "branch": "Event",
+              "label": "Injury"
+            }
+          ],
+          "text": "An employer must report a work-related employee amputation to OSHA within twenty-four hours."
+        },
+        {
+          "item_id": "eye-loss-report",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "serious-injury-report"
+            }
+          ],
+          "span": {
+            "end": 521,
+            "start": 242
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            },
+            {
+              "branch": "Event",
+              "label": "Injury"
+            }
+          ],
+          "text": "An employer must report work-related loss of an employee’s eye to OSHA within twenty-four hours."
+        },
+        {
+          "item_id": "reporting-methods",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 961,
+            "start": 526
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The employer must use one of the listed methods to report a fatality, inpatient hospitalization, amputation, or eye loss."
+        },
+        {
+          "item_id": "area-office-phone",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "reporting-methods"
+            }
+          ],
+          "span": {
+            "end": 961,
+            "start": 526
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Permission"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "Reporting by telephone to the OSHA Area Office nearest the incident site is an allowed reporting method."
+        },
+        {
+          "item_id": "area-office-person",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "reporting-methods"
+            }
+          ],
+          "span": {
+            "end": 961,
+            "start": 526
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Permission"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "Reporting in person to the OSHA Area Office nearest the incident site is an allowed reporting method."
+        },
+        {
+          "item_id": "central-phone",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "reporting-methods"
+            }
+          ],
+          "span": {
+            "end": 961,
+            "start": 526
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Permission"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "Reporting by telephone to OSHA’s toll-free central number is an allowed reporting method."
+        },
+        {
+          "item_id": "online-report",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "reporting-methods"
+            }
+          ],
+          "span": {
+            "end": 961,
+            "start": 526
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Permission"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "Electronic submission through OSHA’s public website reporting application is an allowed reporting method."
+        },
+        {
+          "item_id": "closed-office",
+          "kind": "exception",
+          "links": [
+            {
+              "relation": "exception-to",
+              "target_id": "reporting-methods"
+            }
+          ],
+          "span": {
+            "end": 1425,
+            "start": 986
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Exception"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "When the Area Office is closed, the employer must use OSHA’s central telephone number or website reporting application."
+        },
+        {
+          "item_id": "no-answering-machine",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "closed-office"
+            }
+          ],
+          "span": {
+            "end": 1425,
+            "start": 986
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "When the Area Office is closed, leaving a message on its answering machine does not satisfy the reporting requirement."
+        },
+        {
+          "item_id": "no-fax",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "closed-office"
+            }
+          ],
+          "span": {
+            "end": 1425,
+            "start": 986
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "When the Area Office is closed, faxing that office does not satisfy the reporting requirement."
+        },
+        {
+          "item_id": "no-email",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "closed-office"
+            }
+          ],
+          "span": {
+            "end": 1425,
+            "start": 986
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Prohibition"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "When the Area Office is closed, emailing that office does not satisfy the reporting requirement."
+        },
+        {
+          "item_id": "report-content",
+          "kind": "rule",
+          "links": [],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "For each reportable fatality, inpatient hospitalization, amputation, or eye loss, the employer must give OSHA the listed information."
+        },
+        {
+          "item_id": "establishment-name",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must identify the establishment by name."
+        },
+        {
+          "item_id": "incident-location",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must give the work-related incident’s location."
+        },
+        {
+          "item_id": "incident-time",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must give the work-related incident’s time."
+        },
+        {
+          "item_id": "event-type",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must identify the reportable event type: fatality, inpatient hospitalization, amputation, or eye loss."
+        },
+        {
+          "item_id": "employee-count",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must give the number of employees suffering a fatality, inpatient hospitalization, amputation, or eye loss."
+        },
+        {
+          "item_id": "employee-names",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must name the employees suffering a fatality, inpatient hospitalization, amputation, or eye loss."
+        },
+        {
+          "item_id": "contact-person",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must identify the employer’s contact person."
+        },
+        {
+          "item_id": "contact-phone",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must give the contact person’s telephone number."
+        },
+        {
+          "item_id": "incident-description",
+          "kind": "element",
+          "links": [
+            {
+              "relation": "condition-of",
+              "target_id": "report-content"
+            }
+          ],
+          "span": {
+            "end": 2242,
+            "start": 1542
+          },
+          "tags": [
+            {
+              "branch": "Area of Law",
+              "label": "Labor and Employment Law"
+            },
+            {
+              "branch": "Area of Law",
+              "label": "Employment Health and Safety Law"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employer"
+            },
+            {
+              "branch": "Role in Matter",
+              "label": "Employee"
+            },
+            {
+              "branch": "Governmental Body",
+              "label": "Occupational Safety and Health Administration"
+            },
+            {
+              "branch": "Deontic Specification",
+              "label": "Obligation"
+            },
+            {
+              "branch": "Document / Artifact",
+              "label": "Report"
+            }
+          ],
+          "text": "The report must briefly describe the work-related incident."
+        }
+      ],
+      "raw_sha256": "3a75e9e4cea77e4f711204402e42bf200f2076c52b77bd5cee18fc4cc07d0b3d",
+      "request": {
+        "case_section": "29 C.F.R. § 1904.39",
+        "document_date": "2023-07-01",
+        "document_id": "fed-sr-08",
+        "extraction_method": "xml-xpath-v1",
+        "federal_employee_work": false,
+        "forum": "Code of Federal Regulations",
+        "genre": "statutes-regulations",
+        "group_id": "grp-fed-sr-08",
+        "jurisdiction": "federal",
+        "official_text": true,
+        "related_group_ids": [],
+        "rights": {
+          "basis": "government-edicts",
+          "checked_date": "2026-10-27",
+          "exclusions": [
+            "Exclude any third-party copyrighted material noted in or incorporated by reference into the source",
+            "Exclude editorial notes and headnotes added by the publisher"
+          ],
+          "original_retention_allowed": true,
+          "retained_evaluation_allowed": true,
+          "supporting_url": "https://www.govinfo.gov/about/policies"
+        },
+        "selector": "//SECTION",
+        "source_id": "govinfo",
+        "span": {
+          "end": 2242,
+          "start": 0
+        },
+        "subgenre": "regulation",
+        "title": "29 C.F.R. § 1904.39 (OSHA fatality and injury reporting)",
+        "url": "https://www.govinfo.gov/content/pkg/CFR-2023-title29-vol5/xml/CFR-2023-title29-vol5-sec1904-39.xml"
+      },
+      "retrieved_at": "2026-10-27T17:03:33.882272Z",
+      "snapshot_id": "a8f9ea5199609943dea3faa7ab2a6c2da1117fd568910bdbfbd66ae59d6db8e1",
+      "source_policy": {
+        "access_method": "bulk-download",
+        "access_status": "permitted",
+        "auth_env": null,
+        "auth_style": "none",
+        "publisher": "US Government Publishing Office",
+        "rate_limits": {
+          "minimum_interval_seconds": 1.0,
+          "per_day": null,
+          "per_hour": null,
+          "per_minute": null
+        },
+        "rights_basis": "Federal government works; document-specific third-party exclusions",
+        "robots_url": "https://www.govinfo.gov/robots.txt",
+        "source_id": "govinfo",
+        "substitute_forum_label": null,
+        "terms_url": "https://www.govinfo.gov/about/policies",
+        "url_prefixes": [
+          "https://www.govinfo.gov/content/pkg/CFR-2023-title29-vol5/xml/CFR-2023-title29-vol5-sec1904-39.xml"
+        ]
+      },
+      "span_sha256": "ebed1a25a2a714c3bafb916d38029ce6afb31090dc19dfdd20db9589f7c7299f",
+      "text_sha256": "ebed1a25a2a714c3bafb916d38029ce6afb31090dc19dfdd20db9589f7c7299f"
+    }
+  ],
+  "format": 1,
+  "score_label": "judge agreement, unanchored"
+}

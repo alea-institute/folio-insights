@@ -1,0 +1,340 @@
+{
+  "format": 1,
+  "ontology_sha256": "44657b4ed844f5f9c9c48869184606b4fc671471a8263d79d241de87809fa239",
+  "ontology_slice_sha256": "b138112d350d820c5b322043c3fa4cce7e10fddb9f9d051877cf42632270f2ad",
+  "resolutions": [
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P",
+        "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH",
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4",
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E",
+      "iri": "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+      "selection": {
+        "branch": "Objectives",
+        "label": "Affirmative Defenses"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RCZwssbqfmu0Lds0LPDV34F",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "iri": "https://folio.openlegalstandard.org/RCZwssbqfmu0Lds0LPDV34F",
+      "selection": {
+        "branch": "Deontic Specification",
+        "label": "Compliance"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RCovPJMo8mH3uZhlySLgWIa",
+        "https://folio.openlegalstandard.org/RqNYDJtQ1pAsGPKZNEUlET",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/RCovPJMo8mH3uZhlySLgWIa",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Consumer Protection Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RHbafeB3iGRJL6ZD0aGFoj",
+        "https://folio.openlegalstandard.org/RBCzyIAi2Hjl80hfQr8wAMR",
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh",
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj",
+      "iri": "https://folio.openlegalstandard.org/RHbafeB3iGRJL6ZD0aGFoj",
+      "selection": {
+        "branch": "Document / Artifact",
+        "label": "Credit Report"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R7PHFZzZmVmczzNQl6iZKsa",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "iri": "https://folio.openlegalstandard.org/R7PHFZzZmVmczzNQl6iZKsa",
+      "selection": {
+        "branch": "Role in Matter",
+        "label": "Creditor"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RBQiW39W3CDhHVyOO8bGdhH",
+        "https://folio.openlegalstandard.org/RDhhApr0eDVle3F076WAVct",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/RBQiW39W3CDhHVyOO8bGdhH",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Debt Collection Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R77pHybcEdlO9OmqSuiyWi1",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "iri": "https://folio.openlegalstandard.org/R77pHybcEdlO9OmqSuiyWi1",
+      "selection": {
+        "branch": "Role in Matter",
+        "label": "Debtor"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RDkwyaka1G06Txgxv0pNxqI",
+        "https://folio.openlegalstandard.org/R07tQM5sYugYGBPQS571s5",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/RDkwyaka1G06Txgxv0pNxqI",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Discrimination Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R8dLmng1TNW6uYIBHtkJuab",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "iri": "https://folio.openlegalstandard.org/R8dLmng1TNW6uYIBHtkJuab",
+      "selection": {
+        "branch": "Role in Matter",
+        "label": "Employee"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RsZxhuNFK33sHecLQ7WJdp",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "iri": "https://folio.openlegalstandard.org/RsZxhuNFK33sHecLQ7WJdp",
+      "selection": {
+        "branch": "Role in Matter",
+        "label": "Employer"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R8f088bmlfkWDbXdJj9nQD9",
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/R8f088bmlfkWDbXdJj9nQD9",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Employment Discrimination Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R9WauLukPXgSHKmovMisEfr",
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/R9WauLukPXgSHKmovMisEfr",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Employment Health and Safety Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R7pFO5c8yTVZ93FKPzsnDHM",
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/R7pFO5c8yTVZ93FKPzsnDHM",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Employment Immigration Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RCdJXw1Ml7DIBqmouWarZm2",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "iri": "https://folio.openlegalstandard.org/RCdJXw1Ml7DIBqmouWarZm2",
+      "selection": {
+        "branch": "Deontic Specification",
+        "label": "Exception"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RDhhApr0eDVle3F076WAVct",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/RDhhApr0eDVle3F076WAVct",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Finance and Lending Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RuDAbRiNW105SQoqb1XZ4c",
+        "https://folio.openlegalstandard.org/RBila9ckW95W84Tk54tGfZO",
+        "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF",
+      "iri": "https://folio.openlegalstandard.org/RuDAbRiNW105SQoqb1XZ4c",
+      "selection": {
+        "branch": "Event",
+        "label": "Injury"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R8CmgcJjRCkDToOvHMhk0W",
+        "https://folio.openlegalstandard.org/R7oBWHStfmqTLn2MypkW3Pj",
+        "https://folio.openlegalstandard.org/R7L5eLIzH0CpOUE74uJvSjL"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/R7L5eLIzH0CpOUE74uJvSjL",
+      "iri": "https://folio.openlegalstandard.org/R8CmgcJjRCkDToOvHMhk0W",
+      "selection": {
+        "branch": "Legal Entity",
+        "label": "Labor Union"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "iri": "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+      "selection": {
+        "branch": "Area of Law",
+        "label": "Labor and Employment Law"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RDtFkLR3v97fran5zQ3ugao",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "iri": "https://folio.openlegalstandard.org/RDtFkLR3v97fran5zQ3ugao",
+      "selection": {
+        "branch": "Deontic Specification",
+        "label": "Obligation"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R5DE425E15b8c8CE8fb6Eecf",
+        "https://folio.openlegalstandard.org/R15Bf89EBBcdd05Ca4462a0b",
+        "https://folio.openlegalstandard.org/R22815eC3Af3bFF0d002Ca58",
+        "https://folio.openlegalstandard.org/R9o0sZT3FdlEsNm24CtqmNJ",
+        "https://folio.openlegalstandard.org/RF9A23e15C1cfD0540b8Afae",
+        "https://folio.openlegalstandard.org/R7MmeHfXj4xIERqXjFOEHHw",
+        "https://folio.openlegalstandard.org/RBQGborh1CfXanGZipDL0Qo"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RBQGborh1CfXanGZipDL0Qo",
+      "iri": "https://folio.openlegalstandard.org/R5DE425E15b8c8CE8fb6Eecf",
+      "selection": {
+        "branch": "Governmental Body",
+        "label": "Occupational Safety and Health Administration"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RCurUksxnjgPwYWpCSq0xPI",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "iri": "https://folio.openlegalstandard.org/RCurUksxnjgPwYWpCSq0xPI",
+      "selection": {
+        "branch": "Deontic Specification",
+        "label": "Permission"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RCqqI0SLTxsE8Z2rCu7KOXm",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "iri": "https://folio.openlegalstandard.org/RCqqI0SLTxsE8Z2rCu7KOXm",
+      "selection": {
+        "branch": "Deontic Specification",
+        "label": "Prohibition"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R9ek5RZIuIDj7sf24AnIjEM",
+        "https://folio.openlegalstandard.org/RBCzyIAi2Hjl80hfQr8wAMR",
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh",
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj",
+      "iri": "https://folio.openlegalstandard.org/R9ek5RZIuIDj7sf24AnIjEM",
+      "selection": {
+        "branch": "Document / Artifact",
+        "label": "Regulatory Notice"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R7P7kd5lf60cWlSHHwGsH5k",
+        "https://folio.openlegalstandard.org/RTPFix1eiYqgdushRunICo",
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj",
+      "iri": "https://folio.openlegalstandard.org/R7P7kd5lf60cWlSHHwGsH5k",
+      "selection": {
+        "branch": "Document / Artifact",
+        "label": "Report"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/R7kkf8NvitG8hubZUnTwevG",
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "iri": "https://folio.openlegalstandard.org/R7kkf8NvitG8hubZUnTwevG",
+      "selection": {
+        "branch": "Role in Matter",
+        "label": "Seller"
+      }
+    },
+    {
+      "ancestor_path": [
+        "https://folio.openlegalstandard.org/RDsDXHKUsZoJfz87jnz7zjj",
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ],
+      "branch_iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "iri": "https://folio.openlegalstandard.org/RDsDXHKUsZoJfz87jnz7zjj",
+      "selection": {
+        "branch": "Deontic Specification",
+        "label": "Violation"
+      }
+    }
+  ]
+}

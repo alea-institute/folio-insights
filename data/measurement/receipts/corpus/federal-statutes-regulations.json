@@ -1,0 +1,105 @@
+{
+  "acquisition": {
+    "documents": 8,
+    "gaps": 0,
+    "held_out_subgenres": {
+      "regulation": 1,
+      "statute": 1
+    },
+    "independent_groups": 8,
+    "original_retention_allowed": true,
+    "partitions": {
+      "held-out": 2,
+      "tuning": 6
+    },
+    "retained_evaluation_allowed": true,
+    "rights_basis_counts": {
+      "government-edicts": 8
+    },
+    "rights_checked_dates": [
+      "2026-10-27"
+    ],
+    "rights_evidence": "Document-specific URLs, digests and exclusions retained in evaluator manifest; this worker did not re-fetch or re-check remote policies.",
+    "subgenres": {
+      "regulation": 4,
+      "statute": 4
+    }
+  },
+  "follow_ups": [
+    "Orchestrator runs independent judge cross-checks and records realized coverage, missing-tag proposals and disagreement resolutions.",
+    "Adjudicate the full pooled tag sets before scoring; deterministic resolution alone is not semantic adjudication.",
+    "Preserve incomplete selection boundaries; do not infer unseen requirements.",
+    "Seal the cross-checked evaluator manifest only after resolutions, exporting to a fresh directory.",
+    "This gold author is excluded from candidate tuning for this split under KTD6.",
+    "Freeze the new ontology digest consistently and re-baseline before cross-version comparisons."
+  ],
+  "format": 1,
+  "genre": "statutes-regulations",
+  "gold_draft": {
+    "adjudication_status": "draft",
+    "anchor_candidate_tuning_source_id": "fed-sr-01",
+    "author_kind": "codex-worker",
+    "coordinate_system": "selection-relative, half-open Unicode code points",
+    "held_out_propositions": 28,
+    "human_anchor_status": "unverified",
+    "pool_adjudication_status": "pending",
+    "resolved_tuning_selections": 26,
+    "tuning_kind_counts": {
+      "element": 71,
+      "exception": 5,
+      "rule": 22
+    },
+    "tuning_link_counts": {
+      "condition-of": 74,
+      "exception-to": 5
+    },
+    "tuning_propositions": 98,
+    "tuning_tag_assignments": 520
+  },
+  "judge_cross_check": {
+    "claude": {
+      "covered_items": 0,
+      "status": "pending"
+    },
+    "codex": {
+      "covered_items": 0,
+      "status": "pending"
+    },
+    "coverage_denominator_status": "not-frozen-before-pooled-tag-adjudication",
+    "resolutions_recorded": 0
+  },
+  "jurisdiction": "federal",
+  "offline_verification": {
+    "artifact_checks": [
+      "source and selection digests",
+      "GoldDocument grounding and link validation",
+      "deterministic label and ancestor resolution",
+      "tuning export contains no held-out identifiers, URLs, digests or gold statements",
+      "no nonempty excerpt-key values",
+      "acquisition metadata preserved"
+    ],
+    "complete": true,
+    "documents": 8,
+    "errors": [],
+    "shared_tests": {
+      "command": "python -m pytest -q -p no:cacheprovider tests/measurement/test_corpus.py tests/measurement/test_gold.py",
+      "passed": 135
+    }
+  },
+  "score_label": "judge agreement, unanchored",
+  "sealed": false,
+  "status": "offline-draft-complete-live-cross-check-pending",
+  "tuning_artifacts": {
+    "README.md": "1edc5d080f28b5c058d8668b28d3c974f516b18b49b93f364757fefd684fb83a",
+    "manifest.json": "ecc9bab071a59d80989abe8bde5287d879d7798ecc3aae8637260118c0cbfe5c",
+    "ontology.json": "b9a337083884c52ce347c7b8caa3d468073c7c22dbb8c2c187160d5b2c2c82ac",
+    "resolved-tags.json": "7a0be1d48d6a710501a6c89d7d5418d57a9b567c2288e38b0df7c7ae90dd1b4f",
+    "text/275027a21eb9a8315097bdbcd8d473524fb7851028b31cd5e1259913721664eb.txt": "275027a21eb9a8315097bdbcd8d473524fb7851028b31cd5e1259913721664eb",
+    "text/6440fc9d87e125686df391bc529af1d3a1dc34a3d46a28cf9235541809924759.txt": "6440fc9d87e125686df391bc529af1d3a1dc34a3d46a28cf9235541809924759",
+    "text/a336f2b93f7d8de0b246cf58141589f348dc550a572b8d2076214a61fa867d9c.txt": "a336f2b93f7d8de0b246cf58141589f348dc550a572b8d2076214a61fa867d9c",
+    "text/b65831ced986b9c02a80baa289e9ec1af2e8dca19d2087618f2f18b5959faae0.txt": "b65831ced986b9c02a80baa289e9ec1af2e8dca19d2087618f2f18b5959faae0",
+    "text/e591b6a948fb70055fa5f07d7e8c41407d4d68c1852fc799a2f16fdbc3c45121.txt": "e591b6a948fb70055fa5f07d7e8c41407d4d68c1852fc799a2f16fdbc3c45121",
+    "text/ebed1a25a2a714c3bafb916d38029ce6afb31090dc19dfdd20db9589f7c7299f.txt": "ebed1a25a2a714c3bafb916d38029ce6afb31090dc19dfdd20db9589f7c7299f"
+  },
+  "unit": "U12"
+}
