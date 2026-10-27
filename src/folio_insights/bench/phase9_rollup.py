@@ -21,9 +21,9 @@ polysemy LLM), builds the synthetic multi-framework corpus
 6. **P4** — export under EL (default) and with ``expressive``; check a
    planted non-EL axiom names its rule; HermiT over the DL TBox when a JRE
    is available.
-7. **P5** — closed-world counts: open over the corpus as stored (no writer
-   emits ``fi:closedUnder``), closed over the same triples plus a declared
-   island's membership.
+7. **P5** — closed-world counts: open before declaration, closed after a
+   signed administrator declaration persists an island's membership, and
+   still closed after reopening the corpus.
 8. **P1** — cluster validation with coverage and cross-reference checks,
    HermiT when available, else the NLI fallback, and labels its checkers.
 9. **P6** — polysemy candidates from the P1 clusters and P2 registry, the

@@ -11,7 +11,7 @@ from pyoxigraph import NamedNode, Store
 from folio_insights.closure.declarations import LEDGER_KIND, load_declarations
 from folio_insights.query.closed_world import CLOSED_UNDER, ClosedWorldSnapshot
 from folio_insights.storage.projection import (
-    CHAIN_GENESIS, ProjectionHandle, corpus_graph, corpus_graphs, governance_graph,
+    CHAIN_GENESIS, ProjectionHandle, _refuse_service, corpus_graph, corpus_graphs, governance_graph,
 )
 
 if TYPE_CHECKING:
@@ -24,6 +24,7 @@ async def sync_closure(ctx: CorpusStorageContext, handle: ProjectionHandle, wate
     entries = await ctx.proposals.entries()
     if not any(entry.kind == LEDGER_KIND for entry in entries):
         # The common case needs neither signature checks nor main-journal reconstruction.
+        handle.closure_scopes = ()
         await asyncio.to_thread(handle.replace_closure, ctx.corpus, (), None)
         return
 
@@ -54,7 +55,7 @@ class SnapshotRunner:
         self._store.extend(quad for graph in self._graphs for quad in handle.graph_quads(graph))
 
     async def query(self, sparql: str, *, include_tbox: bool = False) -> Any:
-        # ClosedWorldQuery's fixed SELECT templates validate every interpolated IRI.
+        _refuse_service(sparql)
         result = self._store.query(sparql, default_graph=self._graphs, named_graphs=self._graphs)
         names = [variable.value for variable in result.variables]
         return [{name: row[name] for name in names} for row in result]

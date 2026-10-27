@@ -1,15 +1,13 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-30T22:12:54Z",
+  "timestamp": "2026-10-27T15:07:08Z",
   "trigger": "precompact-auto",
-  "phase": "07-governance-model-3-1",
-  "phase_dir": ".planning/phases/07-governance-model-3-1",
+  "phase": "08-folio-v2-vocab-mini-bfo-spine-7",
+  "phase_dir": ".planning/phases/08-folio-v2-vocab-mini-bfo-spine-7",
   "git": {
-    "branch": "master",
-    "head": "b594824",
-    "modified_files": 3
+    "branch": "drawdown/fi-1",
+    "head": "30a3f29",
+    "modified_files": 7
   },
-  "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session.",
-  "stale": true,
-  "stale_note": "SUPERSEDED 2026-07-26 — DO NOT RESUME FROM THIS HANDOFF. It was auto-saved mid-Phase-07 on 2026-05-30; Phase 07 completed that same day and Phase 08 completed 2026-05-31. The v2.0 milestone is now PARKED (2026-07-26; review 2026-08-23, provisional) per cockpit ask housekeeping-2026-07-24 q4-folio-insights-v2. Read .planning/STATE.md instead."
+  "note": "Auto-saved by PreCompact hook. Run /gsd-resume-work in a fresh session."
 }

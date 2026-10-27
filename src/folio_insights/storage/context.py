@@ -11,7 +11,8 @@ use (U3 wires every CLI command through it). It owns:
   (``PersistentGovernanceLog``), the persistent implementations of the
   existing ``ShardStore`` and five-method ``GovernanceLog`` seams;
 * ``proposals`` (``PersistentProposalLedger``), the append-only
-  proposed-class governance ledger (not projected to RDF).
+  metadata ledger for proposed-class governance and signed closure declarations;
+  verified closure membership has a separate recoverable RDF graph.
 
 Write path (KTD3): validate and gate the input, then inside one
 ``BEGIN IMMEDIATE`` transaction check operation-ID replay, re-check state

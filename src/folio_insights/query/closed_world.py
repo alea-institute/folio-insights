@@ -6,8 +6,8 @@ declared island. This module answers count questions in one of two modes and
 says which, as data, on every result (``world_assumption``):
 
 * ``"closed"``: the subject carries ``fi:closedUnder <scope>`` in the corpus
-  projection AND the caller registered a :class:`ClosedWorldScope` for that IRI
-  whose closed classes and properties cover the question. Only then does
+  projection AND a verified stored (or generic runner's caller-supplied)
+  :class:`ClosedWorldScope` covers the question. Only then does
   ``ClosedWorldQuery`` issue ``FILTER NOT EXISTS``, and the answer is complete.
 * ``"open"``: anything else. No negation-as-failure runs; the result carries
   only what is asserted, plus an incompleteness note (it "may be incomplete").
@@ -137,8 +137,9 @@ def _n(row: dict[str, Any], name: str = "n") -> int:
 class ClosedWorldQuery:
     """Count queries that apply negation-as-failure only inside bound scopes.
 
-    ``runner`` is a ``CorpusStorageContext`` (or anything with its ``query``);
-    ``scopes`` are the caller's closure contracts, keyed by scope IRI.
+    Storage runners capture verified contracts and facts together; nonempty
+    ``scopes`` can only restrict those contracts. Generic runners instead use
+    the caller's contracts, preserving the standalone query interface.
     """
 
     def __init__(self, runner: SparqlRunner, scopes: Iterable[ClosedWorldScope] = ()) -> None:

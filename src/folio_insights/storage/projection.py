@@ -725,7 +725,7 @@ class ProjectionHandle:
 
 
 def corpus_graphs(corpus: str, *, include_tbox: bool = False) -> list[NamedNode]:
-    """The named graphs a corpus query sees (ABox, governance, optional TBox)."""
+    """The corpus's ABox, governance, derived closure and optional shared TBox."""
     graphs = [corpus_graph(corpus), governance_graph(corpus), closure_graph(corpus)]
     if include_tbox:
         graphs.append(TBOX_GRAPH)
@@ -793,6 +793,7 @@ __all__ = [
     "ProjectionState",
     "chain_over",
     "chain_step",
+    "closure_graph",
     "corpus_graph",
     "corpus_graphs",
     "governance_event_iri",
