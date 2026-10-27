@@ -275,8 +275,10 @@ class ProposalStore:
         be ``None`` only when every item is signed by such a mapped signer
         (``ReviewerRequired`` otherwise). ``operator`` is the authenticated API
         operator who submitted the batch, recorded on every item next to (never
-        instead of) its author. ``policy`` defaults to ``signed_decisions.load_policy()``
-        (``DecisionPolicyMisconfigured`` when unusable); ``now`` is the server time the
+        instead of) its author. ``policy`` is combined with the configured policy for
+        this corpus by ``signed_decisions.resolve_policy(self.corpus, policy)``;
+        a supplied policy cannot relax configured enforcement or reviewer registration
+        (``DecisionPolicyMisconfigured`` when unusable). ``now`` is the server time the
         signatures' ``issued_at`` is checked against (default: the current time).
         Signature refusals raise a ``DecisionSignatureRefused`` subclass naming the
         item index and the rule.
