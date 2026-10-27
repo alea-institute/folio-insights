@@ -124,9 +124,15 @@ async def test_contract_list_survives_boundary_detection_and_atomic_extraction(
          "char_offset_end": unit.original_span.end}
         for i, unit in enumerate(job.units)
     ]}
+    expected_spans = [
+        (unit.original_span.start, unit.original_span.end) for unit in job.units
+    ]
     job.units = []
     try:
         job = await BoundaryDetectionStage().execute(job)
+        assert [(u.original_span.start, u.original_span.end) for u in job.units] == expected_spans
+        if not marker:
+            assert expected_spans[-1] == (95, 101)
         payload = [proposition("rule", "A plaintiff must prove formation, performance, and breach.",
                                supports=["b0", "b1", "b2", "b3"]), *[
             proposition(name, name, kind="element", supports=[f"b{i}"], links=[
@@ -140,6 +146,9 @@ async def test_contract_list_survives_boundary_detection_and_atomic_extraction(
     assert [u.proposition_kind for u in job.units] == ["rule", *["element"] * 3]
     rule, *elements = job.units
     assert [u.text for u in elements] == names
+    assert [(u.original_span.start, u.original_span.end) for u in elements] == [
+        (start + len(marker), end) for start, end in expected_spans[1:]
+    ]
     assert all([(link.relation, link.target_id) for link in unit.links] == [
         ("condition-of", rule.id),
     ] for unit in elements)

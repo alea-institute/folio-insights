@@ -28,7 +28,7 @@ from folio_insights.pipeline.stages.base import (
     record_lineage,
 )
 from folio_insights.pipeline.stages.structure_parser import StructuredElement
-from folio_insights.services.anchoring import resolve_anchor
+from folio_insights.services.anchoring import AnchorResult, resolve_anchor
 from folio_insights.services.boundary.structural import Boundary, detect_structural_boundaries
 from folio_insights.services.substance import is_structural
 
@@ -159,7 +159,14 @@ class BoundaryDetectionStage(InsightsPipelineStage):
             content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
             source_text = source_text_by_file.get(b.source_file, "")
-            anchor = resolve_anchor(text, source_text) if source_text else None
+            if list_evidence:
+                # A short fragment may also occur in the lead-in. Anchor this list
+                # occurrence, allowing for whitespace at the structural start.
+                start = source_text.find(text, b.start)
+                anchor = (AnchorResult(start, start + len(text), text, 1.0, True)
+                          if start != -1 else None)
+            else:
+                anchor = resolve_anchor(text, source_text) if source_text else None
             if anchor is not None:
                 span = Span(start=anchor.start, end=anchor.end, source_file=b.source_file)
             else:

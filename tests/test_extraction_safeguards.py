@@ -169,10 +169,10 @@ async def test_non_substantive_boundaries_are_dropped_and_counted():
 async def test_short_list_evidence_requires_atomic_mode_and_a_sentence_lead_in(atomic, monkeypatch):
     monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_EXTRACTION", str(atomic).lower())
     get_settings.cache_clear()
-    intro = "A plaintiff must prove each of the following elements:"
+    intro = "A plaintiff must prove formation, contract performance, and breach:"
     entries = [("background", "list_item"), (intro, "paragraph"),
                ("formation", "list_item"), ("contract performance", "list_item"),
-               ("breach", "list_item"), ("II. Background", "heading"),
+               ("  breach  ", "list_item"), ("II. Background", "heading"),
                ("procedural history", "list_item"), (intro, "paragraph"),
                ("B. Synthetic Topic Heading", "list_item"),
                ("— A. Synthetic Author Name", "list_item"),
@@ -186,6 +186,12 @@ async def test_short_list_evidence_requires_atomic_mode_and_a_sentence_lead_in(a
     for unit in job.units:
         assert unit.anchor_verified and unit.anchor_score == 1.0
         assert unit.source_snippet == unit.text
+    if atomic:
+        source = job.metadata["ingested"]["synthetic.md"]["text"]
+        for unit, element in zip(job.units[1:4], job.metadata["structured"]["synthetic.md"][2:5]):
+            start = element["char_offset_start"] + len(element["text"]) - len(element["text"].lstrip())
+            assert (unit.original_span.start, unit.original_span.end) == (start, start + len(unit.text))
+            assert source[start:unit.original_span.end] == unit.source_snippet
 
 
 async def test_units_carry_verified_anchors_into_the_ingested_text():
