@@ -136,6 +136,45 @@ def build_packet(suite: GoldSuite, predictions: tuple[PredictionDocument, ...],
                        predictions=tuple(context), catalog=catalog)
 
 
+def _omission_matches(item, omission, doc, row, equivalences):
+    if omission.source_id != doc.source.source_id:
+        return set(), False
+    try:
+        text = omission.span.source_slice(doc.source.text)
+    except ValueError:
+        return set(), False
+    span = omission.span.model_dump()
+    context, edges = None, None
+    for kind, props in (("gold", doc.propositions), ("prediction", row.propositions)):
+        for prop in props:
+            parts = (item.source_id, kind, prop.item_id)
+            if item.kind == "tag":
+                parts = (*parts, *item.concept_ids)
+            if (item.item_id == _item_id(*parts)
+                    and span == prop.span.model_dump()):
+                context = Prediction(**prop.model_dump())
+                edges = equivalences if kind == "prediction" else None
+    if context is None and not text.strip():
+        return set(), False
+    if edges is not None:
+        edges = edges.model_copy(update={"edges": tuple(
+            e for e in edges.edges if e.source_id == row.source_id
+            and e.prediction_id == context.item_id)})
+    omission_id = _item_id(item.item_id, "reported-omission")
+    matches, uncertain = set(), False
+    for gold in doc.propositions:
+        # A source-wide report has no atomic text/kind beyond its source slice.
+        candidate = context or Prediction(
+            item_id=omission_id, kind=gold.kind, text=text, span=span)
+        result = match_document(
+            doc.model_copy(update={"propositions": (gold,)}),
+            row.model_copy(update={"propositions": (candidate,)}), edges)
+        matches.update(pair.gold_id for pair in result.pairs)
+        uncertain |= any(e.prediction_id == candidate.item_id and e.gold_id == gold.item_id
+                         for e in result.uncertain_edges)
+    return matches, uncertain
+
+
 class MeasurementCoordinator:
     def __init__(self, store: RunStore, annotations: AnnotationStore, *, batch_size: int = 20):
         if batch_size <= 0:
@@ -334,6 +373,8 @@ class MeasurementCoordinator:
                      for provider in ("codex", "claude")}
         additions = []
         by_id = {i.item_id: i for i in packet.items}
+        documents = {doc.source.source_id: (doc, row)
+                     for doc, row in zip(suite.documents, rows, strict=True)}
         for provider, verdicts in judgments.items():
             for item_id, verdict in verdicts.items():
                 if verdict.verdict == "wrong" and item_id in accepted:
@@ -343,10 +384,23 @@ class MeasurementCoordinator:
                            for p, v in judgments.items()}})
                     if "contradicts-accepted" not in item["reasons"]:
                         item["reasons"].append("contradicts-accepted")
-                if (verdict.omission is not None or
-                        set(verdict.concept_ids) - set(by_id[item_id].concept_ids)):
+                item = by_id[item_id]
+                concepts = set(item.concept_ids)
+                reasons = []
+                if verdict.omission is not None:
+                    doc, row = documents[item.source_id]
+                    matches, uncertain = _omission_matches(item, verdict.omission, doc, row, equivalences)
+                    if len(matches) == 1 and not uncertain:
+                        gold = next(p for p in doc.propositions if p.item_id in matches)
+                        concepts.update(_item_id(t.label, t.branch) for t in gold.tags)
+                    else:
+                        reasons.append("ambiguous-omission-match" if matches or uncertain
+                                       else "proposed-addition")
+                if set(verdict.concept_ids) - concepts and "proposed-addition" not in reasons:
+                    reasons.append("proposed-addition")
+                if reasons:
                     additions.append({"item_id": item_id, "provider": provider,
-                                      "reasons": ["proposed-addition"],
+                                      "reasons": reasons,
                                       "judgment": verdict.model_dump(mode="json")})
         return (*pending.values(), *additions)
 

@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import threading
+import unicodedata
 
 import pytest
 
 from folio_insights.measurement.annotations import AnnotationStore
 from folio_insights.measurement.gold import load_gold, load_ontology
-from folio_insights.measurement.judges import JudgeResult, JudgeVerdict
+from folio_insights.measurement.judges import JudgeResult, JudgeSpan, JudgeVerdict, ProposedOmission
 from folio_insights.measurement.matching import MATCHER_POLICY, content_digest
 from folio_insights.measurement.runs import (
     MeasurementCoordinator, PipelineExtraction, judge_template_sha256,
@@ -39,6 +40,25 @@ class FakeJudge:
             judgments=judgments,
             missing_item_ids=tuple(i.item_id for i in packet.items[len(items):]),
         )
+
+
+class OmissionJudge(FakeJudge):
+    def __init__(self, provider, document, *, new=False):
+        super().__init__(provider)
+        self.document, self.new = document, new
+
+    def judge(self, packet, **kwargs):
+        result = super().judge(packet, **kwargs)
+        gold = {p.item_id: p for p in self.document.propositions}
+        judgments = []
+        for item, judgment in zip(packet.items, result.judgments, strict=True):
+            if (item.kind == "gold" and not self.new) or (item.kind == "omission" and self.new):
+                span = (item.span if self.new else
+                        JudgeSpan(**gold[item.proposition_id].span.model_dump()))
+                judgment = judgment.model_copy(update={"omission": ProposedOmission(
+                    source_id=item.source_id, span=span)})
+            judgments.append(judgment)
+        return result.model_copy(update={"judgments": tuple(judgments)})
 
 
 @pytest.fixture
@@ -156,6 +176,162 @@ async def test_changed_extraction_bytes_create_new_run(setup_run):
     path.write_text('{"units": []}')
     second = await execute(setup_run)
     assert first.run_id != second.run_id
+
+
+@pytest.mark.asyncio
+async def test_agreed_existing_gold_omissions_complete_empty_extraction_with_zero_recall(setup_run):
+    suite, _, extractor, store, _, _ = setup_run
+    doc = suite.documents[0]
+    next(iter(extractor.paths.values())).write_text('{"units": []}')
+    codex, claude = (OmissionJudge(provider, doc) for provider in ("codex", "claude"))
+    result = await execute(setup_run, codex=codex, claude=claude)
+    counts = result.scores["micro"]
+    assert counts["propositions"]["fn"] == len(doc.propositions)
+    assert counts["propositions"]["recall"] == 0
+    assert counts["propositions"]["tp"] == counts["propositions"]["fp"] == 0
+    assert counts["propositions"]["precision"] is None
+    ontology = load_ontology()
+    assert counts["tags"]["fn"] == sum(len({tag.iri for t in p.tags
+        if MATCHER_POLICY.classify_tag(tag := ontology.resolve(t.label, t.branch), ontology) == "meaning"})
+        for p in doc.propositions)
+    assert counts["tags"]["recall"] == 0
+    assert result.status == "complete" and result.scores["readiness"] == "ready"
+    assert not result.adjudication
+    assert store.load(result.run_id) == result
+    calls = len(codex.calls), len(claude.calls)
+    assert await execute(setup_run, codex=codex, claude=claude) == result
+    assert (len(codex.calls), len(claude.calls)) == calls
+
+
+@pytest.mark.asyncio
+async def test_new_source_omission_still_requires_gold_addition_adjudication(setup_run):
+    doc = setup_run[0].documents[0]
+    result = await execute(setup_run, **{
+        provider: OmissionJudge(provider, doc, new=True) for provider in ("codex", "claude")})
+    assert result.status == "adjudication"
+    additions = [a for a in result.adjudication if "proposed-addition" in a["reasons"]]
+    assert {a["provider"] for a in additions} == {"codex", "claude"}
+    assert all(a["judgment"]["omission"]["span"] == {"start": 0, "end": len(doc.source.text)}
+               for a in additions)
+    assert result.scores["readiness"] == "incomplete"
+
+
+@pytest.mark.asyncio
+async def test_disagreement_about_existing_gold_omission_requires_adjudication(setup_run):
+    doc = setup_run[0].documents[0]
+    next(iter(setup_run[2].paths.values())).write_text('{"units": []}')
+    result = await execute(setup_run, codex=OmissionJudge("codex", doc))
+    assert result.status == "adjudication"
+    assert any("omission-difference" in a["reasons"] and a["codex"]["omission"]
+               and a["claude"]["omission"] is None for a in result.adjudication)
+    assert not any("proposed-addition" in a["reasons"] for a in result.adjudication)
+    assert result.scores["micro"]["propositions"]["fn"] == len(doc.propositions)
+    assert result.scores["micro"]["propositions"]["recall"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("policy_case,expected", [
+    ("exact", "complete"), ("nfc", "complete"), ("equivalent", "complete"),
+    ("different-text", "adjudication"), ("different-kind", "adjudication"),
+    ("different", "adjudication"), ("uncertain", "adjudication"),
+])
+async def test_prediction_omissions_follow_u2_matching_policy(setup_run, policy_case, expected):
+    from folio_insights.measurement.matching import EquivalenceEdge, freeze_equivalences
+
+    suite, pins, extractor, _, _, _ = setup_run
+    doc = suite.documents[0]
+    prop = doc.propositions[0]
+    if policy_case == "nfc":
+        prop = prop.model_copy(update={"text": "Café contract rule."})
+        doc = doc.model_copy(update={"propositions": (prop, *doc.propositions[1:])})
+        suite = suite.model_copy(update={"documents": (doc,)})
+        setup_run = (suite, pins.model_copy(update={
+            "gold_sha256": content_digest(suite.model_dump(mode="json"))}), *setup_run[2:])
+    path = next(iter(extractor.paths.values()))
+    data = json.loads(path.read_text())
+    unit = data["units"][0]
+    if policy_case in {"different-text", "equivalent"}:
+        unit["text"] = "An independently reviewed paraphrase of the rule."
+    if policy_case == "different-kind":
+        unit["proposition_kind"] = "fact"
+    if policy_case == "nfc":
+        unit["text"] = unicodedata.normalize("NFD", prop.text)
+    path.write_text(json.dumps(data))
+    equivalences = None
+    if policy_case in {"equivalent", "different", "uncertain"}:
+        extractor.sha256
+        row = await extractor.extract(doc.source)
+        edge = EquivalenceEdge(source_id=row.source_id, prediction_id=unit["id"],
+                               gold_id=prop.item_id, verdict=policy_case,
+                               author="reviewer", reason="Authored atomic equivalence assessment.")
+        equivalences = freeze_equivalences(suite, (row,), (edge,))
+
+    class PredictionOmissionJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            return result.model_copy(update={"judgments": tuple(
+                j.model_copy(update={"omission": ProposedOmission(source_id=i.source_id, span=i.span)})
+                if i.kind == "prediction" and i.proposition_id == prop.item_id else j
+                for i, j in zip(packet.items, result.judgments, strict=True))})
+
+    result = await execute(setup_run, equivalences=equivalences, **{
+        provider: PredictionOmissionJudge(provider) for provider in ("codex", "claude")})
+    assert result.status == expected
+    assert bool(result.adjudication) == (expected == "adjudication")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ambiguous", [False, True])
+async def test_source_omission_requires_unique_atomic_gold_match(setup_run, ambiguous):
+    suite, pins, extractor, _, _, _ = setup_run
+    doc = suite.documents[0]
+    prop = doc.propositions[0]
+    prop = prop.model_copy(update={"text": prop.span.source_slice(doc.source.text)})
+    props = (prop, *doc.propositions[1:])
+    if ambiguous:
+        props = (*props, prop.model_copy(update={"item_id": "ambiguous-rule", "kind": "fact"}))
+    doc = doc.model_copy(update={"propositions": props})
+    suite = suite.model_copy(update={"documents": (doc,)})
+    setup_run = (suite, pins.model_copy(update={
+        "gold_sha256": content_digest(suite.model_dump(mode="json"))}), *setup_run[2:])
+    next(iter(extractor.paths.values())).write_text('{"units": []}')
+
+    class SourceOmissionJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            return result.model_copy(update={"judgments": tuple(
+                j.model_copy(update={"omission": ProposedOmission(
+                    source_id=i.source_id, span=JudgeSpan(**prop.span.model_dump()))})
+                if i.kind == "omission" else j
+                for i, j in zip(packet.items, result.judgments, strict=True))})
+
+    result = await execute(setup_run, **{
+        provider: SourceOmissionJudge(provider) for provider in ("codex", "claude")})
+    assert result.status == ("adjudication" if ambiguous else "complete")
+    assert bool(result.adjudication) == ambiguous
+    assert result.scores["micro"]["propositions"]["fn"] == len(props)
+    assert result.scores["micro"]["propositions"]["recall"] == (None if ambiguous else 0)
+
+
+@pytest.mark.asyncio
+async def test_blank_source_omission_requires_adjudication_instead_of_crashing(setup_run):
+    doc = setup_run[0].documents[0]
+    start = doc.source.text.index(" ")
+
+    class BlankOmissionJudge(FakeJudge):
+        def judge(self, packet, **kwargs):
+            result = super().judge(packet, **kwargs)
+            return result.model_copy(update={"judgments": tuple(
+                j.model_copy(update={"omission": ProposedOmission(
+                    source_id=i.source_id, span=JudgeSpan(start=start, end=start + 1))})
+                if i.kind == "omission" else j
+                for i, j in zip(packet.items, result.judgments, strict=True))})
+
+    result = await execute(setup_run, **{
+        provider: BlankOmissionJudge(provider) for provider in ("codex", "claude")})
+    assert result.status == "adjudication"
+    assert result.scores["readiness"] == "incomplete"
+    assert any("proposed-addition" in a["reasons"] for a in result.adjudication)
 
 
 @pytest.mark.asyncio
