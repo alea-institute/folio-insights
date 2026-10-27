@@ -7,6 +7,7 @@ retries return their original record without making that declaration current aga
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 from collections.abc import Iterable, Sequence
@@ -171,14 +172,30 @@ class DeclarationLoad:
     refused: tuple[RefusedDeclaration, ...]
 
 
+def _ledger_digest(captured: Sequence[ProposalLedgerEntry]) -> str:
+    """Validate the complete captured prefix before using its content fingerprint."""
+    if [entry.position for entry in captured] != list(range(len(captured))):
+        raise ClosureDeclarationRefused("metadata ledger prefix is not contiguous")
+    for entry in captured:
+        if hashlib.sha256(jcs.canonicalize(entry.payload)).hexdigest() != entry.payload_sha256:
+            raise ClosureDeclarationRefused("metadata ledger payload digest does not match")
+    return hashlib.sha256(jcs.canonicalize([
+        [entry.position, entry.op_id, entry.kind, entry.payload_sha256,
+         entry.committed_at, entry.record_schema_version] for entry in captured
+    ])).hexdigest()
+
+
 async def _members_at(ctx: CorpusStorageContext, head: int) -> set[str]:
-    """Subjects of the captured ABox/governance only; derived closure cannot bootstrap itself."""
     from pyoxigraph import NamedNode
 
     rows = await ctx._journal.latest_shards(ctx.corpus, upto=head)
     rows += await ctx._journal.governance_rows(ctx.corpus, upto=head)
-    return {subject.value for row in rows for subject, _, _ in row_triples(ctx.corpus, row)[2]
-            if isinstance(subject, NamedNode)}
+
+    def subjects() -> set[str]:
+        return {subject.value for row in rows for subject, _, _ in row_triples(ctx.corpus, row)[2]
+                if isinstance(subject, NamedNode)}
+
+    return await asyncio.to_thread(subjects)
 
 
 async def load_declarations(
@@ -203,15 +220,7 @@ async def load_declarations(
     if main_digest is not None and main_digest != digest:
         raise ClosureDeclarationRefused("captured main journal digest does not match")
     captured = tuple(await ctx.proposals.entries()) if entries is None else tuple(entries)
-    if [entry.position for entry in captured] != list(range(len(captured))):
-        raise ClosureDeclarationRefused("metadata ledger prefix is not contiguous")
-    for entry in captured:
-        if hashlib.sha256(jcs.canonicalize(entry.payload)).hexdigest() != entry.payload_sha256:
-            raise ClosureDeclarationRefused("metadata ledger payload digest does not match")
-    ledger_digest = hashlib.sha256(jcs.canonicalize([
-        [entry.position, entry.op_id, entry.kind, entry.payload_sha256,
-         entry.committed_at, entry.record_schema_version] for entry in captured
-    ])).hexdigest()
+    ledger_digest = _ledger_digest(captured)
     rows = await ctx._journal.governance_rows(ctx.corpus, upto=head)
     history = InMemoryGovernanceLog._from_history(
         ctx.corpus, [_event_from_row(row) for row in rows],
@@ -255,8 +264,6 @@ async def load_declarations(
                 raise ClosureDeclarationRefused("declaration members are absent from its main prefix")
         except (ValueError, TypeError):
             if declaration is None:
-                # The damaged row's scope is unknown: retaining any earlier
-                # contract could restore a completeness claim it withdrew.
                 latest.clear()
             refused.append(RefusedDeclaration(entry.position, "invalid_or_unauthorized_declaration"))
             continue

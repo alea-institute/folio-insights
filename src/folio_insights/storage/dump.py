@@ -188,6 +188,11 @@ async def run_ttl_dump(
             _graph_file(repo, f"{rel_dir}/governance.ttl", dataset.graph(dataset.governance),
                         governance_graph(corpus), f"{corpus} governance dump"),
         ]
+        closure = dataset.graph(dataset.closure)
+        closure_path = f"{rel_dir}/closure.ttl"
+        if closure or (repo / closure_path).exists():
+            entries.append(_graph_file(repo, closure_path, closure, dataset.closure,
+                                       f"{corpus} closure dump"))
         if not tbox_written:
             entries.append(
                 _graph_file(repo, "tbox.ttl", dataset.graph(TBOX_GRAPH), TBOX_GRAPH, "tbox dump")

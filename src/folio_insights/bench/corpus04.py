@@ -176,7 +176,6 @@ def discover(corpora_dir: str | Path | None = None, *, standin_shards: int = 300
 
 
 def _checker_status(value: str) -> str:
-    """Keep diagnostic payloads (which may contain source text) out of reports."""
     code = value.split(":", 1)[0].replace(" ", "_")
     return code if code in {
         "available", "disabled", "unavailable", "failed", "ran", "skipped", "not_requested",
@@ -207,6 +206,7 @@ async def cluster_validation(
         mapped = sum(bool(task.folio_iri) for task in leaves)
         checked = sum(cluster.mode != "unchecked" and bool(cluster.checkers)
                       for cluster in report.clusters)
+        nli_checked = sum("nli" in cluster.checkers for cluster in report.clusters)
         warnings = sum(finding.severity == "warning" for finding in report.findings)
         checkers = {name: _checker_status(value)
                     for name, value in report.checkers.model_dump().items()}
@@ -217,6 +217,8 @@ async def cluster_validation(
             reasons.append("no_eligible_clusters")
         if checked != len(report.clusters):
             reasons.append("unchecked_clusters")
+        if nli_checked != len(report.clusters):
+            reasons.append("nli_not_run_for_all_clusters")
         if checkers["nli"] == "failed":
             reasons.append("nli_failed")
         if nodes is None:
@@ -233,6 +235,7 @@ async def cluster_validation(
             **report.summary(),
             "warnings": warnings,
             "checked_clusters": checked,
+            "nli_checked_clusters": nli_checked,
             "checkers": checkers,
             "task_leaves": len(leaves),
             "mapped_task_leaves": mapped,
