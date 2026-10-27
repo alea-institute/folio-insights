@@ -48,3 +48,20 @@ def consideration_fixture_store(consideration_fixture_dir: Path):
     from folio_insights.store.pyoxigraph_store import PyoxigraphStore
 
     return PyoxigraphStore(path=None)  # in-memory
+
+
+@pytest.fixture
+def registered_polysemy_reviewer(tmp_path, monkeypatch):
+    from folio_insights.config import get_settings
+    from folio_insights.proposals.signed_decisions import reset_signers_cache
+    from tests.polysemy._signed import DID, OTHER_DID
+
+    registry = tmp_path / "public-reviewers.txt"
+    registry.write_text(f"{DID} synthetic-reviewer\n{OTHER_DID} second-reviewer\n")
+    registry.chmod(0o600)
+    monkeypatch.setenv("FOLIO_INSIGHTS_DECISION_SIGNERS_FILE", str(registry))
+    get_settings.cache_clear()
+    reset_signers_cache()
+    yield registry
+    get_settings.cache_clear()
+    reset_signers_cache()
