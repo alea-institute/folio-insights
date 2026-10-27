@@ -1,29 +1,132 @@
-"""Measurement corpus commands; execute acquisition in evaluator custody only.
+"""Measurement and corpus commands for evaluator custody.
 
-Until U5 installs the package entry point, use
-``python -m folio_insights.measurement.cli corpus --help``.
+Run ``python -m folio_insights.measurement --help`` for all commands.
+Live acquisition and subscription judges are invoked only by operators.
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import signal
+import threading
 from pathlib import Path
 
 import click
 import httpx
 from pydantic import ValidationError
 
+from folio_insights.measurement.annotations import AnnotationStore
 from folio_insights.measurement.corpus import (
     DEFAULT_ROOT, DEFAULT_THROTTLE_STATE, CorpusError, DocumentRequest, HttpFetcher, collect, load_manifest,
     load_policy, seal, verify,
 )
+from folio_insights.measurement.gold import load_gold, load_ontology
+from folio_insights.measurement.judges import ClaudeJudge, CodexJudge
+from folio_insights.measurement.matching import EquivalenceInputs
+from folio_insights.measurement.runs import MeasurementCoordinator, PipelineExtraction
+from folio_insights.measurement.schema import EvaluationInputs
+from folio_insights.measurement.store import RunStore
 
 
-@click.group()
-def cli() -> None:
-    """Offline measurement verification and orchestrator acquisition tools."""
+@click.group(name="measurement")
+def measurement_group() -> None:
+    """Validate gold, coordinate measurement runs, and collect or verify corpora."""
 
 
-@cli.group()
+# Both existing import names expose the same parser and command registry.
+cli = measurement_group
+
+
+@measurement_group.command("validate-gold")
+@click.option("--gold", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--ontology", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def validate_gold_cmd(gold: Path | None, ontology: Path | None) -> None:
+    """Validate source digests, spans, links and deterministic tag resolution."""
+    try:
+        suite = load_gold(gold, ontology=load_ontology(ontology))
+    except (ValueError, OSError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(json.dumps({"suite": suite.suite_id, "gold_revision": suite.gold_revision,
+                           "documents": len(suite.documents), "status": "valid"}))
+
+
+@measurement_group.command("run")
+@click.option("--inputs", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Frozen EvaluationInputs JSON, including exact CLI identities.")
+@click.option("--extractions", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="JSON object mapping source IDs to completed single-source extraction.json files.")
+@click.option("--gold", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--ontology", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--output", default="output/measurement", type=click.Path(file_okay=False, path_type=Path))
+@click.option("--annotations-db", type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--equivalences", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+              help="Authored semantic edges frozen against the adapted extraction outputs.")
+@click.option("--split-id")
+@click.option("--batch-size", default=20, type=click.IntRange(min=1), show_default=True)
+def run_cmd(inputs: Path, extractions: Path, gold: Path | None, ontology: Path | None,
+            output: Path, annotations_db: Path | None, equivalences: Path | None,
+            split_id: str | None, batch_size: int) -> None:
+    """Judge, score and checkpoint; repeat identical inputs to resume missing work.
+
+    Run only in evaluator custody. Extract upstream in a separate source-only
+    candidate workspace; this command never starts the API-backed pipeline.
+    """
+    cancelled = threading.Event()
+    previous = signal.getsignal(signal.SIGINT)
+    try:
+        pins = EvaluationInputs.model_validate_json(inputs.read_text())
+        paths = json.loads(extractions.read_text())
+        if not isinstance(paths, dict) or not all(isinstance(k, str) and isinstance(v, str)
+                                                  for k, v in paths.items()):
+            raise ValueError("extractions must map source IDs to paths")
+        adapter = PipelineExtraction({sid: extractions.parent / path for sid, path in paths.items()})
+        pinned_ontology = load_ontology(ontology)
+        suite = load_gold(gold, ontology=pinned_ontology)
+        edges = EquivalenceInputs.model_validate_json(equivalences.read_text()) if equivalences else None
+        coordinator = MeasurementCoordinator(RunStore(output),
+            AnnotationStore(annotations_db or output / "review.db"), batch_size=batch_size)
+        signal.signal(signal.SIGINT, lambda *_: cancelled.set())
+        report = asyncio.run(coordinator.run(
+            suite, pins, extractor=adapter, ontology=pinned_ontology,
+            codex=CodexJudge(model=pins.judge_identities["codex"].model),
+            claude=ClaudeJudge(model=pins.judge_identities["claude"].model),
+            split_id=split_id, cancelled=cancelled, equivalences=edges))
+    except (ValueError, OSError, KeyError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    finally:
+        signal.signal(signal.SIGINT, previous)
+    # Detailed reasons and labels remain in evaluator storage, not stdout receipts.
+    click.echo(json.dumps({"run_id": report.run_id, "status": report.status,
+                           "stage": report.stage, "errors": report.errors,
+                           "scores": report.scores,
+                           "adjudication_count": len(report.adjudication)}, ensure_ascii=False))
+    if report.status != "complete":
+        raise click.exceptions.Exit(2)
+
+
+@measurement_group.group("annotations")
+def annotations_group() -> None:
+    """Read authored history or export partition-filtered tuning annotations."""
+
+
+@annotations_group.command("export-tuning")
+@click.option("--db", required=True, type=click.Path(dir_okay=False, path_type=Path))
+def export_tuning_cmd(db: Path) -> None:
+    """Export tuning and retired-split annotations, excluding active held-out data."""
+    rows = asyncio.run(AnnotationStore(db).export_tuning())
+    click.echo(json.dumps([row.model_dump(mode="json") for row in rows], ensure_ascii=False))
+
+
+@annotations_group.command("history")
+@click.option("--db", required=True, type=click.Path(dir_okay=False, path_type=Path))
+@click.option("--run-id", required=True)
+def history_cmd(db: Path, run_id: str) -> None:
+    """Read a run's complete history in evaluator custody."""
+    rows = asyncio.run(AnnotationStore(db).history(run_id=run_id))
+    click.echo(json.dumps([row.model_dump(mode="json") for row in rows], ensure_ascii=False))
+
+
+@measurement_group.group("corpus")
 def corpus() -> None:
     """Collect, verify and seal public corpus cells in evaluator custody."""
 
@@ -112,5 +215,13 @@ def _fail(exc: Exception) -> None:
     raise click.ClickException(reason) from None
 
 
-if __name__ == "__main__":
-    cli()
+
+def _unavailable(name: str, unit: str) -> click.Command:
+    @click.command(name, context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
+    def command():
+        raise click.ClickException(f"{name} unavailable until {unit} is implemented")
+    return command
+
+
+for _name, _unit in (("baseline", "U6/U9"), ("compare", "U6"), ("readme", "U7/U8")):
+    measurement_group.add_command(_unavailable(_name, _unit))
