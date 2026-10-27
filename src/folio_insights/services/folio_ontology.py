@@ -463,9 +463,11 @@ class FolioOntologyService:
         candidates = []
         for iri in key:
             fc = self.get_concept(iri)
-            if fc is None or self._is_excluded_concept(fc):
+            if fc is None:
                 continue
             branches = self.ancestor_branches(iri)
+            if self._is_excluded_concept(fc, branches=branches):
+                continue
             aliases = tuple(dict.fromkeys([
                 fc.preferred_label, fc.folio_pref_label, *fc.alternative_labels, fc.hidden_label,
             ]))
@@ -493,9 +495,12 @@ class FolioOntologyService:
         if len(matches) != 1:
             return None
         fc = self.get_concept(matches[0].iri)
-        if fc is None or self._is_excluded_concept(fc):
+        if fc is None:
             return None
-        fc.branch = matches[0].branch
+        branches = self.ancestor_branches(fc.iri)
+        if self._is_excluded_concept(fc, branches=branches):
+            return None
+        fc.branch = branches[0] if branches else ""
         return fc
 
     def search_by_label(self, label: str, top_k: int = 5) -> list[tuple[FOLIOConcept, float]]:
@@ -535,9 +540,12 @@ class FolioOntologyService:
 
     # ---- label index ----------------------------------------------------------------------
 
-    def _is_excluded_concept(self, fc: FOLIOConcept) -> bool:
+    def _is_excluded_concept(
+        self, fc: FOLIOConcept, *, branches: tuple[str, ...] | None = None,
+    ) -> bool:
         """Excluded branches, deprecated concepts, and DUPE/ZZZ: editorial markers."""
-        if fc.branch in EXCLUDED_BRANCHES:
+        # Candidate selection uses actual ancestry; legacy label indexing keeps its map.
+        if EXCLUDED_BRANCHES.intersection(branches if branches is not None else (fc.branch,)):
             return True
         if fc.deprecated:
             return True

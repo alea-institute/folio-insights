@@ -89,9 +89,55 @@ def real_shaped_service(tmp_path):
     ontology.get_folio_branches = lambda: {
         "LOCATION": ontology.classes[3:4],
         "GOVERNMENTAL_BODY": ontology.classes[4:5],
-        "OBJECTIVES": ontology.classes[5:],
+        "OBJECTIVES": ontology.classes[5:7],
     }
+    excluded_children = []
+    for kind, label in [
+        (FOLIOTypes.AREA_OF_LAW, "Area of Law"),
+        (FOLIOTypes.STANDARDS_COMPATIBILITY, "Standards Compatibility"),
+        (FOLIOTypes.FOLIO_TYPE, "FOLIO Type"),
+    ]:
+        root = concept(FOLIO_BASE + FOLIO_TYPE_IRIS[kind], label, [OWL_THING])
+        child = concept(root.iri + "-child", label + " descendant", [root.iri])
+        excluded_children.append(child)
+        ontology.classes.extend([root, child])
+        ontology.by_iri.update({root.iri: root, child.iri: child})
+    # Flattened membership claims these descendants are Event; roots are omitted.
+    membership = ontology.get_folio_branches()
+    membership["EVENT"] = excluded_children
+    ontology.get_folio_branches = lambda: membership
     return FolioOntologyService(folio=ontology, lemma_cache_dir=tmp_path)
+
+
+@pytest.mark.parametrize("branch", ["Area of Law", "Standards Compatibility", "FOLIO Type"])
+def test_actual_ancestor_excludes_roots_and_descendants(real_shaped_service, branch):
+    service = real_shaped_service
+    classes = [c for c in service._get_folio().classes
+               if c.label in {branch, branch + " descendant"}]
+    assert len(classes) == 2
+    catalog = service.candidate_catalog()
+    for raw in classes:
+        assert service.get_concept(raw.iri).branch != branch
+        assert service.ancestor_branches(raw.iri) == (branch,)
+        assert raw.iri not in {c.iri for c in catalog.candidates}
+        assert service.candidate_catalog([raw.iri]).candidates == ()
+        assert service.resolve_candidate(raw.label, catalog) is None
+
+
+@pytest.mark.parametrize("branch", ["Area of Law", "Standards Compatibility", "FOLIO Type"])
+def test_resolver_rechecks_actual_ancestor_exclusions(real_shaped_service, monkeypatch, branch):
+    service = real_shaped_service
+    iris = [c.iri for c in service._get_folio().classes
+            if c.label in {branch, branch + " descendant"}]
+    # Build a service-owned catalog before exclusions apply to exercise the resolver's
+    # independent eligibility check, even when catalog construction is already fixed.
+    with monkeypatch.context() as patch:
+        patch.setattr("folio_insights.services.folio_ontology.EXCLUDED_BRANCHES", frozenset())
+        catalog = service.candidate_catalog(iris)
+    assert len(catalog.candidates) == 2
+    for candidate in catalog.candidates:
+        assert service.resolve_candidate(candidate.id, catalog) is None
+        assert service.resolve_candidate(candidate.label, catalog) is None
 
 
 @pytest.mark.parametrize("local, branches", [
@@ -105,6 +151,10 @@ def test_real_shaped_ancestor_branches(real_shaped_service, atomic, local, branc
     assert FolioTaggerStage()._branch_for(iri, real_shaped_service) == branches[0]
     [candidate] = real_shaped_service.candidate_catalog([iri]).model_candidates()
     assert candidate["branch"] == branches[0]
+    resolved = real_shaped_service.resolve_candidate(
+        candidate["id"], real_shaped_service.candidate_catalog([iri]),
+    )
+    assert (resolved.iri, resolved.branch) == (iri, branches[0])
 
 
 def test_bare_root_id_uses_ontology_label(real_shaped_service):
@@ -163,6 +213,29 @@ def test_cached_real_obligation_ancestor_branches_offline(tmp_path, monkeypatch)
     service = FolioOntologyService(folio=ontology, lemma_cache_dir=tmp_path)
     [obligation] = [c for c in ontology.classes if c.label == "Obligation"]
     assert service.ancestor_branches(obligation.iri) == ("Deontic Specification", "Objectives")
+    catalog = service.candidate_catalog()
+    for label in ("Obligation", "Deontic Specification"):
+        [candidate] = [c for c in catalog.candidates if c.label == label]
+        resolved = service.resolve_candidate(candidate.id, catalog)
+        assert (resolved.iri, resolved.branch) == (candidate.iri, "Deontic Specification")
+    catalog_iris = {c.iri for c in catalog.candidates}
+    for branch in ("Area of Law", "Standards Compatibility", "FOLIO Type"):
+        excluded = [c for c in ontology.classes if branch in service.ancestor_branches(c.iri)]
+        assert len(excluded) > 1, f"Expected cached descendants under {branch}"
+        assert catalog_iris.isdisjoint(c.iri for c in excluded), branch
+        assert service.candidate_catalog([c.iri for c in excluded]).candidates == (), branch
+        # Recheck cached roots/descendants whose legacy map would let them through,
+        # using IDs to avoid unrelated concepts sharing an alias such as "Obligation".
+        samples = [c for c in excluded if service.get_concept(c.iri).branch != branch][:3]
+        assert samples, f"Expected legacy membership omissions under {branch}"
+        for raw in samples:
+            assert service.resolve_candidate(raw.label, catalog) is None, raw.label
+        with monkeypatch.context() as patch:
+            patch.setattr("folio_insights.services.folio_ontology.EXCLUDED_BRANCHES", frozenset())
+            earlier_catalog = service.candidate_catalog([c.iri for c in samples])
+        assert len(earlier_catalog.candidates) == len(samples)
+        for candidate in earlier_catalog.candidates:
+            assert service.resolve_candidate(candidate.id, earlier_catalog) is None
 
 
 def test_selection_is_pinned_and_contains_no_model_iris(service):
