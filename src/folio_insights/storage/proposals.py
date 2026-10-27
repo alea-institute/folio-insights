@@ -169,6 +169,7 @@ class PersistentProposalLedger:
         *,
         op_id: str,
         authorize: LedgerAuthorization,
+        expected_main_state: tuple[int, str] | None = None,
     ) -> tuple[ProposalLedgerEntry, bool]:
         """``append`` with an authorization run INSIDE the write transaction.
 
@@ -181,7 +182,8 @@ class PersistentProposalLedger:
         committed row without re-authorizing (it was authorized when it
         committed)."""
         return await self._append(
-            kind, payload, op_id=op_id, expected_head=None, authorize=authorize
+            kind, payload, op_id=op_id, expected_head=None, authorize=authorize,
+            expected_main_state=expected_main_state,
         )
 
     async def _append(
@@ -193,6 +195,7 @@ class PersistentProposalLedger:
         expected_head: int | None,
         authorize: LedgerAuthorization | None,
         check_commit_time: CommitTimeCheck | None = None,
+        expected_main_state: tuple[int, str] | None = None,
     ) -> tuple[ProposalLedgerEntry, bool]:
         ctx = self._ctx
         ctx._ensure_open()
@@ -221,6 +224,22 @@ class PersistentProposalLedger:
                     actual = await tx.proposal_head()
                     if actual != expected_head:
                         raise JournalStateChanged(expected=expected_head, actual=actual)
+                if expected_main_state is not None:
+                    from folio_insights.storage.projection import CHAIN_GENESIS, chain_step
+
+                    expected_main_head, expected_main_digest = expected_main_state
+                    main_head = await tx.head()
+                    if main_head != expected_main_head:
+                        raise JournalStateChanged(expected=expected_main_head, actual=main_head)
+                    rows = await tx._conn.execute_fetchall(
+                        "SELECT position, op_id, payload_sha256, committed_at FROM journal "
+                        "WHERE corpus = ? ORDER BY position", (ctx.corpus,),
+                    )
+                    digest = CHAIN_GENESIS
+                    for position, main_op_id, payload_sha, committed in rows:
+                        digest = chain_step(digest, position, main_op_id, payload_sha, committed)
+                    if digest != expected_main_digest:
+                        raise JournalStateChanged(expected=expected_main_head, actual=main_head)
                 committed_at: datetime | None = None
                 if authorize is not None:
                     from folio_insights.storage.context import (
