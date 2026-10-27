@@ -105,6 +105,47 @@ async def test_contract_rule_and_three_independently_grounded_conditions(offline
     assert all("support_recall=" in u.lineage[-1].detail for u in job.units)
 
 
+@pytest.mark.parametrize("marker", ["", "- ", "1. "])
+async def test_contract_list_survives_boundary_detection_and_atomic_extraction(
+    marker, offline_port, monkeypatch,
+):
+    from folio_insights.config import get_settings
+    from folio_insights.pipeline.stages.boundary_detection import BoundaryDetectionStage
+
+    monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_EXTRACTION", "true")
+    get_settings.cache_clear()
+    intro = "A plaintiff must prove the following elements for breach of contract:"
+    names = ["formation", "performance", "breach"]
+    texts = [intro, *[marker + name for name in names]]
+    job = job_for(*texts)
+    job.metadata["structured"] = {"synthetic.txt": [
+        {"text": unit.text, "element_type": "paragraph" if i == 0 else "list_item",
+         "char_offset_start": unit.original_span.start,
+         "char_offset_end": unit.original_span.end}
+        for i, unit in enumerate(job.units)
+    ]}
+    job.units = []
+    try:
+        job = await BoundaryDetectionStage().execute(job)
+        payload = [proposition("rule", "A plaintiff must prove formation, performance, and breach.",
+                               supports=["b0", "b1", "b2", "b3"]), *[
+            proposition(name, name, kind="element", supports=[f"b{i}"], links=[
+                {"relation": "condition-of", "target_id": "rule"},
+            ]) for i, name in enumerate(names, 1)
+        ]]
+        job = await extract(job, payload, offline_port)
+    finally:
+        get_settings.cache_clear()
+
+    assert [u.proposition_kind for u in job.units] == ["rule", *["element"] * 3]
+    rule, *elements = job.units
+    assert [u.text for u in elements] == names
+    assert all([(link.relation, link.target_id) for link in unit.links] == [
+        ("condition-of", rule.id),
+    ] for unit in elements)
+    assert_grounded(job)
+
+
 @pytest.mark.parametrize("reverse_boundaries", [False, True])
 async def test_exception_links_to_duty_across_subdivisions(reverse_boundaries, offline_port):
     input_job = job_for(DUTY, EXCEPTION, genre="statutes-regulations")
@@ -402,6 +443,49 @@ async def test_oversized_requests_split_before_retry(oversized, offline_port, mo
     assert any(d["reason"] == "oversized_group_split"
                for d in job.metadata["atomic_extraction"]["diagnostics"])
     assert_grounded(job)
+
+
+async def test_superseded_requests_do_not_dilute_terminal_failure_ratio(offline_port, monkeypatch):
+    from folio_insights.config import get_settings
+    from folio_insights.pipeline.stages.base import StageFailureRatioError
+
+    monkeypatch.setenv("FOLIO_INSIGHTS_LLM_MAX_UNIT_FAILURE_RATIO", "0.05")
+    get_settings.cache_clear()
+    calls = []
+
+    class Provider:
+        async def structured(self, prompt, **kwargs):
+            blocks = json.loads(prompt.split("Source blocks (JSON):\n", 1)[1])
+            calls.append(blocks)
+            if len(blocks) == 2:
+                raise ValueError("maximum context length exceeded")
+            if blocks[0]["text"] in failing:
+                raise ValueError("synthetic terminal extraction failure")
+            return {"propositions": []}
+
+    monkeypatch.setattr("folio_insights.services.bridge.llm_bridge.LLMBridge.get_llm_for_task",
+                        lambda self, task: Provider())
+    job = job_for()
+    failing = set()
+    for i in range(20):
+        document = job_for(f"A party must notify resident number {i} in writing.",
+                           f"A party must retain the record for resident number {i}.")
+        file = f"synthetic-{i}.txt"
+        job.metadata["ingested"][file] = document.metadata["ingested"]["synthetic.txt"]
+        for unit in document.units:
+            unit.source_file = unit.original_span.source_file = file
+        job.units.extend(document.units)
+        if i < 3:
+            failing.add(document.units[0].text)
+    try:
+        with pytest.raises(StageFailureRatioError, match=r"3 of 40 units"):
+            await DistillerStage(atomic_extraction=True).execute(job)
+    finally:
+        get_settings.cache_clear()
+    assert len(calls) == 60
+    assert sum(len(blocks) == 1 for blocks in calls) == 40
+    assert job.metadata["llm_failures"]["distiller.atomic"]["attempted"] == 40
+    assert job.metadata["llm_failures"]["distiller.atomic"]["failed"] == 3
 
 
 async def test_short_substantive_input_is_never_silently_deleted(offline_port):

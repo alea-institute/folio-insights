@@ -165,6 +165,29 @@ async def test_non_substantive_boundaries_are_dropped_and_counted():
     assert job.metadata["boundary_detection"]["skipped_non_substantive"] == 2
 
 
+@pytest.mark.parametrize("atomic", [False, True])
+async def test_short_list_evidence_requires_atomic_mode_and_a_sentence_lead_in(atomic, monkeypatch):
+    monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_EXTRACTION", str(atomic).lower())
+    get_settings.cache_clear()
+    intro = "A plaintiff must prove each of the following elements:"
+    entries = [("background", "list_item"), (intro, "paragraph"),
+               ("formation", "list_item"), ("contract performance", "list_item"),
+               ("breach", "list_item"), ("II. Background", "heading"),
+               ("procedural history", "list_item"), (intro, "paragraph"),
+               ("B. Synthetic Topic Heading", "list_item"),
+               ("— A. Synthetic Author Name", "list_item"),
+               ("Synthetic Discovery Deadlines 42", "list_item")]
+    job = _job([text for text, _ in entries])
+    for element, (_, kind) in zip(job.metadata["structured"]["synthetic.md"], entries):
+        element["element_type"] = kind
+    job = await BoundaryDetectionStage().execute(job)
+    assert [u.text for u in job.units] == ([intro, "formation", "contract performance", "breach",
+                                         intro] if atomic else [intro, intro])
+    for unit in job.units:
+        assert unit.anchor_verified and unit.anchor_score == 1.0
+        assert unit.source_snippet == unit.text
+
+
 async def test_units_carry_verified_anchors_into_the_ingested_text():
     paragraphs = [SUBSTANTIVE[0], SUBSTANTIVE[1]]
     job = await BoundaryDetectionStage().execute(_job(paragraphs))

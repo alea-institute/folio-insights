@@ -49,6 +49,16 @@ def _template_for_method(method: str) -> PromptTemplate | None:
     return _LLM_METHOD_TEMPLATES.get(method.split("+", 1)[0])
 
 
+def _is_short_list_evidence(text: str) -> bool:
+    """Recognize element fragments, without admitting heading/contents shapes."""
+    body = re.sub(r"^(?:[-*•]\s+|\(?\d+[.)]\s*|[a-z][.)]\s+)", "", text).strip()
+    if re.match(r"^(?:section|chapter|part|article|appendix|title|clause|subsection|rule)\b",
+                body, re.IGNORECASE):
+        return False
+    word = r"[^\W\d_]+(?:[-’'][^\W\d_]+)*"
+    return bool(re.fullmatch(rf"{word}(?:\s+{word})?[.;]?", body))
+
+
 class BoundaryDetectionStage(InsightsPipelineStage):
     """Split structured text into one-idea-per-unit knowledge units.
 
@@ -84,6 +94,20 @@ class BoundaryDetectionStage(InsightsPipelineStage):
 
             # --- Tier 1: Structural heuristics ---
             tier1 = detect_structural_boundaries(elements, source_file=file_key)
+
+            if settings.atomic_extraction:
+                lead_in: Boundary | None = None
+                for b in tier1:
+                    if b.method == "structural_list_item":
+                        if (lead_in is not None and b.section_path == lead_in.section_path
+                                and _is_short_list_evidence(b.text)):
+                            # Carry context admission through lineage to the atomic input
+                            # guard; the fragment still needs independent source grounding.
+                            b.method = "structural_list_evidence"
+                    else:
+                        lead_in = (b if b.method != "structural_heading"
+                                   and not is_structural(b.text)
+                                   and re.search(r"[.!?:][\"')\]]*$", b.text) else None)
 
             # Identify ambiguous segments (long text without clear splits)
             final_boundaries: list[Boundary] = []
@@ -122,12 +146,13 @@ class BoundaryDetectionStage(InsightsPipelineStage):
                 continue
 
             text = b.text.strip()
-            if not text or len(text) < 10:
+            list_evidence = b.method == "structural_list_evidence"
+            if not text or (len(text) < 10 and not list_evidence):
                 continue
 
             # B6: a heading, contents entry or attribution line is not knowledge. Only the
             # shape decides here; short genuine advice stays a unit.
-            if is_structural(text):
+            if is_structural(text) and not list_evidence:
                 skipped_non_substantive += 1
                 continue
 
