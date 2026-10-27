@@ -2,7 +2,7 @@
 
 ## State
 - **Plan:** `docs/plans/2026-10-26-0716-feat-measured-propositions-and-workbench-plan.md` (PRs #50 and #51). KTD15 routes Codex builds offline, assigns live runs and corpus fetches to the orchestrator, and puts output-changing units behind a live held-out gate. KTD2 defines pooled tag-recall gold.
-- **Merged (17 of 60):**
+- **Merged (20 of 60):** U5 coordinator (#74), U38b atomic list evidence (#75), and U41 ancestor branches (#76) are added to the units below.
 
   | Unit | Scope | PR |
   |---|---|---|
@@ -24,10 +24,15 @@
 
   Judge-test hardening landed in #68. Worker-report ignore landed in #65.
 - **Judges proven live.** On the host, Codex and Claude both judged a 2-item synthetic packet correctly over subscription CLIs. `~/.codex/auth.json` was left untouched. Codex takes about 200 s per call against Claude's 13 s, so U5 must batch.
-- **In fix/verify loops:** U5 (coordinator; P1 negative-verdict and concept-identity fixes applied), U41 (branch ancestry; exclusion-by-ancestry fix running), U38b (list evidence and failure accounting), U40 (two-phase mint links).
+- **Running at handoff:**
+  - **Codex workers:** U6 (held-out gate) and U5b (bind checkpoints to the annotation-store identity).
+  - **Verification:** U40 (two-phase mint links) is committed on `feat/mp-u40`; its host verify job was queued in the old session, so rerun the verify step.
+- **Tracked follow-ups (P2; atomic path, inactive):**
+  - **U38b:** resolve canonical offsets before locating list occurrences when blank-line separators shift structural offsets (`boundary_detection.py`).
+  - **U41:** recognize the excluded "ZZZ - SANDBOX" root during ancestor traversal so its descendants never enter the candidate catalog (`folio_ontology.py`).
 - **Next units:**
   - **After U5:** U6 (gate), then U7, then U8, then U9 (a live synthetic baseline run by the orchestrator).
-  - **After U41:** U42 (deterministic deontic).
+  - **Unblocked now:** U42 (deterministic deontic).
   - **After U40:** U50 (dropped candidates).
 - **Receipts path:** measurement receipts go to `data/measurement/receipts/`, never `docs/evidence/`, which `scripts/check_exclusions.py` treats as an excluded prefix. Plan KTD1 was updated to match.
 - **Corpus:** the federal statutes/regs cell is collected and verified under the gitignored `output/measurement/corpus/federal/statutes-regulations/`. Seal it with the `corpus seal` CLI after the live judge cross-check. The eCFR policy entry is unusable because robots.txt disallows its text API; use govinfo `/content/`. Fetch briefs must set the User-Agent to the repo URL.
