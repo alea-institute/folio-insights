@@ -369,3 +369,73 @@ def test_gate_command_reports_without_recording(tmp_path):
     assert "upper bound" in result.output
     assert "fail" in result.output  # N = 2 cannot bring the upper bound under 10%
     assert sorted(p.name for p in tmp_path.iterdir()) == ["set.json"]
+
+
+@pytest.mark.parametrize("confirmation", ["yes", "no"])
+def test_prepare_and_detached_submission_use_exact_payload(
+    tmp_path, canned_verdict, registered_polysemy_reviewer, confirmation,
+):
+    from folio_insights.polysemy.dispositions import DispositionRecord, read_dispositions
+    from folio_insights.polysemy.signing import disposition_fields
+    from folio_insights.proposals.signed_decisions import sign_decision
+    from tests.polysemy._signed import CORPUS, DID, KEY
+
+    fixtures = _seed_minimal_fixtures(tmp_path)
+    prepared, evidence, log = (tmp_path / name for name in ("prepared.json", "signed.json", "log.jsonl"))
+    with patch("folio_insights.polysemy.cli.detect_polysemy", return_value=canned_verdict), patch(
+        "folio_insights.polysemy.cli.ensure_reviewer_did", side_effect=AssertionError("no key reads"),
+    ):
+        result = CliRunner().invoke(polysemy, [
+            "review", "--fixtures", str(fixtures), "--corpus", CORPUS,
+            "--reviewer-did", DID, "--prepare", str(prepared), "--dispositions-path", str(log),
+        ], input="accept\nSynthetic reviewed rationale.\n", catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    assert not log.exists()
+    record = DispositionRecord.model_validate_json(prepared.read_text())
+    fields = json.loads(prepared.with_name(prepared.name + ".decision.json").read_text())
+    assert fields == disposition_fields(record)
+    signed = sign_decision(fields, signing_key=KEY)
+    evidence.write_text(signed.model_dump_json())
+    before = prepared.read_bytes()
+    with patch("folio_insights.polysemy.cli.detect_polysemy", side_effect=AssertionError("must not rerun")), patch(
+        "folio_insights.polysemy.cli.ensure_reviewer_did", side_effect=AssertionError("no key reads"),
+    ):
+        result = CliRunner().invoke(polysemy, [
+            "review", "--corpus", CORPUS, "--prepared-record", str(prepared),
+            "--signed-decision", str(evidence), "--dispositions-path", str(log),
+        ], input=confirmation + "\n", catch_exceptions=False)
+    assert result.exit_code == 0, result.output
+    assert "Synthetic reviewed rationale." in result.output
+    assert "Record this signed disposition?" in result.output
+    assert prepared.read_bytes() == before
+    if confirmation == "yes":
+        assert list(read_dispositions(log)) == [record.model_copy(update={"signed_decision": signed})]
+    else:
+        assert "aborted" in result.output
+        assert not log.exists()
+
+
+def test_signed_submission_cannot_change_selected_corpus(tmp_path, registered_polysemy_reviewer):
+    from tests.polysemy.test_review_fixes import _disposition, _fork
+
+    record = _disposition(_fork().to_proposed_fork())
+    prepared, evidence, log = (tmp_path / name for name in ("prepared.json", "signed.json", "log.jsonl"))
+    prepared.write_text(record.model_dump_json())
+    evidence.write_text(record.signed_decision.model_dump_json())
+    result = CliRunner().invoke(polysemy, [
+        "review", "--corpus", "other-corpus", "--prepared-record", str(prepared),
+        "--signed-decision", str(evidence), "--dispositions-path", str(log),
+    ])
+    assert result.exit_code != 0
+    assert "not for the selected corpus" in result.output
+    assert not log.exists()
+
+
+def test_preparation_requires_explicit_corpus_and_public_reviewer(tmp_path):
+    prepared = tmp_path / "prepared.json"
+    runner = CliRunner()
+    for options in ([], ["--corpus", "synthetic"]):
+        result = runner.invoke(polysemy, ["review", "--prepare", str(prepared), *options])
+        assert result.exit_code != 0
+        assert "required" in result.output
+        assert not prepared.exists()

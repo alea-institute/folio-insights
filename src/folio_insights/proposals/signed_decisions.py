@@ -104,6 +104,8 @@ KIND_TASK_CREATE = "task_create"
 KIND_TASK_DELETE = "task_delete"
 KIND_HIERARCHY_EDIT = "hierarchy_edit"
 KIND_CONTRADICTION_RESOLVE = "contradiction_resolve"
+KIND_POLYSEMY_DISPOSITION = "polysemy_disposition"
+KIND_POLYSEMY_CERTIFICATION = "polysemy_certification"
 DecisionKind = Literal[
     "proposed_class",
     "unit_review",
@@ -115,6 +117,8 @@ DecisionKind = Literal[
     "task_delete",
     "hierarchy_edit",
     "contradiction_resolve",
+    "polysemy_disposition",
+    "polysemy_certification",
 ]
 DECISION_KINDS: frozenset[str] = frozenset(DecisionKind.__args__)  # type: ignore[attr-defined]
 
@@ -974,6 +978,8 @@ __all__ = [
     "KIND_CONTRADICTION_RESOLVE",
     "KIND_HIERARCHY_EDIT",
     "KIND_PROPOSED_CLASS",
+    "KIND_POLYSEMY_DISPOSITION",
+    "KIND_POLYSEMY_CERTIFICATION",
     "KIND_TASK_BULK_APPROVE",
     "KIND_TASK_CREATE",
     "KIND_TASK_DELETE",

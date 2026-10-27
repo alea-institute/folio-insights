@@ -55,6 +55,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from folio_insights.polysemy.dispositions import DispositionRecord, read_dispositions
+from folio_insights.proposals.signed_decisions import SignedDecision
 
 if TYPE_CHECKING:  # labeled_set imports this module; no runtime cycle
     from folio_insights.polysemy.labeled_set import LabeledSet
@@ -127,11 +128,11 @@ class Certification(BaseModel):
     only when the reviewed sample is meaningful (``MIN_SAMPLE_SHARE`` of the
     cases and at least one case of every gold label).
 
-    SELF-ASSERTED: ``certified_by`` is whatever the writer typed. The checks
-    here refuse a certifier that names an agent (``AGENT_LABELER_ID`` or a
-    token such as agent, assistant, ai, llm, claude, gpt, bot, model), but
-    nothing proves a human wrote the record until dispositions and
-    certifications are signed. Treat a ``pass`` as the certifier's claim.
+    Legacy unsigned records remain readable but cannot certify the gate.
+    The gate verifies ``signed_decision`` against the complete certificate,
+    its corpus and the current reviewer registry. This authenticates review
+    authorship; the sample, case correspondence and Wilson checks still decide
+    whether the evaluation passes.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -141,6 +142,8 @@ class Certification(BaseModel):
     sample_reviewed: tuple[str, ...] = Field(min_length=1)  # case IDs the human checked
     cases_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     note: str = ""
+    corpus: str | None = None
+    signed_decision: SignedDecision | None = None
 
     @field_validator("certified_by")
     @classmethod
@@ -208,6 +211,13 @@ def _certification_problem(records: list[DispositionRecord], labeled: LabeledSet
     missing = sorted({c.gold for c in labeled.cases} - sampled_labels)
     if missing:
         return f"the reviewed sample has no case of gold label(s) {missing}"
+    from folio_insights.polysemy.signing import verify_certification
+    from folio_insights.proposals.signed_decisions import DecisionPolicyMisconfigured
+
+    try:
+        verify_certification(certification, corpus=labeled.corpus)
+    except (ValueError, DecisionPolicyMisconfigured):
+        return "registered reviewer signature does not verify for this certification"
     return None
 
 

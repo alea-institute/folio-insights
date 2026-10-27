@@ -24,13 +24,14 @@ from folio_insights.shapes import pyshacl_adapter
 from folio_insights.shapes.compiled import turtle_graph
 from folio_insights.shapes.suite import SUITE_PATHS
 from folio_insights.vocab._constants import framework_iri
+from tests.polysemy._signed import DID, OTHER_DID, signed_record
 
-pytestmark = pytest.mark.polysemy_spike
+pytestmark = [pytest.mark.polysemy_spike, pytest.mark.usefixtures("registered_polysemy_reviewer")]
 
 FI = "https://folio-insights.aleainstitute.ai/vocab/"
 SKOS = "http://www.w3.org/2004/02/skos/core#"
 CL, LA, UK = "us.common_law", "us.louisiana.civil_code", "uk.england.common_law"
-REVIEWER = "did:key:z6MkReviewerSynthetic"
+REVIEWER = DID
 CL_SENSE = "urn:folio:term/consideration#us.common_law"
 LA_SENSE = "urn:folio:term/consideration#us.louisiana.civil_code"
 GROUPING = "urn:folio:term/consideration"
@@ -63,7 +64,7 @@ def _disposition(fork, **overrides) -> DispositionRecord:  # noqa: ANN001
         labeler="human",
     )
     fields.update(overrides)
-    return DispositionRecord(**fields)
+    return signed_record(DispositionRecord(**fields))
 
 
 @pytest.fixture(autouse=True)
@@ -166,7 +167,7 @@ def test_prd_appendix_c_analogical_pairs_query() -> None:
     ({"decision": "reject"}, "decision"),
     ({"cluster_id": "fi:PrototypeCluster_other"}, "another cluster"),
     ({"term": "lease"}, "another term"),
-    ({"reviewer_did": "did:key:zSomeoneElse"}, "proposer"),
+    ({"reviewer_did": OTHER_DID}, "proposer"),
 ])
 def test_fork_is_released_only_by_a_human_disposition(overrides: dict, reason: str) -> None:
     fork = _fork()

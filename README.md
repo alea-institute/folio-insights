@@ -296,6 +296,23 @@ existing public reviewer registry, `FOLIO_INSIGHTS_DECISION_SIGNERS_FILE`. Missi
 unusable required registration refuses the decision before any write. Operator
 authentication and decision authorship remain separate checks.
 
+Polysemy fork release and FP-gate certification always require a registered
+signature. Legacy unsigned dispositions remain readable for descriptive audits.
+To prepare a review without recording approval, run
+`polysemy review --corpus ID --reviewer-did DID --prepare reviewed.json`. This
+writes the reviewed record and `reviewed.json.decision.json`, the exact input for
+`proposals sign-decision`. Submit the resulting signature with
+`polysemy review --corpus ID --prepared-record reviewed.json --signed-decision signed.json`.
+The CLI displays the saved payload and asks for confirmation. It neither reruns
+the detector nor applies a fork during submission.
+
+A labeled set's optional certificate carries `corpus` and `signed_decision`,
+bound through `polysemy.signing.certification_fields` to the cases digest,
+reviewed sample, reviewer and time. The labeled set must name the same corpus.
+A valid signature authenticates authorship; the existing sampling, label
+coverage, record correspondence and Wilson-bound checks still determine status.
+The shipped labeled set remains uncertified.
+
 ### CORPUS-04 validation inputs
 
 `bench.corpus04.run_corpus04(..., cluster_inputs={corpus_id: options})` passes each

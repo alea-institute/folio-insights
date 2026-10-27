@@ -110,6 +110,7 @@ class LabeledSet(BaseModel):
 
     format: Literal["folio-insights/polysemy-labeled-set/v1"]
     description: str = ""
+    corpus: str | None = None
     labeling: dict[str, Any] = Field(default_factory=dict)
     certification: Certification | None = None
     cases: tuple[LabeledCase, ...]
