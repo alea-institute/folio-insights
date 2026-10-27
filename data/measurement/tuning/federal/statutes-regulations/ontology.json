@@ -1,0 +1,988 @@
+{
+  "concepts": [
+    {
+      "alternative_labels": [],
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "label": "owl#Thing",
+      "parents": []
+    },
+    {
+      "alternative_labels": [
+        "Constitutional and Civil Rights",
+        "Constitutional and Civil Rights Law",
+        "Constitutional and Human Rights Law",
+        "Constitutional and Human Rights Law",
+        "Derecho Constitucional y de Derechos Civiles",
+        "Derecho Constitucional y de Derechos Civiles",
+        "Direito Constitucional e dos Direitos Civis",
+        "Droit constitutionnel et des droits civils",
+        "Verfassungs- und Zivilrechtsrecht",
+        "חוק החוקה וזכויות אזרחיות",
+        "संवैधानिक और नागरिक अधिकार कानून",
+        "宪法和民事权利法",
+        "憲法および市民権法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R07tQM5sYugYGBPQS571s5",
+      "label": "Constitutional and Civil Rights Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Departamento de Trabajo de EE. UU.",
+        "Departamento de Trabajo de EE. UU.",
+        "Departamento do Trabalho dos EUA",
+        "Département du travail des États-Unis",
+        "U.S. Dept. of Labor",
+        "US-Arbeitsministerium",
+        "משרד העבודה של ארצות הברית",
+        "यूएस श्रम विभाग",
+        "アメリカ労働省",
+        "美国劳工部"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R15Bf89EBBcdd05Ca4462a0b",
+      "label": "U.S. Dept. of Labor",
+      "parents": [
+        "https://folio.openlegalstandard.org/R22815eC3Af3bFF0d002Ca58"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Agences fédérales américaines",
+        "Agencias Federales de EE. UU.",
+        "Agencias Federales de EE. UU.",
+        "Agências federais dos EUA",
+        "Rulemaking and Administrative Functions",
+        "U.S. Federal Agencies",
+        "US-Bundesbehörden",
+        "סוכנויות פדרליות אמריקניות",
+        "यूएस संघीय एजेंसियाँ",
+        "米国連邦機関",
+        "美国联邦机构"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R22815eC3Af3bFF0d002Ca58",
+      "label": "U.S. Federal Agencies",
+      "parents": [
+        "https://folio.openlegalstandard.org/R9o0sZT3FdlEsNm24CtqmNJ"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Administración de Seguridad y Salud Ocupacional",
+        "Administración de Seguridad y Salud Ocupacional",
+        "Administration de la sécurité et de la santé au travail",
+        "Administração de Segurança e Saúde Ocupacional",
+        "Berufssicherheits- und Gesundheitsverwaltung",
+        "Occupational Safety and Health Administration",
+        "המנהלה לבטיחות ובריאות בעבודה",
+        "व्यावसायिक सुरक्षा और स्वास्थ्य प्रशासन",
+        "労働安全衛生局",
+        "职业安全与健康管理局"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R5DE425E15b8c8CE8fb6Eecf",
+      "label": "Occupational Safety and Health Administration",
+      "parents": [
+        "https://folio.openlegalstandard.org/R15Bf89EBBcdd05Ca4462a0b"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Ereignis",
+        "Event",
+        "Evento",
+        "Evento",
+        "Evento",
+        "Événement",
+        "אירוע",
+        "घटना",
+        "イベント",
+        "事件"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF",
+      "label": "Event",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Debtor",
+        "Debtor",
+        "Deudor",
+        "Deudor",
+        "Devedor",
+        "Débiteur",
+        "Schuldner",
+        "חייב",
+        "ऋणी",
+        "债务人",
+        "債務者"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R77pHybcEdlO9OmqSuiyWi1",
+      "label": "Debtor",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Entidad Jurídica",
+        "Entidad Legal",
+        "Entidade jurídica",
+        "Juristische Person",
+        "Legal Entity",
+        "Legal Entity,Organization Type",
+        "Personne morale",
+        "ישות משפטית",
+        "कानूनी एकाधिकार",
+        "法人",
+        "法人实体"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7L5eLIzH0CpOUE74uJvSjL",
+      "label": "Legal Entity",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/R7MmeHfXj4xIERqXjFOEHHw",
+      "label": "National Governmental Body",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBQGborh1CfXanGZipDL0Qo"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Bericht",
+        "Informe",
+        "Rapport",
+        "Relatório",
+        "Report",
+        "Reporte",
+        "דו\"ח",
+        "रिपोर्ट",
+        "レポート",
+        "报告"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7P7kd5lf60cWlSHHwGsH5k",
+      "label": "Report",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR",
+        "https://folio.openlegalstandard.org/RTPFix1eiYqgdushRunICo"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Acreedor",
+        "Acreedor",
+        "Creditor",
+        "Creditor",
+        "Credor",
+        "Créancier",
+        "Gläubiger",
+        "Lender",
+        "נושה",
+        "ऋणदाता",
+        "债权人",
+        "債権者"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7PHFZzZmVmczzNQl6iZKsa",
+      "label": "Creditor",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Seller",
+        "Seller",
+        "Supplier",
+        "Vendedor",
+        "Vendedor",
+        "Vendedor",
+        "Vendeur",
+        "Vendor",
+        "Verkäufer",
+        "מוכר",
+        "विक्रेता",
+        "卖家",
+        "売り手"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7kkf8NvitG8hubZUnTwevG",
+      "label": "Seller",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Entidade",
+        "Entity",
+        "Entität",
+        "Entité",
+        "エンティティ",
+        "实体"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7oBWHStfmqTLn2MypkW3Pj",
+      "label": "Entity",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7L5eLIzH0CpOUE74uJvSjL"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Arbeitsmigrationsrecht",
+        "Droit de l'immigration professionnelle",
+        "Employment Immigration",
+        "Employment Immigration Law",
+        "Lei de Imigração de Emprego",
+        "Ley de Inmigración Laboral",
+        "Ley de Inmigración Laboral",
+        "חוק הגירה למטרות עסקיות",
+        "रोजगार इम्मिग्रेशन कानून",
+        "就业移民法",
+        "雇用移民法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7pFO5c8yTVZ93FKPzsnDHM",
+      "label": "Employment Immigration Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+        "https://folio.openlegalstandard.org/RVYBDQv9HD2DkAuvbf5Cha"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Defensas en litigios",
+        "Defensas en litigios",
+        "Defenses",
+        "Defesas judiciais",
+        "Défenses en justice",
+        "Litigation Defences",
+        "Prozessverteidigungen",
+        "הגנות משפטיות",
+        "मुकदमेबाज़ी की रक्षा",
+        "訴訟防御",
+        "诉讼辩护"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH",
+      "label": "Litigation Defenses",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Documentos de práctica del tribunal de juicio",
+        "Documentos de práctica del tribunal de primera instancia",
+        "Documentos de prática do tribunal de primeira instância",
+        "Documents de pratique de la cour de première instance",
+        "Dokumente zur Prozesspraxis des erstinstanzlichen Gerichts",
+        "Trial Court Practice Documents",
+        "מסמכי מעשה בבית המשפט לניסיון",
+        "ट्रायल कोर्ट प्रैक्टिस दस्तावेज़",
+        "一审法院实践文件",
+        "初審裁判所の実務文書"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR",
+      "label": "Trial Court Practice Documents",
+      "parents": [
+        "https://folio.openlegalstandard.org/Rjco9ohucVSJ0XxprM5Opb"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Acteur / Joueur",
+        "Actor",
+        "Actor / Jugador",
+        "Actor / Jugador",
+        "Actor / Player",
+        "Ator / Jogador",
+        "Player",
+        "Player Role",
+        "Schauspieler / Spieler",
+        "שחקן / שחקנית",
+        "अभिनेता / खिलाड़ी",
+        "俳優 / プレイヤー",
+        "演员 / 玩家"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R8CdMpOM0RmyrgCCvbpiLS0",
+      "label": "Actor / Player",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Bargaining Unit",
+        "Gewerkschaft",
+        "Sindicato",
+        "Syndicat",
+        "Trade Union/Labor Union",
+        "Union",
+        "労働組合",
+        "工会"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R8CmgcJjRCkDToOvHMhk0W",
+      "label": "Labor Union",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7oBWHStfmqTLn2MypkW3Pj"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Empleado",
+        "Empleado",
+        "Employee",
+        "Employee",
+        "Employé",
+        "Funcionário",
+        "Mitarbeiter",
+        "עובד",
+        "कर्मचारी",
+        "従業員",
+        "雇员"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R8dLmng1TNW6uYIBHtkJuab",
+      "label": "Employee",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Arbeitsdiskriminierungsgesetz",
+        "Employment Discrimination",
+        "Employment Discrimination Law",
+        "Human Rights Law",
+        "Lei de Discriminação no Emprego",
+        "Ley de Discriminación Laboral",
+        "Ley de Discriminación Laboral",
+        "Loi sur la discrimination en matière d'emploi",
+        "חוק הפלילה בתחום העסקים",
+        "रोजगार भेदभाव कानून",
+        "就业歧视法",
+        "雇用差別禁止法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R8f088bmlfkWDbXdJj9nQD9",
+      "label": "Employment Discrimination Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Arbeits- und Gesundheitsschutzrecht",
+        "Droit de la santé et de la sécurité au travail",
+        "Employment Health and Safety",
+        "Employment Health and Safety Law",
+        "Lei de Saúde e Segurança no Trabalho",
+        "Ley de Salud y Seguridad en el Empleo",
+        "Ley de Salud y Seguridad en el Empleo",
+        "Occupational Health and Safety",
+        "חוק בריאות ובטיחות בעבודה",
+        "रोजगार स्वास्थ्य और सुरक्षा कानून",
+        "労働安全衛生法",
+        "就业健康与安全法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R9WauLukPXgSHKmovMisEfr",
+      "label": "Employment Health and Safety Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Compliance Alert",
+        "Normative Update Announcement"
+      ],
+      "iri": "https://folio.openlegalstandard.org/R9ek5RZIuIDj7sf24AnIjEM",
+      "label": "Regulatory Notice",
+      "parents": [
+        "https://folio.openlegalstandard.org/RB3FT9lFNQIjRnFIueLgCa7",
+        "https://folio.openlegalstandard.org/RBCzyIAi2Hjl80hfQr8wAMR"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/R9o0sZT3FdlEsNm24CtqmNJ",
+      "label": "U.S. Executive Branch",
+      "parents": [
+        "https://folio.openlegalstandard.org/RF9A23e15C1cfD0540b8Afae"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Avis",
+        "Aviso",
+        "Aviso",
+        "Benachrichtigung",
+        "Notice",
+        "Notificación",
+        "הודעה",
+        "नोटिस",
+        "通知",
+        "通知"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RB3FT9lFNQIjRnFIueLgCa7",
+      "label": "Notice",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR",
+        "https://folio.openlegalstandard.org/RBgYlfvGoXoGLN1CBxDQW6B"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Affirmative Defenses",
+        "Affirmative Verteidigungen",
+        "Defensas Afirmativas",
+        "Defensas Afirmativas",
+        "Defesas afirmativas",
+        "Défenses affirmatives",
+        "הגנות אפירמטיביות",
+        "अधिकृत बचाव",
+        "肯定性抗辩",
+        "肯定的な弁護"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBAoFbSK8WP6xJyVrgQd5PZ",
+      "label": "Affirmative Defenses",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Document réglementaire",
+        "Documento Regulatorio",
+        "Documento Regulatorio",
+        "Documento regulatório",
+        "Regulatorisches Dokument",
+        "Regulatory Document",
+        "מסמך רגולטורי",
+        "नियामक दस्तावेज़",
+        "监管文件",
+        "規制文書"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBCzyIAi2Hjl80hfQr8wAMR",
+      "label": "Regulatory Document",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Litigation Objectives",
+        "Objectifs de litige",
+        "Objetivos de litígio",
+        "Objetivos del litigio",
+        "Objetivos del litigio",
+        "Prozessziele",
+        "מטרות הליטיגציה",
+        "लिटिगेशन उद्देश्य",
+        "訴訟目的",
+        "诉讼目标"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBDhSx7fl9qS0ezDVJuZHX4",
+      "label": "Litigation Objectives",
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Derecho Personal y Familiar",
+        "Derecho Personal y Familiar",
+        "Direito pessoal e familiar",
+        "Droit personnel et familial",
+        "Personal and Family Law",
+        "Personal and Family Law",
+        "Persönliches und Familienrecht",
+        "משפט אישי ומשפחתי",
+        "व्यक्तिगत और पारिवारिक कानून",
+        "个人和家庭法",
+        "個人と家族の法律"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBFgL4Dth9VONjmIdH0bEOs",
+      "label": "Personal and Family Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Governmental Body",
+        "Governmental Body",
+        "Organisme gouvernemental",
+        "Organismo gubernamental",
+        "Organismo gubernamental",
+        "Regierungsbehörde",
+        "Órgão governamental",
+        "גוף ממשלתי",
+        "सरकारी निकाय",
+        "政府机构",
+        "政府機関"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBQGborh1CfXanGZipDL0Qo",
+      "label": "Governmental Body",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RBQiW39W3CDhHVyOO8bGdhH",
+      "label": "Debt Collection Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RDhhApr0eDVle3F076WAVct"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Documentos Procedimentales del Tribunal de Primera Instancia",
+        "Documentos Procedimentales del Tribunal de Primera Instancia",
+        "Documentos processuais do tribunal de primeira instância",
+        "Documents de procédure du tribunal de première instance",
+        "Trial Court Procedural Documents",
+        "Verfahrensdokumente des erstinstanzlichen Gerichts",
+        "מסמכי הליך בבית המשפט לניסיון",
+        "ट्रायल कोर्ट प्रक्रियात्मक दस्तावेज़",
+        "一审法院程序文件",
+        "初審裁判所手続き書類"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBgYlfvGoXoGLN1CBxDQW6B",
+      "label": "Trial Court Procedural Documents",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7zvYKadqTXgMZV8ghLsloR"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RBila9ckW95W84Tk54tGfZO",
+      "label": "Employment Events",
+      "parents": [
+        "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Document Types",
+        "Dokumenttypen",
+        "Tipos de Documentos",
+        "Tipos de Documentos",
+        "Tipos de documentos",
+        "Types de documents",
+        "סוגי מסמכים",
+        "दस्तावेज़ प्रकार",
+        "ドキュメントタイプ",
+        "文档类型"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh",
+      "label": "Document Types",
+      "parents": [
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Papel en el asunto",
+        "Papel na questão",
+        "Player Role",
+        "Rol en el asunto",
+        "Role in Matter",
+        "Rolle in der Angelegenheit",
+        "Rôle dans l'affaire",
+        "תפקיד בעניין",
+        "मामले में भूमिका",
+        "事件における役割",
+        "事项中的角色"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE",
+      "label": "Role in Matter",
+      "parents": [
+        "https://folio.openlegalstandard.org/R8CdMpOM0RmyrgCCvbpiLS0"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Legal Compliance"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RCZwssbqfmu0Lds0LPDV34F",
+      "label": "Compliance",
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RCdJXw1Ml7DIBqmouWarZm2",
+      "label": "Exception",
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn",
+      "label": "Deontic Specification",
+      "parents": [
+        "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Consumer Protection",
+        "Consumer Protection Law",
+        "Lei de Proteção ao Consumidor",
+        "Ley de Protección al Consumidor",
+        "Ley de Protección al Consumidor",
+        "Loi sur la protection des consommateurs",
+        "Verbraucherschutzgesetz",
+        "חוק הגנת הצרכן",
+        "उपभोक्ता संरक्षण कानून",
+        "消費者保護法",
+        "消费者保护法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RCovPJMo8mH3uZhlySLgWIa",
+      "label": "Consumer Protection Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RqNYDJtQ1pAsGPKZNEUlET"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RCqqI0SLTxsE8Z2rCu7KOXm",
+      "label": "Prohibition",
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RCurUksxnjgPwYWpCSq0xPI",
+      "label": "Permission",
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RCvV18Mbbb9FYFXbHt1inuL",
+      "label": "Regulatory Events",
+      "parents": [
+        "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Civil Litigation Defences",
+        "Defensas Civiles en Litigios",
+        "Defensas Civiles en Litigios",
+        "Defesas civis em litígios",
+        "Défenses civiles en litige",
+        "Zivilprozessverteidigungen",
+        "הגנות אזרחיות בתביעות משפט",
+        "लिटिगेशन सिविल रक्षाओं",
+        "民事訴訟防御",
+        "民事诉讼辩护"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RCzs34uEQI9f4cuWp3bQO0P",
+      "label": "Litigation Civil Defenses",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7vJPxcT40MjEfNZkBK1tKH"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Arbeits- und Beschäftigungsrecht",
+        "Derecho Laboral y de Empleo",
+        "Derecho Laboral y de Empleo",
+        "Direito do Trabalho e Emprego",
+        "Droit du travail et de l'emploi",
+        "Labor and Employment Law",
+        "Labour and Employment Law",
+        "Labour and Employment Law",
+        "חוקי עבודה ותעסוקה",
+        "श्रम और रोजगार कानून",
+        "劳动和就业法",
+        "労働雇用法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RCzvtNXIrDJF8xkmOoc6JKH",
+      "label": "Labor and Employment Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Eventos de disputa",
+        "Streitigkeiten Ereignisse",
+        "Événements de litige",
+        "争议事件",
+        "紛争イベント"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RDFhtJuTWcY7UZGV9F5yOoA",
+      "label": "Dispute Events",
+      "parents": [
+        "https://folio.openlegalstandard.org/R73hoH1RXYjBTYiGfolpsAF"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Derecho financiero y de préstamos",
+        "Derecho financiero y de préstamos",
+        "Finance and Lending",
+        "Finance and Lending Law",
+        "חוקי פיננסים והלוואות",
+        "वित्त और उधार कानून"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RDhhApr0eDVle3F076WAVct",
+      "label": "Finance and Lending Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Discrimination",
+        "Diskriminierungsrecht",
+        "Droit de la discrimination",
+        "Lei de Discriminação",
+        "差別禁止法",
+        "歧视法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RDkwyaka1G06Txgxv0pNxqI",
+      "label": "Discrimination Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/R07tQM5sYugYGBPQS571s5"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RDsDXHKUsZoJfz87jnz7zjj",
+      "label": "Violation",
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Artifact",
+        "Document",
+        "Document / Artefact",
+        "Document / Artifact",
+        "Documento / Artefacto",
+        "Documento / Artefacto",
+        "Documento / Artefato",
+        "Dokument / Artefakt",
+        "מסמך / ארטיפקט",
+        "दस्तावेज़ / आर्टिफैक्ट",
+        "दस्तावेज़ / उत्पाद",
+        "दस्तावेज़ / वस्तु",
+        "ドキュメント / アーティファクト",
+        "文档 / 工件"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj",
+      "label": "Document / Artifact",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Duty",
+        "Legal Obligation",
+        "Responsibility"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RDtFkLR3v97fran5zQ3ugao",
+      "label": "Obligation",
+      "parents": [
+        "https://folio.openlegalstandard.org/RClhbl4E1TJp9LygIXewIhn"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Gobierno de los Estados Unidos",
+        "Gobierno de los Estados Unidos",
+        "Gouvernement des États-Unis",
+        "Governo dos Estados Unidos",
+        "Regierung der Vereinigten Staaten",
+        "US Government",
+        "United States Government",
+        "ממשלת ארצות הברית",
+        "संयुक्त राज्य अमेरिका सरकार",
+        "アメリカ合衆国政府",
+        "美国政府"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RF9A23e15C1cfD0540b8Afae",
+      "label": "United States Government",
+      "parents": [
+        "https://folio.openlegalstandard.org/R7MmeHfXj4xIERqXjFOEHHw"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RHbafeB3iGRJL6ZD0aGFoj",
+      "label": "Credit Report",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBCzyIAi2Hjl80hfQr8wAMR"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Area of Law",
+        "Areas of Law",
+        "Domaine juridique",
+        "Practice Area",
+        "Rechtsgebiet",
+        "Área de Derecho",
+        "Área de Derecho",
+        "Área do Direito",
+        "תחום משפטי",
+        "कानून क्षेत्र",
+        "法律分野",
+        "法律领域"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr",
+      "label": "Area of Law",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Knowledge Type",
+        "Tipo de conhecimento",
+        "Tipo de conocimiento",
+        "Tipo de conocimiento",
+        "Type de connaissance",
+        "Wissenstyp",
+        "סוג ידע",
+        "ज्ञान प्रकार",
+        "知識タイプ",
+        "知识类型"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RTPFix1eiYqgdushRunICo",
+      "label": "Knowledge Type",
+      "parents": [
+        "https://folio.openlegalstandard.org/RDt4vQCYDfY0R9fZ5FNnTbj"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Derecho de Inmigración",
+        "Direito de Imigração",
+        "Droit de l'immigration",
+        "Einwanderungsrecht",
+        "Immigration Law",
+        "Immigration Law",
+        "Ley de Inmigración",
+        "חוק הגירה",
+        "आप्रवासन कानून",
+        "入国管理法",
+        "移民法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RVYBDQv9HD2DkAuvbf5Cha",
+      "label": "Immigration Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBFgL4Dth9VONjmIdH0bEOs"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Court Records",
+        "Document de contentieux",
+        "Documento de litigio",
+        "Documento de litigio",
+        "Documento de litígio",
+        "Litigation Document",
+        "Prozessdokument",
+        "מסמך תביעה",
+        "लिटिगेशन दस्तावेज़",
+        "訴訟書類",
+        "诉讼文件"
+      ],
+      "iri": "https://folio.openlegalstandard.org/Rjco9ohucVSJ0XxprM5Opb",
+      "label": "Litigation Document",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBkL8I5saFF7mqpLTI7GxSh"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Objectifs",
+        "Objectives",
+        "Objetivos",
+        "Objetivos",
+        "Objetivos",
+        "Ziele",
+        "מטרות",
+        "लक्ष्य",
+        "目标",
+        "目的"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RlNFgB3TQfMzV26V4V7u4E",
+      "label": "Objectives",
+      "parents": [
+        "http://www.w3.org/2002/07/owl#Thing"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Business Law",
+        "Commercial and Trade Law",
+        "Commercial and Trade Law",
+        "Competition and Trade Law",
+        "Derecho Comercial y de Comercio",
+        "Derecho Comercial y de Comercio",
+        "Direito Comercial e Empresarial",
+        "Droit commercial et des affaires",
+        "Handels- und Wirtschaftsrecht",
+        "משפט מסחרי ומסחר",
+        "वाणिज्यिक और व्यापारिक कानून",
+        "商業法および貿易法",
+        "商法和贸易法"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RqNYDJtQ1pAsGPKZNEUlET",
+      "label": "Commercial and Trade Law",
+      "parents": [
+        "https://folio.openlegalstandard.org/RSYBzf149Mi5KE0YtmpUmr"
+      ]
+    },
+    {
+      "alternative_labels": [
+        "Arbeitgeber",
+        "Empleador",
+        "Empleador",
+        "Employer",
+        "Employer",
+        "Employeur",
+        "Empregador",
+        "מעסיק",
+        "नियोक्ता",
+        "雇主",
+        "雇用者"
+      ],
+      "iri": "https://folio.openlegalstandard.org/RsZxhuNFK33sHecLQ7WJdp",
+      "label": "Employer",
+      "parents": [
+        "https://folio.openlegalstandard.org/RCEDL3kMYgjFUEOhOyGp3IE"
+      ]
+    },
+    {
+      "alternative_labels": [],
+      "iri": "https://folio.openlegalstandard.org/RuDAbRiNW105SQoqb1XZ4c",
+      "label": "Injury",
+      "parents": [
+        "https://folio.openlegalstandard.org/RBila9ckW95W84Tk54tGfZO",
+        "https://folio.openlegalstandard.org/RCvV18Mbbb9FYFXbHt1inuL",
+        "https://folio.openlegalstandard.org/RDFhtJuTWcY7UZGV9F5yOoA"
+      ]
+    }
+  ],
+  "concepts_sha256": "b138112d350d820c5b322043c3fa4cce7e10fddb9f9d051877cf42632270f2ad",
+  "format": 1,
+  "license": "CC-BY-4.0; FOLIO, ALEA Institute",
+  "source_sha256": "44657b4ed844f5f9c9c48869184606b4fc671471a8263d79d241de87809fa239",
+  "source_url": "https://github.com/alea-institute/FOLIO"
+}

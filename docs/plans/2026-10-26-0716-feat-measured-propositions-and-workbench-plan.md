@@ -200,7 +200,7 @@ Workers use the main checkout's existing Python venv read-only, with `PYTHONPATH
 
 ### Key Technical Decisions
 
-- KTD1. **Version the evaluation inputs independently of pipeline output.** Add `src/folio_insights/measurement/` alongside the existing `rubric/`; reuse its fixture/CLI conventions without relabelling RUB-EXTRACT as precision/recall. An evaluation run pins source snapshots, gold revision, split manifest, ontology digest, scorer/matcher version, baseline/candidate commit and configuration hashes, extraction prompt hashes, judge prompts, CLI/model identities and deterministic sampling seed. Store per-item checkpoints and content hashes under `output/measurement/`; publish sanitized aggregate receipts under `docs/evidence/measurement/`. Raw held-out labels and judge rationales never enter worker-visible evidence commits. This implements R1–R7.
+- KTD1. **Version the evaluation inputs independently of pipeline output.** Add `src/folio_insights/measurement/` alongside the existing `rubric/`; reuse its fixture/CLI conventions without relabelling RUB-EXTRACT as precision/recall. An evaluation run pins source snapshots, gold revision, split manifest, ontology digest, scorer/matcher version, baseline/candidate commit and configuration hashes, extraction prompt hashes, judge prompts, CLI/model identities and deterministic sampling seed. Store per-item checkpoints and content hashes under `output/measurement/`; publish sanitized aggregate receipts under `data/measurement/receipts/` (not `docs/evidence/`, which `scripts/check_exclusions.py` treats as an excluded prefix for new commits). Raw held-out labels and judge rationales never enter worker-visible evidence commits. This implements R1–R7.
 - KTD2. **Score exhaustive gold, including omissions.** For R4, gold enumerates atomic propositions, spans, typed links and complete tag sets; a model's failure to propose an omission cannot erase a gold item. Deterministic one-to-one matching uses exact grounded spans and independently adjudicated semantic equivalence edges when text differs. A compound claim cannot match several atomic gold claims. Freeze matching policy before evaluating candidates. Count unmatched predictions as proposition FP, unmatched gold as FN, and matched atomic equivalents as TP. Tag TP/FP/FN are proposition-scoped resolver identities: tags on unmatched predictions are FP; tags on missed gold propositions are FN. Deduplicate identical tags within a proposition, but duplicate proposition predictions incur FP. Report P and R independently for propositions and tags by genre and by source, with numerator/denominator counts and micro totals. Zero denominators are explicitly unmeasurable, never 1.0. Distinguish a fully evaluated empty prediction set over nonempty gold from missing gold, sources or judgments; the former has known recall zero and undefined precision, with the recovery transition in KTD7. Report branch/link/grounding diagnostics separately without substituting them for R4's axes. Complete tag sets come from pooled adjudication, because nobody can enumerate every applicable concept out of 18,000+ unaided. For each gold proposition, the candidate pool is the union of tags from the gold author, every evaluated pipeline configuration, both judges' missing-tag proposals, and the resolver's top candidates per branch. Each pooled tag is adjudicated, and the surviving set is the gold tag set. A tag that a later candidate proposes outside the existing pool enters adjudication before scoring; it is never an automatic false positive. To estimate how much the pool itself misses, each run asks the Claude sample of KTD4 to name missing tags against the pooled set. That pool-miss rate is reported beside tag recall, and an uncorrected pool-miss rate above 5% for a genre labels that genre's tag recall "pool-limited."
 - KTD3. **Use subscription CLIs through one evaluation-judge port.** Implement Codex (`codex exec`) and Claude (`claude -p`) adapters returning the same strict verdict schema: correct/wrong/uncertain, reason, item ID, optional source-grounded omission and opaque concept-selection IDs. The model sees quoted source, candidate items and a candidate catalog with opaque IDs/labels; output schemas prohibit IRI fields and reject IRI strings. Deterministic code alone expands IDs to FOLIO IRIs (R15). Invoke argument arrays without a shell, feed prompts through stdin, isolate the working directory and tools, and validate exact item coverage. Use Codex read-only/ephemeral execution and structured schema output; use Claude structured JSON, disabled tools and session persistence. Capability-check flags against the installed CLI help. In the subprocess environment, remove API-key, custom-base-URL and cloud-provider overrides, including `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL`; never set either. No HTTP SDK or API-key fallback exists. Missing subscription auth, quota, timeout, cancellation, invalid output or nonzero exit leaves an incomplete checkpointed run. A retry processes only missing items under the same input hashes. Preserve the current pipeline branch judge's separate provenance checks; this port does not forge those checks or their template identities (R3, R15).
 - KTD4. **Claude reviews independently and lightly.** For each run, take a reproducible 20% sample, rounded up with at least one item from every nonempty genre/source/item-kind stratum, then union every Codex-uncertain item. Items include predictions, gold/omission coverage decisions and proposed missing tags. Record the denominator and realized coverage, which may exceed 20% on small suites. Claude receives no Codex verdict or rationale. Any verdict difference, incompatible omission assessment or unresolved uncertainty creates an adjudication item. Preserve both original judgments and append the human resolution. Pending uncertainty/disagreement cannot be silently removed from score denominators or accepted by a gate. R5 labels apply until Damien verifies the relevant genre's anchor; an anchor reports each judge's correctness against human labels and never certifies itself (R3–R6).
@@ -354,7 +354,7 @@ The index is a navigation aid. Unit bodies own the complete file/test assignment
 | U6 | Sealed split loader and before/after held-out gate | `src/folio_insights/measurement/splits.py` | U5 | 5 | no |
 | U7 | README regeneration from extraction and score artifacts | `src/folio_insights/measurement/readme.py` | U6 | 6 | no |
 | U8 | Checked README-refresh publication adapter | `src/folio_insights/measurement/publication.py` | U7 | 7 | no |
-| U9 | Live synthetic baseline and measuring-loop characterization | `docs/evidence/measurement/synthetic-baseline.json` | U8 | 8 | live run (orchestrator, network) |
+| U9 | Live synthetic baseline and measuring-loop characterization | `data/measurement/receipts/synthetic-baseline.json` | U8 | 8 | live run (orchestrator, network) |
 | U10 | Bounded public-corpus acquisition and rights manifest tooling | `src/folio_insights/measurement/corpus.py` | U1 | 2 | no |
 | U11 | Federal opinions gold batch | `data/measurement/tuning/federal/opinions/` | U10 | 8 | fetch yes (Claude subagent), gold drafting no (Codex) |
 | U12 | Federal statutes and regulations gold batch | `data/measurement/tuning/federal/statutes-regulations/` | U10 | 9 | fetch yes (Claude subagent), gold drafting no (Codex) |
@@ -559,7 +559,7 @@ The index is a navigation aid. Unit bodies own the complete file/test assignment
 **Dependencies:** U8.
 **Parallelism:** wave 8. **Network:** live run (orchestrator, network).
 
-**Files:** `docs/evidence/measurement/synthetic-baseline.json`, `docs/evidence/measurement/synthetic-cycle.json`, `data/measurement/synthetic/split-manifest.json`.
+**Files:** `data/measurement/receipts/synthetic-baseline.json`, `data/measurement/receipts/synthetic-cycle.json`, `data/measurement/synthetic/split-manifest.json`.
 
 **Approach:** In the isolated evaluator, seal the independent synthetic groups from U1 before candidate work. Run the unchanged baseline through both real subscription adapters, score README regression examples separately, and compare a frozen unchanged candidate. Use a fully measurable baseline equality case where available and exercise rejection through recorded comparator fixtures. A genuinely unmeasurable current baseline or pending adjudication is valid characterization evidence: record it incomplete rather than requiring a pipeline fix before the instrument exists. U58 owns the first fully completed live F1 acceptance proof. Generate the README preview from the real run even when its gate is incomplete. Publish only after a live accept, then verify its checks/merge. Report achieved scores honestly even if far below target. Export only sanitized aggregate evidence.
 
@@ -568,8 +568,8 @@ The index is a navigation aid. Unit bodies own the complete file/test assignment
 2. The stored live comparison outcome (including a truthful incomplete outcome) can be recomputed from evaluator artifacts and no mocked test is cited as live evidence.
 3. A README preview is generated from real baseline outputs; only a live accept can publish it, and any missing eligibility/check/merge prerequisite is named. Unmet absolute bars remain visible.
 
-**Verification:** `"$FOLIO_PYTHON" -m folio_insights.measurement baseline --suite synthetic --receipt docs/evidence/measurement/synthetic-baseline.json`.
-Then run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change instrument-smoke --baseline promoted --candidate HEAD --suite synthetic --receipt docs/evidence/measurement/synthetic-cycle.json` and, only if a live comparison accepts, `"$FOLIO_PYTHON" -m folio_insights.measurement readme publish --accepted-run latest`. Otherwise retain the generated preview and the incomplete/rejected receipt. This is future implementation acceptance, not an action in this planning session.
+**Verification:** `"$FOLIO_PYTHON" -m folio_insights.measurement baseline --suite synthetic --receipt data/measurement/receipts/synthetic-baseline.json`.
+Then run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change instrument-smoke --baseline promoted --candidate HEAD --suite synthetic --receipt data/measurement/receipts/synthetic-cycle.json` and, only if a live comparison accepts, `"$FOLIO_PYTHON" -m folio_insights.measurement readme publish --accepted-run latest`. Otherwise retain the generated preview and the incomplete/rejected receipt. This is future implementation acceptance, not an action in this planning session.
 
 ### U10. Bounded public-corpus acquisition and rights manifest tooling
 
@@ -596,7 +596,7 @@ Then run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change instrum
 **Dependencies:** U10.
 **Parallelism:** wave 8. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/federal/opinions/`, `output/measurement/sealed/federal/opinions/`, `docs/evidence/measurement/corpus/federal-opinions.json`.
+**Files:** `data/measurement/tuning/federal/opinions/`, `output/measurement/sealed/federal/opinions/`, `data/measurement/receipts/corpus/federal-opinions.json`.
 
 **Approach:** Acquire exactly the federal/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -615,7 +615,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 9. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/federal/statutes-regulations/`, `output/measurement/sealed/federal/statutes-regulations/`, `docs/evidence/measurement/corpus/federal-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/federal/statutes-regulations/`, `output/measurement/sealed/federal/statutes-regulations/`, `data/measurement/receipts/corpus/federal-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the federal/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -634,7 +634,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 11. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/federal/briefs/`, `output/measurement/sealed/federal/briefs/`, `docs/evidence/measurement/corpus/federal-briefs.json`.
+**Files:** `data/measurement/tuning/federal/briefs/`, `output/measurement/sealed/federal/briefs/`, `data/measurement/receipts/corpus/federal-briefs.json`.
 
 **Approach:** Acquire exactly the federal/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -653,7 +653,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 12. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/mn/opinions/`, `output/measurement/sealed/mn/opinions/`, `docs/evidence/measurement/corpus/mn-opinions.json`.
+**Files:** `data/measurement/tuning/mn/opinions/`, `output/measurement/sealed/mn/opinions/`, `data/measurement/receipts/corpus/mn-opinions.json`.
 
 **Approach:** Acquire exactly the mn/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -672,7 +672,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 13. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/mn/statutes-regulations/`, `output/measurement/sealed/mn/statutes-regulations/`, `docs/evidence/measurement/corpus/mn-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/mn/statutes-regulations/`, `output/measurement/sealed/mn/statutes-regulations/`, `data/measurement/receipts/corpus/mn-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the mn/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -691,7 +691,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 13. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/mn/briefs/`, `output/measurement/sealed/mn/briefs/`, `docs/evidence/measurement/corpus/mn-briefs.json`.
+**Files:** `data/measurement/tuning/mn/briefs/`, `output/measurement/sealed/mn/briefs/`, `data/measurement/receipts/corpus/mn-briefs.json`.
 
 **Approach:** Acquire exactly the mn/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -710,7 +710,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 13. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/tx/opinions/`, `output/measurement/sealed/tx/opinions/`, `docs/evidence/measurement/corpus/tx-opinions.json`.
+**Files:** `data/measurement/tuning/tx/opinions/`, `output/measurement/sealed/tx/opinions/`, `data/measurement/receipts/corpus/tx-opinions.json`.
 
 **Approach:** Acquire exactly the tx/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -729,7 +729,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 14. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/tx/statutes-regulations/`, `output/measurement/sealed/tx/statutes-regulations/`, `docs/evidence/measurement/corpus/tx-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/tx/statutes-regulations/`, `output/measurement/sealed/tx/statutes-regulations/`, `data/measurement/receipts/corpus/tx-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the tx/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -748,7 +748,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 14. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/tx/briefs/`, `output/measurement/sealed/tx/briefs/`, `docs/evidence/measurement/corpus/tx-briefs.json`.
+**Files:** `data/measurement/tuning/tx/briefs/`, `output/measurement/sealed/tx/briefs/`, `data/measurement/receipts/corpus/tx-briefs.json`.
 
 **Approach:** Acquire exactly the tx/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -767,7 +767,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 14. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/ca/opinions/`, `output/measurement/sealed/ca/opinions/`, `docs/evidence/measurement/corpus/ca-opinions.json`.
+**Files:** `data/measurement/tuning/ca/opinions/`, `output/measurement/sealed/ca/opinions/`, `data/measurement/receipts/corpus/ca-opinions.json`.
 
 **Approach:** Acquire exactly the ca/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -786,7 +786,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 15. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/ca/statutes-regulations/`, `output/measurement/sealed/ca/statutes-regulations/`, `docs/evidence/measurement/corpus/ca-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/ca/statutes-regulations/`, `output/measurement/sealed/ca/statutes-regulations/`, `data/measurement/receipts/corpus/ca-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the ca/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -805,7 +805,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 15. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/ca/briefs/`, `output/measurement/sealed/ca/briefs/`, `docs/evidence/measurement/corpus/ca-briefs.json`.
+**Files:** `data/measurement/tuning/ca/briefs/`, `output/measurement/sealed/ca/briefs/`, `data/measurement/receipts/corpus/ca-briefs.json`.
 
 **Approach:** Acquire exactly the ca/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -824,7 +824,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 15. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/ny/opinions/`, `output/measurement/sealed/ny/opinions/`, `docs/evidence/measurement/corpus/ny-opinions.json`.
+**Files:** `data/measurement/tuning/ny/opinions/`, `output/measurement/sealed/ny/opinions/`, `data/measurement/receipts/corpus/ny-opinions.json`.
 
 **Approach:** Acquire exactly the ny/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -843,7 +843,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 16. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/ny/statutes-regulations/`, `output/measurement/sealed/ny/statutes-regulations/`, `docs/evidence/measurement/corpus/ny-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/ny/statutes-regulations/`, `output/measurement/sealed/ny/statutes-regulations/`, `data/measurement/receipts/corpus/ny-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the ny/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -862,7 +862,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 16. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/ny/briefs/`, `output/measurement/sealed/ny/briefs/`, `docs/evidence/measurement/corpus/ny-briefs.json`.
+**Files:** `data/measurement/tuning/ny/briefs/`, `output/measurement/sealed/ny/briefs/`, `data/measurement/receipts/corpus/ny-briefs.json`.
 
 **Approach:** Acquire exactly the ny/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -881,7 +881,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 16. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/fl/opinions/`, `output/measurement/sealed/fl/opinions/`, `docs/evidence/measurement/corpus/fl-opinions.json`.
+**Files:** `data/measurement/tuning/fl/opinions/`, `output/measurement/sealed/fl/opinions/`, `data/measurement/receipts/corpus/fl-opinions.json`.
 
 **Approach:** Acquire exactly the fl/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -900,7 +900,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 17. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/fl/statutes-regulations/`, `output/measurement/sealed/fl/statutes-regulations/`, `docs/evidence/measurement/corpus/fl-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/fl/statutes-regulations/`, `output/measurement/sealed/fl/statutes-regulations/`, `data/measurement/receipts/corpus/fl-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the fl/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -919,7 +919,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 17. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/fl/briefs/`, `output/measurement/sealed/fl/briefs/`, `docs/evidence/measurement/corpus/fl-briefs.json`.
+**Files:** `data/measurement/tuning/fl/briefs/`, `output/measurement/sealed/fl/briefs/`, `data/measurement/receipts/corpus/fl-briefs.json`.
 
 **Approach:** Acquire exactly the fl/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -938,7 +938,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 17. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/il/opinions/`, `output/measurement/sealed/il/opinions/`, `docs/evidence/measurement/corpus/il-opinions.json`.
+**Files:** `data/measurement/tuning/il/opinions/`, `output/measurement/sealed/il/opinions/`, `data/measurement/receipts/corpus/il-opinions.json`.
 
 **Approach:** Acquire exactly the il/opinions cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -957,7 +957,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 18. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/il/statutes-regulations/`, `output/measurement/sealed/il/statutes-regulations/`, `docs/evidence/measurement/corpus/il-statutes-regulations.json`.
+**Files:** `data/measurement/tuning/il/statutes-regulations/`, `output/measurement/sealed/il/statutes-regulations/`, `data/measurement/receipts/corpus/il-statutes-regulations.json`.
 
 **Approach:** Acquire exactly the il/statutes-regulations cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -976,7 +976,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U10.
 **Parallelism:** wave 18. **Network:** fetch yes (Claude subagent), gold drafting no (Codex).
 
-**Files:** `data/measurement/tuning/il/briefs/`, `output/measurement/sealed/il/briefs/`, `docs/evidence/measurement/corpus/il-briefs.json`.
+**Files:** `data/measurement/tuning/il/briefs/`, `output/measurement/sealed/il/briefs/`, `data/measurement/receipts/corpus/il-briefs.json`.
 
 **Approach:** Acquire exactly the il/briefs cell under the corpus/rights contract and U10 tooling: eight independent groups, bounded excerpts, atomic gold and resolved full tag sets. Draft in an acquisition-only context, cross-check with Codex and the independent Claude policy, and resolve gold-draft disagreements before sealing. Write only tuning content and sanitized counts/rights summaries to worker-visible artifacts; full held-out content stays in the isolated evaluator. Sources are the matching row in the public-source table. A rights/access/quota gap is reported as incomplete for this cell, never replaced by another jurisdiction or synthetic material.
 
@@ -995,7 +995,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 **Dependencies:** U11, U12, U13, U14, U15, U16, U17, U18, U19, U20, U21, U22, U23, U24, U25, U26, U27, U28, U29, U30, U31, U6.
 **Parallelism:** wave 19. **Network:** live run (orchestrator, network).
 
-**Files:** `src/folio_insights/measurement/corpus.py`, `tests/measurement/test_real_manifest.py`, `docs/evidence/measurement/real-baseline.json`.
+**Files:** `src/folio_insights/measurement/corpus.py`, `tests/measurement/test_real_manifest.py`, `data/measurement/receipts/real-baseline.json`.
 
 **Approach:** Aggregate the 21 cell manifests, verify group isolation across cells and copy restricted bundles into evaluator custody. Seal the 168-document pilot and compare baseline against itself to verify reproducibility. Synthetic know-how remains a separately labelled diagnostic suite. Record real pipeline outputs/judgments and the complete per-genre/per-source score matrix before U33 begins. Missing public cells block real coverage and promotion claims; they do not silently shrink the gate matrix.
 
@@ -1005,7 +1005,7 @@ The verification command uses U10’s shared `tests/measurement/test_corpus.py` 
 3. Baseline self-comparison is reproducible under the frozen matching/ontology versions; an inaccessible brief cell yields explicit incomplete coverage.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_real_manifest.py`.
-Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real-v1` and `"$FOLIO_PYTHON" -m folio_insights.measurement baseline --suite real-v1 --receipt docs/evidence/measurement/real-baseline.json` inside evaluator custody.
+Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real-v1` and `"$FOLIO_PYTHON" -m folio_insights.measurement baseline --suite real-v1 --receipt data/measurement/receipts/real-baseline.json` inside evaluator custody.
 
 ### U33. Flat extraction model and typed-link contract
 
@@ -1024,7 +1024,7 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real
 3. A source hash/offset/snippet mismatch cannot be labelled grounded.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_proposition_model.py`.
-**Gate proof:** `G-U33` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U33 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U33.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U33.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U33` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U33 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U33.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U33.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U34. Versioned atomic identity and envelope migration
 
@@ -1043,7 +1043,7 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real
 3. Recipe/key collision, unsupported future schema and altered frozen key fail closed.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/shards/test_atomic_records.py tests/shards/test_minting_determinism.py tests/shards/test_envelope_records.py`.
-**Gate proof:** `G-U34` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U34 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U34.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U34.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U34` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U34 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U34.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U34.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U35. Generated SHACL and declared tag/link vocabulary
 
@@ -1062,7 +1062,7 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement corpus seal --suite real
 3. Regenerated shapes have no drift, core model imports do not load rdflib, and warning versus violation status is unchanged.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/shapes/test_atomic_shapes.py tests/vocab/test_projection_terms.py tests/storage/test_phase11_shacl.py`.
-**Gate proof:** `G-U35` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U35 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U35.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U35.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U35` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U35 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U35.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U35.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files must match the model.
 
 ### U36. Retire active hierarchy while preserving revision safeguards
@@ -1082,7 +1082,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Editing protected recipe/key or subject/predicate is refused; legitimate audited tag changes preserve signature history and existing legacy verify-iris tests.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/revision/test_flat_propositions.py tests/revision/test_cycle_guard.py tests/revision/test_dependency_graph.py tests/shards/test_verify_iris_cli.py`.
-**Gate proof:** `G-U36` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U36 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U36.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U36.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U36` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U36 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U36.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U36.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U60. Occurrence-aware extraction deduplication
 
@@ -1101,7 +1101,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. An exact duplicate occurrence coalesces once and its typed-link references resolve to the survivor without dangling endpoints.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_atomic_dedup.py`.
-**Gate proof:** `G-U60` — run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U60 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U60.json` in evaluator custody. Require a KTD7 decision before activation and retain its sanitized receipt at `docs/evidence/measurement/gates/U60.json`.
+**Gate proof:** `G-U60` — run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U60 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U60.json` in evaluator custody. Require a KTD7 decision before activation and retain its sanitized receipt at `data/measurement/receipts/gates/U60.json`.
 
 ### U37. Projection rebuild and recoverable new-record storage
 
@@ -1120,7 +1120,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Restore into a new destination reproduces counts and digests; selecting preserved originals supports rollback without rewriting or downgrading journal bytes.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/storage/test_atomic_projection.py tests/storage/test_projection_v2_rebuild.py tests/storage/test_snapshot_restore.py tests/revision/test_storage_prereq_signatures.py`.
-**Gate proof:** `G-U37` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U37 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U37.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U37.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U37` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U37 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U37.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U37.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U38. Atomic splitting and grounded typed-link extraction
 
@@ -1139,7 +1139,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Repeated source text, short elements, Unicode/newlines and unsupported heading claims exercise exact child grounding and support at extraction.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_atomic_extraction.py tests/test_extraction_safeguards.py`.
-**Gate proof:** `G-U38` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U38 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U38.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U38.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U38` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U38 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U38.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U38.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U39. Full-tag shard mapping and procedural/citation subtype routing
 
@@ -1158,7 +1158,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Distinct same-span claims and equal text in two documents survive dedup, while an exact duplicate atomic record does not.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/minting/test_atomic_mapper.py tests/minting/test_components.py`.
-**Gate proof:** `G-U39` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U39 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U39.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U39.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U39` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U39 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U39.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U39.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U40. Two-phase mint links and audited existing-record reconciliation
 
@@ -1177,7 +1177,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. A refused target, partial batch failure and rerun retain recoverable state; old signature bytes and extractor authorization remain intact.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/minting/test_atomic_minter.py tests/minting/test_minter.py tests/shards/test_content_edit_audit_append_only.py`.
-**Gate proof:** `G-U40` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U40 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U40.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U40.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U40` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U40 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U40.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U40.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U41. Ontology candidate resolution and real ancestor branch labels
 
@@ -1196,7 +1196,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. The concept own label cannot serve as source evidence; unknown/deprecated labels remain unresolved review proposals.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_candidate_resolution.py tests/test_folio_tagging.py tests/test_bridge_retirement_parity.py`.
-**Gate proof:** `G-U41` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U41 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U41.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U41.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U41` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U41 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U41.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U41.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U42. Deterministic deontic pass
 
@@ -1215,7 +1215,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. May not yields prohibition, not permission; repeated/overlapping modal patterns do not duplicate tags or mark quoted rejected duties as operative.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_deontic_rules.py`.
-**Gate proof:** `G-U42` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U42 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U42.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U42.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U42` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U42 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U42.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U42.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U43. Probabilistic deontic recovery pass
 
@@ -1234,7 +1234,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Malformed selection, unavailable branch correctness check or absent evidence is unresolved/refused, never a silent correct tag.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_deontic_semantic.py tests/minting/test_atomic_mapper.py`.
-**Gate proof:** `G-U43` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U43 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U43.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U43.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U43` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U43 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U43.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U43.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U44. Deterministic Area of Law tagging
 
@@ -1253,7 +1253,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Two genuinely applicable area tags survive; ambiguous aliases remain reviewable and do not manufacture a single winner.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_area_rules.py`.
-**Gate proof:** `G-U44` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U44 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U44.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U44.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U44` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U44 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U44.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U44.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U45. Probabilistic implicit Area of Law tagging
 
@@ -1272,7 +1272,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. The final proposition preserves both deterministic and semantic tags across branches, with unresolved selections available for correction.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_area_semantic.py tests/test_folio_tagging.py`.
-**Gate proof:** `G-U45` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U45 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U45.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U45.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U45` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U45 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U45.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U45.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U46. Genre-aware extraction across all four source genres
 
@@ -1291,7 +1291,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Unknown genre and source metadata disagreement are visible; per-genre scores do not lose difficult documents or claim synthetic know-how as real.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_genres.py`.
-**Gate proof:** `G-U46` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U46 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U46.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U46.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U46` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U46 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U46.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U46.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U47. Common proposition payload and RDF export fidelity
 
@@ -1310,7 +1310,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. Journal export retains original signed bytes, digest/source-schema and full new fields; empty graphs cannot stand in for fixture cardinality.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_rdf_proposition_exports.py tests/storage/test_exports.py tests/storage/test_export_tbox_profile.py`.
-**Gate proof:** `G-U47` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U47 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U47.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U47.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U47` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U47 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U47.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U47.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U48. HTML and Markdown proposition exports
 
@@ -1329,7 +1329,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. An unresolved citation is visible as unresolved; a missing field fails parity verification rather than disappearing.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_text_proposition_exports.py`.
-**Gate proof:** `G-U48` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U48 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U48.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U48.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U48` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U48 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U48.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U48.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U49. Task-independent CLI and API exports
 
@@ -1348,7 +1348,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. An unauthorized export write remains refused; validation/bundle and source confinement preserve every proposition field.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_direct_export_cli.py tests/test_export_api.py tests/api/test_auth.py`.
-**Gate proof:** `G-U49` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U49 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U49.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U49.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U49` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U49 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U49.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U49.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U50. Persist dropped candidates and source coverage evidence
 
@@ -1367,7 +1367,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. A metadata/unsupported claim refusal remains inspectable without auto-promoting it or storing invented source text.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_dropped_candidates.py tests/test_extraction_safeguards.py`.
-**Gate proof:** `G-U50` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U50 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U50.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `docs/evidence/measurement/gates/U50.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
+**Gate proof:** `G-U50` — after fixture verification, run `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change U50 --baseline promoted --candidate HEAD --suite active --receipt output/measurement/gates/U50.json` in evaluator custody. Required outcome: KTD7-comparable nonregression or an explicit unpromoted candidate. Copy only sanitized aggregate results to `data/measurement/receipts/gates/U50.json`. Representation-only changes may prove equality; no new behavior activates before its integration dependencies.
 
 ### U51. Absorbed RUI design components and browser/a11y harness
 
@@ -1502,7 +1502,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 **Dependencies:** U45, U57, U6.
 **Parallelism:** wave 20. **Network:** no. **Merge gate:** live held-out gate accept required (KTD15).
 
-**Files:** `src/folio_insights/measurement/tuning.py`, `src/folio_insights/measurement/cli.py`, `tests/measurement/test_tuning.py`, `docs/evidence/measurement/auto-tune-cycle.json`.
+**Files:** `src/folio_insights/measurement/tuning.py`, `src/folio_insights/measurement/cli.py`, `tests/measurement/test_tuning.py`, `data/measurement/receipts/auto-tune-cycle.json`.
 
 **Approach:** Make annotations the primary automatic tuning input. A tune CLI operation checks a configurable threshold (default 20 new tuning-eligible annotations since the last consumed checkpoint), uses one subscription-auth Codex proposal subprocess to produce at most one schema-limited candidate configuration, then delegates frozen extraction/judging/comparison/publication to U5–U8. Keep proposal and judging roles separate. The proposer receives tuning annotations and sources only, never sealed held-out data, and cannot weaken R15/R16 or gate thresholds. Expose force/manual invocation through the same operation for a worker-proposed configuration. The orchestrator invokes this one-shot command on its existing cadence; no new always-running scheduler is added. Resume after failure without consuming annotations or duplicating accepted refreshes.
 
@@ -1512,7 +1512,7 @@ Also run `"$FOLIO_PYTHON" scripts/generate_shapes.py --check`; generated files m
 3. A rejected candidate remains inactive, an accepted one uses serialized promotion and README publication, and a quota/cancellation retry resumes the same checkpoint without losing annotation input.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_tuning.py`.
-Also run `"$FOLIO_PYTHON" -m folio_insights.measurement tune --min-annotations 20 --max-candidates 1 --receipt docs/evidence/measurement/auto-tune-cycle.json` in the appropriately separated proposer/evaluator workspaces. This live receipt proves the annotation-triggered F1 path, including its real gate decision and publication state.
+Also run `"$FOLIO_PYTHON" -m folio_insights.measurement tune --min-annotations 20 --max-candidates 1 --receipt data/measurement/receipts/auto-tune-cycle.json` in the appropriately separated proposer/evaluator workspaces. This live receipt proves the annotation-triggered F1 path, including its real gate decision and publication state.
 
 ### U58. Complete live gate, generated README and reviewer audit acceptance
 
@@ -1521,7 +1521,7 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement tune --min-annotations 2
 **Dependencies:** U49, U57, U59, U32.
 **Parallelism:** wave 21. **Network:** live run (orchestrator, network).
 
-**Files:** `tests/measurement/test_end_to_end.py`, `viewer/tests/e2e/workbench-e2e.spec.ts`, `docs/evidence/measurement/final-acceptance.json`, `docs/evidence/measurement/workbench-review.md`, `README.md`.
+**Files:** `tests/measurement/test_end_to_end.py`, `viewer/tests/e2e/workbench-e2e.spec.ts`, `data/measurement/receipts/final-acceptance.json`, `data/measurement/receipts/workbench-review.md`, `README.md`.
 
 **Approach:** Run the integrated pipeline and all five exports on the active real/synthetic suites, then exercise a complete F1 candidate cycle through real subscription judges, gate and checked README refresh. Exercise F2 promote/highlight/tag/adjudication against a temporary synthetic corpus in the browser. Export achieved metrics and sanitized audit evidence. Run the established regression suites once after integration. If real know-how or Damien anchors remain unavailable, report those success criteria pending explicitly; never declare them met.
 
@@ -1531,7 +1531,7 @@ Also run `"$FOLIO_PYTHON" -m folio_insights.measurement tune --min-annotations 2
 3. A real cycle reaches a recorded accept/reject; accepted output reaches a verified README refresh merge, and browser/a11y checks include 1440/390 px screenshots inspected for source/tag/gap/audit fidelity.
 
 **Verification:** `"$FOLIO_PYTHON" -m pytest -q -x tests/measurement/test_end_to_end.py`.
-Also run `npm --prefix viewer run check`, `npm --prefix viewer test`, `npm --prefix viewer exec -- playwright test`, `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change final --baseline promoted --candidate HEAD --suite active --receipt docs/evidence/measurement/final-acceptance.json`, and the regression commands below. Accepted comparison triggers the U8 publisher.
+Also run `npm --prefix viewer run check`, `npm --prefix viewer test`, `npm --prefix viewer exec -- playwright test`, `"$FOLIO_PYTHON" -m folio_insights.measurement compare --change final --baseline promoted --candidate HEAD --suite active --receipt data/measurement/receipts/final-acceptance.json`, and the regression commands below. Accepted comparison triggers the U8 publisher.
 
 ---
 
