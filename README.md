@@ -296,6 +296,16 @@ existing public reviewer registry, `FOLIO_INSIGHTS_DECISION_SIGNERS_FILE`. Missi
 unusable required registration refuses the decision before any write. Operator
 authentication and decision authorship remain separate checks.
 
+### CORPUS-04 validation inputs
+
+`bench.corpus04.run_corpus04(..., cluster_inputs={corpus_id: options})` passes each
+corpus's task tree, ancestry resolver, TBox/seeds and local reasoner/NLI backends to
+the existing cluster validator. Its report counts checked clusters and mapped task
+leaves, identifies checker availability and summarizes findings without source text.
+Missing task coverage, skipped checks and unchecked clusters cannot pass. The
+validator's NLI fallback is reported explicitly. Synthetic stand-ins always leave
+overall CORPUS-04 acceptance `unmet`, even when every check passes.
+
 ## Deploy
 
 The dev site runs `Dockerfile.web` on Coolify: one FastAPI service that also serves the built viewer, with `/health` as its healthcheck. LLM features take each user's own key. Details: [`docs/deploying.md`](docs/deploying.md).
