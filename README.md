@@ -286,6 +286,16 @@ The pipeline also assigns each insight a coarse type (`advice`, `principle`, `pr
 
 Beyond the core four: `verify-iris` re-mints every stored shard IRI and reports drift, and v2.0 adds the groups `mint`, `rubric`, `kernel`, `graph`, `query`, `validate`, `framework`, `bfo`, `polysemy`, `did`, `governance`, `corpus`, `storage`, `proposals`, `bench`, `api`, `bridge-ingest`, and `bridge-status`. Each group loads its heavy dependencies lazily.
 
+### Corpus review signatures
+
+`FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA='["corpus-a","corpus-b"]'`
+requires registered review signatures for those corpus IDs. The default is an empty
+list. `FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1` still requires signatures for every
+corpus; a corpus selection cannot relax that requirement. Both settings use the
+existing public reviewer registry, `FOLIO_INSIGHTS_DECISION_SIGNERS_FILE`. Missing or
+unusable required registration refuses the decision before any write. Operator
+authentication and decision authorship remain separate checks.
+
 ## Deploy
 
 The dev site runs `Dockerfile.web` on Coolify: one FastAPI service that also serves the built viewer, with `/health` as its healthcheck. LLM features take each user's own key. Details: [`docs/deploying.md`](docs/deploying.md).
