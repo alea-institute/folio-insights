@@ -1,5 +1,7 @@
 """Offline proofs for pinned concept selection and ontology ancestry (U41)."""
 
+import hashlib
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -13,6 +15,8 @@ from folio_insights.services.folio_ontology import FolioOntologyService
 ROOT = "https://folio.test/root"
 DEONTIC = "https://folio.test/deontic"
 DUTY = "https://folio.test/duty"
+FOLIO_BASE = "https://folio.openlegalstandard.org/"
+OWL_THING = "http://www.w3.org/2002/07/owl#Thing"
 
 
 def concept(iri, label, parents=(), **kwargs):
@@ -59,6 +63,106 @@ def service(tmp_path, monkeypatch):
 def atomic(monkeypatch):
     monkeypatch.setenv("FOLIO_INSIGHTS_ATOMIC_EXTRACTION", "true")
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def real_shaped_service(tmp_path):
+    from folio import FOLIO_TYPE_IRIS, FOLIOTypes
+
+    # folio-python exports bare root IDs; ontology edges contain full IRIs.
+    assert all(":" not in iri for iri in FOLIO_TYPE_IRIS.values())
+    roots = [concept(FOLIO_BASE + FOLIO_TYPE_IRIS[kind], label, [OWL_THING])
+             for kind, label in [
+                 (FOLIOTypes.LOCATION, "Location"),
+                 (FOLIOTypes.GOVERNMENTAL_BODY, "Governmental Body"),
+                 (FOLIOTypes.OBJECTIVES, "Objectives"),
+             ]]
+    location, agency, objectives = roots
+    ontology = Ontology([
+        *roots,
+        concept(FOLIO_BASE + "place", "Slovenia", [location.iri]),
+        concept(FOLIO_BASE + "agency", "Federal Trade Commission", [agency.iri]),
+        concept(FOLIO_BASE + "deontic", "Deontic Specification", [objectives.iri]),
+        concept(FOLIO_BASE + "obligation", "Obligation", [FOLIO_BASE + "deontic"]),
+    ])
+    # Membership omits the roots, as folio-python's get_folio_branches does.
+    ontology.get_folio_branches = lambda: {
+        "LOCATION": ontology.classes[3:4],
+        "GOVERNMENTAL_BODY": ontology.classes[4:5],
+        "OBJECTIVES": ontology.classes[5:],
+    }
+    return FolioOntologyService(folio=ontology, lemma_cache_dir=tmp_path)
+
+
+@pytest.mark.parametrize("local, branches", [
+    ("place", ("Location",)),
+    ("agency", ("Governmental Body",)),
+    ("obligation", ("Deontic Specification", "Objectives")),
+])
+def test_real_shaped_ancestor_branches(real_shaped_service, atomic, local, branches):
+    iri = FOLIO_BASE + local
+    assert real_shaped_service.ancestor_branches(iri) == branches
+    assert FolioTaggerStage()._branch_for(iri, real_shaped_service) == branches[0]
+    [candidate] = real_shaped_service.candidate_catalog([iri]).model_candidates()
+    assert candidate["branch"] == branches[0]
+
+
+def test_bare_root_id_uses_ontology_label(real_shaped_service):
+    # A root's identity must work even if its label differs from the display-name fallback.
+    real_shaped_service._get_folio().classes[0].label = "Geographic Location"
+    assert real_shaped_service.ancestor_branches(FOLIO_BASE + "place") == (
+        "Geographic Location",
+    )
+
+
+@pytest.mark.parametrize("local, branches", [
+    ("place", ("Location",)),
+    ("agency", ("Governmental Body",)),
+    ("obligation", ("Deontic Specification", "Objectives")),
+])
+def test_owl_thing_parent_is_fallback_root_boundary(
+    real_shaped_service, monkeypatch, local, branches,
+):
+    # Exercise named roots that are missing from the installed branch-ID constants.
+    monkeypatch.setattr("folio.FOLIO_TYPE_IRIS", {})
+    assert real_shaped_service.ancestor_branches(FOLIO_BASE + local) == branches
+
+
+@pytest.mark.parametrize("local, label", [
+    ("place", "Slovenia"),
+    ("agency", "Federal Trade Commission"),
+])
+def test_atomic_place_and_agency_gates_with_real_shaped_roots(
+    real_shaped_service, atomic, local, label,
+):
+    stage = FolioTaggerStage()
+    candidate = ReconciledConcept(
+        iri=FOLIO_BASE + local, label=label, confidence=.99,
+        contributing_paths=["heading_context"], evidence_text=label,
+    )
+    assert stage._reconciled_to_tags([candidate], real_shaped_service, source_text=label) == []
+    # Independent corroboration allows the same real concept through the gate.
+    candidate.contributing_paths = ["heading_context", "entity_ruler"]
+    [tag] = stage._reconciled_to_tags([candidate], real_shaped_service, source_text=label)
+    assert tag.iri == candidate.iri
+    assert tag.branch in {"Location", "Governmental Body"}
+
+
+def test_cached_real_obligation_ancestor_branches_offline(tmp_path, monkeypatch):
+    from folio import FOLIO
+
+    cache_key = hashlib.blake2b(b"alea-institute/FOLIO/main").hexdigest()
+    cache_file = Path.home() / ".folio" / "cache" / "github" / f"{cache_key}.owl"
+    # Skip only when the local ontology cannot load offline; never fetch a replacement.
+    try:
+        content = cache_file.read_text(encoding="utf-8")
+        monkeypatch.setattr(FOLIO, "load_owl", staticmethod(lambda **kwargs: content))
+        ontology = FOLIO(github_repo_branch="main")
+    except Exception as exc:
+        pytest.skip(f"Real ontology unavailable offline: {type(exc).__name__}: {exc}")
+    service = FolioOntologyService(folio=ontology, lemma_cache_dir=tmp_path)
+    [obligation] = [c for c in ontology.classes if c.label == "Obligation"]
+    assert service.ancestor_branches(obligation.iri) == ("Deontic Specification", "Objectives")
 
 
 def test_selection_is_pinned_and_contains_no_model_iris(service):

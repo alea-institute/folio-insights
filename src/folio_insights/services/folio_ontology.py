@@ -423,7 +423,10 @@ class FolioOntologyService:
             return self._ancestor_cache[iri]
         from folio import FOLIO_TYPE_IRIS
 
-        root_iris = set(FOLIO_TYPE_IRIS.values())
+        root_iris = {
+            root if "://" in root else f"https://folio.openlegalstandard.org/{root}"
+            for root in FOLIO_TYPE_IRIS.values()
+        }
         pending = [iri]
         seen: set[str] = set()
         branches: list[str] = []
@@ -439,7 +442,11 @@ class FolioOntologyService:
             parents = list(getattr(raw, "sub_class_of", []) or [])
             label = getattr(raw, "label", "") or getattr(raw, "preferred_label", "") or ""
             # get_folio_branches() returns descendants and omits the branch root itself.
-            is_root = current in root_iris or (not parents and label in _BRANCH_DISPLAY_NAMES.values())
+            # Real roots have owl:Thing parents; it is the same boundary as no parents.
+            named_parents = set(parents) - {"http://www.w3.org/2002/07/owl#Thing"}
+            is_root = current in root_iris or (
+                not named_parents and label in _BRANCH_DISPLAY_NAMES.values()
+            )
             if label and (label == "Deontic Specification" or is_root) and label not in branches:
                 branches.append(label)
             pending.extend(parents)
