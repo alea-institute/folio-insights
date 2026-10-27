@@ -101,6 +101,7 @@ from folio_insights.storage.projection import (
     TBOX_GRAPH,
     closure_graph,
     corpus_graph,
+    corpus_graphs,
     fi,
     governance_event_iri,
     governance_graph,
@@ -398,9 +399,7 @@ async def build_export_dataset(
     returned, so the signed records describe exactly the projected revisions.
     """
     corpus = ctx.corpus
-    graph_names = [corpus_graph(corpus), governance_graph(corpus), closure_graph(corpus)]
-    if include_tbox:
-        graph_names.append(TBOX_GRAPH)
+    graph_names = corpus_graphs(corpus, include_tbox=include_tbox)
 
     def read(handle: Any, watermark: int) -> tuple[dict[str, list[Quad]], str | None]:
         graphs = {g.value: handle.graph_quads(g) for g in graph_names}

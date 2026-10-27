@@ -348,7 +348,6 @@ def review_cmd(
     )
     if prepare is not None:
         signing_input = prepare.with_name(prepare.name + ".decision.json")
-        # Never replace a prior reviewed payload: preparation is reproducible evidence.
         if prepare.exists() or signing_input.exists():
             raise click.ClickException("preparation destination already exists; nothing was recorded")
         fields = disposition_fields(record)
