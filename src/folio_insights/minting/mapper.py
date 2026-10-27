@@ -45,6 +45,12 @@ of identity):
   that are shard IRIs present in the corpus (kernel shards into
   ``depends_on_axioms``, others into ``depends_on_shards``); other cross
   references (the deduplicator's unit ids) are not dependencies.
+
+Explicit atomic eligibility selects the schema-3 assertion instead: its frozen
+identity binds the extraction text, exact offsets and source snapshot, and every
+validated tag/branch is retained beside the compatibility triple. Rules and
+citations use their own predicates with the same framework/BFO envelope. The
+live minter keeps its legacy route until atomic integration passes the gate.
 """
 from __future__ import annotations
 
@@ -58,6 +64,8 @@ from folio_insights.llm.templates import combined_prompt_hash, get_template
 from folio_insights.minting.eligibility import Eligible
 from folio_insights.models.knowledge_unit import KnowledgeType, KnowledgeUnit
 from folio_insights.shards import SimpleAssertionShard, Triple
+from folio_insights.shards.minting import atomic_proposition_key
+from folio_insights.shards.records import AtomicSimpleAssertionShard
 
 SOURCE_URI_PREFIX = "urn:folio:source:"
 SHARD_IRI_PREFIX = "urn:folio:shard/"
@@ -68,6 +76,11 @@ PREDICATE_BY_UNIT_TYPE: Mapping[KnowledgeType, str] = {
     KnowledgeType.ADVICE: MODULE_NS + "bestPractice",
     KnowledgeType.PRINCIPLE: MODULE_NS + "principle",
     KnowledgeType.PITFALL: MODULE_NS + "pitfall",
+}
+ATOMIC_PREDICATE_BY_UNIT_TYPE: Mapping[KnowledgeType, str] = {
+    **PREDICATE_BY_UNIT_TYPE,
+    KnowledgeType.RULE: MODULE_NS + "proceduralRule",
+    KnowledgeType.CITATION: MODULE_NS + "citation",
 }
 EPISTEMIC_STATUS = "hypothesis"
 VERIFICATION_METHOD = "extractor_assertion"
@@ -85,6 +98,10 @@ def source_uri_for(namespace: str, source_key: str) -> str:
 
 def unit_hash(eligible: Eligible, unit: KnowledgeUnit) -> str:
     """Deterministic unit identity for the op ID: the verified slice + the unit's content."""
+    if eligible.atomic_identity is not None:
+        key = atomic_proposition_key(**eligible.atomic_identity.model_dump())
+        payload = f"atomic-v1\n{eligible.source_key}\n{key}".encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()[:32]
     content = unit.content_hash or hashlib.sha256(unit.text.encode("utf-8")).hexdigest()
     payload = f"{eligible.source_key}\n{eligible.verified_span}\n{content}".encode()
     return hashlib.sha256(payload).hexdigest()[:32]
@@ -145,7 +162,9 @@ def extractor_model(
 
 def triple_for(unit: KnowledgeUnit, eligible: Eligible) -> Triple:
     """The documented (top tag, knowledge-type predicate, distilled text) triple."""
-    predicate = PREDICATE_BY_UNIT_TYPE.get(unit.unit_type)
+    predicates = (ATOMIC_PREDICATE_BY_UNIT_TYPE if eligible.atomic_identity is not None
+                  else PREDICATE_BY_UNIT_TYPE)
+    predicate = predicates.get(unit.unit_type)
     if predicate is None:
         raise ValueError(f"unit type {unit.unit_type.value!r} has no SimpleAssertion mapping")
     return Triple(
@@ -186,7 +205,17 @@ def build_shard(
     """The unsigned shard; ``minting.minter`` adds the ``extract`` signature."""
     import folio_insights
 
-    return SimpleAssertionShard(
+    shard_class = SimpleAssertionShard
+    atomic_fields: dict[str, Any] = {}
+    if eligible.atomic_identity is not None:
+        shard_class = AtomicSimpleAssertionShard
+        atomic_fields = {
+            "identity_recipe": "atomic-v1",
+            "atomic_identity": eligible.atomic_identity,
+            "proposition_key": atomic_proposition_key(**eligible.atomic_identity.model_dump()),
+            "folio_tags": [tag.model_dump() for tag in eligible.tags],
+        }
+    return shard_class(
         shard_iri=shard_iri,
         provenance_hash=provenance_hash,
         source_uri=source_uri,
@@ -211,11 +240,13 @@ def build_shard(
         bfo_category=bfo_category,  # type: ignore[arg-type]
         valid_time_start=valid_time_start,
         valid_time_end=valid_time_end,
+        **atomic_fields,
         **(depends_on or {}),
     )
 
 
 __all__ = [
+    "ATOMIC_PREDICATE_BY_UNIT_TYPE",
     "EPISTEMIC_STATUS",
     "MODULE_NS",
     "PREDICATE_BY_UNIT_TYPE",
