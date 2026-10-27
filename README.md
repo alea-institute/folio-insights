@@ -286,6 +286,69 @@ The pipeline also assigns each insight a coarse type (`advice`, `principle`, `pr
 
 Beyond the core four: `verify-iris` re-mints every stored shard IRI and reports drift, and v2.0 adds the groups `mint`, `rubric`, `kernel`, `graph`, `query`, `validate`, `framework`, `bfo`, `polysemy`, `did`, `governance`, `corpus`, `storage`, `proposals`, `bench`, `api`, `bridge-ingest`, and `bridge-status`. Each group loads its heavy dependencies lazily.
 
+### Corpus review signatures
+
+`FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA='["corpus-a","corpus-b"]'`
+requires registered review signatures for those corpus IDs. The default is an empty
+list. `FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS=1` still requires signatures for every
+corpus; a corpus selection cannot relax that requirement. Both settings use the
+existing public reviewer registry, `FOLIO_INSIGHTS_DECISION_SIGNERS_FILE`. Missing or
+unusable required registration refuses the decision before any write. Operator
+authentication and decision authorship remain separate checks.
+
+Polysemy fork release and FP-gate certification always require a registered
+signature. Legacy unsigned dispositions remain readable for descriptive audits.
+Fork approval also binds the complete emitted fork, including grouping, labels,
+framework, jurisdiction and provenance. Older records without that complete
+binding cannot authorize release.
+To prepare a review without recording approval, run
+`polysemy review --corpus ID --reviewer-did DID --prepare reviewed.json`. This
+writes the reviewed record and `reviewed.json.decision.json`, the exact input for
+`proposals sign-decision`. Submit the resulting signature with
+`polysemy review --corpus ID --prepared-record reviewed.json --signed-decision signed.json`.
+The CLI displays the saved payload and asks for confirmation. It neither reruns
+the detector nor applies a fork during submission.
+
+A labeled set's optional certificate carries `corpus` and `signed_decision`,
+bound through `polysemy.signing.certification_fields` to the cases digest,
+reviewed sample, reviewer and time. The labeled set must name the same corpus.
+A valid signature authenticates authorship; the existing sampling, label
+coverage, record correspondence and Wilson-bound checks still determine status.
+The shipped labeled set remains uncertified.
+
+### Explicit closure declarations
+
+An existing corpus administrator can prepare a signed artifact with
+`closure.declarations.capture_main_state` and `sign_declaration`, then submit it
+using `query declare --corpus ID --declaration closure.json`. The command accepts
+the signed artifact without loading or creating a private key. An optional
+`--op-id` must match the signed operation ID.
+
+Each declaration binds its scope, complete class/property contract, explicit
+members and current main-journal digest. A replacement supplies the whole new
+contract and member set. Retrying an older artifact returns its historical record
+without restoring superseded membership. Any main-journal advancement invalidates
+the completeness claim until the administrator declares it again. The ledger
+preserves declarations across reopening and snapshot restore.
+
+Normal queries and exports include verified `fi:closedUnder` membership in a
+derived, corpus-specific graph. Closed-world counts read the stored contract,
+membership and facts from one snapshot. Caller-supplied classes or properties can
+restrict that contract but cannot broaden it. Projection rebuilds recover closure
+from the signed ledger; they do not modify signed shard payloads.
+Nightly dumps include a closure graph when needed and record an empty graph after
+invalidation so restoring a later dump cannot retain obsolete membership.
+
+### CORPUS-04 validation inputs
+
+`bench.corpus04.run_corpus04(..., cluster_inputs={corpus_id: options})` passes each
+corpus's task tree, ancestry resolver, TBox/seeds and local reasoner/NLI backends to
+the existing cluster validator. Its report counts checked clusters and mapped task
+leaves, identifies checker availability and summarizes findings without source text.
+Missing task coverage, skipped checks and unchecked clusters cannot pass. The
+validator's NLI fallback is reported explicitly. Synthetic stand-ins always leave
+overall CORPUS-04 acceptance `unmet`, even when every check passes.
+
 ## Deploy
 
 The dev site runs `Dockerfile.web` on Coolify: one FastAPI service that also serves the built viewer, with `/health` as its healthcheck. LLM features take each user's own key. Details: [`docs/deploying.md`](docs/deploying.md).

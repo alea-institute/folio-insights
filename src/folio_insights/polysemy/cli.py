@@ -20,8 +20,10 @@ Commands
   detector verdict, then prompts for ``accept|reject|modify``; ``modify``
   sub-prompts for the analogia triad (prime_analogate, proportional_relation,
   distinction_kind) and renders the proposed TTL before committing. All
-  outcomes write exactly one ``DispositionRecord`` JSON line to the
-  dispositions log via ``append_disposition()``.
+  outcomes write a ``DispositionRecord`` JSON line via ``append_disposition()``.
+  ``--prepare`` saves the exact record and signing input without approval;
+  ``--prepared-record`` with ``--signed-decision`` verifies and displays that
+  same payload before an explicit confirmation. Signed retries append once.
 * ``folio-insights polysemy audit`` — prints a count summary of recorded
   dispositions (no record mutation).
 * ``folio-insights polysemy gate`` — runs the detector over a labeled set and
@@ -30,7 +32,8 @@ Commands
 
 Phase 9 U6: Rule 1 reads the TBox disjointness seeds (``tbox_seeds.ttl``); a
 ``reject`` needs a non-empty rationale (KTD9) and is refused otherwise; every
-review records ``labeler: "human"``. The ``modify`` path renders a Pattern-2
+review records ``labeler: "human"``; only a registered signature establishes
+review authority. The ``modify`` path renders a Pattern-2
 PREVIEW of the reviewer's analogia triad (``distinguo.emit_fork_ttl``) to the
 terminal before asking for confirmation; it writes it to no graph. No command
 renders the TBox-bound PRD fork (``distinguo.emit_distinguo_fork_ttl``, which
@@ -168,6 +171,14 @@ def detect_cmd(
     show_default=True,
 )
 @click.option("--term", default="consideration", show_default=True)
+@click.option("--corpus", help="Corpus ID; required for signed review and preparation.")
+@click.option("--reviewer-did", help="Public signer DID for preparation (no private key is read).")
+@click.option("--prepare", type=click.Path(path_type=pathlib.Path),
+              help="Save the reviewed record and a sibling .decision.json signing input; append nothing.")
+@click.option("--prepared-record", type=click.Path(exists=True, path_type=pathlib.Path),
+              help="Exact reviewed record previously saved by --prepare.")
+@click.option("--signed-decision", type=click.Path(exists=True, path_type=pathlib.Path),
+              help="Detached result of proposals sign-decision for --prepared-record.")
 @click.option(
     "--dispositions-path",
     type=click.Path(path_type=pathlib.Path),
@@ -185,13 +196,50 @@ def review_cmd(
     term: str,
     dispositions_path: pathlib.Path,
     llm_provider: str,
+    corpus: str | None,
+    reviewer_did: str | None,
+    prepare: pathlib.Path | None,
+    prepared_record: pathlib.Path | None,
+    signed_decision: pathlib.Path | None,
 ) -> None:
     """Review detector verdicts one-at-a-time; every disposition requires a keystroke.
 
     PRINCIPLE-06 (no auto-apply) is enforced by the CliRunner test suite:
     no flag exists to skip the ``rich.prompt.Prompt.ask()`` gate.
     """
-    reviewer_did = ensure_reviewer_did()
+    from folio_insights.polysemy.signing import disposition_fields, verify_disposition
+    from folio_insights.proposals.signed_decisions import (
+        DecisionPolicyMisconfigured, parse_signed_decision, validate_corpus_id,
+    )
+
+    if prepare is not None and (prepared_record is not None or signed_decision is not None):
+        raise click.UsageError("--prepare cannot be combined with signed submission")
+    if (prepare is not None or prepared_record is not None or signed_decision is not None) and not corpus:
+        raise click.UsageError("--corpus is required for preparation and signed submission")
+    try:
+        corpus = validate_corpus_id(corpus or "default")
+        if prepared_record is not None or signed_decision is not None:
+            if prepared_record is None or signed_decision is None:
+                raise click.UsageError("--prepared-record and --signed-decision are both required")
+            record = DispositionRecord.model_validate_json(prepared_record.read_text(encoding="utf-8"))
+            if record.corpus != corpus:
+                raise ValueError("the prepared record is not for the selected corpus")
+            evidence = parse_signed_decision(json.loads(signed_decision.read_text(encoding="utf-8")))
+            record = record.model_copy(update={"signed_decision": evidence})
+            verify_disposition(record)
+            console.print_json(json.dumps(record.model_dump(mode="json")))
+            if Prompt.ask("Record this signed disposition?", choices=["yes", "no"], show_choices=True) != "yes":
+                console.print("Signed disposition aborted by reviewer.")
+                return
+            append_disposition(record, dispositions_path)
+            console.print("Signed disposition recorded.")
+            return
+        if prepare is not None and not reviewer_did:
+            raise click.UsageError("--reviewer-did is required with --prepare")
+    except (ValueError, DecisionPolicyMisconfigured) as exc:
+        raise click.ClickException(f"review refused; nothing was recorded: {exc}") from None
+
+    reviewer_did = reviewer_did or ensure_reviewer_did()
     shards = load_consideration_fixtures(fixtures)
     store = _spike_store(shards)
     cluster = build_prototype_cluster(shards)  # positional; B5 signature
@@ -296,9 +344,22 @@ def review_cmd(
         reviewed_at_iso=_dt.datetime.now(_dt.UTC).isoformat(),
         detector_verdict=verdict.model_dump(),  # full snapshot (B6)
         labeler="human",  # a keystroke at this prompt; the only human-labeler path
+        corpus=corpus,
     )
-    dispositions_path.parent.mkdir(parents=True, exist_ok=True)
-    append_disposition(record, dispositions_path)
+    if prepare is not None:
+        signing_input = prepare.with_name(prepare.name + ".decision.json")
+        if prepare.exists() or signing_input.exists():
+            raise click.ClickException("preparation destination already exists; nothing was recorded")
+        fields = disposition_fields(record)
+        prepare.write_text(record.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        signing_input.write_text(json.dumps(fields, indent=2) + "\n", encoding="utf-8")
+        console.print_json(json.dumps(fields))
+        console.print(f"Prepared {prepare}; sign {signing_input} with proposals sign-decision. No approval recorded.")
+        return
+    try:
+        append_disposition(record, dispositions_path)
+    except (ValueError, DecisionPolicyMisconfigured) as exc:
+        raise click.ClickException(f"review refused; nothing was recorded: {exc}") from None
     console.print(
         f"[green]Disposition recorded:[/green] {decision} -> {dispositions_path}"
     )

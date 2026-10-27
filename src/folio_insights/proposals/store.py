@@ -76,7 +76,7 @@ from folio_insights.proposals.signed_decisions import (
     DecisionSignaturePolicy,
     DecisionSignatureRefused,
     check_fresh,
-    load_policy,
+    resolve_policy,
     operator_record,
     parse_issued_at,
     verify_signed_decision,
@@ -275,8 +275,10 @@ class ProposalStore:
         be ``None`` only when every item is signed by such a mapped signer
         (``ReviewerRequired`` otherwise). ``operator`` is the authenticated API
         operator who submitted the batch, recorded on every item next to (never
-        instead of) its author. ``policy`` defaults to ``signed_decisions.load_policy()``
-        (``DecisionPolicyMisconfigured`` when unusable); ``now`` is the server time the
+        instead of) its author. ``policy`` is combined with the configured policy for
+        this corpus by ``signed_decisions.resolve_policy(self.corpus, policy)``;
+        a supplied policy cannot relax configured enforcement or reviewer registration
+        (``DecisionPolicyMisconfigured`` when unusable). ``now`` is the server time the
         signatures' ``issued_at`` is checked against (default: the current time).
         Signature refusals raise a ``DecisionSignatureRefused`` subclass naming the
         item index and the rule.
@@ -312,7 +314,7 @@ class ProposalStore:
             isinstance(expected_head, bool) or not isinstance(expected_head, int)
         ):
             raise ValueError("expected_head must be a ledger position (an integer)")
-        policy = policy if policy is not None else load_policy()
+        policy = resolve_policy(self.corpus, policy)
         committed = {e.op_id for e in await self._ctx.proposals.entries()}
         replaying = op_id in committed
         recorded_operator = operator_record(operator)

@@ -111,7 +111,15 @@ class Settings(BaseSettings):
     # reviewer key, a regular file other users cannot write. With a signers file, only listed
     # DIDs may sign and a signed decision is attributed to the DID's handle.
     require_signed_decisions: bool = False
+    require_signed_decision_corpora: list[str] = []
     decision_signers_file: Path | None = None
+
+    @field_validator("require_signed_decision_corpora")
+    @classmethod
+    def _decision_corpora(cls, values: list[str]) -> list[str]:
+        from folio_insights.proposals.signed_decisions import validate_corpus_id
+
+        return [validate_corpus_id(value) for value in values]
 
     model_config = {"env_prefix": "FOLIO_INSIGHTS_", "env_file": ".env", "extra": "ignore"}
 

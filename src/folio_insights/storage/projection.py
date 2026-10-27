@@ -130,6 +130,13 @@ def governance_graph(corpus: str) -> NamedNode:
     return NamedNode(f"{corpus_graph(corpus).value}/governance")
 
 
+def closure_graph(corpus: str) -> NamedNode:
+    return NamedNode(f"{corpus_graph(corpus).value}/closure")
+
+
+_CLOSURE_STATE = NamedNode("urn:folio-insights:storage:closure-digest")
+
+
 def iri_or_literal(value: str) -> NamedNode | Literal:
     """A NamedNode when ``value`` is a valid IRI, else an ``xsd:anyURI`` literal."""
     try:
@@ -435,6 +442,7 @@ class ProjectionHandle:
 
     def __init__(self, root: Path) -> None:
         self._wrapper = PyoxigraphStore(path=str(root / PROJECTION_DIRNAME))
+        self.closure_scopes: tuple[Any, ...] = ()
 
     @property
     def store(self) -> Any:
@@ -469,8 +477,31 @@ class ProjectionHandle:
         self._wrapper.store.update(
             f"DROP SILENT GRAPH {corpus_graph(corpus)} ;\n"
             f"DROP SILENT GRAPH {governance_graph(corpus)} ;\n"
+            f"DROP SILENT GRAPH {closure_graph(corpus)} ;\n"
+            f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {closure_graph(corpus)} ?p ?o }} }} ;\n"
             f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {node} ?p ?o }} }}"
         )
+
+    def replace_closure(self, corpus: str, triples: Iterable[tuple[str, str, str]],
+                        digest: str | None) -> None:
+        """Replace derived membership and its independent input digest atomically."""
+        graph = closure_graph(corpus)
+        saved = list(self.store.quads_for_pattern(graph, _CLOSURE_STATE, None, META_GRAPH))
+        if digest is not None and saved and saved[0].object == Literal(digest):
+            return
+        if digest is None and not saved and not next(
+            iter(self.store.quads_for_pattern(None, None, None, graph)), None,
+        ):
+            return
+        update = (f"DROP SILENT GRAPH {graph}; "
+                  f"DELETE WHERE {{ GRAPH {META_GRAPH} {{ {graph} {_CLOSURE_STATE} ?o }} }}")
+        if digest is not None:
+            statements = " ".join(
+                f"{NamedNode(s)} {NamedNode(p)} {NamedNode(o)} ." for s, p, o in triples
+            )
+            update += (f"; INSERT DATA {{ GRAPH {graph} {{ {statements} }} "
+                       f"GRAPH {META_GRAPH} {{ {graph} {_CLOSURE_STATE} {Literal(digest)} }} }}")
+        self.store.update(update)
 
     # ── TBox ──────────────────────────────────────────────────────────────
 
@@ -694,8 +725,8 @@ class ProjectionHandle:
 
 
 def corpus_graphs(corpus: str, *, include_tbox: bool = False) -> list[NamedNode]:
-    """The named graphs a corpus query sees (ABox, governance, optional TBox)."""
-    graphs = [corpus_graph(corpus), governance_graph(corpus)]
+    """The corpus's ABox, governance, derived closure and optional shared TBox."""
+    graphs = [corpus_graph(corpus), governance_graph(corpus), closure_graph(corpus)]
     if include_tbox:
         graphs.append(TBOX_GRAPH)
     return graphs
@@ -762,6 +793,7 @@ __all__ = [
     "ProjectionState",
     "chain_over",
     "chain_step",
+    "closure_graph",
     "corpus_graph",
     "corpus_graphs",
     "governance_event_iri",

@@ -20,8 +20,9 @@ from folio_insights.polysemy.fp_audit import (
 )
 from folio_insights.polysemy.labeled_set import LabeledSet
 from tests.polysemy.test_fp_rate import _sample_record
+from tests.polysemy._signed import CORPUS, DID, signed_certificate
 
-pytestmark = pytest.mark.polysemy_spike
+pytestmark = [pytest.mark.polysemy_spike, pytest.mark.usefixtures("registered_polysemy_reviewer")]
 
 CL, LA = "us.common_law", "us.louisiana.civil_code"
 
@@ -46,13 +47,13 @@ def _labeled_with_records(n: int, fps: int, *, certify: bool = True,
             "disposition": {"labeler": "agent", "decision": "accept" if gold == "polysemy" else "reject",
                             "rationale": f"r{i}"},
         })
-    doc = {"format": "folio-insights/polysemy-labeled-set/v1", "cases": cases}
+    doc = {"format": "folio-insights/polysemy-labeled-set/v1", "cases": cases, "corpus": CORPUS}
     if certify:
         digest = LabeledSet.model_validate(doc).cases_sha256()
-        fields = {"certified_by": "did:key:z6MkHumanReviewer", "certified_at": "2026-10-21T00:00:00Z",
+        fields = {"certified_by": DID, "certified_at": "2026-10-21T00:00:00Z",
                   "sample_reviewed": [c["id"] for c in cases], "cases_sha256": digest}
         fields.update(cert)
-        doc["certification"] = fields
+        doc["certification"] = signed_certificate(Certification.model_validate(fields))
     labeled = LabeledSet.model_validate(doc)
     records = [
         DispositionRecord(

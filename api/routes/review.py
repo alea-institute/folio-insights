@@ -235,7 +235,7 @@ async def review_unit(
             kind=KIND_UNIT_REVIEW, corpus=corpus, target=unit_id, verdict=body.status,
             rationale=body.note or "", detail={"edited_text": body.edited_text},
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus),
     )
     cols = signing.signature_columns(verified, signing.operator_handle(request))
 
@@ -317,7 +317,7 @@ async def bulk_approve(
             kind=KIND_UNIT_BULK_APPROVE, corpus=corpus, target=CORPUS_WIDE_TARGET,
             verdict="approved", detail=selector,
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus),
     )
     operator = signing.operator_handle(request)
     cols = signing.signature_columns(verified, operator)
@@ -472,7 +472,7 @@ async def review_proposed_class(
         if body.signature is None:
             raise
         decided_by, reviewer_refusal = None, exc
-    policy = signing.policy_or_503()
+    policy = signing.policy_or_503(corpus)
     if body.signature is None:
         try:
             policy.check_unsigned()
@@ -603,7 +603,7 @@ async def reset_reviews(
             kind=KIND_UNIT_REVIEW_RESET, corpus=corpus, target=CORPUS_WIDE_TARGET,
             verdict="reset",
         ),
-        policy=signing.policy_or_503(),
+        policy=signing.policy_or_503(corpus),
     )
     operator = signing.operator_handle(request)
 
