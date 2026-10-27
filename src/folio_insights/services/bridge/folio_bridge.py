@@ -94,6 +94,11 @@ def get_embedding_service() -> Any:
     return EmbeddingService.get_instance()
 
 
+def get_candidate_catalog(iris: list[str] | None = None) -> Any:
+    """Pin a resolver catalog; pass only its ``model_candidates()`` view to a model."""
+    return get_folio_service().candidate_catalog(iris)
+
+
 def get_normalizer() -> dict[str, Any]:
     """Return the in-repo normalizer functions.
 

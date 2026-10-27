@@ -30,6 +30,7 @@ that follow (Damien's metadata-as-signal directive, d3c44e2a).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -49,6 +50,11 @@ from folio_insights.pipeline.stages.base import (
 from folio_insights.services.bridge.reconciliation_bridge import (
     FourPathReconciler,
     ReconciledConcept,
+)
+from folio_insights.services.folio_ontology import (
+    CandidateCatalog,
+    SemanticSelectionVerdict,
+    is_concept_selection,
 )
 from folio_insights.services.heading_context import HeadingContextExtractor
 
@@ -80,6 +86,12 @@ def _judge_enabled() -> bool:
     reaches for a real provider; the chapter-run harness sets it to ``1``.
     """
     return os.environ.get("FOLIO_JUDGE_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _atomic_enabled() -> bool:
+    from folio_insights.config import get_settings
+
+    return get_settings().atomic_extraction
 
 
 def _load_alias_blocklist() -> Any:
@@ -254,6 +266,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         """
         # Path 1: EntityRuler (Aho-Corasick)
         ruler_concepts = self._run_entity_ruler(unit.text, aho_matcher, folio_service)
+        catalog = folio_service.candidate_catalog() if _atomic_enabled() else None
 
         # Path 2: LLM Concept Identification
         self._current_unit_id = unit.id  # units are tagged sequentially
@@ -278,7 +291,9 @@ class FolioTaggerStage(InsightsPipelineStage):
         )
 
         # Resolve to FOLIO IRIs, decompose, and run the deterministic gates.
-        tags = self._reconciled_to_tags(reconciled, folio_service)
+        tags = self._reconciled_to_tags(
+            reconciled, folio_service, source_text=unit.text, catalog=catalog,
+        )
 
         # Judge stage: every surviving non-ruler tag is adjudicated by the LLM judge with the
         # domain prior injected and each candidate's FOLIO definition shown. The gates already ran;
@@ -354,6 +369,14 @@ class FolioTaggerStage(InsightsPipelineStage):
                 prompt, schema=ConceptOutput, template=CONCEPT, temperature=0
             )
             self._concept_template = CONCEPT
+
+            if _atomic_enabled():
+                # The existing concept template selects labels, not IRIs. Resolve those
+                # labels against the snapshot pinned before this call, never a live search.
+                concepts = result.get("concepts", [])
+                if any(not is_concept_selection(c.get("concept_text")) or
+                       any("iri" in key.lower() for key in c) for c in concepts):
+                    raise ValueError("concept output must contain label/opaque-ID selections only")
 
             return [
                 {
@@ -535,6 +558,10 @@ class FolioTaggerStage(InsightsPipelineStage):
                 temperature=0,
             )
             self._judge_call_count += 1
+            if _atomic_enabled() and any(
+                j.get("iri_hash") not in ranked for j in result.get("judged", [])
+            ):
+                raise ValueError("judge returned a selection outside the pinned candidates")
         except Exception:
             # KTD7: a judge outage never passes tags off as judged. They are kept (the gates
             # already ran) but marked unjudged, so a minter treats them as unverified.
@@ -609,6 +636,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         """FOLIO definition text for a concept IRI (cached), for the definition-level judge."""
         if not iri or folio_service is None:
             return ""
+        self._ensure_ontology_cache(folio_service)
         cache = self._definition_cache
         if iri in cache:
             return cache[iri]
@@ -691,6 +719,9 @@ class FolioTaggerStage(InsightsPipelineStage):
         self,
         reconciled: list[ReconciledConcept],
         folio_service: Any,
+        *,
+        source_text: str = "",
+        catalog: CandidateCatalog | None = None,
     ) -> list[ConceptTag]:
         """Convert reconciled concepts to ConceptTag objects (Ch02 precision-fix path).
 
@@ -718,6 +749,9 @@ class FolioTaggerStage(InsightsPipelineStage):
         ``proposed_class``. Gates run last: the alias blocklist and the place/agency corroboration
         veto are deterministic — high LLM confidence does NOT exempt a tag from them.
         """
+        if _atomic_enabled():
+            return self._candidate_tags(reconciled, folio_service, source_text, catalog)
+
         resolver = None
         if folio_service is not None:
             from folio_resolve import LabelResolver
@@ -800,6 +834,82 @@ class FolioTaggerStage(InsightsPipelineStage):
                 )
 
         return self._apply_match_gates([t for t in tags if t is not None])
+
+    def _candidate_tags(
+        self, reconciled: list[ReconciledConcept], folio_service: Any,
+        source_text: str, catalog: CandidateCatalog | None,
+    ) -> list[ConceptTag]:
+        """Atomic path: select identity locally, then check evidence and existing vetoes."""
+        if folio_service is None:
+            return []
+        catalog = catalog or folio_service.candidate_catalog()
+        by_iri = {c.iri: c.id for c in catalog.candidates}
+        tags = []
+        for rc in reconciled:
+            paths = rc.contributing_paths or ["unknown"]
+            deterministic = self._iri_is_deterministic(paths)
+            if rc.iri and not deterministic and (
+                "llm" in paths or not {"semantic", "heading_context"}.intersection(paths)
+            ):
+                self._iri_rejections = getattr(self, "_iri_rejections", 0) + 1
+                continue
+            selection = by_iri.get(rc.iri, "") if rc.iri else rc.label
+            concept = folio_service.resolve_candidate(selection, catalog)
+            if concept is None:
+                if rc.iri and not deterministic:
+                    self._iri_rejections = getattr(self, "_iri_rejections", 0) + 1
+                if not rc.iri and is_concept_selection(rc.label):
+                    tags.append(ConceptTag(iri="", label=rc.label, confidence=rc.confidence,
+                                           extraction_path="proposed_class"))
+                continue
+            # Keep each carried path's B9 evidence check. Label/ID-only selections require
+            # independent source text, never the selected concept's own label as a fallback.
+            evidence = self._evidence_for(rc, paths) if rc.iri else source_text
+            if not deterministic and not self._verify_iri_concept(
+                evidence, concept.iri, folio_service,
+            ):
+                if rc.iri:
+                    self._iri_rejections = getattr(self, "_iri_rejections", 0) + 1
+                continue
+            label = (
+                concept.preferred_label
+                if rc.label == selection and selection.startswith("c_") else rc.label
+            )
+            tag = self._gate_or_none(
+                ConceptTag(iri=concept.iri, label=label, confidence=rc.confidence,
+                           extraction_path=paths[0], branch=concept.branch),
+                resolved_label=concept.preferred_label, surface=rc.label, paths=paths,
+            )
+            if tag is not None:
+                tags.append(tag)
+        return self._apply_match_gates(tags)
+
+    def resolve_semantic_tag(
+        self, selection: str, catalog: CandidateCatalog, folio_service: Any, *,
+        source_text: str, verdict: SemanticSelectionVerdict, confidence: float,
+    ) -> ConceptTag | None:
+        """Separate opt-in seam for later implicit taggers with independent semantic proof.
+
+        Callers retain the verdict/reason and registered judge-template lineage. This never
+        turns a lexical match or a successful ontology lookup into a semantic judgment.
+        """
+        if not _atomic_enabled() or not source_text.strip() or not verdict.reason.strip():
+            return None
+        if (verdict.verdict != "correct" or verdict.selection != selection or
+                verdict.catalog_digest != catalog.digest or
+                verdict.source_digest != hashlib.sha256(source_text.encode()).hexdigest()):
+            return None
+        concept = folio_service.resolve_candidate(selection, catalog)
+        if concept is None:
+            return None
+        tag = self._gate_or_none(
+            ConceptTag(iri=concept.iri, label=concept.preferred_label, confidence=confidence,
+                       extraction_path="semantic_validated", branch=concept.branch,
+                       judge_status="judged"),
+            resolved_label=concept.preferred_label, surface="", paths=["semantic_validated"],
+        )
+        kept = self._apply_match_gates([tag]) if tag is not None else []
+        return kept[0] if kept else None
 
     # ---- B9: concept-label verification of carried IRIs ----------------------------------------
 
@@ -978,13 +1088,18 @@ class FolioTaggerStage(InsightsPipelineStage):
         """Resolve a concept's branch from the ontology by IRI (cached per process)."""
         if not iri or folio_service is None:
             return ""
+        self._ensure_ontology_cache(folio_service)
         cache = self._branch_cache
         if iri in cache:
             return cache[iri]
         branch = ""
         try:
-            concept = folio_service.get_concept(iri)
-            branch = getattr(concept, "branch", "") or ""
+            if _atomic_enabled():
+                branches = folio_service.ancestor_branches(iri)
+                branch = branches[0] if branches else ""
+            else:
+                concept = folio_service.get_concept(iri)
+                branch = getattr(concept, "branch", "") or ""
         except Exception:
             logger.warning("branch lookup failed for iri=%r", iri, exc_info=True)
         cache[iri] = branch
@@ -994,6 +1109,7 @@ class FolioTaggerStage(InsightsPipelineStage):
         """Resolve a concept's canonical FOLIO label from the ontology by IRI (cached)."""
         if not iri or folio_service is None:
             return ""
+        self._ensure_ontology_cache(folio_service)
         cache = self._label_cache
         if iri in cache:
             return cache[iri]
@@ -1005,6 +1121,17 @@ class FolioTaggerStage(InsightsPipelineStage):
             logger.warning("label lookup failed for iri=%r", iri, exc_info=True)
         cache[iri] = label
         return label
+
+    def _ensure_ontology_cache(self, folio_service: Any) -> None:
+        """Cache by loaded ontology digest; legacy runs retain their original behavior."""
+        if not _atomic_enabled():
+            return
+        identity = (id(folio_service), folio_service.ontology_digest)
+        if getattr(self, "_ontology_cache_identity", None) != identity:
+            self._branch_cache.clear()
+            self._label_cache.clear()
+            self._definition_cache.clear()
+            self._ontology_cache_identity = identity
 
     @property
     def _branch_cache(self) -> dict[str, str]:
