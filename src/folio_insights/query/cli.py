@@ -77,7 +77,7 @@ def _scope_options(fn):  # noqa: ANN001, ANN202
         click.option("--closed-class", "closed_classes", multiple=True,
                      help="Restrict --scope to this stored closed class."),
         click.option("--scope", "scope", default=None,
-                     help="Closed-world scope IRI (the closure contract)."),
+                     help="Restrict the query to this persisted closure scope IRI."),
         click.option("--corpus", required=True),
         corpus_root_option,
     ):
@@ -96,6 +96,8 @@ def _run(corpus: str, corpus_root: Path | None, scope: str | None,
     from folio_insights.storage.journal import JOURNAL_FILENAME, committed_corpora
 
     root = resolve_corpus_root(corpus_root)
+    if (classes or props) and not scope:
+        raise click.UsageError("--scope is required with closure restrictions")
     if corpus not in committed_corpora(root / JOURNAL_FILENAME):
         click.echo(f"query error: no corpus {corpus!r} under {root}", err=True)
         sys.exit(1)
@@ -103,9 +105,14 @@ def _run(corpus: str, corpus_root: Path | None, scope: str | None,
     async def run() -> dict:
         ctx = await CorpusStorageContext.open(root, corpus)
         try:
-            scopes = ([ClosedWorldScope(scope, frozenset(classes), frozenset(props))]
-                      if scope and (classes or props) else [])
-            return asdict(await call(ClosedWorldQuery(ctx, scopes)))
+            restriction = ClosedWorldScope(scope, frozenset(classes), frozenset(props)) if scope else None
+            snapshot = await ctx.closed_world_snapshot()
+            scopes = [ClosedWorldScope(
+                stored.scope_iri,
+                stored.closed_classes & restriction.closed_classes if classes else stored.closed_classes,
+                stored.closed_properties & restriction.closed_properties if props else stored.closed_properties,
+            ) for stored in snapshot.scopes if restriction is None or stored.scope_iri == restriction.scope_iri]
+            return asdict(await call(ClosedWorldQuery(snapshot.runner, scopes)))
         finally:
             await ctx.close()
 
