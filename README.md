@@ -22,6 +22,7 @@ flowchart LR
 - [Who it's for](#who-its-for)
 - [What you get](#what-you-get)
 - [Try it](#try-it)
+- [Pipeline readiness](#pipeline-readiness)
 - [Review viewer](#review-viewer)
 - [How it works](#how-it-works)
 - [Status](#status)
