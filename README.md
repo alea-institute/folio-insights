@@ -259,6 +259,54 @@ folio-insights serve --port 8742                                          # open
 
 `extract` and `discover` accept `--llm-provider`, `--llm-model`, and `--max-spend-usd`. Every command resumes from its last checkpoint. Run `folio-insights <command> --help` for thresholds and options.
 
+## Pipeline readiness
+
+Inspect saved evidence offline with `folio-insights readiness`. No options is
+valid: every input is reported as `not_supplied`. Select only the artifacts you
+want inspected; the command never discovers files or opens referenced sources.
+
+```bash
+folio-insights readiness --extraction output/example/extraction.json
+folio-insights readiness --dispositions evidence/dispositions.jsonl --labeled-set evidence/labeled.json --format json
+```
+
+`--extraction` accepts extraction JSON, `--dispositions` accepts the saved polysemy
+JSONL log, and optional `--labeled-set` accepts the existing polysemy labeled-set
+JSON. A labeled set requires dispositions. `--format text|json` defaults to text;
+both formats expose the same facts. JSON uses schema version
+`folio-insights/readiness/v1` with separate `inputs`, `coverage`, `polysemy_r9`
+and fixed `diagnostics` fields.
+
+Coverage counts recorded nonempty tag IRIs and true/false anchor flags over
+**emitted units**. Each metric includes its numerator, denominator, negative and
+unknown counts. Fractions are null when any unit lacks the metric or the
+denominator is zero. A known nonempty IRI establishes a recorded positive even
+if another tag lacks its IRI field. These counts do not validate ontology tags,
+recheck source spans, or establish complete source coverage: full-source
+coverage always remains unknown. Document counts are recorded summaries, and
+distinct source counts remain unknown when any unit lacks a source reference.
+
+R9 uses the existing Wilson upper-bound calculation over the **recorded** log.
+A selected labeled set must match every record, even without certification.
+Malformed logs are rejected in full. Certification remains self-asserted in
+this version; the command creates none and never evaluates the current detector.
+Extraction and gate artifacts have no verified shared run or corpus provenance,
+so there is no combined pipeline pass. An empty log reports N=0, upper bound 1,
+and `fail`; an omitted log reports unavailable figures.
+
+Exit codes describe report generation:
+
+- **0:** all selected artifacts are usable, including a recorded `fail` or
+  `provisional` gate. This is not a quality-gate acceptance signal.
+- **1:** a selected artifact is unreadable, invalid or inconsistent. Independently
+  usable sections are still rendered.
+- **2:** invalid CLI syntax or a labeled set without dispositions; no artifacts
+  are read for an invalid option combination.
+
+Output and diagnostics contain fixed fields, statuses and aggregate values only:
+no document text, paths, identifiers, terms, IRIs, reviewers or raw exceptions.
+The command makes no provider calls, loads no credentials, and writes no state.
+
 ## Review viewer
 
 `folio-insights serve` opens a SvelteKit app backed by FastAPI. It walks one corpus through five steps: **Upload** (deduplicated by content hash), **Process** (live progress), **Discover** (task grouping and flagged contradictions), **Review** (approve insights, edit labels and tags, resolve contradictions), and **Export**. The viewer runs the same pipeline code as the CLI.

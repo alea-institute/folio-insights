@@ -956,3 +956,8 @@ cli.add_command(_mint_cmd)
 from folio_insights.proposals.cli import proposals_group as _proposals_group  # noqa: E402
 
 cli.add_command(_proposals_group)
+
+# Read-only inspection of explicitly selected saved pipeline evidence.
+from folio_insights.readiness_cli import readiness_cmd as _readiness_cmd  # noqa: E402
+
+cli.add_command(_readiness_cmd)
