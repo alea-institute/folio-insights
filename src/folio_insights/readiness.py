@@ -8,7 +8,11 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Callable, Literal, TypeVar
+
+if TYPE_CHECKING:
+    from folio_insights.polysemy.dispositions import DispositionRecord
+    from folio_insights.polysemy.labeled_set import LabeledSet
 
 InputState = Literal['not_supplied', 'available', 'unreadable', 'invalid', 'inconsistent']
 
@@ -53,9 +57,27 @@ class Coverage:
 
 
 @dataclass(frozen=True)
+class PolysemyR9:
+    status: Literal['unavailable', 'fail', 'provisional', 'pass'] = 'unavailable'
+    basis: Literal['recorded_log', 'recorded_labeled_set'] | None = None
+    current_detector_evaluated: Literal[False] = False
+    certification_assurance: Literal['none', 'self_asserted'] = 'none'
+    certified: bool | None = None
+    n: int | None = None
+    false_positives: int | None = None
+    fp_rate: float | None = None
+    ci_upper: float | None = None
+    threshold: float | None = None
+    invalid_dispositions: int | None = None
+    detector_positives: int | None = None
+    false_discovery_rate: float | None = None
+
+
+@dataclass(frozen=True)
 class ReadinessReport:
     inputs: Inputs = field(default_factory=Inputs)
     coverage: Coverage = field(default_factory=Coverage)
+    polysemy_r9: PolysemyR9 = field(default_factory=PolysemyR9)
     diagnostics: tuple[str, ...] = ()
     schema_version: Literal['folio-insights/readiness/v1'] = 'folio-insights/readiness/v1'
 
@@ -156,9 +178,83 @@ def _read_extraction(path: Path) -> Coverage:
     )
 
 
-def build_readiness_report(*, extraction: Path | None = None) -> ReadinessReport:
+def _read_records(path: Path) -> list[DispositionRecord]:
+    from folio_insights.polysemy.dispositions import read_dispositions
+
+    records = list(read_dispositions(path))
+    for record in records:
+        decision = record.detector_verdict.get('decision')
+        if not isinstance(decision, str) or decision not in (
+            'polysemy', 'homonymy', 'coincidence', 'uncertain',
+        ):
+            raise ValueError
+    return records
+
+
+def _read_labeled(path: Path) -> LabeledSet:
+    from folio_insights.polysemy.labeled_set import load_labeled_set
+
+    return load_labeled_set(path)
+
+
+def _matches_cases(records: list[DispositionRecord], labeled: LabeledSet) -> bool:
+    # The owning gate only checks pairing when certification is present. This
+    # adapter must also reject an incomplete *uncertified* saved evaluation.
+    by_case = {record.audit_label: record for record in records}
+    return (
+        len(by_case) == len(records)
+        and set(by_case) == {case.id for case in labeled.cases}
+        and all(
+            (by_case[case.id].term, by_case[case.id].decision, by_case[case.id].rationale)
+            == (case.term, case.disposition.decision, case.disposition.rationale)
+            for case in labeled.cases
+        )
+    )
+
+
+def _recorded_gate(
+    records: list[DispositionRecord], labeled: LabeledSet | None,
+) -> tuple[PolysemyR9, list[str]]:
+    from folio_insights.polysemy.fp_audit import fp_gate
+
+    gate = fp_gate(records, labeled=labeled)
+    diagnostics = []
+    if not gate.n:
+        diagnostics.append('insufficient_evidence')
+    if gate.invalid_dispositions:
+        diagnostics.append('invalid_dispositions_excluded')
+    if gate.certification_problem:
+        diagnostics.append('certification_missing' if labeled is None or labeled.certification is None
+                           else 'certification_invalid')
+    return PolysemyR9(
+        status=gate.status, basis='recorded_log' if labeled is None else 'recorded_labeled_set',
+        certification_assurance='self_asserted' if gate.certified else 'none',
+        certified=gate.certified, n=gate.n, false_positives=gate.false_positives,
+        fp_rate=gate.fp_rate if gate.n else None, ci_upper=gate.ci_upper,
+        threshold=gate.threshold, invalid_dispositions=gate.invalid_dispositions,
+        detector_positives=gate.detector_positives,
+        false_discovery_rate=gate.false_discovery_rate if gate.detector_positives else None,
+    ), diagnostics
+
+
+def build_readiness_report(
+    *, extraction: Path | None = None, dispositions: Path | None = None,
+    labeled_set: Path | None = None,
+) -> ReadinessReport:
     """Read selected evidence without opening any referenced source or state store."""
-    state, coverage = _read_selected(extraction, _read_extraction)
-    diagnostics = () if state in ('available', 'not_supplied') else (f'extraction_{state}',)
-    return ReadinessReport(inputs=Inputs(extraction=state), coverage=coverage or Coverage(),
-                           diagnostics=diagnostics)
+    if labeled_set is not None and dispositions is None:
+        raise ValueError('labeled_set_requires_dispositions')
+    extraction_state, coverage = _read_selected(extraction, _read_extraction)
+    log_state, records = _read_selected(dispositions, _read_records)
+    label_state, labeled = _read_selected(labeled_set, _read_labeled)
+    gate, diagnostics = PolysemyR9(), []
+    if records is not None and (labeled_set is None or labeled is not None):
+        if labeled is not None and not _matches_cases(records, labeled):
+            log_state = label_state = 'inconsistent'
+        else:
+            gate, diagnostics = _recorded_gate(records, labeled)
+    inputs = Inputs(extraction_state, log_state, label_state)
+    diagnostics.extend(f'{role}_{state}' for role, state in asdict(inputs).items()
+                       if state not in ('available', 'not_supplied'))
+    return ReadinessReport(inputs=inputs, coverage=coverage or Coverage(), polysemy_r9=gate,
+                           diagnostics=tuple(sorted(diagnostics)))
