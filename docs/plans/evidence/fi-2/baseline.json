@@ -1,0 +1,35 @@
+{
+  "format": "folio-insights/fi-2-prerequisite-receipt/v1",
+  "status": "unavailable",
+  "stage": "baseline-prerequisites",
+  "source_revision": "de561c6902a78873771f678fb228faccd03091c4",
+  "branch": "drawdown/fi-2",
+  "plan_path": "docs/plans/2026-10-27-2057-fix-fi-2-polysemy-gate-plan.md",
+  "file_sha256": {
+    "docs/plans/2026-10-27-2057-fix-fi-2-polysemy-gate-plan.md": "ee25ad8de0f3df6478d1bb8e1a124ec768749f7348fd8129e8c16727c2a50441",
+    "tests/polysemy/fixtures/labeled_set.json": "b8bb319bbf44482fb3649da76378ca2a82efde71345d812dcd6300035b69de41",
+    "tests/polysemy/test_labeled_set.py": "78340aef855d3c1cb3adebfab293e5caa13bd571899ea1d1fa3291ba2c515795",
+    "tests/bench/test_phase9_rollup.py": "5839adda408fc2eb4a934d5a97025ac4e1bb9482e5d98e2772874e3177d1584a",
+    "src/folio_insights/polysemy/detector.py": "334655ea0b27d04f96fc5de1ba71358e1a3b5454dbc3311b4af097b13d0b0103",
+    "uv.lock": "5c38c8c81d46231c63004ba08a6f1d5ba00c5d73645aa98bef4fe1a9999a779e"
+  },
+  "static_fixture_counts": {
+    "total": 82,
+    "polysemy": 29,
+    "homonymy": 19,
+    "univocal": 34
+  },
+  "measurements": null,
+  "model_loaded": false,
+  "model_snapshot": null,
+  "holdout_authored": false,
+  "holdout_exposed": false,
+  "quantitative_acceptance": null,
+  "certification_status": null,
+  "blockers": [
+    "Offline locked dependency setup failed: torch==2.11.0 wheel absent from cache.",
+    "Supported Python 3.12 environment has no pytest or project dependencies.",
+    "No configured embedding cache; default Hugging Face cache absent; controller lane cache empty."
+  ],
+  "details": "docs/plans/evidence/fi-2/verification.md"
+}
