@@ -157,3 +157,35 @@ def test_fresh_process_guards_entry_point_and_opens_each_input_once(tmp_path):
     assert json.loads(result.stdout)['polysemy_r9']['n'] == 70
     assert result.stderr == ''
     assert snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize('failure', ['unreadable', 'unstatable'])
+def test_path_failures_preserve_independent_sections(tmp_path, monkeypatch, failure):
+    extraction = tmp_path / 'extraction.json'
+    extraction.write_text('{"units": []}')
+    log = tmp_path / (SENTINEL + '.jsonl')
+    if failure == 'unreadable':
+        log.write_text('')
+        original_access, original_open = os.access, Path.open
+
+        def access(path, *args, **kwargs):
+            return False if Path(path) == log else original_access(path, *args, **kwargs)
+
+        def open_file(path, *args, **kwargs):
+            if path == log:
+                raise PermissionError(SENTINEL)
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(os, 'access', access)
+        monkeypatch.setattr(Path, 'open', open_file)
+    else:
+        log = tmp_path / (SENTINEL * 100)
+    result = CliRunner().invoke(cli, ['readiness', '--extraction', str(extraction),
+                                     '--dispositions', str(log), '--format', 'json'])
+    assert result.exit_code == 1
+    report = json.loads(result.output)
+    assert report['coverage']['emitted_units'] == 0
+    assert report['inputs']['dispositions'] == 'unreadable'
+    assert report['diagnostics'] == ['dispositions_unreadable']
+    assert SENTINEL not in result.output + result.stderr
+    assert not result.stderr

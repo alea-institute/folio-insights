@@ -33,11 +33,11 @@ def _text_fields(data: dict, prefix: str = ''):
 
 
 @click.command('readiness', cls=_ReadinessCommand)
-@click.option('--extraction', type=click.Path(path_type=Path),
+@click.option('--extraction', type=Path,
               help='Saved extraction JSON; only recorded aggregate coverage is reported.')
-@click.option('--dispositions', type=click.Path(path_type=Path),
+@click.option('--dispositions', type=Path,
               help='Saved disposition JSONL; the current detector is never run.')
-@click.option('--labeled-set', type=click.Path(path_type=Path),
+@click.option('--labeled-set', type=Path,
               help='Optional labeled-set JSON paired with every disposition.')
 @click.option('--format', 'output_format', type=click.Choice(['text', 'json']), default='text',
               show_default=True, help='Content-free report representation.')
