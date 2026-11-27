@@ -599,7 +599,9 @@ def test_folio_ontology_uses_own_lemma_cache(monkeypatch, tmp_path):
     from folio_insights.services.folio_ontology import FolioOntologyService
 
     monkeypatch.setattr(folio_ontology, "get_owl_content_hash", lambda: "abc123")
-    (tmp_path / "labels_abc123_v1.pkl").write_bytes(pickle.dumps({"agreements": "agreement"}))
+    (tmp_path / "labels_abc123_bbf2df780dbc_v2.pkl").write_bytes(
+        pickle.dumps({"agreements": "agreement"})
+    )
     folio = _FakeFolio([_FakeOwl("https://f/A", "Agreements")], {})
     labels = FolioOntologyService(folio=folio, lemma_cache_dir=tmp_path).get_all_labels()
     assert labels["agreement"].label_type == "lemma_preferred"
@@ -609,7 +611,7 @@ def test_folio_ontology_uses_own_lemma_cache(monkeypatch, tmp_path):
 def test_folio_ontology_default_lemma_cache_is_insights_owned():
     from folio_insights.services.folio_ontology import FolioOntologyService
 
-    path = FolioOntologyService(folio=_FakeFolio([], {}))._lemma_cache_path()
+    path = FolioOntologyService(folio=_FakeFolio([], {}))._lemma_cache_path([])
     assert ".folio-insights" in path.parts and ".folio-enrich" not in path.parts
 
 
