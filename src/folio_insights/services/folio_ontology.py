@@ -1,8 +1,8 @@
-# Vendored from folio-enrich backend/app/services/folio/folio_service.py @ 510a652 (MIT).
+# Vendored from folio-enrich backend/app/services/folio/folio_service.py @ dffc0fd (MIT).
 # Also vendors the FOLIO-path constants it reads from folio-enrich
 # backend/app/services/folio/branch_config.py, backend/app/services/folio/match_tier.py,
 # backend/app/services/ontology/spec.py (FOLIO_SPEC) and
-# backend/app/services/folio/owl_cache.py (get_owl_content_hash) @ 510a652 (MIT).
+# backend/app/services/folio/owl_cache.py (get_owl_content_hash) @ dffc0fd (MIT).
 """In-repo FOLIO ontology read service.
 
 Replaces the sys.path bridge to folio-enrich's
@@ -26,7 +26,7 @@ What was narrowed, and why the result is equivalent for FOLIO:
   argument defaulting to ``False``.
 * Lemma keys: identical computation, cached in an insights-owned directory
   (``settings.folio_lemma_cache_dir``, default
-  ``~/.folio-insights/cache/lemmas/labels_<owl-hash>_v1.pkl``; folio-enrich's
+  ``~/.folio-insights/cache/lemmas/labels_<owl-hash>_<label-digest>_v2.pkl``; folio-enrich's
   cache directory is never read or written). Computing lemmas needs spaCy +
   ``en_core_web_sm``; neither is a folio-insights dependency, so here the lemma
   tier is empty, exactly as enrich's is when spaCy is missing and it has no cache.
@@ -50,13 +50,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rapidfuzz import fuzz, utils
+
+from folio_insights.services.folio_labels import true_alternative_labels
+
 logger = logging.getLogger(__name__)
 
 # ---- FOLIO spec constants (enrich ontology/spec.py FOLIO_SPEC + branch_config.py) ----------
 
-# Bump when the lemma rules or denylist change (kept equal to enrich's LEMMA_VERSION so the
-# shared disk cache key matches).
-LEMMA_VERSION = "1"
+# Bump when the lemma rules or denylist change so the disk cache is invalidated.
+LEMMA_VERSION = "2"
 _LEMMA_CACHE_DIR = Path.home() / ".folio-insights" / "cache" / "lemmas"  # default only
 _DEFAULT_LOAD_RETRY_SECONDS = 300.0
 
@@ -505,21 +508,45 @@ class FolioOntologyService:
 
     def search_by_label(self, label: str, top_k: int = 5) -> list[tuple[FOLIOConcept, float]]:
         folio = self._get_folio()
+        limit = max(top_k * 4, 20)
         try:
-            results = folio.search_by_label(label, include_alt_labels=True)
+            try:
+                results = folio.search_by_label(label, include_alt_labels=True, limit=limit)
+            except TypeError as exc:
+                # Older injected graphs may only accept the original two arguments.
+                if "unexpected keyword argument 'limit'" not in str(exc):
+                    raise
+                results = folio.search_by_label(label, include_alt_labels=True)[:limit]
         except Exception:
             logger.warning("search_by_label failed for '%s'", label, exc_info=True)
             return []
-        output = []
-        for concept, score in results[:top_k]:
-            output.append((self._to_folio_concept(concept), score))
-        return output
+
+        # folio-python indexes every tagged alias. Rescore with the eligible labels.
+        rescored = []
+        for concept, _ in results:
+            alternatives = (
+                (getattr(concept, "alternative_labels", None) or [])
+                if self._translation_matching_enabled
+                else true_alternative_labels(folio, concept)
+            )
+            labels = [getattr(concept, "label", None), getattr(concept, "preferred_label", None),
+                      *alternatives]
+            score = max(
+                (fuzz.WRatio(label, candidate, processor=utils.default_process)
+                 for candidate in labels if candidate),
+                default=0,
+            )
+            rescored.append((concept, score))
+        rescored.sort(key=lambda hit: hit[1], reverse=True)
+        return [
+            (self._to_folio_concept(concept), score) for concept, score in rescored[:top_k]
+        ]
 
     def search_by_prefix(self, prefix: str, top_k: int = 10) -> list[FOLIOConcept]:
         folio = self._get_folio()
         try:
             results = folio.search_by_prefix(prefix)
-            return [self._to_folio_concept(c) for c, _ in results[:top_k]]
+            return [self._to_folio_concept(concept) for concept in results[:top_k]]
         except Exception:
             logger.warning("search_by_prefix failed for '%s'", prefix, exc_info=True)
             return []
@@ -567,13 +594,14 @@ class FolioOntologyService:
             if alt:
                 yield alt, "alternative"
 
-    def _lemma_cache_path(self) -> Path:
+    def _lemma_cache_path(self, labels: list[str]) -> Path:
         h = get_owl_content_hash() or "nohash"
-        return self._lemma_cache_dir / f"labels_{h}_v{LEMMA_VERSION}.pkl"
+        digest = hashlib.sha256("\n".join(labels).encode("utf-8")).hexdigest()[:12]
+        return self._lemma_cache_dir / f"labels_{h}_{digest}_v{LEMMA_VERSION}.pkl"
 
-    def _load_lemma_cache(self) -> dict[str, str] | None:
+    def _load_lemma_cache(self, labels: list[str]) -> dict[str, str] | None:
         try:
-            path = self._lemma_cache_path()
+            path = self._lemma_cache_path(labels)
             if path.exists():
                 import pickle
 
@@ -586,9 +614,9 @@ class FolioOntologyService:
             logger.debug("Lemma cache load failed", exc_info=True)
         return None
 
-    def _save_lemma_cache(self, lemma_map: dict[str, str]) -> None:
+    def _save_lemma_cache(self, lemma_map: dict[str, str], labels: list[str]) -> None:
         try:
-            path = self._lemma_cache_path()
+            path = self._lemma_cache_path(labels)
             path.parent.mkdir(parents=True, exist_ok=True)
             import pickle
 
@@ -601,11 +629,6 @@ class FolioOntologyService:
         """Map single-word label (lowercased) -> its lemma, for singular/plural reachability."""
         if self._lemma_map is not None:
             return self._lemma_map
-
-        cached = self._load_lemma_cache()
-        if cached is not None:
-            self._lemma_map = cached
-            return cached
 
         folio = self._get_folio()
         candidates: set[str] = set()
@@ -622,6 +645,12 @@ class FolioOntologyService:
             except Exception:
                 continue
 
+        labels = sorted(candidates)
+        cached = self._load_lemma_cache(labels)
+        if cached is not None:
+            self._lemma_map = cached
+            return cached
+
         lemma_map: dict[str, str] = {}
         try:
             import spacy
@@ -634,10 +663,14 @@ class FolioOntologyService:
                 )
                 self._lemma_map = {}
                 return {}
-            for doc in nlp.pipe(sorted(candidates), batch_size=512):
+            for doc in nlp.pipe(labels, batch_size=512):
                 original = doc.text.lower()
-                lemma = doc[0].lemma_.lower() if len(doc) else original
-                if lemma != original and len(lemma) > 2 and lemma not in LEMMA_DENYLIST:
+                # Preserve the prefix of compounds such as non-billables.
+                if len(doc) > 1:
+                    lemma = original[:doc[-1].idx] + doc[-1].lemma_.lower()
+                else:
+                    lemma = doc[0].lemma_.lower() if len(doc) else original
+                if lemma != original and len(lemma) > 3 and lemma not in LEMMA_DENYLIST:
                     lemma_map[original] = lemma
         except Exception:
             logger.warning(
@@ -647,7 +680,7 @@ class FolioOntologyService:
             return {}
 
         self._lemma_map = lemma_map
-        self._save_lemma_cache(lemma_map)
+        self._save_lemma_cache(lemma_map, labels)
         logger.info("Computed %d label lemmas for reachability", len(lemma_map))
         return lemma_map
 
@@ -714,7 +747,7 @@ class FolioOntologyService:
         pref_label = (
             getattr(concept, "label", None) or getattr(concept, "preferred_label", "") or ""
         )
-        alt_labels = getattr(concept, "alternative_labels", []) or []
+        alt_labels = true_alternative_labels(self._get_folio(), concept)
         definition = getattr(concept, "definition", "") or ""
         iri = getattr(concept, "iri", "") or ""
         parent_iris = getattr(concept, "sub_class_of", []) or []
@@ -745,7 +778,7 @@ class FolioOntologyService:
         return FOLIOConcept(
             iri=iri,
             preferred_label=pref_label,
-            alternative_labels=list(alt_labels),
+            alternative_labels=alt_labels,
             definition=definition,
             branch=branch,
             parent_iris=list(parent_iris),
