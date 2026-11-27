@@ -35,12 +35,13 @@ from folio_insights.polysemy.distinguo import (
 from folio_insights.polysemy.fixture_loader import ShardFixture, consideration_fixtures_to_ttl
 from folio_insights.polysemy.fp_audit import AGENT_LABELER_ID, Certification, fp_gate
 from folio_insights.polysemy.labeled_set import LabeledSet
+from tests.polysemy._signed import CORPUS, DID, signed_certificate, signed_record
 
-pytestmark = pytest.mark.polysemy_spike
+pytestmark = [pytest.mark.polysemy_spike, pytest.mark.usefixtures("registered_polysemy_reviewer")]
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 CL, LA, UK = "us.common_law", "us.louisiana.civil_code", "uk.england.common_law"
-REVIEWER = "did:key:z6MkReviewerSynthetic"
+REVIEWER = DID
 
 
 # ── 1. fork release ─────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ def _disposition(proposed: ProposedFork, **overrides) -> DispositionRecord:
         detector_verdict={"kind": "rule", "decision": "polysemy"}, labeler="human",
     )
     fields.update(overrides)
-    return DispositionRecord(**fields)
+    return signed_record(DispositionRecord(**fields))
 
 
 def test_release_requires_the_disposed_fork_itself(tmp_path: pathlib.Path) -> None:
@@ -105,13 +106,13 @@ def _labeled(n: int = 10, certification: dict | None = None) -> LabeledSet:
                          "rationale": "r"}}
         for i in range(n)
     ]
-    doc = {"format": "folio-insights/polysemy-labeled-set/v1", "cases": cases}
+    doc = {"format": "folio-insights/polysemy-labeled-set/v1", "cases": cases, "corpus": CORPUS}
     base = LabeledSet.model_validate(doc)
     if certification is not None:
-        cert = {"certified_by": "did:key:z6MkHumanReviewer", "certified_at": "2026-10-21T00:00:00Z",
+        cert = {"certified_by": DID, "certified_at": "2026-10-21T00:00:00Z",
                 "sample_reviewed": ["c-0", "c-1"], "cases_sha256": base.cases_sha256()}
         cert.update(certification)
-        doc["certification"] = cert
+        doc["certification"] = signed_certificate(Certification.model_validate(cert))
         return LabeledSet.model_validate(doc)
     return base
 

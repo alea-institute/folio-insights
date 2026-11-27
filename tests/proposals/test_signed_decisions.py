@@ -267,6 +267,7 @@ def _signers_file(tmp_path: Path, lines: list[str], mode: int = 0o600) -> Path:
 @pytest.fixture
 def settings_env(monkeypatch):
     monkeypatch.delenv("FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS", raising=False)
+    monkeypatch.delenv("FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA", raising=False)
     monkeypatch.delenv("FOLIO_INSIGHTS_DECISION_SIGNERS_FILE", raising=False)
     get_settings.cache_clear()
     reset_signers_cache()
@@ -745,15 +746,17 @@ async def test_apply_approvals_accepts_signed_input(tmp_path, settings_env):
 
 
 @pytest.mark.storage
-async def test_apply_approvals_require_signed_refuses_unsigned(tmp_path, settings_env):
+@pytest.mark.parametrize("scope", ["global", "corpus"])
+async def test_apply_approvals_require_signed_refuses_unsigned(tmp_path, settings_env, scope):
     import asyncio
 
     root = tmp_path / "storage"
     ids = await _seed_root(root)
     pid = ids["Zephyr Quorum Widget"]
     path = _signers_file(tmp_path, [f"{did_key_of(_key())} alice"])
-    _set(settings_env, FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS="1",
-         FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(path))
+    required = ({"FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISIONS": "1"} if scope == "global"
+                else {"FOLIO_INSIGHTS_REQUIRE_SIGNED_DECISION_CORPORA": json.dumps([CORPUS])})
+    _set(settings_env, **required, FOLIO_INSIGHTS_DECISION_SIGNERS_FILE=str(path))
     paste = tmp_path / "paste.json"
     paste.write_text(json.dumps({"schema": "proposed-class-approvals/v1", "corpus": CORPUS,
                                  "decisions": {pid: {"status": "approve"}}}))

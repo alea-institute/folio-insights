@@ -21,9 +21,9 @@ polysemy LLM), builds the synthetic multi-framework corpus
 6. **P4** — export under EL (default) and with ``expressive``; check a
    planted non-EL axiom names its rule; HermiT over the DL TBox when a JRE
    is available.
-7. **P5** — closed-world counts: open over the corpus as stored (no writer
-   emits ``fi:closedUnder``), closed over the same triples plus a declared
-   island's membership.
+7. **P5** — closed-world counts: open before declaration, closed after a
+   signed administrator declaration persists an island's membership, and
+   still closed after reopening the corpus.
 8. **P1** — cluster validation with coverage and cross-reference checks,
    HermiT when available, else the NLI fallback, and labels its checkers.
 9. **P6** — polysemy candidates from the P1 clusters and P2 registry, the
@@ -134,23 +134,6 @@ def _unsigned(did: str, action: str, when: datetime) -> Any:
     from folio_insights.shards import AttestedSignature
 
     return AttestedSignature(did=did, action=action, signed_at=when)  # type: ignore[arg-type]
-
-
-class _OverlayRunner:
-    """A ``SparqlRunner`` over a snapshot of the corpus triples plus extra
-    triples (the P5 island membership no writer emits yet)."""
-
-    def __init__(self, triples: list[Any], extra: list[tuple[str, str, str]]) -> None:
-        from pyoxigraph import NamedNode, Quad, Store
-
-        self.store = Store()
-        self.store.extend([Quad(t.subject, t.predicate, t.object) for t in triples])
-        self.store.extend([Quad(NamedNode(s), NamedNode(p), NamedNode(o)) for s, p, o in extra])
-
-    async def query(self, sparql: str, *, include_tbox: bool = False) -> Any:
-        result = self.store.query(sparql)
-        names = [v.value for v in result.variables]
-        return [{n: sol[n] for n in names} for sol in result]
 
 
 def _declared_fi_terms() -> set[str]:
@@ -413,7 +396,7 @@ async def _run(
     await _p4(ctx, clock, principles, workdir, hermit=hermit)
 
     # ── P5: closed-world islands ─────────────────────────────────────────
-    await _p5(ctx, data, clock, principles, iri_of)
+    await _p5(ctx, data, clock, principles, iri_of, signing_key=signing_key, did=did)
 
     # ── P1: cluster validation ───────────────────────────────────────────
     await _p1(ctx, data, clock, principles, iri_of, resolver, fakes=fakes, hermit=hermit)
@@ -594,12 +577,10 @@ async def _p4(ctx: Any, clock: _Clock, principles: dict[str, Any], workdir: Path
 
 
 async def _p5(ctx: Any, data: SyntheticCorpus, clock: _Clock, principles: dict[str, Any],
-              iri_of: dict[str, str]) -> None:
-    from folio_insights.query.closed_world import (
-        CLOSED_UNDER,
-        ClosedWorldQuery,
-        ClosedWorldScope,
-    )
+              iri_of: dict[str, str], *, signing_key: Any, did: str) -> None:
+    from folio_insights.closure.declarations import capture_main_state, sign_declaration, submit_declaration
+    from folio_insights.query.closed_world import ClosedWorldQuery, ClosedWorldScope
+    from folio_insights.storage import CorpusStorageContext
 
     source = data.source(data.planted.closed_source)
     scope_iri = f"urn:synthetic:scope/{source.key}"
@@ -610,17 +591,26 @@ async def _p5(ctx: Any, data: SyntheticCorpus, clock: _Clock, principles: dict[s
     chained = next(u for u in source.units if u.depends_on_shards)
 
     async def run() -> dict[str, Any]:
-        triples = await ctx.query("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }")
-        island = _OverlayRunner(triples, [(m, CLOSED_UNDER, scope_iri) for m in members])
-        stored = ClosedWorldQuery(ctx, [scope])
-        closed = ClosedWorldQuery(island, [scope])
-        return {
+        stored = ClosedWorldQuery(ctx)
+        result = {
             "declared_scopes_in_store": await stored.declared_scope_iris(),
             "open_lacking": await stored.count_lacking(shard_cls, prop, scope_iri),
-            "closed_lacking": await closed.count_lacking(shard_cls, prop, scope_iri),
             "open_related": await stored.count_related(iri_of[chained.key], prop),
-            "closed_related": await closed.count_related(iri_of[chained.key], prop),
         }
+        head, digest = await capture_main_state(ctx)
+        declaration = sign_declaration(
+            ctx.corpus, scope, members=members, main_head=head, main_digest=digest,
+            op_id="rollup:closed-scope", signing_key=signing_key, did=did,
+        )
+        await submit_declaration(ctx, declaration)
+        result["persisted_scopes"] = await stored.declared_scope_iris()
+        result["closed_lacking"] = await stored.count_lacking(shard_cls, prop, scope_iri)
+        result["closed_related"] = await stored.count_related(iri_of[chained.key], prop)
+        async with await CorpusStorageContext.open(ctx.root, ctx.corpus) as reopened:
+            result["reopened_lacking"] = await ClosedWorldQuery(reopened).count_lacking(
+                shard_cls, prop, scope_iri,
+            )
+        return result
 
     r = await clock.step("p5_closed_world", run)
 
@@ -638,8 +628,10 @@ async def _p5(ctx: Any, data: SyntheticCorpus, clock: _Clock, principles: dict[s
         "island_members": len(members),
         "expected_lacking": expected_lacking,
         "declared_scopes_in_store": r["declared_scopes_in_store"],
-        "membership_source": "overlay (no writer emits fi:closedUnder yet)",
-        **{k: view(v) for k, v in r.items() if k != "declared_scopes_in_store"},
+        "membership_source": "persisted signed declaration",
+        "persisted_scopes": r["persisted_scopes"],
+        **{k: view(v) for k, v in r.items()
+           if k not in {"declared_scopes_in_store", "persisted_scopes"}},
     }
 
 

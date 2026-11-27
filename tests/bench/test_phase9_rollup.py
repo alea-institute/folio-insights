@@ -206,6 +206,8 @@ async def test_phase9_rollup_all_principles_on_one_corpus(tmp_path: Path, offlin
     # P5 / R8: closed only inside the declared island; open elsewhere.
     p5 = p["P5"]
     assert p5["declared_scopes_in_store"] == []
+    assert p5["membership_source"] == "persisted signed declaration"
+    assert p5["persisted_scopes"] == [p5["scope"]]
     assert p5["open_lacking"]["world_assumption"] == "open" and p5["open_lacking"]["count"] is None
     assert p5["open_lacking"]["incomplete_note"]
     assert p5["closed_lacking"] == {
@@ -216,6 +218,7 @@ async def test_phase9_rollup_all_principles_on_one_corpus(tmp_path: Path, offlin
     assert p5["open_related"]["world_assumption"] == "open"
     assert p5["closed_related"]["world_assumption"] == "closed"
     assert p5["open_related"]["count"] == p5["closed_related"]["count"] == 1
+    assert p5["reopened_lacking"] == p5["closed_lacking"]
 
     # P1 / R4: the planted pair flagged with cluster context and strategies.
     p1 = p["P1"]

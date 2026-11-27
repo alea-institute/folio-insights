@@ -16,9 +16,9 @@ from ``corpora_dir`` or ``$FOLIO_INSIGHTS_CORPUS04_DIR``. A corpus with no
 file runs on a deterministic synthetic stand-in, so the pipeline itself is
 exercised. A stand-in can never satisfy CORPUS-04, and the report says so.
 
-Cluster validation is the Phase 9.P1 cluster validator (owlready2 + HermiT,
-worker tier). It is not built, so that step reports ``unavailable`` and
-CORPUS-04 stays ``unmet`` even with real corpora until it lands.
+Cluster validation runs the Phase 9.P1 worker-tier validator with the
+caller's per-corpus task tree and checker inputs. Missing coverage is
+``incomplete``; an empty findings list alone never establishes a pass.
 
 No book-derived or production text is generated here: stand-in records are
 synthetic placeholders.
@@ -28,16 +28,18 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from folio_insights.validation.coverage import TaskNode
 
 CORPORA: tuple[str, ...] = ("v1-advocacy", "fre", "restatement-contracts")
 ENV_DIR = "FOLIO_INSIGHTS_CORPUS04_DIR"
-CLUSTER_UNAVAILABLE = (
-    "Phase 9.P1 cluster validator (owlready2 + HermiT, worker tier) is not built"
-)
+CLUSTER_UNAVAILABLE = "cluster_validator_dependency_unavailable"
 
 
 @dataclass(frozen=True)
@@ -173,9 +175,79 @@ def discover(corpora_dir: str | Path | None = None, *, standin_shards: int = 300
     return sources
 
 
-def cluster_validation(_ctx: Any) -> dict[str, Any]:
-    """Phase 9.P1 is not built; report that rather than claim a pass."""
-    return {"status": "unavailable", "reason": CLUSTER_UNAVAILABLE}
+def _checker_status(value: str) -> str:
+    code = value.split(":", 1)[0].replace(" ", "_")
+    return code if code in {
+        "available", "disabled", "unavailable", "failed", "ran", "skipped", "not_requested",
+    } else "unknown"
+
+
+async def cluster_validation(
+    ctx: Any,
+    *,
+    tasks: Iterable[TaskNode] | None = None,
+    **options: Any,
+) -> dict[str, Any]:
+    """Run the real validator and summarize execution coverage without source content.
+
+    Options are ``validation.validator.validate_corpus``'s local inputs, including
+    the ancestry resolver, TBox, disjointness seeds and checker backends. The
+    validator's documented NLI fallback counts as checked consistency; an
+    unchecked cluster, missing task tree or skipped required checker does not.
+    """
+    started = time.perf_counter()
+    try:
+        from folio_insights.validation.coverage import leaf_tasks
+        from folio_insights.validation.validator import validate_corpus
+
+        nodes = None if tasks is None else list(tasks)
+        report = await validate_corpus(ctx, tasks=nodes, **options)
+        leaves = leaf_tasks(nodes or [])
+        mapped = sum(bool(task.folio_iri) for task in leaves)
+        checked = sum(cluster.mode != "unchecked" and bool(cluster.checkers)
+                      for cluster in report.clusters)
+        nli_checked = sum("nli" in cluster.checkers for cluster in report.clusters)
+        warnings = sum(finding.severity == "warning" for finding in report.findings)
+        checkers = {name: _checker_status(value)
+                    for name, value in report.checkers.model_dump().items()}
+        reasons: list[str] = []
+        if not report.shard_count:
+            reasons.append("empty_input")
+        if not report.clusters:
+            reasons.append("no_eligible_clusters")
+        if checked != len(report.clusters):
+            reasons.append("unchecked_clusters")
+        if nli_checked != len(report.clusters):
+            reasons.append("nli_not_run_for_all_clusters")
+        if checkers["nli"] == "failed":
+            reasons.append("nli_failed")
+        if nodes is None:
+            reasons.append("task_tree_missing")
+        elif not leaves:
+            reasons.append("task_tree_empty")
+        elif mapped != len(leaves):
+            reasons.append("task_leaves_unmapped")
+        for checker in ("coverage", "crossref"):
+            if checkers[checker] != "ran":
+                reasons.append(f"{checker}_not_run")
+        result = {
+            "status": "fail" if warnings else "incomplete" if reasons else "pass",
+            **report.summary(),
+            "warnings": warnings,
+            "checked_clusters": checked,
+            "nli_checked_clusters": nli_checked,
+            "checkers": checkers,
+            "task_leaves": len(leaves),
+            "mapped_task_leaves": mapped,
+            "reasons": reasons,
+            "applied": report.applied,
+        }
+    except ImportError:
+        result = {"status": "unavailable", "reason": CLUSTER_UNAVAILABLE}
+    except Exception:
+        result = {"status": "error", "reason": "cluster_validator_execution_failed"}
+    result["validate_seconds"] = round(time.perf_counter() - started, 3)
+    return result
 
 
 async def run_corpus04(
@@ -183,6 +255,7 @@ async def run_corpus04(
     *,
     corpora_dir: str | Path | None = None,
     standin_shards: int = 300,
+    cluster_inputs: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Load, SHACL-validate and cluster-validate each benchmark corpus under
     a storage ``root``; return a report whose ``corpus_04`` is ``met`` only
@@ -201,7 +274,7 @@ async def run_corpus04(
             validation = await ctx.validate_corpus()
             validate_s = time.perf_counter() - started
             status = await ctx.status()
-            cluster = cluster_validation(ctx)
+            cluster = await cluster_validation(ctx, **(cluster_inputs or {}).get(source.name, {}))
         finally:
             await ctx.close()
         entry = {

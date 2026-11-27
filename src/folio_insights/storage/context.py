@@ -11,7 +11,8 @@ use (U3 wires every CLI command through it). It owns:
   (``PersistentGovernanceLog``), the persistent implementations of the
   existing ``ShardStore`` and five-method ``GovernanceLog`` seams;
 * ``proposals`` (``PersistentProposalLedger``), the append-only
-  proposed-class governance ledger (not projected to RDF).
+  metadata ledger for proposed-class governance and signed closure declarations;
+  verified closure membership has a separate recoverable RDF graph.
 
 Write path (KTD3): validate and gate the input, then inside one
 ``BEGIN IMMEDIATE`` transaction check operation-ID replay, re-check state
@@ -156,6 +157,7 @@ from folio_insights.storage.projection import (
 )
 
 if TYPE_CHECKING:
+    from folio_insights.closure.projection import ClosureProjectionCache
     from folio_insights.identity.cache import DidDocCache
 
 T = TypeVar("T")
@@ -496,6 +498,7 @@ class CorpusStorageContext:
         # (watermark, chain digest) last verified against or written from this
         # context's journal (see ``_chain_matches``).
         self._verified_chain: tuple[int, str] | None = None
+        self._closure_cache: ClosureProjectionCache | None = None
         self._closed = True
         self._write_lock = asyncio.Lock()
         # First journal positions this context committed whose SHACL marker
@@ -542,6 +545,7 @@ class CorpusStorageContext:
         return ctx
 
     async def close(self) -> None:
+        self._closure_cache = None
         self._closed = True
         await self._journal.close()
 
@@ -575,6 +579,7 @@ class CorpusStorageContext:
             )
 
     async def _fail_closed(self) -> None:
+        self._closure_cache = None
         self._closed = True
         await self._journal.close()
 
@@ -627,6 +632,7 @@ class CorpusStorageContext:
                     # beside it (a journal whose applied prefix differs in any
                     # row: the chain digest covers every row up to the watermark).
                     await asyncio.to_thread(handle.reset, self.corpus)
+                    self._closure_cache = None
                     watermark = -1
                 else:
                     watermark = state.watermark
@@ -664,6 +670,9 @@ class CorpusStorageContext:
                     if applied.chain_digest is not None
                     else None
                 )
+                from folio_insights.closure.projection import sync_closure
+
+                await sync_closure(self, handle, watermark, applied.chain_digest)
                 result: T | None = None
                 if read is not None:
                     try:
@@ -814,6 +823,12 @@ class CorpusStorageContext:
             lambda h, _wm: h.query(self.corpus, sparql, include_tbox=include_tbox)
         )
         return result
+
+    async def closed_world_snapshot(self) -> Any:
+        """Capture verified closure contracts and all count facts under one projection lock."""
+        from folio_insights.closure.projection import capture_snapshot
+
+        return await capture_snapshot(self)
 
     async def rebuild_projection(self) -> int:
         """Drop and replay this corpus's projection from the journal (U4 seam)."""
