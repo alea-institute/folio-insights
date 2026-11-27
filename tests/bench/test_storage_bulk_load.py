@@ -78,6 +78,7 @@ def _hardware() -> dict[str, object]:
     }
 
 
+@pytest.mark.perf
 @pytest.mark.timeout(600)
 async def test_bulk_load_meets_200k_triples_per_second(tmp_path: Path) -> None:
     records = [shard(n) for n in range(SHARDS)]

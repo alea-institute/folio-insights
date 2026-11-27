@@ -77,6 +77,7 @@ def _hyperfine_p95_ms(url: str, runs: int = 50, warmup: int = 3) -> float:
     return times_ms[idx]
 
 
+@pytest.mark.perf
 @pytest.mark.gate4
 @pytest.mark.slow
 @pytest.mark.skipif(
