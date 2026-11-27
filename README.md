@@ -305,6 +305,8 @@ tests/                pytest suite
 
 Open an issue before large changes; send small fixes and doc edits as pull requests. Run the fast suite (about 3,500 tests) with `pytest -m "not slow and not gate5"`; integration tests need folio-enrich checked out. The repo has no GitHub Actions yet, so attach your local test results to each PR. Changes to confidence thresholds, gating, or tagging paths need a written rationale, because downstream consumers depend on them.
 
+Run the wall-clock SLO benchmarks on quiet hardware with `FOLIO_INSIGHTS_PERF=1 uv run --no-sync pytest -m perf`.
+
 ## Out of scope
 
 FOLIO Insights does not offer legal advice, judge legal merit, run in real time, rewrite source text, or process non-English source text.

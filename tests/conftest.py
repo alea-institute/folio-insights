@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -13,6 +14,19 @@ from folio_insights.models.knowledge_unit import (
     KnowledgeUnit,
     Span,
 )
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    if os.environ.get("FOLIO_INSIGHTS_PERF") == "1":
+        return
+
+    skip_perf = pytest.mark.skipif(
+        True, reason="wall-clock SLO benchmarks are opt-in (FOLIO_INSIGHTS_PERF=1)"
+    )
+    for item in items:
+        if item.get_closest_marker("perf") is not None:
+            # Show the opt-in reason before benchmark-specific prerequisites.
+            item.add_marker(skip_perf, append=False)
 
 
 @pytest.fixture(autouse=True)

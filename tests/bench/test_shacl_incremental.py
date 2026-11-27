@@ -43,6 +43,7 @@ def _p95(values: list[float]) -> float:
     return ordered[max(0, round(0.95 * len(ordered)) - 1)]
 
 
+@pytest.mark.perf
 @pytest.mark.timeout(600)
 async def test_incremental_validation_p95_under_50ms_at_1m_triples(tmp_path: Path) -> None:
     ctx = await CorpusStorageContext.open(tmp_path / "root", "bench")

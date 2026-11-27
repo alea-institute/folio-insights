@@ -141,4 +141,5 @@ markers = [
     "rfc: Phase 7 RFC lifecycle linter tests (GOV-07, D-22)",
     "storage: Phase 13 persistent storage tests (journal + projection)",
     "live_llm: Phase 10 opt-in live provider smoke (operator keys; skipped unless FOLIO_INSIGHTS_LIVE_LLM=1)",
+    "perf: wall-clock SLO thresholds (skipped unless FOLIO_INSIGHTS_PERF=1; run on quiet hardware)",
 ]

@@ -75,6 +75,7 @@ def warm_store(bench_1m_corpus: Path):
     return load_store_optimized(bench_1m_corpus)
 
 
+@pytest.mark.perf
 @pytest.mark.benchmark(group="gate2-warm-p95")
 @pytest.mark.parametrize("query_file", GOLD_QUERIES, ids=lambda p: p.stem)
 def test_gate2_p95_warm(benchmark, warm_store, query_file: Path) -> None:
@@ -117,6 +118,7 @@ def test_gate2_p95_warm(benchmark, warm_store, query_file: Path) -> None:
         )
 
 
+@pytest.mark.perf
 @pytest.mark.benchmark(group="gate2-cold-p95")
 @pytest.mark.parametrize("query_file", GOLD_QUERIES[:3], ids=lambda p: p.stem)
 def test_gate2_p95_cold(benchmark, bench_1m_corpus: Path, query_file: Path) -> None:
